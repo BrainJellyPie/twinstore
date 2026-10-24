@@ -237,7 +237,9 @@ def run_text(customers: Sequence[CustomerResult], store: Store, currency: str) -
     for c in customers:
         browsed = {e.target_rack for e in c.timeline if e.action == Action.BROWSE and e.target_rack}
         bought = {e.target_rack for e in c.purchases if e.target_rack}
-        for rack in browsed:
+        # A planned pick can skip BROWSE but still stops at its shelf. Count
+        # each shopper once, regardless of repeated visits or purchase quantity.
+        for rack in browsed | bought:
             stopped[rack] = stopped.get(rack, 0) + 1
             if rack in bought:
                 bought_at[rack] = bought_at.get(rack, 0) + 1

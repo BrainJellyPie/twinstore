@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Count direct purchases as shelf stops in group-interview evidence. Planned
+  buyers who skip browsing now appear in the shelf's visitor and buyer counts,
+  once per shopper, so question generation receives the actual purchase locations.
+
 - Validate generated scenario weekdays as 1–7 before caching or applying them.
   Invalid restrictions such as `[0]` can no longer turn into an unrestricted
   scenario. Keep valid day sorting, deduplication and explicit everyday defaults.
