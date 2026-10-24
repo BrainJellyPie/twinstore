@@ -152,9 +152,13 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
         except ValueError as e:
             raise AppError(str(e), 400) from e
         status = SynergyJobStatus(
-            job_id=f"syn_{uuid.uuid4().hex[:6]}", venue_id=venue_id, venue_name=venue.name, setup_id=setup_id,
+            job_id=f"syn_{uuid.uuid4().hex}", venue_id=venue_id, venue_name=venue.name, setup_id=setup_id,
             status="pending", request=request, scenario=scenario.name if scenario else "", created_at=now_iso(),
         )
+        try:
+            _dir(pid, status.job_id).mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise AppError("This synergy identifier already exists. Retry to start a new study", 409) from None
         _write_status(pid, status)
     executor.submit(_run_job, pid, status, town, store, personas, run_config)
     return status
