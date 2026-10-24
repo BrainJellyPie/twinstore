@@ -1,0 +1,42 @@
+name: Clean merged branches
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["maintenance/cleanup-merged"]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-merged-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test cleanup guards
+        run: python3 .github/tests/test_branch_cleanup.py
+      - name: Plan merged branches
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[].head.ref' > open-prs.txt
+          python3 .github/scripts/cleanup_merged_branches.py plan --audit branch-cleanup.json --open-prs open-prs.txt \
+            --keep fix/core-bug-loop-20261023 --keep fix/post-release-0.4.12-20261024 \
+            --keep fix/run-state-lock-20261023 --keep fix/refill-work-20261023 \
+            --keep release/v0.4.12 --keep maintenance/cleanup-merged
+      - uses: actions/upload-artifact@v4
+        with:
+          name: branch-cleanup-${{ github.run_id }}
+          path: branch-cleanup.json
+      - name: Delete merged branches
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[].head.ref' > open-prs.txt
+          python3 .github/scripts/cleanup_merged_branches.py apply --audit branch-cleanup.json --open-prs open-prs.txt
