@@ -20,7 +20,9 @@ from store_emulator.domain.town import DayType, Town, VLMSynergyResult
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
-from store_emulator.application.product_images import project_image_loader
+from store_emulator.application.product_images import project_image_loader, snapshot_project_images
+from store_emulator.engine.files import remove_tree
+from store_emulator.engine.perception.product_images import ProductImageLoader
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
 
 from .async_executor import executor, submit_background
@@ -155,13 +157,22 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
             job_id=f"syn_{uuid.uuid4().hex}", venue_id=venue_id, venue_name=venue.name, setup_id=setup_id,
             status="pending", request=request, scenario=scenario.name if scenario else "", created_at=now_iso(),
         )
+        folder = _dir(pid, status.job_id)
         try:
-            _dir(pid, status.job_id).mkdir(parents=True, exist_ok=False)
+            folder.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             raise AppError("This synergy identifier already exists. Retry to start a new study", 409) from None
-        _write_status(pid, status)
+        try:
+            image_loader = snapshot_project_images(
+                pid, (item for rack in store.racks for slot in rack.slots for item in slot.items),
+                folder / "images",
+            )
+            _write_status(pid, status)
+        except Exception:
+            remove_tree(folder)
+            raise
     try:
-        submit_background(executor, _run_job, pid, status, town, store, personas, run_config)
+        submit_background(executor, _run_job, pid, status, town, store, personas, run_config, image_loader=image_loader)
     except RuntimeError as exc:
         status.status = "failed"
         status.error = "Could not start the neighborhood study. Please retry when the worker is available."
@@ -173,6 +184,7 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
 
 def _run_job(
     pid: str, status: SynergyJobStatus, town: Town, store: Store, personas: list[Persona], config: SimulationConfig,
+    *, image_loader: ProductImageLoader | None = None,
 ) -> None:
     status.status = "running"
     status.phase = "sampling"
@@ -194,7 +206,8 @@ def _run_job(
         request = status.request
         result = asyncio.run(vlm_basket_synergy(
             town, status.venue_id, store, personas,
-            config=config, engine=build_engine(config, llm=llm, pathfinder=pathfinder, image_loader=project_image_loader(pid)), pathfinder=pathfinder,
+            config=config, engine=build_engine(config, llm=llm, pathfinder=pathfinder,
+                image_loader=image_loader or project_image_loader(pid)), pathfinder=pathfinder,
             cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, customers=request.customers,
             day_type=request.day_type,
             model_label=request.model or config.llm_for(EngineType.VLM_GLANCE).model, on_progress=on_progress,

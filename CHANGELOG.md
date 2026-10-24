@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Freeze product artwork for both arms of neighborhood VLM comparisons at job
+  acceptance. Image replacement, package deletion and later-added artwork no
+  longer change the accepted study, even after decoded-image cache eviction.
+  Failed image or job registration saves remove the incomplete job before queueing.
+
 - Recover background-job status save failures instead of leaving work pending
   or running indefinitely. Optimization, photo analysis and research workers
   now include their initial status commit in failure handling; final photo,
