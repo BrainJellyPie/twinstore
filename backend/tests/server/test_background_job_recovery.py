@@ -19,6 +19,7 @@ def test_restart_recovers_background_jobs_and_preserves_finished_results(tmp_pat
     from store_emulator.server import main
     monkeypatch.setattr(main, "seed_sample_projects", lambda: 0)
     root = tmp_path / ".data" / "proj_test"
+    write_json(root / "metadata.json", {"name": "Restart recovery check"})
     if kind == "capture":
         status = CaptureStatus(capture_id="cap_test", status=state)
         folder = root / "captures" / "cap_test"

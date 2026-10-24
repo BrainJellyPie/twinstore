@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 
 from store_emulator.application import town, town_synergy
 from store_emulator.application.errors import AppError
+from store_emulator.application.storage.io import write_json
+from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.town import Town
 from store_emulator.server.main import app
 
@@ -32,7 +34,9 @@ def test_venue_cannot_persist_external_setup_reference(monkeypatch):
     save.assert_not_called()
 
 
-def test_synergy_rejects_an_invalid_saved_active_layout_before_reading(monkeypatch):
+def test_synergy_rejects_an_invalid_saved_active_layout_before_reading(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    write_json(metadata_path("proj_test"), {"name": "Saved layout validation check"})
     neighborhood = Town.model_validate({
         "id": "town_test", "name": "Test", "archetype": "residential", "size_m": 200,
         "focal_venue_id": "focal", "venues": [{"id": "cafe", "name": "Cafe", "category": "cafe", "x": 100, "y": 100}],

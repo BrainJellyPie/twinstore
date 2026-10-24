@@ -59,8 +59,14 @@ def test_basket_effects_use_only_complete_pairs(monkeypatch, seed, failed_arm, b
         return SimpleNamespace(token_usage=TokenUsage(), diagnostics=SimpleNamespace(failed_customers=failed)), results
 
     monkeypatch.setattr(PerCustomerSimulationRunner, 'run', run)
-    result = asyncio.run(vlm_basket_synergy(town, 'cafe-next-door', store, pool, config=SimulationConfig(seed=seed),
-        engine=_RecordingEngine(), pathfinder=AStarPathFinder(), cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, customers=12))
+    study = vlm_basket_synergy(town, 'cafe-next-door', store, pool, config=SimulationConfig(seed=seed),
+        engine=_RecordingEngine(), pathfinder=AStarPathFinder(), cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, customers=12)
+    if failed_arm in ('all-with', 'all-without'):
+        with pytest.raises(ValueError, match='No affected visitors completed'):
+            asyncio.run(study)
+        assert len(calls) == (1 if failed_arm == 'all-with' else 2)
+        return
+    result = asyncio.run(study)
     assert len(calls) == 2 and result.failed_customers == len(rejected)
     paired = set(calls[0]) & set(calls[1]) & requested[1]
     expected_change = basket_change if paired else 0

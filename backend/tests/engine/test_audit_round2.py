@@ -56,6 +56,7 @@ def test_a_capture_with_a_running_lab_job_is_not_deleted(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     folder = tmp_path / ".data" / "proj_x" / "captures" / "cap_1"
+    write_json(folder.parent.parent / "metadata.json", {"name": "Capture deletion check"})
     write_json(folder / "status.json", CaptureStatus(capture_id="cap_1", status="completed").model_dump(mode="json"))
     write_json(folder / "lab" / "jobs" / "aud_1" / "status.json", {"status": "running"})
     with pytest.raises(AppError) as refused:

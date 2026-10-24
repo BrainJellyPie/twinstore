@@ -52,15 +52,15 @@ def test_legacy_timelines_infer_only_an_unambiguous_height(face, levels):
     assert profile.impulse_rate == profile.impulse_revenue_share == 1
 
 
-@pytest.mark.parametrize("ambiguous", [False, True])
-def test_substitution_does_not_keep_the_original_products_height(ambiguous):
+@pytest.mark.parametrize("multiple_levels", [False, True])
+def test_substitution_does_not_keep_the_original_products_height(multiple_levels):
     store = _store()
     shelf = store.racks[0]
     original = shelf.slots[0].items[0]
     alternative = shelf.slots[0].items[1]
     shelf.slots = [Slot(block=0, face=Face.E, level=1, items=[original]),
                    Slot(block=0, face=Face.E, level=4, items=[alternative])]
-    if ambiguous:
+    if multiple_levels:
         shelf.slots.append(Slot(block=0, face=Face.E, level=2, items=[alternative.model_copy()]))
     shopper = _shopper("p", "10:00:00", [("chips", 1)], origin="impulse")
     raw = shopper.model_dump()
@@ -70,8 +70,9 @@ def test_substitution_does_not_keep_the_original_products_height(ambiguous):
         stock_overrides={"chips": 0}, substitute_share=1, restock_every_min=None,
         checkout_base_sec=1, checkout_item_sec=0), seed=1)
     assert report.substituted_units == 1 and results[0].purchases[0].product_sku == "nuts"
-    assert impulse_profile(store, results).level_distribution == (
-        {} if ambiguous else {h: float(h == 4) for h in range(1, 5)})
+    selected_level = 2 if multiple_levels else 4
+    assert results[0].purchases[0].product_level == selected_level
+    assert impulse_profile(store, results).level_distribution == {h: float(h == selected_level) for h in range(1, 5)}
     assert shopper.purchases[0].product_level == 1
 
 
