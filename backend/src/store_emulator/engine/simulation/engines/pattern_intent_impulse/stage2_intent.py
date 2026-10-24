@@ -34,6 +34,8 @@ class GeneratedAction(CustomerAction):
     @field_validator("description", mode="before")
     @classmethod
     def _brief_description(cls, value: object) -> object:
+        if value is None:
+            return ""
         return value[:400] if isinstance(value, str) else value
 
 
@@ -44,6 +46,8 @@ class IntentResponse(BaseModel):
     @field_validator("reasoning", mode="before")
     @classmethod
     def _brief_reasoning(cls, value: object) -> object:
+        if value is None:
+            return ""
         return value[:600] if isinstance(value, str) else value
 
     @field_validator("actions", mode="before")
@@ -86,6 +90,7 @@ def build_system_prompt(store: Store, currency: str = "USD") -> str:
 - **buy 는 아래 진열대 목록에 적합한 상품이 있을 때만 추가**
 - 고객의 예산을 크게 넘는 구매는 하지 않습니다
 - reasoning은 600자 이하, 각 행동의 description은 400자 이하로 간결하게 작성하고 같은 문장을 반복하지 마세요
+- 설명이 없으면 null 대신 빈 문자열("")을 사용하세요
 
 {price_unit_rule(currency)}
 

@@ -36,6 +36,7 @@ SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한
 - **browse / buy 의 description 은 노출 상품 목록의 상품만 묘사**
 - description 은 해당 행동 시점의 상황만 묘사 (이후 행동 참조 금지)
 - reasoning은 600자 이하, 각 행동의 description은 400자 이하로 간결하게 작성하고 같은 문장을 반복하지 마세요
+- 설명이 없으면 null 대신 빈 문자열("")을 사용하세요
 
 ## 언어
 - 자유 서술 필드(`reasoning` 및 각 action의 `description`)의 값은 **영어로** 작성하세요.

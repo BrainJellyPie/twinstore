@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Accept null optional narration in generated behavior patterns and shopping
+  actions as empty text. Valid visits no longer fail solely on absent reasoning,
+  descriptions or optional grammar rewrites; structural fields and invalid
+  non-text values remain validated.
+
 - Resolve category labels clipped by the vision planner against directory-name
   prefixes before broad word matching. Long multilingual shelf names retain
   their intended offer when the prefix is unique; shared prefixes stay ambiguous

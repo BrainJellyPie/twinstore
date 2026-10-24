@@ -17,6 +17,8 @@ class PatternSelectionResponse(BaseModel):
     @field_validator("reasoning", mode="before")
     @classmethod
     def _brief_reasoning(cls, value: object) -> object:
+        if value is None:
+            return ""
         return value[:600] if isinstance(value, str) else value
 
     @field_validator("grammar_override", mode="before")
@@ -24,7 +26,7 @@ class PatternSelectionResponse(BaseModel):
     def _bounded_override(cls, value: object) -> object:
         # An optional rewrite must not overflow stage two. Use the complete
         # built-in grammar instead of executing a partially cut instruction.
-        return "" if isinstance(value, str) and len(value) > 1200 else value
+        return "" if value is None or (isinstance(value, str) and len(value) > 1200) else value
 
 
 def build_system_prompt(patterns: list[BehaviorPattern]) -> str:
@@ -47,6 +49,7 @@ def build_system_prompt(patterns: list[BehaviorPattern]) -> str:
 - grammar_override: 선택한 패턴의 기본 행동 문법을 이 고객의 상황에 맞게 미세 조정하고 싶을 때만 사용하세요.
   보통은 비워두세요. 조정 시에도 기본 구조(입장→...→퇴장)는 반드시 유지하세요.
   수정은 1200자 이내로 짧게 작성하고 같은 규칙을 반복하지 마세요. 매장 목록이나 고객 정보를 다시 쓰지 마세요.
+- 선택 설명 필드에 내용이 없으면 null 대신 빈 문자열("")을 사용하세요.
 
 ## 언어
 - 자유 서술 필드(`reasoning`, `grammar_override`)의 값은 **영어로** 작성하세요.
