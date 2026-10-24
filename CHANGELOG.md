@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve valid rival-product matches when an unmatched row uses null for our
+  product. One absent counterpart no longer discards the remaining price
+  comparisons; missing rival identities and malformed match structures still fail.
+
 - Require a real answer when a survey contains only an open question. Missing,
   null or blank answers now receive bounded correction instead of counting as
   successful respondents; explanations alongside measured answers stay optional.

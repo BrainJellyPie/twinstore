@@ -4,7 +4,7 @@ rival's tag, "Coke 500 ml" in our layout). Only the same product counts: same br
 from collections.abc import Sequence
 from typing import Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 MAX_OURS = 300
 MAX_NAME_CHARS = 160
@@ -21,6 +21,11 @@ class _Pair(BaseModel):
     rival: str = Field(max_length=MAX_NAME_CHARS)
     ours: str = Field(default="", max_length=MAX_NAME_CHARS, description="our product, exactly as listed, or '' when none is the same")
 
+    @field_validator("ours", mode="before")
+    @classmethod
+    def unmatched(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class _Pairs(BaseModel):
     pairs: list[_Pair] = Field(default_factory=list[_Pair], max_length=80)
@@ -28,7 +33,7 @@ class _Pairs(BaseModel):
 
 MATCH_PROMPT = """You match products on a rival store's shelf to the same products in our store. A match must be the
 same brand, the same variant or flavour and the same size; a similar product is not a match. For each rival product,
-give our product's name exactly as listed, or an empty string when we do not sell that exact product.
+give our product's name exactly as listed, or an empty string, not null, when we do not sell that exact product.
 Return at most one match per rival product; never assign different products to the same rival name.
 For a name longer than 160 characters, copy its first 160 characters only when the prefix identifies one product
 in that list. Omit an ambiguous pair; do not guess between products sharing that prefix."""
