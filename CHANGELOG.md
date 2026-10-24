@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Keep hourly customer types within the trade-area identity list before persona
+  generation. Unknown or ambiguous labels now retry at the traffic stage rather
+  than becoming cached, contradictory customer instructions. Unique case and
+  whitespace variants are normalized; empty-type and inactive-hour handling
+  retain their existing fallbacks.
+
 - Give receipt transcription a separate 6,144-token output ceiling so ordinary
   long item lists can finish before matching, review and CSV export. Storefront
   ratings retain their smaller output limit; receipt validation and retry limits

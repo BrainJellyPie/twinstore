@@ -69,7 +69,7 @@ class DailyTrafficResult(BaseModel):
         return self
 
 
-def traffic_response_model(open_hour: int, close_hour: int) -> type[DailyTrafficResult]:
+def traffic_response_model(open_hour: int, close_hour: int, *, identities: list[str] | None = None) -> type[DailyTrafficResult]:
     """Let the harness assign clock values to the model's ordered open-slot estimates."""
     hours = list(range(open_hour, close_hour))
     row_schema = HourlyProfile.model_json_schema()
@@ -80,6 +80,9 @@ def traffic_response_model(open_hour: int, close_hour: int) -> type[DailyTraffic
     label = row_properties["person_types"]["items"]
     if "$ref" in label:
         row_properties["person_types"]["items"] = row_schema["$defs"][label["$ref"].rsplit("/", 1)[1]]
+    choices = list(dict.fromkeys(identities or ["shopper"])) if identities is not None else []
+    if choices:
+        row_properties["person_types"]["items"]["enum"] = choices
     constraints: dict[str, JsonValue] = {
         "minItems": len(hours), "maxItems": len(hours),
         "items": {"type": "object", "properties": row_properties,
@@ -105,6 +108,30 @@ def traffic_response_model(open_hour: int, close_hour: int) -> type[DailyTraffic
             if len(rows) != len(hours):
                 raise ValueError(f"Return one row for each opening-hour slot, in order: {hours}; got {len(rows)} rows.")
             return [{**cast(dict[str, object], row), "hour": hour} for row, hour in zip(rows, hours, strict=True)]
+
+        @field_validator("hourly_profiles")
+        @classmethod
+        def _supplied_types(cls, rows: list[HourlyProfile]) -> list[HourlyProfile]:
+            if not choices:
+                return rows
+            normalized: list[HourlyProfile] = []
+            for row in rows:
+                # Inactive legacy rows cannot supply a customer's identity.
+                if row.visitor_count <= 0 or row.hour not in hours:
+                    normalized.append(row)
+                    continue
+                labels: list[str] = []
+                for value in row.person_types:
+                    if value in choices:
+                        labels.append(value)
+                        continue
+                    matches = [label for label in choices if label.casefold() == value.casefold()]
+                    if len(matches) != 1:
+                        raise ValueError("Choose supplied identity labels for person_types; do not invent different labels.")
+                    labels.append(matches[0])
+                # Empty lists still use the existing trade-area fallback.
+                normalized.append(row.model_copy(update={"person_types": labels}))
+            return normalized
 
     return SlotTrafficResult
 
@@ -353,7 +380,8 @@ async def analyze_daily_traffic(
     if custom_instruction:
         user_input += f"\n추가 지시: {custom_instruction}"
     logger.info(f"[area-analysis] {day_label} analyzing traffic...")
-    result = await llm.generate_structured_async(traffic_response_model(open_hour, close_hour), system, user_input, max_retries=3)
+    result = await llm.generate_structured_async(
+        traffic_response_model(open_hour, close_hour, identities=profile.identities), system, user_input, max_retries=3)
     # Out-of-hours guard — force zero if the LLM misreads the open-slot range.
     dropped = 0
     for hp in result.hourly_profiles:
