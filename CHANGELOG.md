@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Read customer XLSX uploads before automatic product selection, project creation
+  or customer generation. Reject unreadable/empty workbooks and missing declared
+  worksheets instead of silently generating customers from incomplete evidence;
+  preserve header-only templates, valid sheets and original upload bytes.
+
 - Protect research protocol creation, idempotent retries and amendments against
   concurrent project deletion, including directory creation. Preserve protocol
   history when the project is busy and reject commits after deletion wins.
