@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve the final exit event when a model pairs exit navigation with an
+  incorrect enter label. Timeline boundaries now follow the route's exit
+  instruction, without replacing the original arrival description.
+
 - Stop customer-generation retries when retained upload evidence is missing,
   unreadable, empty or inconsistent, instead of silently generating without it.
   New upload receipts include a SHA-256 digest; intact legacy receipts still work.

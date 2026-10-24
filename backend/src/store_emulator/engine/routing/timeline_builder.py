@@ -74,18 +74,20 @@ def build_timeline(
 
         current_pos = _last_pos(step, timeline)
 
+        # Routing treats nav=leave as the visit boundary, even when a model
+        # gives it a conflicting action label. Preserve that boundary in events.
+        if step.action.nav == "leave":
+            timeline.append(TimelineEvent(
+                elapsed_sec=round(t), x=current_pos[0], y=current_pos[1], action=Action.EXIT,
+            ))
+            break
+
         # enter: merge the description into the very first event only.
         if action_type == Action.ENTER:
             if step.action.description:
                 timeline[0].description = step.action.description
             t += _resolve_dwell(step, store)
             continue
-
-        if step.action.nav == "leave":
-            timeline.append(TimelineEvent(
-                elapsed_sec=round(t), x=current_pos[0], y=current_pos[1], action=Action.EXIT,
-            ))
-            break
 
         target = step.action.target
         face = step.action.face
