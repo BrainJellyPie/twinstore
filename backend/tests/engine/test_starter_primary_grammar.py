@@ -92,6 +92,14 @@ def test_concurrent_requests_keep_their_own_identifier_grammars():
                 assert set(group["properties"]["category"].get("enum", [])) == set(keys)
                 assert set(group["properties"]["rack_ids"]["items"].get("enum", [])) == set(ids)
                 return schema.model_validate({"groups": [{"category": keys[0], "rack_ids": ids}]})
+            fields = schema.model_json_schema()["properties"]["groups"]
+            assert fields["minItems"] == fields["maxItems"] == len(context["categories"])
+            alternatives = fields["items"]["anyOf"]
+            assert {group["properties"]["category"]["const"] for group in alternatives} == set(context["categories"])
+            for group in alternatives:
+                key = group["properties"]["category"]["const"]
+                assert group["properties"]["skus"]["items"]["enum"] == [p["sku"] for p in context["categories"][key]]
+                assert group["properties"]["skus"]["maxItems"] == context["maximum_products_per_category"][key]
             return schema.model_validate({"groups": [{"category": key, "skus": [products[0]["sku"]]}
                                                      for key, products in context["categories"].items()]})
 

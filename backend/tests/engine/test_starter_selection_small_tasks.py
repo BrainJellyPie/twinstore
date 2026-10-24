@@ -28,7 +28,7 @@ class SmallTaskModel:
                 # The reported local-model error: omit section_0, invent other sections.
                 ids = ["section_10", "section_11", "section_12", "section_999"]
             return schema.model_validate({"groups": [{"category": "home_coffee_tea", "rack_ids": ids}]})
-        if schema is ProductSelection:
+        if issubclass(schema, ProductSelection):
             return schema.model_validate({"groups": [{"category": k, "skus":
                 ["invented_sku"] if self.product_fault else [products[0]["sku"]]}
                 for k, products in payload["categories"].items()]})

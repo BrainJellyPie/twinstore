@@ -256,8 +256,23 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
 
     catalog = {key: [{"sku": p.sku, "name": p.name, "price": p.price, "image_available": bool(p.image_url)}
                      for p in products] for key, products in candidates.items()}
+    product_shapes: list[JsonValue] = []
+    for key in keys:
+        product_shapes.append({
+            "type": "object", "additionalProperties": False, "required": ["category", "skus"],
+            "properties": {
+                "category": {"type": "string", "const": key},
+                "skus": {"type": "array", "minItems": 1, "maxItems": limits[key],
+                         "items": {"type": "string", "enum": [p.sku for p in candidates[key]]}},
+            },
+        })
+    product_constraint: dict[str, JsonValue] = {
+        "minItems": len(keys), "maxItems": len(keys), "items": {"anyOf": product_shapes},
+    }
+    product_schema = create_model("ProductSelection", __base__=ProductSelection,
+        groups=(list[ProductGroup], Field(min_length=1, max_length=16, json_schema_extra=product_constraint)))
     try:
-        chosen = await _validated_selection(llm, ProductSelection, PRODUCT_PROMPT, {
+        chosen = await _validated_selection(llm, product_schema, PRODUCT_PROMPT, {
             **context, "currency": store.currency, "maximum_products_per_category": limits, "categories": catalog,
         }, validate_products)
     except _InvalidSelection:

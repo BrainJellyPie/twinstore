@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bind the first automatic-product response grammar to each selected category's
+  real SKU list and shelf capacity. Grammar-capable local models cannot select
+  invented or cross-category SKUs, or exceed category limits; existing correction
+  and bounded small-task recovery still handle non-enforcing providers.
+
 - Accept null optional text in vision entry plans and shelf glances as empty
   strings. A valid category or printed badge can still identify a product when
   the optional product text is absent; structural nulls remain validation errors.
