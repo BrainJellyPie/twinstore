@@ -12,8 +12,9 @@ from typing import cast
 
 import instructor
 import litellm
+from instructor.core.exceptions import IncompleteOutputException, InstructorError
 from litellm.exceptions import AuthenticationError
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from store_emulator.domain.config import LLMConfig
 from store_emulator.domain.types import TokenUsage
@@ -35,10 +36,31 @@ _OPTIONAL_PARAMS = ("temperature", "thinking", "reasoning_effort")
 _ATTEMPTS = len(_OPTIONAL_PARAMS) + 2
 
 
+def _request_errors(error: BaseException) -> list[BaseException]:
+    """Unwrap provider errors without treating generated response text as a server rejection."""
+    errors: list[BaseException] = []
+    seen: set[int] = set()
+    stack = [error]
+    while stack:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, (ValidationError, json.JSONDecodeError, IncompleteOutputException)):
+            continue
+        stack.extend(e for e in (current.__cause__, current.__context__) if e is not None)
+        if isinstance(current, InstructorError):
+            # Its string includes completions and validation inputs, not just error messages.
+            stack.extend(attempt.exception for attempt in current.failed_attempts or [])
+        else:
+            errors.append(current)
+    return errors
+
+
 def _rejected_param(error: BaseException) -> str | None:
     """The optional parameter a provider error says it refused, if any. `max_tokens` is special: newer
     OpenAI models want it renamed to `max_completion_tokens` (see _call_kwargs), not dropped."""
-    text = str(error).lower()
+    text = "\n".join(str(e) for e in _request_errors(error)).lower()
     if not any(w in text for w in ("deprecated", "not supported", "unsupported", "does not support", "not allowed")):
         return None
     if "'max_tokens'" in text and "max_completion_tokens" in text:
@@ -52,7 +74,7 @@ _THINKING_OFF: dict[tuple[str, str], dict[str, str]] = {}
 
 
 def _thinking_off_hint(error: BaseException) -> dict[str, str] | None:
-    text = str(error)
+    text = "\n".join(str(e) for e in _request_errors(error))
     if "thinking" not in text or "instead of" not in text:
         return None
     m = re.search(r'send \\?"thinking\\?":\s*\{\\?"type\\?":\s*\\?"([a-z_]+)\\?"\}', text)
@@ -101,24 +123,10 @@ _AUTH_MARKERS = ("api_key_invalid", "api key not valid", "invalid x-api-key", "i
 
 def is_auth_error(error: BaseException) -> bool:
     """Whether the provider turned the API key down, looking through the retries Instructor wraps the error in."""
-    seen: set[int] = set()
-    stack: list[BaseException] = [error]
-    while stack:
-        e = stack.pop()
-        if id(e) in seen:
-            continue
-        seen.add(id(e))
-        if isinstance(e, AuthenticationError):
+    for e in _request_errors(error):
+        if isinstance(e, AuthenticationError) or any(marker in str(e).lower() for marker in _AUTH_MARKERS):
             return True
-        stack.extend(x for x in (e.__cause__, e.__context__) if x is not None)
-        attempts: object = getattr(e, "failed_attempts", None)
-        if isinstance(attempts, list):
-            for attempt in cast(list[object], attempts):
-                exc: object = getattr(attempt, "exception", None)
-                if isinstance(exc, BaseException):
-                    stack.append(exc)
-    text = str(error).lower()
-    return any(marker in text for marker in _AUTH_MARKERS)
+    return False
 
 
 def _hash6(text: str) -> str:

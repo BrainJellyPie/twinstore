@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep generated response text out of provider-error classification. Validation
+  failures and truncated replies that mention API keys or unsupported options no
+  longer reject a working key, change sampling settings or trigger extra provider
+  retries. Actual wrapped server rejections still use the existing recovery path.
+
 - Validate receipt amounts after applying the printed or fallback currency while
   the model can still correct its response. Very large finite numbers no longer
   poison the OCR cache or fail only during minor-unit conversion; supported
