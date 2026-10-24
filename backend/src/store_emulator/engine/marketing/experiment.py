@@ -27,6 +27,7 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator
+from store_emulator.engine.validation import clear_blocked_slots
 
 FOCUS_METRICS = ("units", "spend", "buyers")
 
@@ -100,8 +101,12 @@ def sku_sales(results: list[CustomerResult], *, keep: list[str] | None = None, t
 
 
 def _prices(store: Store, skus: list[str]) -> dict[str, int]:
+    # The runner removes inaccessible offers from its private store. Price
+    # curves must describe those same offers without mutating the saved layout.
+    walked = store.model_copy(deep=True)
+    clear_blocked_slots(walked)
     out: dict[str, int] = {}
-    for rack in store.racks:
+    for rack in walked.racks:
         for slot in rack.slots:
             for item in slot.items:
                 if item.sku in skus:
@@ -123,8 +128,8 @@ def price_response(
     arms that change only its price (`changes` maps arm names to their changes). An arm that also hangs a sign on it,
     moves it or changes a whole category's prices would put that effect on the curve as if it were the price's."""
     for sku in control.prices:
-        arms = [v for v in variants if _price_only(sku, changes.get(v.name, ()))]
-        prices = {control.prices[sku], *(v.prices.get(sku, control.prices[sku]) for v in arms)}
+        arms = [v for v in variants if sku in v.prices and _price_only(sku, changes.get(v.name, ()))]
+        prices = {control.prices[sku], *(v.prices[sku] for v in arms)}
         if len(prices) < 3:
             continue
         units = [f for v in arms for f in v.focus if f.sku == sku and f.metric == "units"]
@@ -139,7 +144,7 @@ def price_response(
             m = next((f for f in v.focus if f.sku == sku and f.metric == "spend"), None)
             if u is None:
                 continue
-            points.append(PricePoint(arm=v.name, price=v.prices.get(sku, control.prices[sku]), units=u.variant,
+            points.append(PricePoint(arm=v.name, price=v.prices[sku], units=u.variant,
                                      units_low=max(0.0, base_units + u.ci_low), units_high=base_units + u.ci_high,
                                      revenue=m.variant if m else 0.0))
         points.sort(key=lambda p: p.price)

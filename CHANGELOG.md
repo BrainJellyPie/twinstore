@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Use reachable shelf offers for marketing experiment price curves. Hidden,
+  locked or obstructed cheap facings no longer become the reported price of
+  purchases from other shelves; omit arms without an observed shelf price.
+
 - Reject layout workbook array formulas with missing saved results before they
   can clear products or default prices. Check absent children, multi-column
   ranges, shifted headers and array tails within the existing cell budget.
