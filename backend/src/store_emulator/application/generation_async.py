@@ -100,6 +100,17 @@ def start_persona_generation(
             kept = _kept_upload(project_id)
             if kept is not None:
                 supplemental_bytes, supplemental_filename = kept
+                # Remember intact legacy uploads before a later retry loses
+                # the folder that previously provided the only evidence.
+                meta_file = metadata_path(project_id)
+                meta = cast(dict[str, object], read_json(meta_file))
+                if meta.get("supplemental_upload_expected") is not True:
+                    meta["supplemental_upload_expected"] = True
+                    try:
+                        write_json(meta_file, meta)
+                    except OSError as exc:
+                        raise AppError("Could not record the uploaded customer data. Restore writable storage "
+                                       "before retrying customer generation.", 503) from exc
         gen_id = init_generation(project_id, setup_id, "persona")
     try:
         submit_background(
@@ -124,14 +135,21 @@ def _keep_upload(project_id: str, data: bytes, filename: str) -> None:
     failed (no key yet, a restart) lost it, and "Try again" generated customers without it, saying nothing."""
     folder = _upload_dir(project_id)
     try:
+        meta_file = metadata_path(project_id)
+        meta = cast(dict[str, object], read_json(meta_file))
+        if meta.get("supplemental_upload_expected") is not True:
+            meta["supplemental_upload_expected"] = True
+            write_json(meta_file, meta)
         if folder.exists():
             remove_tree(folder)
         folder.mkdir(parents=True)
         suffix = Path(filename).suffix.lower()[:10] or ".csv"
         (folder / f"upload{suffix}").write_bytes(data)
         write_json(folder / "upload.json", {"filename": filename, "sha256": hashlib.sha256(data).hexdigest()})
-    except OSError:
+    except OSError as exc:
         logger.warning("[supplemental] could not keep the uploaded file", exc_info=True)
+        raise AppError("Could not save the uploaded customer data. Restore writable storage and attach the file "
+                       "to a new store, or restore this store's saved upload before retrying.", 503) from exc
 
 
 def _kept_upload(project_id: str) -> tuple[bytes, str] | None:
@@ -139,6 +157,9 @@ def _kept_upload(project_id: str) -> tuple[bytes, str] | None:
     folder = _upload_dir(project_id)
     try:
         if not folder.exists():
+            meta = cast(dict[str, object], read_json(metadata_path(project_id)))
+            if meta.get("supplemental_upload_expected") is True:
+                raise ValueError("Retained customer upload folder is missing")
             return None
         raw: object = read_json(folder / "upload.json")
         if not isinstance(raw, dict):

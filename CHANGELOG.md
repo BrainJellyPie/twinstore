@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Remember whether a project requires uploaded customer evidence. Losing the
+  entire retained-upload folder now blocks generation instead of silently using
+  no attachment. Failed upload saves stop before queuing customer writing;
+  intact legacy uploads gain the same protection when retried.
+
 - Commit customer-generation choices and progress atomically. A failed save no
   longer leaves a consumable choice that can start customer writing after the
   confirmation request reports an error; the confirmation remains retryable.

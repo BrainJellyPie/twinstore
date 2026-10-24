@@ -290,6 +290,7 @@ def create_project_without_layout(
         "address": address,
         "customer_profile": customer_profile,
         "supplemental_summary": "",
+        "supplemental_upload_expected": supplemental_bytes is not None,
         "created_at": now,
         "updated_at": now,
     }
