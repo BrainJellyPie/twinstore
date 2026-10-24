@@ -10,26 +10,30 @@ from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.engine import PerCustomerContext, EngineDecision
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, PathFinder, TokenUsage, WEEKDAY_LABELS, stable_seed
+from store_emulator.domain.types import Action, PathFinder, Position, TokenUsage, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
 from store_emulator.engine.llm_client import is_context_overflow
 from . import stage1_pattern, stage2_intent, stage3_impulse
 from .stage2_intent import IntentResponse
 from .stage3_impulse import ImpulseResponse
 from store_emulator.engine.routing.route_builder import (
-    build_journey, find_exposed_products, integrate_actions, perceive_products,
+    build_journey, entrance_position, face_access_tile, find_exposed_products, integrate_actions, perceive_products,
 )
 from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 
 logger = logging.getLogger(__name__)
 
 
-def drop_invalid_buys(actions: Sequence[CustomerAction], store: Store) -> tuple[list[CustomerAction], int]:
-    """Drop buys whose product_sku does not exist in any slot (LLM hallucination guard).
+def drop_invalid_buys(actions: Sequence[CustomerAction], store: Store, *,
+                      pathfinder: PathFinder | None = None) -> tuple[list[CustomerAction], int]:
+    """Drop unknown SKUs and, with a pathfinder, offers outside this shopper's reachable area.
     If only PAY remains afterwards, drop it too (no purchases → no payment).
     Returns (kept actions, number of dropped buys).
     """
     valid_skus = {i.sku for r in store.racks for s in r.slots for i in s.items}
+    grid = store.walkable_grid() if pathfinder is not None else []
+    start = entrance_position(store)
+    reachable: dict[Position, bool] = {}
     kept: list[CustomerAction] = []
     dropped = 0
     for a in actions:
@@ -38,6 +42,21 @@ def drop_invalid_buys(actions: Sequence[CustomerAction], store: Store) -> tuple[
                 logger.info("[drop] LLM hallucinated buy sku=%r — dropped", a.product_sku)
                 dropped += 1
                 continue
+            if pathfinder is not None:
+                placement = resolve_buy_placement(store, target=a.target, face=a.face, sku=a.product_sku,
+                                                  block=a.product_block, level=a.product_level)
+                target: Position | None = None
+                if placement is not None:
+                    rack, slot = placement
+                    if not any(lock.block == slot.block and lock.face == slot.face for lock in rack.locked_faces):
+                        target = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)
+                if target is not None and target not in reachable:
+                    path = pathfinder.find_path(grid, start, target)
+                    reachable[target] = target == start or bool(path and path[-1] == target)
+                if target is None or not reachable[target]:
+                    logger.info("[drop] unreachable buy sku=%r — dropped before purchase limits", a.product_sku)
+                    dropped += 1
+                    continue
         kept.append(a)
     return _drop_orphan_pay(kept), dropped
 
@@ -196,7 +215,7 @@ class PatternIntentImpulseEngine:
 
         # Exposure is computed on the route the shopper will actually walk (same ordering
         # rule as the final merge), so impulse candidates match the executed path.
-        valid_intent, dropped_invalid = drop_invalid_buys(intent.actions, context.store)
+        valid_intent, dropped_invalid = drop_invalid_buys(intent.actions, context.store, pathfinder=self._pathfinder)
         bounded_intent, dropped_limit = apply_product_limit(valid_intent, pattern.max_products)
         planned = integrate_actions(context.store, bounded_intent, [], ordering=cfg.route_ordering)
         journey = build_journey(context.store, planned, self._pathfinder, cfg.block_move_sec)
@@ -238,7 +257,7 @@ class PatternIntentImpulseEngine:
         else:
             impulse = ImpulseResponse()
         impulse_actions: list[CustomerAction] = []
-        valid_impulse, dropped_impulse_invalid = drop_invalid_buys(impulse.actions, context.store)
+        valid_impulse, dropped_impulse_invalid = drop_invalid_buys(impulse.actions, context.store, pathfinder=self._pathfinder)
         dropped_invalid += dropped_impulse_invalid
         exposed_skus = {sku for _, _, sku in exposed}
         dropped_unexposed = 0

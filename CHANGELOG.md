@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exclude model purchases the current shopper cannot reach before applying budget
+  and product-count limits. Stock in a disconnected area with its own entrance
+  no longer consumes the shopper's allowance or prunes reachable planned/impulse
+  buys. Preserve exact offers, checkout timing and existing routing safeguards.
+
 - Cap automatic assortment requests by the category's distinct catalog SKU count
   as well as shelf space and user limits. A six-product catalog no longer advertises
   room for sixteen different choices in either the bulk or fallback task, avoiding
