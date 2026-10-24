@@ -2,6 +2,8 @@
 
 import json
 
+from pydantic import field_validator
+
 from store_emulator.domain.behavior import BehaviorCue
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.persona import Persona
@@ -24,6 +26,11 @@ LEVEL_VISIBILITY_GUIDE = [
 class ImpulseResponse(IntentResponse):
     """Additional model shopping actions, with the same engine-field boundary as intent."""
 
+    @field_validator("actions", mode="before")
+    @classmethod
+    def _optional_actions(cls, value: object) -> object:
+        return [] if value is None else value
+
 
 SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한 발견) 시뮬레이터입니다.
 고객이 이미 결정한 동선 위에서, 지나가다가 발견할 수 있는 상품이나 프로모션에 반응하는 추가 행동을 생성하세요.
@@ -34,6 +41,7 @@ SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한
 - 새로 추가할 행동(browse / buy) 만 반환. 방문 순서 배치는 엔진이 자동 처리합니다
 - 고객의 성향(충동구매 확률, 탐색 성향)을 반영
 - 현실적으로 0~3개 정도의 세렌디피티 이벤트가 적당. 0개도 가능
+- 추가 행동이 없으면 actions는 null 대신 빈 배열 []로 반환하세요.
 - action 은 browse 또는 buy 만 사용
 - target 은 노출 상품의 접근 타일 좌표를 사용
 - **buy 시 product_sku 는 아래 "경로상 노출되는 상품" 목록의 sku 중 하나만 사용**

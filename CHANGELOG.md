@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve planned visits when a local model returns null for the optional
+  impulse-action list. Treat it as the existing empty-list default, including
+  cached replies and focused context recovery. Keep planned-action responses
+  and malformed non-null lists strict; explicitly request [] for no reaction.
+
 ## 0.4.13 — Reliable local model automation and faithful shopper decisions
 
 - Retain actionable price-validation advice when a conjoint draft exhausts model
