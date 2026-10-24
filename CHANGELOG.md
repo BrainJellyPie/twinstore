@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Validate model-read floor-plan geometry before caching or building a store.
+  Outlines and fixture boxes now require four finite image coordinates; outlines
+  must have positive width and depth, and physical dimensions cannot be negative
+  or nonfinite. One correction attempt replaces crashes or silently dropped
+  malformed fixtures while preserving unscaled drawings and line entrances.
+
 - Keep generated response text out of provider-error classification. Validation
   failures and truncated replies that mention API keys or unsupported options no
   longer reject a working key, change sampling settings or trigger extra provider

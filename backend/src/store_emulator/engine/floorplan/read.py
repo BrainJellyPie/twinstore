@@ -13,12 +13,12 @@ fixture with its kind and any category words written on it.
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol, Self
 
 import numpy as np
 import numpy.typing as npt
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.floorplan import FixtureKind, FloorPlanReading, PlanFixture
 from store_emulator.engine.capture.detect import image_data_url
@@ -211,17 +211,30 @@ def classic_read(img: Image.Image) -> FloorPlanReading:
 
 # ── vision-language model ────────────────────────────────────────────────────────
 
+type ImageCoordinate = Annotated[float, Field(ge=0, le=1000, allow_inf_nan=False)]
+
+
 class _VLMFixture(BaseModel):
     kind: Literal["shelf", "gondola", "fridge", "freezer", "counter", "entrance"]
-    box: list[float] = Field(description="[x1, y1, x2, y2] on a 0–1000 scale of the whole image")
+    box: list[ImageCoordinate] = Field(min_length=4, max_length=4,
+                                      description="[x1, y1, x2, y2] on a 0–1000 scale of the whole image")
     label: str = Field(default="", max_length=60)
 
 
 class _VLMPlan(BaseModel):
-    outline: list[float] = Field(description="the store's outer walls as [x1, y1, x2, y2] on a 0–1000 scale")
-    width_m: float = Field(default=0.0, description="outer width in metres if a scale or dimensions are written, else 0")
-    depth_m: float = Field(default=0.0)
+    outline: list[ImageCoordinate] = Field(min_length=4, max_length=4,
+                                          description="the store's outer walls as [x1, y1, x2, y2] on a 0–1000 scale")
+    width_m: float = Field(default=0.0, ge=0, allow_inf_nan=False,
+                           description="outer width in metres if a scale or dimensions are written, else 0")
+    depth_m: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     fixtures: list[_VLMFixture] = []
+
+    @model_validator(mode="after")
+    def positive_outline(self) -> Self:
+        x1, y1, x2, y2 = self.outline
+        if x2 <= x1 or y2 <= y1:
+            raise ValueError("The outline must run from top-left to bottom-right: x1 < x2 and y1 < y2.")
+        return self
 
 
 PLAN_PROMPT = """You read retail store floor plans: hand sketches, CAD exports or scanned drawings.
@@ -230,7 +243,10 @@ Find the store's outer walls and every fixture inside them. Kinds:
 - shelf: a shelf against a wall (one side shopped); gondola: a free-standing double-sided shelf in the floor
 - counter: the checkout / cash desk; entrance: the door or opening in the outer wall
 Give every box as [x1, y1, x2, y2] on a 0–1000 scale of the whole image (x right, y down).
+Every box and outline must contain exactly four finite numbers between 0 and 1000.
+The outline runs from top-left to bottom-right: x1 < x2 and y1 < y2.
 If the plan writes dimensions or a scale bar, give the outer width and depth in metres; otherwise 0.
+Dimensions must be finite and nonnegative; do not use NaN or Infinity.
 Copy any category words written on a fixture into label ("drinks", "snacks", "noodles", …), else ""."""
 
 
@@ -247,15 +263,11 @@ class PlanLLM(Protocol):
 
 async def vlm_read(llm: PlanLLM, img: Image.Image, *, model: str = "vlm") -> FloorPlanReading:
     url, _ = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1280, fmt="JPEG")
-    plan = await llm.generate_structured_with_image_async(_VLMPlan, PLAN_PROMPT, "Read this floor plan.", url, max_retries=1, seed=0)
-    if len(plan.outline) != 4:
-        raise ValueError("the model did not return the store outline")
+    plan = await llm.generate_structured_with_image_async(_VLMPlan, PLAN_PROMPT, "Read this floor plan.", url, max_retries=2, seed=0)
     ox1, oy1, ox2, oy2 = (v / 1000 for v in plan.outline)
     ow, oh = max(1e-3, ox2 - ox1), max(1e-3, oy2 - oy1)
     fixtures: list[PlanFixture] = []
     for f in plan.fixtures:
-        if len(f.box) != 4:
-            continue
         x1, y1, x2, y2 = (v / 1000 for v in f.box)
         nx1, nx2 = sorted(((x1 - ox1) / ow, (x2 - ox1) / ow))
         ny1, ny2 = sorted(((y1 - oy1) / oh, (y2 - oy1) / oh))
