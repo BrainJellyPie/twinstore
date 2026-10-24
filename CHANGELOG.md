@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep usable store-form drafts when a model returns null for optional text such
+  as an unspecified address. Normalize those fields to empty strings while
+  preserving hours, currency, format resolution and existing warnings.
+
 - Bind the first automatic-product response grammar to each selected category's
   real SKU list and shelf capacity. Grammar-capable local models cannot select
   invented or cross-category SKUs, or exceed category limits; existing correction

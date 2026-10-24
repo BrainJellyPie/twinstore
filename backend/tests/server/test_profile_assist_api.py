@@ -93,3 +93,15 @@ def test_unknown_formats_and_overnight_hours_are_left_for_the_user(client, monke
     assert d["template_id"] == "" and d["open_hour"] is None and d["close_hour"] is None
     assert any("Moon base" in w for w in d["warnings"]) and any("overnight" in w for w in d["warnings"])
     assert client.post("/api/assist/store-setup", json={"text": "hi"}).status_code == 422
+
+
+@pytest.mark.parametrize("field", ["name", "description", "address", "format", "rationale"])
+def test_optional_model_nulls_do_not_turn_a_store_draft_into_a_gateway_error(client, monkeypatch, field):
+    from store_emulator.application import setup_assist
+    monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: _Setup(
+        {field: None, "open_hour": 7, "close_hour": 23, "currency": "KRW"}))
+    response = client.post("/api/assist/store-setup", json={"text": "A small neighborhood shop"})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert (data["open_hour"], data["close_hour"], data["currency"]) == (7, 23, "KRW")
+    assert all(data[key] == "" for key in ["name", "description", "address", "template_id", "rationale"])

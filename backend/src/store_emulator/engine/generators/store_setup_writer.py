@@ -9,7 +9,7 @@ every field for the user to check.
 from collections.abc import Sequence
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.engine.generators.profile_writer import LANGUAGES
 from store_emulator.engine.prompting import resolve_listed
@@ -33,6 +33,11 @@ class _Setup(BaseModel):
     currency: Literal["USD", "KRW", "JPY"] | None = Field(default=None, description="from the place, when it is clear")
     rationale: str = Field(default="", max_length=400)
 
+    @field_validator("name", "description", "address", "format", "rationale", mode="before")
+    @classmethod
+    def _optional_text(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class StoreSetup(BaseModel):
     name: str = ""
@@ -54,7 +59,8 @@ the description says or clearly implies: a short name (theirs if given, otherwis
 from what the owner said (add no products, prices or facts they did not give), the address only when a place is
 given (never invent a street), which listed store format fits best, the opening days
 (every day, weekdays or weekends, null when unspecified) and hours (an all-night store is 0 to 24), and the currency when the place makes it
-clear (USD, KRW or JPY only). Write the name and description in {language}; give a short rationale in English."""
+clear (USD, KRW or JPY only). Use empty strings for unspecified text; reserve null for unspecified days, hours and currency.
+Write the name and description in {language}; give a short rationale in English."""
 
 
 def to_setup(draft: _Setup, formats: Sequence[tuple[str, str, str]]) -> StoreSetup:
