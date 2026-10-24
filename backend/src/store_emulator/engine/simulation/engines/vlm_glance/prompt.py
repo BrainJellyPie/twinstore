@@ -268,7 +268,7 @@ PLAN_SYSTEM_PROMPT = """You role-play one shopper standing at the door of {store
 Reply in JSON:
 - mission: what they came for, at most 12 words
 - enter: true if they go in; false only if they would turn around (the store has nothing they need, or today's situation puts them off)
-- items: {items_rule}
+- items: when enter is false, use an empty list. Otherwise, {items_rule}
 - reason: a few words
 Use empty strings, not null, for absent text."""
 
@@ -417,8 +417,9 @@ def combine_plan_votes(
     answers: list[tuple[str, EntryDecision]], item_key: Callable[[PlannedItem], str],
 ) -> tuple[EntryDecision, float]:
     """Ensemble vote on an entry plan: `enter` by majority (a tie enters), items named by at least
-    half of the members (identity = `item_key`, e.g. the resolved product or category; quantity =
-    median of the supporters'). Returns (plan, agreement = share of members on the majority side)."""
+    half of the members that answered, counting support only from entering plans (identity =
+    `item_key`, e.g. the resolved product or category; quantity = median of those supporters').
+    Returns (plan, agreement = share of members on the majority side)."""
     n = len(answers)
     if n == 0:
         return EntryDecision(), 0.0
@@ -430,7 +431,7 @@ def combine_plan_votes(
         first = side[0]
         return EntryDecision(enter=False, mission=first.mission, reason=first.reason), agreement
     support: dict[str, list[PlannedItem]] = {}
-    for _, decision in answers:
+    for decision in entering:
         seen: set[str] = set()
         for item in decision.items:
             key = item_key(item)

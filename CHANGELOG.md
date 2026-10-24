@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exclude rejected entrance plans from ensemble purchase and quantity votes.
+  Products left in an `enter=false` response can no longer create a purchase or
+  raise its quantity. Preserve the existing entry tie rule and purchase support
+  threshold across all members that answered.
+
 - Keep explicit model reasoning out of uploaded customer-data summaries. Strip
   leading thought blocks before applying the summary length limit; unfinished
   or reasoning-only responses contribute no summary. Preserve final narrative,
