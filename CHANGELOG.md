@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Give receipt transcription a separate 6,144-token output ceiling so ordinary
+  long item lists can finish before matching, review and CSV export. Storefront
+  ratings retain their smaller output limit; receipt validation and retry limits
+  remain unchanged.
+
 - Increase the floor-plan reader's output ceiling to 6,144 tokens. Ordinary
   plans with many fixtures no longer exceed the former 1,500-token limit and
   incorrectly fail or fall back to geometry-only reading. Genuine model errors

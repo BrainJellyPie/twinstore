@@ -32,7 +32,7 @@ from store_emulator.engine.capture.detect import image_data_url
 class VisionLLM(Protocol):
     async def generate_structured_with_image_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str,
-        *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -150,7 +150,10 @@ async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, defa
             return self
 
     user = f"Transcribe this receipt. If no currency is readable, leave it empty; the store uses {default_currency.strip().upper()}."
-    r = await llm.generate_structured_with_image_async(ReceiptResponse, RECEIPT_PROMPT, user, url, max_retries=2, seed=0)
+    # Every line has quantities and prices; the shared storefront-rating cap
+    # truncates ordinary long receipts before the complete list can be read.
+    r = await llm.generate_structured_with_image_async(
+        ReceiptResponse, RECEIPT_PROMPT, user, url, max_retries=2, seed=0, max_tokens=6144)
     currency = (r.currency.strip() or default_currency.strip()).upper()
     lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity, unit_price=_minor(line.unit_price, currency),
                          line_total=_minor(line.line_total, currency))
