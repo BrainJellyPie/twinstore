@@ -7,7 +7,9 @@ the user prompt. Providers and local servers with prefix caching (Gemini implici
 caching, OpenAI, vLLM, llama.cpp) then reuse the catalog prefix across customers.
 """
 
-from pydantic import BaseModel
+from typing import cast
+
+from pydantic import BaseModel, field_validator
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
@@ -28,6 +30,23 @@ LEVEL_PREFERENCE_GUIDE = [
 class IntentResponse(BaseModel):
     reasoning: str = ""
     actions: list[CustomerAction] = []
+
+    @field_validator("actions", mode="before")
+    @classmethod
+    def _model_actions(cls, value: object) -> object:
+        # SkipJsonSchema hides internal hints from the prompt but still accepts
+        # them during validation. Only the engine may select those offer fields.
+        if not isinstance(value, (list, tuple)):
+            return value
+        cleaned: list[object] = []
+        for action in cast(list[object] | tuple[object, ...], value):
+            if isinstance(action, CustomerAction):
+                action = action.model_dump()
+            if isinstance(action, dict):
+                action = {key: item for key, item in cast(dict[str, object], action).items()
+                          if key not in {"origin", "product_block", "product_level"}}
+            cleaned.append(action)
+        return cleaned
 
 
 def build_system_prompt(store: Store, currency: str = "USD") -> str:

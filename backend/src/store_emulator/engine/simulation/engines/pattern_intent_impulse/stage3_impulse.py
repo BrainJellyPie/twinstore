@@ -1,14 +1,11 @@
 """Stage 3: impulse reactions. Inserts serendipity events for products exposed along the route."""
 
-from pydantic import BaseModel
-
 from store_emulator.domain.behavior import BehaviorCue
 from store_emulator.domain.rack import Rack, Slot
 from store_emulator.domain.persona import Persona
 from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
 from .prompt_utils import format_cue_prompt
 
-from store_emulator.domain.action import CustomerAction
 from .stage2_intent import IntentResponse
 
 LEVEL_VISIBILITY_GUIDE = [
@@ -19,9 +16,8 @@ LEVEL_VISIBILITY_GUIDE = [
 ]
 
 
-class ImpulseResponse(BaseModel):
-    reasoning: str = ""
-    actions: list[CustomerAction] = []
+class ImpulseResponse(IntentResponse):
+    """Additional model shopping actions, with the same engine-field boundary as intent."""
 
 
 SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한 발견) 시뮬레이터입니다.

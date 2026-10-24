@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Discard engine-only offer hints and purchase-origin fields from generated
+  intent/impulse actions before validation. Unexpected local-model fields can
+  no longer switch shelf prices or invalidate otherwise usable actions; older
+  cached model responses receive the same normalization.
+
 - Recover customer batches rejected for input-context overflow by splitting once
   into two smaller requests. Preserve customer times, IDs and shared concurrency;
   a still-oversized child remains a failure. Customer and starter recovery now
