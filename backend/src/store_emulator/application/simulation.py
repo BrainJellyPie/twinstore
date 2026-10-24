@@ -405,14 +405,13 @@ def run_simulation_background(
         # Setup transitions to locked + runId. The run summary is the single
         # source of truth for KPIs. Terminal polls trigger the UI's final layout refresh.
         if not options.preview:
-            try:
-                with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
-                    setup = read_setup(pid, setup_id)
-                    setup["status"] = "locked"
-                    setup["runId"] = run_id
-                    write_setup(pid, setup_id, setup)
-            except Exception:
-                logger.warning("Could not finalize setup %s/%s after run %s", pid, setup_id, run_id, exc_info=True)
+            # Persistence is part of completion: let the failure handler restore
+            # a draft if this transition fails, instead of leaving a running layout.
+            with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+                setup = read_setup(pid, setup_id)
+                setup["status"] = "locked"
+                setup["runId"] = run_id
+                write_setup(pid, setup_id, setup)
         write_status(
             pid, run_id, "completed", finished_at=now_iso(),
             completed_customers=len(personas),
