@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Assign generated customer IDs entirely in the harness. Local models no longer
+  need to invent temporary IDs whose type or length could reject an otherwise
+  usable customer batch before the same IDs were overwritten by the application.
+
 - Recover automatic starter products when a local model repeatedly invents shelf
   IDs or cannot return the grouped catalog selection. Smaller bounded tasks bind
   category choices to real shelves in code and select SKUs one category at a time.

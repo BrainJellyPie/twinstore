@@ -51,7 +51,6 @@ class GeneratedPersona(BaseModel):
     """What the persona prompt asks for. The rest of a Persona (day, hour, receipt-derived fields) is filled in here:
     asking for no more keeps answers short and gives small models nothing to invent (one filled `category_rates` with
     percentages). Lengths are bounded well above a normal answer, so a local model cannot loop inside a string."""
-    id: str = Field(default="", max_length=40)
     identity: PersonaLabel
     age_group: AgeGroup
     gender: Gender
@@ -172,7 +171,7 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 
 규칙:
 - 각 페르소나는 반드시 독립적인 개인 1명입니다. 커플, 연인, 친구 쌍 등 관계로 묶인 페르소나를 만들지 마세요. 동행자가 있는 경우에도 "~와 함께 온 사람" 한 명으로만 표현하세요.
-- id: 아무 값이나 넣으세요 (시스템이 자동 채번합니다)
+- id, day, arrival_hour는 출력하지 마세요. 시스템이 요청 순서에 따라 자동으로 부여합니다.
 - identity: 반드시 아래 제공된 identity 목록 중 하나를 그대로 사용 (통계 집계용 라벨)
 - age_group: 반드시 다음 중 하나: {age_groups}
 - gender: 반드시 다음 중 하나: {genders}
@@ -185,7 +184,7 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 
 ## 언어
 - 자유 서술 필드(`description`, `intent`, `behavior_tendency`)의 값은 **영어로** 작성하세요.
-- 구조적 필드(`id`, `age_group`, `gender`, `identity`, `purpose`, `preferred_categories`, `budget_min`, `budget_max`)는 프롬프트에서 제공된 라벨/값을 그대로 사용합니다.
+- 구조적 필드(`age_group`, `gender`, `identity`, `purpose`, `preferred_categories`, `budget_min`, `budget_max`)는 프롬프트에서 제공된 라벨/값을 그대로 사용합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요(예: 페르소나 설명은 1-2문장의 짧은 인물 묘사)."""
 
 
@@ -347,12 +346,10 @@ async def generate_personas_for_day(
 
         # Small models may add a few: the request asked for `size`, in the order of their hours.
         for generated, hour in zip(batch.personas[:size], hours):
-            persona = Persona.model_validate(generated.model_dump())
-            prefix = "F" if persona.gender == "Female" else "M"
-            seq = len([p for p in all_personas if p.gender == persona.gender]) + 1
-            persona.id = f"{prefix}{day.value}{seq:03d}"
-            persona.day = day
-            persona.arrival_hour = hour
+            prefix = "F" if generated.gender == "Female" else "M"
+            seq = len([p for p in all_personas if p.gender == generated.gender]) + 1
+            persona = Persona.model_validate({**generated.model_dump(),
+                "id": f"{prefix}{day.value}{seq:03d}", "day": day, "arrival_hour": hour})
             all_personas.append(persona)
 
     logger.info(f"[persona] {day_label} generated {len(all_personas)} personas")

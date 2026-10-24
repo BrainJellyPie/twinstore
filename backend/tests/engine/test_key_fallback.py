@@ -494,12 +494,12 @@ def test_generated_customers_carry_only_what_the_prompt_asks_for():
 
     schema = gen.PersonaBatch.model_json_schema()
     fields = set(schema["$defs"]["GeneratedPersona"]["properties"])
-    assert fields == {"id", "identity", "age_group", "gender", "description", "intent", "purpose",
+    assert fields == {"identity", "age_group", "gender", "description", "intent", "purpose",
                       "preferred_categories", "budget_min", "budget_max", "behavior_tendency"}
     assert schema["$defs"]["GeneratedPersona"]["properties"]["description"]["maxLength"] == 600
     generated = gen.GeneratedPersona(identity="student", age_group="20s", gender="Female", description="d",
                                      intent="i", purpose="p", preferred_categories=["snacks"], budget_max=500)
-    persona = gen.Persona.model_validate(generated.model_dump())
+    persona = gen.Persona.model_validate({**generated.model_dump(), "id": "F1001"})
     assert persona.category_rates == {} and persona.basket_size == 0 and persona.preferred_categories == ["snacks"]
 
 
