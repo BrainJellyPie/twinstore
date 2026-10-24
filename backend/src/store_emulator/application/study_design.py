@@ -3,7 +3,8 @@
 import asyncio
 import logging
 
-from pydantic import BaseModel, ConfigDict, Field
+from instructor.core.exceptions import InstructorRetryException
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.engine.marketing.conjoint_design import (
@@ -53,6 +54,11 @@ def design(pid: str, req: ConjointDesignRequest, config: SimulationConfig) -> Co
         return asyncio.run(design_conjoint(llm, req.question, req.currency, products))
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[design] conjoint draft failed: {type(e).__name__}: {e}")
+        cause = e.failed_attempts[-1].exception if isinstance(e, InstructorRetryException) and e.failed_attempts else e
+        if isinstance(cause, ValidationError):
+            for detail in cause.errors(include_url=False, include_input=False):
+                if detail["type"] == "conjoint_price":
+                    raise AppError(f"The study could not be drafted: {detail['msg']}", 502) from e
         raise AppError(model_failure(e, "The study could not be drafted"), 502) from e
 
 

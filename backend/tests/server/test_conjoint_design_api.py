@@ -3,7 +3,8 @@ bracketing comparable products (fake model, no network)."""
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from instructor.core.exceptions import FailedAttempt, InstructorRetryException
+from pydantic import BaseModel, ValidationError
 
 PID = "proj_67916afd"
 SETUP = "setup_7d6d"
@@ -70,9 +71,40 @@ def test_zero_decimal_currencies_and_errors(client, monkeypatch):
 
 
 @pytest.mark.parametrize("prices", [[1.001, 1.002], [.0049, 1], [float("inf"), 1], [90071992547409.92, 1]])
-def test_unusable_price_axis_is_not_returned_as_a_successful_draft(client, monkeypatch, prices):
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_unusable_price_axis_is_not_returned_as_a_successful_draft(client, monkeypatch, prices, wrapped):
     from store_emulator.application import study_design
-    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({**DRAFT, "prices": prices}))
+    class Designer(_Designer):
+        async def generate_structured_async(self, *args, **kwargs):
+            try:
+                return await super().generate_structured_async(*args, **kwargs)
+            except ValidationError as error:
+                if not wrapped:
+                    raise
+                raise InstructorRetryException("retry exhausted", n_attempts=2, total_usage=0,
+                    failed_attempts=[FailedAttempt(1, error, self.draft), FailedAttempt(2, error, self.draft)]) from error
+
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: Designer({**DRAFT, "prices": prices}))
     response = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?"})
     assert response.status_code == 502, response.text
     assert "price" in response.json()["detail"].lower()
+    assert "Try drafting again" in response.json()["detail"]
+    assert "Imaginary Tea" not in response.json()["detail"]
+
+
+def test_old_price_failure_does_not_hide_a_terminal_provider_timeout(client, monkeypatch):
+    from store_emulator.application import study_design
+
+    class Designer(_Designer):
+        async def generate_structured_async(self, *args, **kwargs):
+            try:
+                return await super().generate_structured_async(*args, **kwargs)
+            except ValidationError as error:
+                raise InstructorRetryException("retry exhausted", n_attempts=2, total_usage=0,
+                    failed_attempts=[FailedAttempt(1, error, self.draft),
+                                     FailedAttempt(2, TimeoutError("read timed out"), None)]) from error
+
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: Designer({**DRAFT, "prices": [1, 1]}))
+    response = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?"})
+    assert response.status_code == 502
+    assert "took too long" in response.json()["detail"]

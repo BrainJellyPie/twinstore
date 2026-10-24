@@ -4,6 +4,12 @@
 
 ## 0.4.13 — Reliable local model automation and faithful shopper decisions
 
+- Retain actionable price-validation advice when a conjoint draft exhausts model
+  correction attempts. Currency-rounding collisions, positive amounts rounded
+  to zero and unsupported prices no longer become a generic reply-format error.
+  Only the terminal typed price error supplies advice; later provider failures
+  and other malformed responses retain their existing classification.
+
 - Assign traffic hours in the harness from the store's opening slots. Local
   grammars now request exactly one count/type row per open slot without asking
   the model to reproduce clock IDs, preventing repeated hours and empty lists.

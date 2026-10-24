@@ -11,6 +11,7 @@ from math import isfinite
 from typing import Protocol, Self
 
 from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from store_emulator.domain.marketing import ConjointAttribute, ConjointRequest
 from store_emulator.domain.product_edits import MAX_PRICE
@@ -81,13 +82,14 @@ def _shelf_text(products: Sequence[tuple[str, int]], currency: str, question: st
 
 def to_minor(price: float, currency: str) -> int:
     if not isfinite(price) or price < 0:
-        raise ValueError("Drafted price levels must be finite, non-negative amounts. Try drafting again.")
+        raise PydanticCustomError("conjoint_price", "Drafted price levels must be finite, non-negative amounts. Try drafting again.")
     amount = Decimal(str(price)) * (1 if currency.upper() in ZERO_DECIMAL else 100)
     if amount > MAX_PRICE:
-        raise ValueError("A drafted price exceeds the safe integer limit. Try drafting again.")
+        raise PydanticCustomError("conjoint_price", "A drafted price exceeds the safe integer limit. Try drafting again.")
     rounded = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     if price > 0 and rounded == 0:
-        raise ValueError(f"A positive drafted price rounds to zero in {currency.upper()}. Try drafting again.")
+        raise PydanticCustomError("conjoint_price", "A positive drafted price rounds to zero in {currency}. Try drafting again.",
+                                  {"currency": currency.upper()})
     return rounded
 
 
@@ -112,7 +114,8 @@ def to_design(draft: _Draft, currency: str, products: Sequence[tuple[str, int]])
         raise ValueError("the model drafted no usable attribute")
     prices = sorted({to_minor(p, currency) for p in draft.prices if not p < 0})
     if draft.prices and len(prices) < 2:
-        raise ValueError("The drafted prices need at least two distinct levels after currency rounding. Try drafting again.")
+        raise PydanticCustomError("conjoint_price",
+            "The drafted prices need at least two distinct levels after currency rounding. Try drafting again.")
     listed = {name.casefold(): (name, price) for name, price in products}
     named = [listed[n.strip().casefold()] for n in draft.comparable if n.strip().casefold() in listed]
     comparable = [f"{name} {display_price(price, currency)}" for name, price in dict.fromkeys(named)][:6]
