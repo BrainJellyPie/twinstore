@@ -35,7 +35,8 @@
   dark report header's secondary lines are brighter.
 - The command palette (Ctrl K) offers a store's pages from the home and
   settings pages too, for the store opened last (named in the list); before,
-  "capture" or "area" found nothing off a store.
+  "capture" or "area" found nothing off a store. Typing also finds the
+  store's online stores and runs by name and opens them.
 - Back to work in one click: once there is a store, the home page opens with
   a **Continue where you left off** card for the store used last (or the
   latest changed), plus a **Your stores: N** link down to the list, so a

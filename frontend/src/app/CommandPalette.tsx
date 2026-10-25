@@ -3,9 +3,10 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  BarChart3,
   Camera,
   CornerDownLeft,
   Globe2,
@@ -25,7 +26,7 @@ import {
 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { listRuns, onlineKeys } from "@/shared/api/online";
+import { listRuns, listSites, onlineKeys } from "@/shared/api/online";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import { LOCALES, type MessageKey } from "@/shared/i18n/messages";
@@ -96,6 +97,31 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const [active, setActive] = useState(0);
   const itemRefs = useRef(new globalThis.Map<number, HTMLButtonElement>());
 
+  // Off a store's pages (home, settings) its pages are those of the store opened last, named in the group.
+  const storeId = pid ?? rememberedStore(projects);
+  // Its online stores and runs are found by name once something is typed.
+  const typed = query.trim().length > 0;
+  const sites = useQuery({
+    queryKey: onlineKeys.sites(storeId ?? ""), queryFn: ({ signal }) => listSites(storeId!, signal), enabled: !!storeId && typed,
+  });
+  const runs = useQuery({
+    queryKey: onlineKeys.runs(storeId ?? ""), queryFn: ({ signal }) => listRuns(storeId!, signal), enabled: !!storeId && typed,
+  });
+  const onlineCommands = useMemo<Command[]>(() => {
+    if (!storeId) return [];
+    const open = (search: { site: string } | { run: string }) => () => navigate({ to: "/online/$pid", params: { pid: storeId }, search });
+    return [
+      ...(sites.data ?? []).map((site) => ({
+        id: `site-${site.id}`, group: translate(locale, "onlineStores"), label: site.name, hint: site.note || undefined,
+        icon: Globe2, run: open({ site: site.id }),
+      })),
+      ...(runs.data ?? []).map((run) => ({
+        id: `run-${run.run_id}`, group: translate(locale, "commandOnlineRuns"), label: run.name || run.site_names.join(" vs "),
+        hint: run.site_names.join(" · "), icon: BarChart3, run: open({ run: run.run_id }),
+      })),
+    ];
+  }, [storeId, sites.data, runs.data, navigate, locale]);
+
   const commands = useMemo<Command[]>(() => {
     const localize = (command: LocalizedCommand): Command => ({
       ...command,
@@ -105,8 +131,6 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
     });
     const go = (to: string, params?: Record<string, string>) => () => navigate({ to, params });
     const list: Command[] = [];
-    // Off a store's pages (home, settings) its pages are those of the store opened last, named in the group.
-    const storeId = pid ?? rememberedStore(projects);
     if (storeId) {
       const pages = [
         localize({ id: "floor", group: "commandThisStore", label: "commandFloor", hint: "commandFloorHint", icon: Store, run: go("/projects/$pid", { pid: storeId }) }),
@@ -143,7 +167,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       list.push(localize({ id: "quit", group: "commandApp", label: "quitTwinStore", hint: "commandQuitHint", icon: Power, run: () => void quitLauncher({ title: translate(locale, "quitStoppedTitle"), body: translate(locale, "quitStoppedBody") }) }));
     }
     return list;
-  }, [navigate, pid, projects, theme, setTheme, launched, locale]);
+  }, [navigate, pid, storeId, projects, theme, setTheme, launched, locale]);
 
   // A sentence typed in a store's palette can be handed to the right tool, which drafts from the same words.
   const [asking, setAsking] = useState(false);
@@ -211,7 +235,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
     }
   };
   const visible = useMemo(() => {
-    const found = commands.filter((c) => matches(c, query));
+    const found = [...commands, ...(typed ? onlineCommands : [])].filter((c) => matches(c, query));
     // A sentence that names no command can be asked; command words keep their commands.
     if (!canAsk || found.length > 0) return found;
     // Running it is handled in `run` (the palette stays open while the request is routed).
@@ -219,7 +243,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       id: "ask", group: t("commandAsk"), label: `“${text}”`, hint: t("commandAskHint"), icon: Sparkles, run: () => {},
     };
     return [askCommand];
-  }, [commands, query, canAsk, text, t]);
+  }, [commands, onlineCommands, typed, query, canAsk, text, t]);
   const current = Math.min(active, Math.max(visible.length - 1, 0));
 
   useEffect(() => {

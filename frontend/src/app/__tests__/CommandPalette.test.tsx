@@ -22,6 +22,10 @@ vi.mock("@/shared/queries/useProjects", () => ({ useProjects: () => {
 } }));
 vi.mock("../theme", () => ({ useTheme: () => ({ theme: state.theme, setTheme: state.setTheme }) }));
 vi.mock("../launcher", () => ({ useLauncher: () => state.launched, quitLauncher: () => state.quit() }));
+vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof import("@/shared/api/online")>(),
+  listSites: vi.fn(async () => [{ id: "site_glow", name: "Glow Room", note: "" }]),
+  listRuns: vi.fn(async () => [{ run_id: "orun_1", name: "Staples price test", site_names: ["Corner Mart", "15% off"] }]),
+}));
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 
 const render = (ui: ReactElement) => {
@@ -215,4 +219,20 @@ it("offers the pages of the store opened last off a store's pages, under its nam
   fireEvent.change(screen.getByRole("combobox", { name: "Command" }), { target: { value: "capture" } });
   expect(screen.queryByRole("option", { name: /Shelf capture/ })).toBeNull();
   localStorage.removeItem("twinstore.lastStore");
+});
+
+it("finds the store's online stores and runs by name once something is typed", async () => {
+  state.pathname = "/projects/proj_cafe";
+  render(<CommandPalette />);
+  expect(screen.queryByRole("option", { name: /Glow Room/ })).toBeNull();
+  const input = screen.getByRole("combobox", { name: "Command" });
+  fireEvent.change(input, { target: { value: "glow" } });
+  fireEvent.click(await screen.findByRole("option", { name: /Glow Room/ }));
+  expect(state.navigate).toHaveBeenCalledWith({ to: "/online/$pid", params: { pid: "proj_cafe" }, search: { site: "site_glow" } });
+  cleanup();
+  useCommandPalette.setState({ open: true });
+  render(<CommandPalette />);
+  fireEvent.change(screen.getByRole("combobox", { name: "Command" }), { target: { value: "staples" } });
+  fireEvent.click(await screen.findByRole("option", { name: /Staples price test/ }));
+  expect(state.navigate).toHaveBeenLastCalledWith({ to: "/online/$pid", params: { pid: "proj_cafe" }, search: { run: "orun_1" } });
 });
