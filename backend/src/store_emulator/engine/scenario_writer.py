@@ -38,11 +38,8 @@ class StructuredLLM(Protocol):
     ) -> T: ...
 
 
-class _Event(BaseModel):
-    kind: EventKind
+class _Event(LocalEvent):
     intensity: float = Field(default=0.6, ge=0.0, le=1.0, description="0.3 small, 0.6 typical, 1.0 huge")
-    start_hour: int = Field(default=0, ge=0, le=23)
-    end_hour: int = Field(default=24, ge=1, le=24)
     note: str = Field(default="", max_length=120)
 
     @field_validator("kind", mode="before")
@@ -125,6 +122,8 @@ stock-outs the description does not mention.
   only_days [5], "long weekend" is a public holiday).
   only_days uses integers 1 (Monday) through 7 (Sunday), never 0 or 8. Use [] only for every day.
 - Events: pick the closest kind, with hours when the description gives a time of day (evening is about 17 to 22).
+  Hours are within one day: start_hour 0–23, end_hour 1–24, with end_hour strictly later than start_hour.
+  Never replace an empty or reversed interval with an event lasting until midnight.
 - Promotions and stock-outs must point at products or shelves from the store's list below; use the listed name or a
   word that appears in it. A deal like "1+1" or "buy one get one" is kind "1+1"; "20 % off" is a discount of 20.
   For a promotion name longer than 80 characters, copy its first 80 characters only when that prefix identifies one
@@ -192,8 +191,7 @@ def to_scenario(draft: ScenarioDraft, description: str, store: Store | None) -> 
         if store is not None and not _reaches(store, target, "stock-out", warnings):
             continue
         stockouts.append(target)
-    events = [LocalEvent(kind=e.kind, intensity=e.intensity, start_hour=e.start_hour,
-                         end_hour=e.end_hour if e.end_hour > e.start_hour else 24, note=e.note)
+    events = [LocalEvent(kind=e.kind, intensity=e.intensity, start_hour=e.start_hour, end_hour=e.end_hour, note=e.note)
               for e in draft.events]
     scenario = Scenario(
         id="custom", name=draft.name.strip() or "Described situation", description=description.strip(),

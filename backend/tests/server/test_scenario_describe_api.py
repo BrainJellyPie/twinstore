@@ -33,7 +33,7 @@ class _Writer:
 
 DRAFT = {
     "name": "Rainy match night", "weather": "rain", "temperature_c": 14, "day_type": "weekday", "only_days": [5],
-    "crowding": "busy", "events": [{"kind": "sports_match", "intensity": 0.8, "start_hour": 18, "end_hour": 18}],
+    "crowding": "busy", "events": [{"kind": "sports_match", "intensity": 0.8, "start_hour": 18, "end_hour": 22}],
     "promotions": [{"target": "Pepsi", "kind": "1+1", "label": "1+1"}, {"target": "Zorblax", "kind": "discount"}],
     "stockouts": ["Firewood", "Snickers", "Snickers"], "notes": "Fans stop by before kick-off.",
 }
@@ -50,7 +50,7 @@ def test_a_description_becomes_a_checked_scenario_with_its_effects(client, monke
     s = body["scenario"]
     assert s["id"] == "custom" and s["name"] == "Rainy match night" and s["description"] == text
     assert s["weather"] == "rain" and s["only_days"] == [5] and s["crowding"] == "busy"
-    assert s["events"][0]["kind"] == "sports_match" and s["events"][0]["end_hour"] == 24  # an empty window is widened
+    assert s["events"][0]["kind"] == "sports_match" and s["events"][0]["end_hour"] == 22
     assert [p["target"] for p in s["promotions"]] == ["Pepsi"] and s["stockouts"] == ["Snickers"]
     assert 'No product matches the promotion target "Zorblax"; it was left out.' in body["warnings"]
     assert 'No product matches the stock-out "Firewood"; it was left out.' in body["warnings"]
@@ -120,3 +120,13 @@ def test_known_choice_spellings_return_the_same_scenario_and_effects(client, mon
     actual = client.post("/api/scenarios/describe", json=request)
     assert actual.status_code == 200, actual.text
     assert actual.json() == expected.json()
+
+
+@pytest.mark.parametrize("start,end", [(18, 18), (21, 18), (22, 2)])
+def test_invalid_model_event_hours_never_return_expanded_traffic(client, monkeypatch, start, end):
+    from store_emulator.application import scenarios
+    draft = {**DRAFT, "events": [{**DRAFT["events"][0], "start_hour": start, "end_hour": end}]}
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Writer(draft))
+    response = client.post("/api/scenarios/describe", json={"text": "Sports match from 18 to 22"})
+    assert response.status_code == 502
+    assert "scenario" not in response.json() and "effects" not in response.json()

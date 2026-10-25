@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Validate automatically drafted event hours before caching: empty or reversed
+  windows now request correction instead of silently increasing traffic until midnight.
+
 - Preserve explicit free prices in automatically drafted shelf and A/B tests,
   including price-only offers, while still rejecting positive prices that round to zero.
 
