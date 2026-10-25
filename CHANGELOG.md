@@ -10,6 +10,13 @@
   on screen.
 - A store whose brand colour is near black (Threadline's navy) keeps a
   visible colour dot in dark mode: the dots' outline is stronger there.
+- Keep valid automatic-product selections when another category needs repair,
+  and ask the model only for missing or invalid categories. This avoids repeating
+  the full catalog and discarding otherwise valid choices on small local models.
+- Keep automatic products working with small JSON-mode models: share repeated
+  category definitions, accept valid choices with extra schema commentary, and
+  bound complete, valid, unique SKU fallback lists without hiding bad IDs or
+  dropping positional shelf assignments.
 - Know when a run is done: if an online run or a store simulation of the
   store finishes or fails while you are on another page, a notice in the
   corner names it and opens its report or results (on the right layout); the

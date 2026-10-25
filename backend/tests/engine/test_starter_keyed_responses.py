@@ -20,7 +20,7 @@ from tests.engine.test_starter_selection import empty_store
     "unknown_category", "missing_products", "extra_products", "null_products", "wrong_category_sku", "duplicate_sku"])
 def test_keyed_replies_recover_without_losing_rows_and_cache_canonical_skus(monkeypatch, tmp_path, mode, fault):
     original, calls = llm_client.litellm.acompletion, []
-    counts = {"assignments": 0, "selections": 0}
+    counts = {"assignments": 0, "selections": 0, "choices": 0}
     racks = [StarterRack(id="Shelf A", name="Milk", type="fridge", available_slots=4),
              StarterRack(id="선반/B", name="Tea", type="shelf", available_slots=4)]
     keys = ["dairy", "home_coffee_tea"]
@@ -31,9 +31,13 @@ def test_keyed_replies_recover_without_losing_rows_and_cache_canonical_skus(monk
         body = json.loads(request.content)
         calls.append(body)
         context = json.loads(next(message["content"] for message in body["messages"] if message["role"] == "user"))
-        stage = "assignments" if "racks" in context else "selections"
+        stage = ("choices" if "Choose products for the ONE supplied category." in body["messages"][0]["content"]
+                 else "assignments" if "racks" in context else "selections")
         counts[stage] += 1
-        if stage == "assignments":
+        if stage == "choices":
+            assert len(context["categories"]) == 1
+            value = [next(iter(context["categories"].values()))[0]["sku"]]
+        elif stage == "assignments":
             value = {rack.id: key for rack, key in zip(racks, keys)}
             if counts[stage] == 1:
                 if fault == "missing_rack": value.pop(racks[1].id)
@@ -69,6 +73,7 @@ def test_keyed_replies_recover_without_losing_rows_and_cache_canonical_skus(monk
 
             result = await select()
             assert len(calls) == (2 if fault == "none" else 3)
+            assert counts["choices"] == int(fault in {"missing_products", "wrong_category_sku", "duplicate_sku"})
             assert [(row.rack_id, row.category) for row in result] == [(rack.id, key) for rack, key in zip(racks, keys)]
             assert [row.skus for row in result] == [[catalog_slot_item(CATALOG[key][0], "KRW").sku] for key in keys]
             successful_calls = len(calls)
