@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Use a reachable existing shelf face for automatic product moves. A busier
+  face blocked by a lock, wall or fixture no longer prevents using the open
+  side of the same shelf; explicitly selected blocked faces still warn.
+
 - Keep structured-call retry limits for named self-hosted servers on other
   machines. A three-attempt local task no longer becomes nine HTTP requests
   through nested SDK retries when its endpoint uses a LAN address or hostname.

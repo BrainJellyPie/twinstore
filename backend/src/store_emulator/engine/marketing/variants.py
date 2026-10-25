@@ -35,9 +35,11 @@ def charm_price(price: int, minor_per_major: int = 100, *, up: bool = False) -> 
     return (price + 1) // minor_per_major * minor_per_major - 1
 
 
-def _busiest_face(rack: Rack) -> Face | None:
+def _busiest_face(rack: Rack, blocked: set[tuple[int, Face]] | None = None) -> Face | None:
     counts: dict[Face, int] = {}
     for s in rack.slots:
+        if blocked and (s.block, s.face) in blocked:
+            continue
         counts[s.face] = counts.get(s.face, 0) + len(s.items)
     return max(counts, key=lambda f: counts[f]) if counts else None
 
@@ -74,7 +76,11 @@ def _move(store: Store, change: VariantChange) -> tuple[str, list[str]]:
     rack = next((r for r in store.racks if r.id == change.rack_id), None)
     if rack is None:
         return "", [f"move: rack {change.rack_id or '(none)'} not found"]
-    face = Face(change.face) if change.face else _busiest_face(rack)
+    blocked_sources = {(b.rack_id, b.block, b.face) for b in list_blocked_faces(store)}
+    # Drafts choose a shelf, not a face. Prefer an existing reachable side;
+    # retain the usual blocked-face diagnostic when no such side exists.
+    face = Face(change.face) if change.face else (
+        _busiest_face(rack, {(block, side) for rid, block, side in blocked_sources if rid == rack.id}) or _busiest_face(rack))
     if face is None:
         return "", [f"move: rack {rack.rack_name or rack.id} has no shelves to move to"]
     level = change.level or 3
@@ -84,7 +90,6 @@ def _move(store: Store, change: VariantChange) -> tuple[str, list[str]]:
                      f"so {_name(store, change.sku)} stays where it is: pick a face along an aisle")]
     if not targets:
         return "", [f"move: rack {rack.rack_name or rack.id} has no {face.value} face"]
-    blocked_sources = {(b.rack_id, b.block, b.face) for b in list_blocked_faces(store)}
     warnings: list[str] = []
     moved = 0
     for dst in targets:
