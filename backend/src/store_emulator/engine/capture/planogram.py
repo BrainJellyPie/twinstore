@@ -147,10 +147,10 @@ def _reachable_face(store: Store, rack: Rack) -> Face | None:
     return None
 
 
-def match_store_skus(store: Store, result: CaptureResult, report: PlacementReport, *, exact: bool = False) -> CaptureResult:
+def match_store_skus(store: Store, result: CaptureResult, report: PlacementReport, *, exact: bool = True) -> CaptureResult:
     """Products the store already sells keep their SKU and name, so sales of one product roll up
-    across racks (and POS data still matches). Matching is by name (+ size), exact or ≥ 0.92 similar.
-    With exact=True, only the complete display name (including brand/size) is matched.
+    across racks (and POS data still matches). Automatic placement and audits require the complete
+    display name, including brand/size. Only explicit exact=False enables legacy loose matching.
     The price read off the tag wins over the stored one unless it was only estimated."""
     known: dict[str, list[SlotItem]] = {}
     for _, slot in store.all_slots:
@@ -297,7 +297,7 @@ def _new_rack_id(store: Store) -> str:
 
 
 def add_capture_racks(
-    store: Store, results: list[CaptureResult], *, max_racks_per_photo: int = 4, exact_sku_match: bool = False,
+    store: Store, results: list[CaptureResult], *, max_racks_per_photo: int = 4, exact_sku_match: bool = True,
 ) -> tuple[Store, PlacementReport]:
     """Copy of `store` with each captured shelf added as new rack(s) on free floor.
 

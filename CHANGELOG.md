@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve distinct captured products when applying shelf photos or auditing a
+  shelf. Automatic SKU reuse now requires the complete name with brand/size,
+  preventing similar variants or a bare product name from replacing identity
+  and inheriting another product's price.
+
 - Stop treating similar rival product names as confirmed identities. Different
   sizes, flavors, brands and pack counts reach optional model matching and stay
   out of price and venue-pull calculations unless explicitly matched.
