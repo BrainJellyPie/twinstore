@@ -459,7 +459,7 @@ export const storeMessages = {
   // Store tab and rack details
   storeTabNoFloor: ["Add a floor first to see store info.", "매장 정보를 보려면 먼저 매장 배치를 추가하세요.", "请先添加布局，再查看门店信息。", "店舗情報を見るには、まずフロアを追加してください。", "Añade primero un plano para ver la información de la tienda.", "Ajoutez d’abord un plan pour voir les informations du magasin."],
   storeTabInfo: ["Store info", "매장 정보", "门店信息", "店舗情報", "Información de la tienda", "Informations du magasin"],
-  storeTabCustomers: ["Synthetic Customers", "가상 고객", "虚拟顾客", "仮想顧客", "Clientes sintéticos", "Clients synthétiques"],
+  storeTabCustomers: ["Synthetic customers", "가상 고객", "虚拟顾客", "仮想顧客", "Clientes sintéticos", "Clients synthétiques"],
   storeTabDistribution: ["Customer distribution metric", "고객 분포 기준", "顾客分布维度", "顧客分布の切り口", "Criterio de distribución de clientes", "Critère de répartition des clients"],
   storeTabPersona: ["Persona", "페르소나", "画像", "ペルソナ", "Perfil", "Profil"],
   storeTabAgeGroup: ["Age group", "연령대", "年龄段", "年代", "Grupo de edad", "Tranche d’âge"],
@@ -468,7 +468,7 @@ export const storeMessages = {
   storeTabPerDay: ["≈{count} a day", "하루 약 {count}명", "每天约 {count} 位", "1日約 {count} 人", "≈{count} al día", "≈{count} par jour"],
   storeTabItems: ["Items", "상품", "商品", "商品", "Productos", "Produits"],
   storeTabViewDetail: ["View detail", "자세히 보기", "查看详情", "詳細を見る", "Ver detalle", "Voir le détail"],
-  storeTabRackDetail: ["Rack Detail", "진열대 상세", "货架详情", "棚の詳細", "Detalle de muebles", "Détail des meubles"],
+  storeTabRackDetail: ["Rack details", "진열대 상세", "货架详情", "棚の詳細", "Detalle de muebles", "Détail des meubles"],
   storeTabRackDetailHint: ["Rack → Face → Level slot details", "진열대 → 면 → 단별 진열 상세", "货架 → 面 → 层的陈列详情", "棚 → 面 → 段ごとの陳列の詳細", "Mueble → cara → nivel: detalle de huecos", "Meuble → face → niveau : détail des emplacements"],
   excelUpload: ["Upload", "업로드", "上传", "アップロード", "Subir", "Importer"],
   excelCellNeedsValue: ["Cell {cell} needs a valid value. Fix any formula errors, recalculate and save the workbook, then upload again.", "{cell} 셀의 값을 읽을 수 없습니다. 수식 오류를 수정하고 다시 계산해 파일을 저장한 뒤 업로드하세요.", "单元格 {cell} 需要有效值。请修正公式错误，重新计算并保存工作簿，然后重新上传。", "セル {cell} に有効な値が必要です。数式のエラーを修正し、再計算してブックを保存してから、もう一度アップロードしてください。", "La celda {cell} necesita un valor válido. Corrige los errores de las fórmulas, recalcula y guarda el libro antes de volver a subirlo.", "La cellule {cell} doit contenir une valeur valide. Corrigez les erreurs de formule, recalculez et enregistrez le classeur, puis importez-le à nouveau."],
@@ -912,7 +912,7 @@ export const storeMessages = {
   bulkClosing: ["Undo keeps the last 20 local edits. Closing discards unsaved inputs; an accepted save can finish after you leave. No model is called.", "실행 취소는 최근 편집 20개까지 기억합니다. 창을 닫으면 저장하지 않은 입력이 사라지며, 이미 접수된 저장은 나간 뒤에도 끝까지 진행됩니다. 모델은 호출하지 않습니다.", "撤销会保留最近 20 次本地修改。关闭会丢弃未保存的输入；已接受的保存在离开后仍可完成。不会调用模型。", "取り消しは直近20件の編集まで保持します。閉じると未保存の入力は破棄されます。受け付け済みの保存は閉じた後も完了します。モデルは呼び出しません。", "Deshacer guarda los últimos 20 cambios locales. Cerrar descarta lo no guardado; un guardado aceptado puede terminar después de salir. No se llama a ningún modelo.", "L’annulation garde les 20 dernières modifications locales. Fermer abandonne les saisies non enregistrées ; un enregistrement accepté peut se terminer après votre départ. Aucun modèle n’est appelé."],
 
   // Floor editor dialog
-  gridTitle: ["Floor Configuration", "매장 배치 구성", "布局配置", "フロア構成", "Configuración del plano", "Configuration du plan"],
+  gridTitle: ["Floor configuration", "매장 배치 구성", "布局配置", "フロア構成", "Configuración del plano", "Configuration du plan"],
   gridSaving: ["Saving…", "저장 중…", "正在保存…", "保存中…", "Guardando…", "Enregistrement…"],
   gridSaveFailed: ["Save failed", "저장에 실패했습니다", "保存失败", "保存に失敗しました", "No se pudo guardar", "Échec de l’enregistrement"],
   gridProductsLost: ["The products on this layout were removed and could not be put back.", "이 배치의 상품이 삭제되었고 되돌리지 못했습니다.", "此布局上的商品已被移除，且无法恢复。", "このレイアウトの商品は削除され、元に戻せませんでした。", "Se quitaron los productos de este plano y no se pudieron restaurar.", "Les produits de ce plan ont été retirés et n’ont pas pu être remis."],
