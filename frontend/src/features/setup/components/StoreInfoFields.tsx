@@ -45,6 +45,7 @@ export function StoreInfoFields({
           id="setup-store-name"
           className={cn(errors?.name && errorBorderClass)}
           value={name}
+          maxLength={200}
           placeholder={t("storeNamePlaceholder")}
           disabled={disabled}
           aria-required="true"

@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import projects as project_service
@@ -19,11 +19,19 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
 class UpdateMetadataRequest(BaseModel):
-    """Project metadata update request."""
-    name: str | None = None
+    """Project metadata update request. A new name follows the same rules as at creation."""
+    name: str | None = Field(default=None, max_length=200)
     description: str | None = None
     address: str | None = None
     customer_profile: str | None = None
+
+
+    @field_validator("name")
+    @classmethod
+    def _non_blank_name(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
 
 class SavePersonasRequest(BaseModel):

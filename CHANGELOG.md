@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A store's name is required and at most 200 characters both when it is
+  created and when it is renamed through the API (`PUT …/metadata` accepted
+  a blank or 5,000-character name); the new-store form stops at 200.
 - An online run form with more than eight stores gets a **Find a store** box
   over its store list; the stores already chosen stay listed.
 - Shelf capture's queue reads in the order you use it: drop zone, then

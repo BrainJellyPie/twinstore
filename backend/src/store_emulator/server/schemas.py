@@ -10,7 +10,7 @@ from store_emulator.engine.validation import BlockedFaceDetail, ClearedSlot, Iss
 
 class CreateStoreRequest(BaseModel):
     """Input schema for POST /api/projects/create-store. Validation lives here so API bypass is blocked."""
-    name: str
+    name: str = Field(max_length=200)
     description: str = ""
     address: str
     store_type: str
