@@ -344,13 +344,14 @@ class LiteLLMClient:
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
-        if structured and self.api_base:
+        loopback = False
+        if self.api_base:
             try:
                 host = urlsplit(self.api_base).hostname
                 loopback = host in {"localhost", "localhost."} or bool(host and ipaddress.ip_address(host).is_loopback)
             except ValueError:
                 loopback = False
-            if loopback:
+            if structured and loopback:
                 # Instructor already owns this call's attempt budget. SDK retries
                 # otherwise multiply local-server failures/timeouts by three.
                 kwargs["num_retries"] = 0
@@ -375,8 +376,9 @@ class LiteLLMClient:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
             # SDK refuses to send a request without one.
-            if self.model.startswith("openai/") and not os.environ.get("OPENAI_API_KEY"):
-                kwargs["api_key"] = os.environ.get("PARASTORE_LOCAL_API_KEY", "not-needed")
+            local_key = os.environ.get("PARASTORE_LOCAL_API_KEY", "").strip()
+            if self.model.startswith("openai/") and (loopback and local_key or not os.environ.get("OPENAI_API_KEY")):
+                kwargs["api_key"] = local_key or "not-needed"
         if self._api_key:
             kwargs["api_key"] = self._api_key
         effective = self._effective_seed(seed)

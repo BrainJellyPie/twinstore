@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Honor an explicitly configured local API key for direct loopback model URLs,
+  including the default vision-model configuration, when an OpenAI key is also
+  present. Explicit model credentials and remote gateway key selection retain
+  their precedence.
+
 - Apply a known local server's capacity to every model reference targeting it,
   including custom/vLLM aliases and its actual alternate port. Smaller existing
   client limits are preserved; larger limits cannot bypass the known slots.
