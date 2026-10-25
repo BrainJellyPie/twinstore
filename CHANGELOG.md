@@ -44,6 +44,8 @@
   visible to vision shoppers. Keep totals and orders based on the complete cart.
 - Include open menus and welcome dialogs when sizing online screenshots, keeping
   menu actions and the close control visible above short or empty pages.
+- Let online shoppers turn off a store's default large text. Remember their
+  choice across navigation while preserving older saved visits' appearance.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 

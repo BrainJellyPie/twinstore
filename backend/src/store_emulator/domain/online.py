@@ -256,6 +256,7 @@ class BrowserState(BaseModel):
     payment_method: PaymentMethod | None = None
     addon_removed: bool = False
     large_text: bool = False
+    text_size_changed: bool = False  # distinguish an explicit normal-size choice from the site's default
     device: Device = "desktop"
     notice: str = ""  # one-line message on this page ("Added to cart")
     order_id: str = ""

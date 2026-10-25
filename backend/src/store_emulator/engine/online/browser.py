@@ -629,7 +629,7 @@ def _info(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[Panel]:
                  Line("Secure checkout, we never store your card number.", "muted"),
                  Line("Back to the shop", "strong", ctl(ActionKind.HOME, "Back to the home page"))]
         return [Panel("Delivery and returns", tuple(lines))]
-    large = state.large_text or site.options.large_text
+    large = state.large_text if state.text_size_changed else state.large_text or site.options.large_text
     return [Panel("Settings", (
         Line(f"Text size: {'large' if large else 'normal'}", "strong",
              ctl(ActionKind.TOGGLE_LARGE_TEXT, "Use normal text" if large else "Use large text")),
@@ -735,7 +735,8 @@ def build_page(site: OnlineSite, state: BrowserState) -> Page:
     overlay = _menu(site, ctl) if state.overlay == "menu" else _welcome(site, ctl) if state.overlay == "welcome" else None
     return Page(
         kind=ref.page, url=page_url(site, ref), title=f"{title} | {site.name}" if title != site.name else site.name,
-        device=device, large_text=state.large_text or o.large_text, theme=o.theme_color, site_name=site.name,
+        device=device, large_text=state.large_text if state.text_size_changed else state.large_text or o.large_text,
+        theme=o.theme_color, site_name=site.name,
         back=back, leave=leave, header=header, nav=nav, notice=state.notice, banner=banner, detail=detail,
         grids=tuple(grids), panels=tuple(panels), footer=footer, cookie=cookie, chat=o.chat_widget, overlay=overlay,
         trust=o.trust_badges and ref.page in (PageKind.CART, PageKind.CHECKOUT, PageKind.PRODUCT),
@@ -862,7 +863,8 @@ def apply(
     if kind == ActionKind.OPEN_SETTINGS:
         return _go(state, PageRef(page=PageKind.SETTINGS))
     if kind == ActionKind.TOGGLE_LARGE_TEXT:
-        return state.model_copy(update={"large_text": not state.large_text})
+        large = state.large_text if state.text_size_changed else state.large_text or o.large_text
+        return state.model_copy(update={"large_text": not large, "text_size_changed": True})
     if kind == ActionKind.OPEN_HELP:
         return _go(state, PageRef(page=PageKind.HELP))
     if kind == ActionKind.OPEN_CART:
