@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep late starter-product and product-edit saves from recreating deleted
+  project directories while acquiring their save locks.
+
 - Preserve shopper intent across online catalogs that reuse local product and
   category IDs. Match variant targets by SKU or product/category identity;
   keep unavailable or ambiguous products from becoming unrelated exact matches.

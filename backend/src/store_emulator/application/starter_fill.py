@@ -93,10 +93,9 @@ def preview(pid: str, sid: str, req: StarterFillRequest) -> StarterPreview:
 def save(pid: str, sid: str, req: StarterFillSave) -> StarterSaved:
     check_product_layout(pid, sid)
     path = setup_path(pid, f"setup_starter_{req.request_id}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     receipt = path.parent / ".starter-fill" / f"{req.request_id}.json"
     try:
-        with FileLock(path.parent / ".starter-fill.lock", timeout=0):
+        with FileLock(setup_lock_path(pid, sid).with_name(".starter-fill.lock"), timeout=0):
             if receipt.exists() and ProductEditsReceipt.model_validate_json(receipt.read_bytes()).source_id != sid:
                 raise AppError("This request belongs to another source layout", 409)
             if path.exists():
