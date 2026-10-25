@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Avoid selecting the longest image name from an ambiguous survey draft.
+  A single entry naming different packs is now left out with a warning, along
+  with its reference price, instead of silently selecting one of those packs.
+
 - Require the requested sign text in automatic layout and A/B promotions.
   Missing or blank text now enters the model's correction attempt instead of
   silently replacing the requested promotion with a generic `SALE` sign.

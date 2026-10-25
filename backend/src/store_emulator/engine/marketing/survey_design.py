@@ -82,6 +82,7 @@ images side by side (A to D) and answer a short standard questionnaire. From the
 
 - images: the listed product images the question is about, written exactly as listed, the current or reference one
   first; one image when the question is about a single product, two to four when it compares them;
+  put one image name in each entry, never combine different image names into a single entry;
 - questions, from: purchase_intent (likelihood to buy, 1 to 5), appeal (pack appeal), value (value for money),
   uniqueness (stands out from the usual shelf), price_vw (Van Westendorp price range for image A), preference (which
   one they would take home; only with two or more images), open (why, in their own words). Ask what the question
@@ -111,15 +112,21 @@ def _listing(packages: Sequence[tuple[str, str, str]], question: str) -> str:
 
 
 def _resolve(asked: str, ids: dict[str, dict[str, str]]) -> tuple[str, str] | None:
-    """Resolve an exact name or a uniquely longest name copied with its description."""
+    """Resolve an exact name or a description referring to only one image identity."""
     key = asked.strip().strip('"').casefold()
     if not key:
         return None
-    candidates = [key] if key in ids else [n for n in ids if re.search(rf"(?<!\w){re.escape(n)}(?!\w)", key)]
-    if not candidates:
-        return None
-    longest = max(map(len, candidates))
-    matches = {aid: name for n in candidates if len(n) == longest for aid, name in ids[n].items()}
+    if key in ids:
+        candidates = {key}
+    else:
+        hits = [(m.start(), m.end(), name) for name in ids
+                for m in re.finditer(rf"(?<!\w){re.escape(name)}(?!\w)", key)]
+        # Ignore a shorter name only inside a complete longer name. A separate
+        # mention of that shorter pack still makes the answer ambiguous.
+        candidates = {name for start, end, name in hits if not any(
+            other_start <= start and end <= other_end and (start, end) != (other_start, other_end)
+            for other_start, other_end, _ in hits)}
+    matches = {aid: name for n in sorted(candidates, key=lambda n: (len(n), n)) for aid, name in ids[n].items()}
     return next(iter(matches.items())) if len(matches) == 1 else None
 
 
