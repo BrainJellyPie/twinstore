@@ -528,15 +528,24 @@ def _on_checkout(site: OnlineSite, shopper: OnlineShopper, view: StepView, rng: 
     return Choice(place, thought="Placing the order.")
 
 
+# Decisions in a row that fail before the model has answered any: it is not answering at all (stopped, unreachable,
+# refusing the request), and going on would turn the run into a rule run.
+_UNANSWERED_LIMIT = 6
+
+
 class ModelPolicy:
     """A language or vision model picks the option. `vision`: it gets the screenshot (otherwise the page as text).
-    A failed call (no valid answer after the retries) is decided by the rule shopper and recorded as a fallback."""
+    A failed call (no valid answer after the retries) is decided by the rule shopper and recorded as a fallback; when
+    the model has answered none of a run's first decisions, the last error is raised and ends the run."""
 
     def __init__(self, llm: SimLLM, *, vision: bool, max_tokens: int = 240, max_retries: int = 1) -> None:
         self.llm = llm
         self.vision = vision
         self.max_tokens = max_tokens
         self.max_retries = max_retries
+        self.answered = 0
+        self.failed = 0
+        self.last_failure: Exception | None = None
 
     async def choose(self, site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Memory,
                      rng: random.Random) -> Choice:
@@ -552,6 +561,7 @@ class ModelPolicy:
             outline=None if self.vision else view.outline,
         )
         error = ""
+        failure: Exception | None = None
         for attempt, budget in enumerate((self.max_tokens, 2 * self.max_tokens)):
             try:
                 if self.vision:
@@ -563,15 +573,20 @@ class ModelPolicy:
                         schema, system_prompt(vision=False), prompt, max_retries=self.max_retries, seed=view.seed,
                         route=shopper.id, max_tokens=budget)
             except Exception as e:  # noqa: BLE001 — one failed call must not end the session
-                error = f"{type(e).__name__}: {e}"[:300]
+                error, failure = f"{type(e).__name__}: {e}"[:300], e
                 cause = (e.failed_attempts[-1].exception
                          if isinstance(e, InstructorRetryException) and e.failed_attempts else e)
                 if attempt == 0 and isinstance(cause, IncompleteOutputException):
                     continue
                 break
+            self.answered += 1
             control = by_number[answer.option]
             query = answer.search_text.strip() if control.action.kind == ActionKind.SEARCH else ""
             return Choice(control, query=query, thought=answer.thought.strip(), source="model")
+        self.failed += 1
+        self.last_failure = failure
+        if failure is not None and not self.answered and self.failed >= _UNANSWERED_LIMIT:
+            raise failure
         fallback = decide(site, shopper, view, memory, rng)
         return Choice(fallback.control, fallback.query, fallback.thought, source="fallback", error=error)
 

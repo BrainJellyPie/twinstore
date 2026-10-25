@@ -477,6 +477,8 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
         _write_status(pid, status)
         request = status.request
         variants = asyncio.run(_simulate(sites, shoppers, policy, request, picture, progress))
+        if isinstance(policy, ModelPolicy) and not policy.answered and policy.last_failure is not None:
+            raise policy.last_failure
         for index, sessions in enumerate(variants):
             write_json(_run_dir(pid, status.run_id) / f"sessions-{index}.json", _SESSIONS.dump_python(sessions, mode="json"))
         by_id = {s.id: s for s in shoppers}

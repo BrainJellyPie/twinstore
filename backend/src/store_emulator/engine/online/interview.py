@@ -60,6 +60,10 @@ class InterviewReply(BaseModel):
         return [] if value is None else value
 
 
+def _words(text: str) -> str:
+    return "".join(c for c in text.casefold() if c.isalnum())
+
+
 def visit_text(site: OnlineSite, shopper: OnlineShopper, session: SessionResult) -> str:
     """The visit as the shopper remembers it, steps numbered from 1."""
     money = site.currency
@@ -101,17 +105,27 @@ async def ask_shopper(
     user = (f"{visit_text(site, shopper, session)}\n\n{('Conversation so far:\n' + convo + '\n\n') if convo else ''}"
             f"Researcher: {question}")
     seed = stable_seed("online-interview", run_id, site.id, shopper.id, len(history))
-    try:
-        reply = await llm.generate_structured_async(
-            InterviewReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=700,
-        )
-    except Exception as error:
-        cause = (error.failed_attempts[-1].exception
-                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
-        if not isinstance(cause, IncompleteOutputException):
-            raise
-        reply = await llm.generate_structured_async(
-            InterviewReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=1400,
-        )
+
+    async def answer(seed: int) -> InterviewReply:
+        try:
+            return await llm.generate_structured_async(
+                InterviewReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=700,
+            )
+        except Exception as error:
+            cause = (error.failed_attempts[-1].exception
+                     if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+            if not isinstance(cause, IncompleteOutputException):
+                raise
+            return await llm.generate_structured_async(
+                InterviewReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=1400,
+            )
+
+    # Small models sometimes hand back one of the researcher's questions as the answer: ask once more, then give up.
+    asked = {_words(m.text) for m in history if m.role == "interviewer"} | {_words(question)}
+    reply = await answer(seed)
+    if _words(reply.answer) in asked:
+        reply = await answer(seed + 1)
+        if _words(reply.answer) in asked:
+            raise ValueError("the model repeated the question instead of answering")
     valid = range(1, len(session.steps) + 1)
     return reply.model_copy(update={"answer": reply.answer.strip(), "steps": [s for s in reply.steps if s in valid]})

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fail short online model runs that finish without any model decision, before
+  publishing fallback-only results. Preserve successful runs and partial fallback.
+
 - Serialize operating-setting inheritance for reviewed shelf-copy, photo and
   text-edit branches with source edits, preserving their reviewed product snapshot.
 
@@ -33,7 +36,13 @@
 - Compute other-product ad effects from actual order lines, keeping shipping,
   fees, add-ons and order discounts out of that merchandise measure while
   preserving the change in total paid revenue.
-
+- End an online model run when the model answers none of its first six
+  decisions (stopped, unreachable or refusing every request) with the reason,
+  instead of finishing it as a rule run. A model that has answered keeps
+  falling back to rules for single failed decisions as before.
+- Ask a small model once more when it answers an online shopper interview by
+  repeating one of the researcher's questions, then report that it repeated the
+  question instead of saving the echo as the shopper's answer.
 - Add traffic sources to online runs. Set where visitors come from (direct to
   the home page, a search engine to the product page that fits what they look
   for, social media to a popular product, the shop's email to its deals); each
@@ -126,9 +135,6 @@
   product's or ad's own draw, so a variant that adds a popup, a tile or an ad no
   longer reshuffles the shopper's other decisions. The popup friction rows count
   ad popups and exits at a later popup too.
-
-## 0.5.0 — Online stores shopped by vision shoppers
-
 - Native Ollama requests for official Qwen3.5 models now disable optional thinking so short automatic-answer budgets remain available for the final response. Other model families, custom namespaces and cloud references keep their existing behavior; changed-policy caches are separated.
 - Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
 
