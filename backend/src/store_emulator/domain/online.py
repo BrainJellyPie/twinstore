@@ -89,6 +89,11 @@ type AdPlacement = Literal["hero_banner", "sponsored_listing", "home_tile", "pro
 type AdPricing = Literal["cpc", "cpm"]
 type ProductBadge = Literal["bestseller", "new", "limited", "eco", "sponsored"]
 type HomeSection = Literal["categories", "bestsellers", "deals", "new", "recommended"]
+# How the shop's pages look: colours, corners, type, header and banner. Vision-model shoppers see it; rule and
+# text shoppers decide the same way whatever the look.
+type PageStyle = Literal[
+    "classic", "minimal", "luxury", "brutalist", "playful", "marketplace", "editorial", "neon", "retro", "organic", "tech",
+]
 type TemplateHighlight = Literal[
     "mobile", "quick_add", "one_click", "coupon_popup", "newsletter_popup", "urgency", "social_proof", "sponsored",
     "addon", "service_fee", "account_required", "one_page_checkout", "bnpl", "cash_on_delivery", "paid_returns",
@@ -123,6 +128,9 @@ ARRIVALS: list[Arrival] = ["direct", "search_engine", "social", "email"]
 FUNNEL_STAGES: list[FunnelStage] = ["visit", "product_view", "add_to_cart", "checkout", "payment", "purchase"]
 PAYMENT_METHODS: list[PaymentMethod] = ["card", "paypal", "apple_pay", "bnpl", "bank_transfer", "cash_on_delivery"]
 SORT_KEYS: list[SortKey] = ["featured", "price_asc", "price_desc", "rating", "newest"]
+PAGE_STYLES: list[PageStyle] = [
+    "classic", "minimal", "luxury", "brutalist", "playful", "marketplace", "editorial", "neon", "retro", "organic", "tech",
+]
 
 
 class OnlineCategory(BaseModel):
@@ -163,6 +171,7 @@ class SiteOptions(BaseModel):
 
     # Look
     theme_color: str = Field(default="#2563eb", pattern=r"^#[0-9a-fA-F]{6}$")
+    page_style: PageStyle = "classic"
     device: Device | None = None  # None = each shopper's own device; otherwise every page is laid out for this one
     grid_columns: int = Field(default=4, ge=2, le=5)  # product columns on desktop (mobile shows two)
     products_per_page: int = Field(default=8, ge=4, le=24)

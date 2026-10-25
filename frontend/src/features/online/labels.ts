@@ -1,8 +1,8 @@
 // Display names of the online-store codes the server sends. Codes stay unchanged; only these labels are translated.
 
 import type {
-  Accessibility, ActionKind, AdPlacement, Arrival, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
-  SegmentDimension, SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
+  Accessibility, ActionKind, AdPlacement, Arrival, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PageStyle,
+  PaymentMethod, SegmentDimension, SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
 } from "@/shared/api/online";
 import { messages, type MessageKey } from "@/shared/i18n/messages";
 import { personaLabel } from "@/shared/i18n/personaLabels";
@@ -11,6 +11,17 @@ export const PAGE_LABELS: Record<PageKind, MessageKey> = {
   home: "onPageHome", category: "onPageCategory", search: "onPageSearch", deals: "onPageDeals", product: "onPageProduct",
   cart: "onPageCart", sign_in: "onPageSignIn", checkout: "onPageCheckout", order_complete: "onPageOrderComplete",
   wishlist: "onPageWishlist", help: "onPageHelp", settings: "onPageSettings",
+};
+
+export const STYLE_LABELS: Record<PageStyle, MessageKey> = {
+  classic: "onStyleClassic", minimal: "onStyleMinimal", luxury: "onStyleLuxury", brutalist: "onStyleBrutalist",
+  playful: "onStylePlayful", marketplace: "onStyleMarketplace", editorial: "onStyleEditorial", neon: "onStyleNeon",
+  retro: "onStyleRetro", organic: "onStyleOrganic", tech: "onStyleTech",
+};
+export const STYLE_HINTS: Record<PageStyle, MessageKey> = {
+  classic: "onStyleClassicHint", minimal: "onStyleMinimalHint", luxury: "onStyleLuxuryHint", brutalist: "onStyleBrutalistHint",
+  playful: "onStylePlayfulHint", marketplace: "onStyleMarketplaceHint", editorial: "onStyleEditorialHint", neon: "onStyleNeonHint",
+  retro: "onStyleRetroHint", organic: "onStyleOrganicHint", tech: "onStyleTechHint",
 };
 
 export const ACTION_LABELS: Record<ActionKind, MessageKey> = {

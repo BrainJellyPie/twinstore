@@ -18,6 +18,7 @@ import { searchText } from "@/shared/utils/searchText";
 
 import { AdsEditor } from "./AdsEditor";
 import { PAYMENT_LABELS, SECTION_LABELS, SORT_LABELS } from "./labels";
+import { StylePicker } from "./StylePicker";
 
 const PRODUCT_ROWS = 60;
 
@@ -122,6 +123,11 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
         </div>
         {save.isSuccess && !save.isPending && <p role="status" className="text-xs text-positive">{t("studioSaved")}</p>}
         {error && <p role="alert" className="text-xs text-destructive">{error.message}</p>}
+      </Card>
+
+      <Card title={t("onStyleTitle")} hint={t("onStyleHint")} className="xl:col-span-2">
+        <StylePicker projectId={projectId} siteId={site.id} storeName={site.name} version={site.updated_at}
+          saved={site.options.page_style} value={options.page_style} onChange={(style) => set("page_style", style)} />
       </Card>
 
       <Card title={t("onDesignLook")}>

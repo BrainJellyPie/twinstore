@@ -48,7 +48,7 @@ it("shows the shopper list badge and the detail line in Korean, with the item un
   const item = screen.getByRole("listitem");
   expect(within(item).getByText("40대")).toBeTruthy();
   expect(item.textContent).not.toContain("40s");
-  fireEvent.click(within(item).getByRole("button"));
+  fireEvent.click(within(item).getByRole("button", { name: /40대/ }));
   const detail = await screen.findByText(/40대 · 여성 · 1일차/);
   expect(detail.textContent).not.toMatch(/40s|Female/);
   expect(screen.getByText("US$35.73 · 7개")).toBeTruthy();

@@ -7,6 +7,20 @@
   SKUs. Catalog identity changes invalidate cached code mappings. Add a real local-model
   probe that retains requests, responses and the resulting store for review.
 
+- Add eleven page styles for online stores: classic, minimal, luxury,
+  brutalist, playful, marketplace, editorial, neon (dark), retro web, organic
+  and tech. Each changes colours, corners, type (serif and monospace faces for
+  headings where the text is Latin), header, menu row, banner and product
+  cards, while every option a shopper can use stays drawn and numbered. The
+  designer shows the store itself in every style to pick from, nineteen
+  templates now start in a fitting style, and two quick experiments try a
+  luxury or a minimal look. Vision-model shoppers see the look; rule and text
+  shoppers decide the same way whatever the style, and the classic style
+  draws pages exactly as before.
+- Keep a home banner's headline readable on phones: its **Shop now** button
+  now sits under the text instead of over the end of the headline, and on
+  desktop the headline wraps before reaching the button.
+
 - Show only the configured welcome discount: zero-percent popups no longer
   promise 10% off, and rule shoppers receive no discount incentive for them.
   Offers without a coupon code no longer invent a `WELCOME` code.

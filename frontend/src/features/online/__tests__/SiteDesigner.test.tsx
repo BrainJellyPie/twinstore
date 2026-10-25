@@ -16,7 +16,7 @@ const source: online.OnlineSite = {
   products: [{ id: "p1", name: "Shirt", category_id: "c", price: 1299, list_price: 1599, rating: 4.2, reviews: 5,
     badges: [], stock: 8, description: "", tags: [], image_url: "", weekly_sales: 4, sku: "shirt" }],
   options: {
-    theme_color: "#2563eb", device: null, grid_columns: 4, products_per_page: 8, hero_banner: true, hero_text: "",
+    page_style: "classic", theme_color: "#2563eb", device: null, grid_columns: 4, products_per_page: 8, hero_banner: true, hero_text: "",
     home_sections: ["categories"], large_text: false, show_ratings: true, show_review_counts: true,
     default_sort: "featured", search: "smart", sponsored_slots: 0, recommendations: "similar", quick_add: false,
     reviews_on_product: true, wishlist: true, urgency: false, social_proof: false, welcome_popup: "none",
@@ -248,4 +248,20 @@ it("does not save or copy a store while its deletion is pending", async () => {
   expect(online.saveSite).not.toHaveBeenCalled();
   expect(online.copySite).not.toHaveBeenCalled();
   expect(screen.getByRole("textbox", { name: "Store name" }).matches(":disabled")).toBe(true);
+});
+
+it("shows the store in every page style and saves a picked style as a variant", async () => {
+  const copied = mount();
+  const styles = await screen.findByRole("radiogroup", { name: "Page style" });
+  const neon = screen.getByRole("radio", { name: /Neon/ });
+  expect(screen.getAllByRole("radio")).toHaveLength(online.PAGE_STYLES.length);
+  expect(screen.getByRole("radio", { name: /Classic/ }).getAttribute("aria-checked")).toBe("true");
+  expect(neon.querySelector("img")!.getAttribute("src")).toMatch(/\/sites\/s1\/preview\.png\?device=desktop&v=before&style=neon$/);
+  expect(styles.textContent).toContain("In use");
+  fireEvent.click(neon);
+  expect(neon.getAttribute("aria-checked")).toBe("true");
+  expect(neon.textContent).toContain("Selected, not saved yet");
+  fireEvent.click(screen.getByRole("button", { name: "Save as a variant" }));
+  await waitFor(() => expect(copied).toHaveBeenCalledWith("variant"));
+  expect(online.copySite).toHaveBeenCalledWith("p1", "s1", expect.objectContaining({ options: { ...source.options, page_style: "neon" } }));
 });
