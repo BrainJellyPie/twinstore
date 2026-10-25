@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Serialize photo-applied layouts with source operating settings, capture links
+  and deletion. Preserve both concurrent applications and avoid orphaned drafts
+  when a selected photo disappears during preparation.
+
 - Validate online interview echoes before caching, give the model corrective
   retry feedback, and let a failed question recover when the user asks again.
 
