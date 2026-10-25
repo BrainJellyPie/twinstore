@@ -100,3 +100,40 @@ it("pauses, changes speed and jumps to a step", async () => {
   for (const ms of [800, 1100, 600, 4500]) await wait(ms / 2);
   expect(screen.getByText("Step 3 of 3")).toBeTruthy();
 });
+
+it("reports a failed screenshot and retries without losing the paused visit", async () => {
+  mount();
+  const first = await screen.findByRole("img");
+  fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+  fireEvent.error(first);
+  expect(screen.getByRole("alert").textContent).toContain("This page could not be loaded.");
+  await wait(20000);
+  expect(screen.getByText("Step 1 of 3")).toBeTruthy();
+  let previous = first.getAttribute("src");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const current = screen.getByRole("img");
+    expect(current.getAttribute("src")).not.toBe(previous);
+    previous = current.getAttribute("src");
+    if (attempt === 0) fireEvent.error(current);
+    else fireEvent.load(current);
+  }
+  expect(screen.queryByRole("alert")).toBeNull();
+  await wait(20000);
+  expect(screen.getByText("Step 1 of 3")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Play" }));
+  for (const ms of [800, 1100, 600, 4500]) await wait(ms);
+  expect(screen.getByText("Step 2 of 3")).toBeTruthy();
+});
+
+it("retries failed playback metadata without reopening the visit", async () => {
+  vi.mocked(online.getPlayback).mockRejectedValueOnce(new Error("Playback temporarily unavailable"));
+  mount();
+  expect((await screen.findByRole("alert")).textContent).toContain("Playback temporarily unavailable");
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await load();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(online.getPlayback).toHaveBeenCalledTimes(2);
+  for (const ms of [800, 1100, 600, 4500]) await wait(ms);
+  expect(screen.getByText("Step 2 of 3")).toBeTruthy();
+});

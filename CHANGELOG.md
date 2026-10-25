@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Let animated visits recover from failed page images or playback metadata,
+  preserving the current step and paused state while retrying.
+
 - Reduce GIF export memory by decoding and releasing each full-color screenshot
   in turn, preserving frame sizes, captions and playback timing.
 

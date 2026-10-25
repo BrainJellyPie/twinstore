@@ -615,6 +615,7 @@ export const onlineMessages = {
   onPlayProgress: ["Steps of the visit", "방문 단계", "访问步骤", "訪問のステップ", "Pasos de la visita", "Étapes de la visite"],
   onPlayGoTo: ["Go to step {step}: {page}", "{step}단계로 이동: {page}", "跳到第 {step} 步：{page}", "ステップ {step} へ：{page}", "Ir al paso {step}: {page}", "Aller à l’étape {step} : {page}"],
   onPlayLoading: ["Loading the page…", "페이지를 불러오는 중…", "正在加载页面…", "ページを読み込み中…", "Cargando la página…", "Chargement de la page…"],
+  onPlayImageFailed: ["This page could not be loaded.", "이 화면을 불러오지 못했습니다.", "无法加载此页面。", "このページを読み込めませんでした。", "No se pudo cargar esta página.", "Impossible de charger cette page."],
   onPlayOpens: ["Now on: {page}", "지금 보는 화면: {page}", "当前页面：{page}", "表示中のページ：{page}", "Ahora en: {page}", "Page affichée : {page}"],
   onPlaySearch: ["Searches for “{text}”", "“{text}” 검색", "搜索“{text}”", "「{text}」を検索", "Busca «{text}»", "Recherche « {text} »"],
   onWatchTitle: ["Watch a shopper’s visit", "쇼핑객 방문 지켜보기", "观看购物者的访问", "買い物客の訪問を見る", "Ver la visita de un comprador", "Regarder la visite d’un acheteur"],
