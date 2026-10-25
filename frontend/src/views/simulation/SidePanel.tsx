@@ -1,4 +1,4 @@
-import { BarChart3, Settings2, UsersRound } from "lucide-react";
+import { BarChart3, ChevronRight, Crosshair, Settings2, UsersRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { DashboardPanel } from "@/features/dashboard/components/DashboardPanel";
 import { SettingsPanel } from "@/features/dashboard/components/SettingsPanel";
@@ -74,6 +74,18 @@ export function SidePanel({
           </TabsList>
         </div>
         <TabsContent value="dashboard" className="px-3">
+          {mode === "playback" && store != null && projectId && runId && customers && (
+            <button type="button" onClick={() => setActiveTab("shoppers")}
+              className="group relative mt-3 mb-1 flex w-full items-center gap-3 overflow-hidden rounded-2xl p-3 text-left text-white shadow-[0_12px_32px_-12px_var(--heat-2)] heat-gradient transition-transform hover:scale-[1.01] active:scale-[0.99]">
+              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_35%,rgb(255_255_255/0.25)_50%,transparent_65%)] bg-[length:250%_100%] animate-shimmer" aria-hidden />
+              <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-white/20 backdrop-blur"><Crosshair className="size-5" aria-hidden /></span>
+              <span className="relative min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{t("spTrackCta")}</span>
+                <span className="block text-[0.72rem] leading-snug text-white/85">{t("spTrackHint")}</span>
+              </span>
+              <ChevronRight className="relative size-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </button>
+          )}
           {mode === "playback" && store != null ? (
             <DashboardPanel
               mode="playback"

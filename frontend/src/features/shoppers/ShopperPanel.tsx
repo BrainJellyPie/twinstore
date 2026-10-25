@@ -159,10 +159,10 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       </div>
       <ul className="space-y-1">
         {list.slice(0, limit).map((r) => (
-          <li key={r.id}>
+          <li key={r.id} className="flex items-stretch gap-1">
             <button type="button" onClick={() => { setSelected(r.id); setHighlight(r.id); }}
               onPointerEnter={() => setHighlight(r.id)} onPointerLeave={() => setHighlight(null)}
-              className="flex w-full items-center gap-2.5 rounded-xl border bg-card/60 px-2.5 py-2 text-left transition-colors hover:border-primary/50">
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border bg-card/60 px-2.5 py-2 text-left transition-colors hover:border-primary/50">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age ? ageBadge(r.age, t) : "–"}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8rem] font-medium">{r.name}</span>
@@ -173,6 +173,11 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
                 <span className="num block text-[0.68rem] text-muted-foreground">{t(r.units === 1 ? "shopperItemsOne" : "shopperItemsMany", { count: r.units })}{r.impulse ? ` · ${t("shopperImpulseCount", { count: r.impulse })}` : ""}</span>
               </span>
             </button>
+            <button type="button" onClick={() => { followShopper(customers, r.id); setSelected(r.id); }}
+              aria-label={t("shopperFollowName", { name: r.name })} title={t("shopperFollowName", { name: r.name })}
+              className="grid w-10 shrink-0 place-items-center rounded-xl border bg-card/60 text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground">
+              <Crosshair className="size-4" aria-hidden />
+            </button>
           </li>
         ))}
       </ul>
@@ -180,6 +185,19 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       {list.length === 0 && <p className="px-1 text-sm text-muted-foreground">{t("shopperNoMatch")}</p>}
     </div>
   );
+}
+
+/** Highlight a shopper, follow them with the 3D camera and play from their arrival. */
+function followShopper(customers: CustomerResult[], sid: string) {
+  const c = customers.find((x) => x.persona_id === sid);
+  if (!c) return;
+  const sim = useSimulationStore.getState();
+  sim.setHighlightId(sid);
+  sim.setFollowPersonaId(sid);
+  const play = usePlaybackControlStore.getState();
+  play.setDay(c.day);
+  play.seek(parseTimeToSeconds(c.arrival_time));
+  play.play();
 }
 
 function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onBack }: {
@@ -192,17 +210,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
   const [cited, setCited] = useState<number[] | null>(null);
   const active = useMemo(() => new Set([...(cited ?? []), ...(hover != null ? [hover] : [])]), [cited, hover]);
 
-  const follow = () => {
-    const c = customers.find((x) => x.persona_id === sid);
-    if (!c) return;
-    const sim = useSimulationStore.getState();
-    sim.setHighlightId(sid);
-    sim.setFollowPersonaId(sid);
-    const play = usePlaybackControlStore.getState();
-    play.setDay(c.day);
-    play.seek(parseTimeToSeconds(c.arrival_time));
-    play.play();
-  };
+  const follow = () => followShopper(customers, sid);
 
   if (!journey.data) {
     return (
@@ -216,10 +224,12 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
   const p = j.persona;
   return (
     <div className="space-y-3 py-3">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
-        <Button variant="outline" size="sm" onClick={follow} title={t("shopperFollowHint")}><Crosshair className="size-4" /> {t("shopperFollow")}</Button>
-      </div>
+      <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
+      <button type="button" onClick={follow} title={t("shopperFollowHint")}
+        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-12px_var(--heat-2)] heat-gradient transition-transform hover:scale-[1.01] active:scale-[0.99]">
+        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_35%,rgb(255_255_255/0.25)_50%,transparent_65%)] bg-[length:250%_100%] animate-shimmer" aria-hidden />
+        <Crosshair className="relative size-4.5" aria-hidden /><span className="relative">{t("shopperFollow")}</span>
+      </button>
       <div className="rounded-2xl border bg-card p-3">
         <div className="text-sm font-semibold">{p.identity}</div>
         <div className="text-[0.72rem] text-muted-foreground">{personaLabel(p.age_group, t)} · {personaLabel(p.gender, t)} · {t("shopperDay", { day: j.day })} · {j.arrival_time.slice(0, 5)}–{j.leave_time.slice(0, 5)} · {engineLabel(j.engine_type, locale)}</div>

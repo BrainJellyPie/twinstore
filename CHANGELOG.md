@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Make shopper tracking easy to find in a store's results: a **Track a shopper**
+  banner tops the Results tab and opens the Shoppers tab, every shopper in the
+  list has its own **Follow in 3D** button, and a shopper's page leads with a
+  large **Follow in 3D** button.
+
 - Redesign the online run report. A dark stage opens it with the run's verdict
   (a clear winner, a control that holds, or too close to call), each store's
   conversion as a glowing ring with counting figures, and large **Watch a
