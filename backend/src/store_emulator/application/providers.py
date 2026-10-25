@@ -383,6 +383,9 @@ def resolve_model(
         model_id = "local-model"
         parallel = _local_slots(_api_base(preset, s))
     api_base = _api_base(preset, s)
+    if preset.local and not api_base:
+        raise ValueError(f"No model server address is configured for {preset.label}. Set its HTTP or HTTPS endpoint "
+                         "in Settings → Model providers.")
     if not key and preset.local and preset.litellm_prefix == "openai":
         # The SDK needs a key even for no-auth servers. An explicit placeholder
         # prevents it from borrowing another provider's environment credential.

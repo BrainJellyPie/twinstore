@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject a named custom model with no configured server address before creating
+  a run. Stale model selections now show unavailable and explain where to set
+  the endpoint instead of falling through to the SDK's default host.
+
 - Keep credentials isolated for named llama.cpp, vLLM and custom providers.
   Without their own key, requests now use an explicit SDK placeholder instead
   of inheriting an OpenAI or unrelated local-provider environment credential.
