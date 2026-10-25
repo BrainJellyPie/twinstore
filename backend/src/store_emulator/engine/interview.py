@@ -70,13 +70,14 @@ def build_journey(run_id: str, customer: CustomerResult, persona: Persona, store
         ))
     shelves: dict[str, list[ShelfItem]] = {}
     for rid, faces in stops.items():
-        seen: dict[str, ShelfItem] = {}
+        seen: dict[tuple[str, str, int, int, str], ShelfItem] = {}
         for slot in racks[rid].slots:
             if faces and "" not in faces and slot.face.value not in faces:
                 continue
             for item in slot.items:
-                seen.setdefault(item.sku, ShelfItem(sku=item.sku, name=item.name, price=item.price,
-                                                    regular_price=item.regular_price, promo=item.promo))
+                offer = (item.sku, item.name, item.price, item.regular_price, item.promo)
+                seen.setdefault(offer, ShelfItem(sku=item.sku, name=item.name, price=item.price,
+                                                regular_price=item.regular_price, promo=item.promo))
         shelves[rid] = list(seen.values())[:MAX_SHELF_ITEMS]
     buys = [e for e in customer.timeline if e.action == Action.BUY]
     return Journey(

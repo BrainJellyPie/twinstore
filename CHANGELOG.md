@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve different shelf prices, regular prices, names and promotions for
+  the same SKU in shopper interviews. Changed offers now reach interview and
+  follow-up prompts instead of being hidden behind the first placement.
+
 - Include the entered reference price in every survey questionnaire, even
   without a price-sensitivity question. Changing that price now reaches
   respondents and no longer reuses answers cached for a different price.
