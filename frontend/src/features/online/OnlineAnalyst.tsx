@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, DoorOpen, Loader2, RotateCcw, Scale, Send, Sparkles, Users } from "lucide-react";
+import { ArrowDownRight, CheckCircle2, DoorOpen, Loader2, RotateCcw, Scale, Send, Sparkles, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import * as api from "@/shared/api/client";
@@ -13,6 +13,18 @@ import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 import { useAssistStore } from "@/stores/assistStore";
 import type { MessageKey } from "@/shared/i18n/messages";
+
+import { figureSection } from "./figureSections";
+
+function showSection(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  el.classList.remove("figure-flash");
+  void el.offsetWidth;  // restart the highlight when the same section is shown again
+  el.classList.add("figure-flash");
+  window.setTimeout(() => el.classList.remove("figure-flash"), 1700);
+}
 
 export function OnlineAnalyst({ projectId, runId, compared }: { projectId: string; runId: string; compared: boolean }) {
   const { t } = useI18n();
@@ -121,12 +133,28 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
                 <p className="text-[0.82rem] leading-relaxed">{m.text}</p>
                 {m.figures.length > 0 && (
                   <ul className="space-y-1" aria-label={t("figuresUsed")}>
-                    {m.figures.map((f) => (
-                      <li key={f} className="flex items-start gap-1.5 rounded-lg bg-foreground/[0.04] px-2 py-1 text-[0.68rem] leading-snug text-muted-foreground">
-                        <CheckCircle2 className="mt-px size-3 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                        <span className="num min-w-0 break-words">{f}</span>
-                      </li>
-                    ))}
+                    {m.figures.map((f) => {
+                      const section = figureSection(f);
+                      const body = (
+                        <>
+                          <CheckCircle2 className="mt-px size-3 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                          <span className="num min-w-0 break-words">{f}</span>
+                          {section && <ArrowDownRight className="mt-px ml-auto size-3 shrink-0 opacity-60" aria-hidden />}
+                        </>
+                      );
+                      return (
+                        <li key={f}>
+                          {section ? (
+                            <button type="button" onClick={() => showSection(section)} title={t("onAnalystShow")}
+                              className="flex w-full items-start gap-1.5 rounded-lg bg-foreground/[0.04] px-2 py-1 text-left text-[0.68rem] leading-snug text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground">
+                              {body}
+                            </button>
+                          ) : (
+                            <div className="flex items-start gap-1.5 rounded-lg bg-foreground/[0.04] px-2 py-1 text-[0.68rem] leading-snug text-muted-foreground">{body}</div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

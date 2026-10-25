@@ -744,6 +744,7 @@ export const onlineMessages = {
   onAnalystStarterFix: ["What holds sales back most on this store?", "이 스토어에서 매출을 가장 크게 막는 것은 무엇인가요?", "这家店最拖累销售的是什么？", "このストアで売上を最も妨げているのは何ですか？", "¿Qué frena más las ventas en esta tienda?", "Qu’est-ce qui freine le plus les ventes de cette boutique ?"],
   onAnalystStarterLeave: ["Where do shoppers leave without buying, and what might help?", "고객은 어디에서 구매 없이 떠나고, 무엇이 도움이 될까요?", "顾客在哪里未购买就离开？怎样做可能有帮助？", "顧客はどこで買わずに離れていますか？何が役立ちそうですか？", "¿Dónde se van los clientes sin comprar y qué podría ayudar?", "Où les clients partent-ils sans acheter, et qu’est-ce qui pourrait aider ?"],
   onAnalystStarterSegment: ["Which shoppers struggle most, and why?", "어떤 고객이 가장 어려움을 겪고, 그 이유는 무엇인가요?", "哪些顾客遇到的困难最多？为什么？", "最も苦労しているのはどの顧客ですか？その理由は？", "¿Qué clientes tienen más dificultades y por qué?", "Quels clients ont le plus de mal, et pourquoi ?"],
+  onAnalystShow: ["Show this in the report", "보고서에서 보기", "在报告中查看", "レポートで見る", "Verlo en el informe", "Voir dans le rapport"],
   onAnalystPlaceholder: ["e.g. Why do phone shoppers buy less?", "예: 모바일 고객은 왜 덜 살까요?", "例如：为什么手机端顾客买得更少？", "例：スマホの顧客はなぜ買う量が少ないの？", "p. ej., ¿Por qué compran menos los clientes desde el móvil?", "ex. : Pourquoi les clients sur mobile achètent-ils moins ?"],
   onAnalystFailed: ["The question could not be answered.", "질문에 답하지 못했습니다.", "未能回答这个问题。", "質問に答えられませんでした。", "No se pudo responder a la pregunta.", "La question n’a pas pu recevoir de réponse."],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

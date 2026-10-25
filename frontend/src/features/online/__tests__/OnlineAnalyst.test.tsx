@@ -90,3 +90,17 @@ it("replaces the built-in starters with questions read off this run", async () =
   await waitFor(() => expect(online.askOnlineAnalyst).toHaveBeenCalledWith("p1", "r", "Why do phone shoppers leave at the cart?", ""));
   expect(online.suggestOnlineAnalystQuestions).toHaveBeenCalledWith("p1", "r", "");
 });
+
+it("shows the report section a cited line comes from", async () => {
+  vi.mocked(online.getOnlineAnalyst).mockResolvedValue(answered);
+  const section = document.createElement("section");
+  section.id = "online-compare";
+  const scroll = vi.fn();
+  section.scrollIntoView = scroll;
+  document.body.appendChild(section);
+  mount(true);
+  fireEvent.click(await screen.findByRole("button", { name: /minus control/ }));
+  expect(scroll).toHaveBeenCalled();
+  expect(section.classList.contains("figure-flash")).toBe(true);
+  section.remove();
+});

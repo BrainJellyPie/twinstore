@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Jump from an analyst's answer to the chart: each report line an online
+  analyst answer cites is a link to the report section that draws it (the
+  paired differences, funnel, ads, friction, survey, segments…), which
+  scrolls into view and lights up once. Sections that show nothing for a run
+  no longer leave an empty gap in the report.
+
 ## 0.6.0 — Online stores you can see, style and design by asking
 
 - Give local layout-edit models an operation-specific grammar: moves require a

@@ -259,8 +259,8 @@ function Report({ projectId, result, onJourney }: { projectId: string; result: O
         </Section>
       )}
 
-      <WhoChanged result={result} money={money} onReplay={(variant, shopper) => onJourney({ variant, shopper })}
-        onCompare={(variant, shopper) => onJourney({ variant, shopper, compare: true })} />
+      <div id="online-changed" className="scroll-mt-16 empty:hidden"><WhoChanged result={result} money={money} onReplay={(variant, shopper) => onJourney({ variant, shopper })}
+        onCompare={(variant, shopper) => onJourney({ variant, shopper, compare: true })} /></div>
 
       <Section id="online-ask" icon={MessageSquareText} title={t("analystTitle")} hint={t("onAnalystHint")}>
         <OnlineAnalyst projectId={projectId} runId={result.run_id} compared={result.comparisons.length > 0} />
@@ -290,12 +290,12 @@ function Report({ projectId, result, onJourney }: { projectId: string; result: O
         </Section>
       )}
 
-      <div id="online-ads" className="scroll-mt-16"><Ads result={result} money={money} pct={pct} /></div>
-      <Recovery variants={v} money={money} pct={pct} />
-      <div id="online-rival" className="scroll-mt-16"><Rival result={result} money={money} pct={pct} /></div>
-      <div id="online-frictions" className="scroll-mt-16"><Frictions variants={v} money={money} pct={pct} /></div>
-      <div id="online-surveys" className="scroll-mt-16"><Surveys variants={v} pct={pct} /></div>
-      <div id="online-segments" className="scroll-mt-16"><Segments result={result} money={money} pct={pct} /></div>
+      <div id="online-ads" className="scroll-mt-16 empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
+      <div id="online-recovery" className="scroll-mt-16 empty:hidden"><Recovery variants={v} money={money} pct={pct} /></div>
+      <div id="online-rival" className="scroll-mt-16 empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
+      <div id="online-frictions" className="scroll-mt-16 empty:hidden"><Frictions variants={v} money={money} pct={pct} /></div>
+      <div id="online-surveys" className="scroll-mt-16 empty:hidden"><Surveys variants={v} pct={pct} /></div>
+      <div id="online-segments" className="scroll-mt-16 empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
 
       <div id="online-products" className="grid scroll-mt-16 gap-3 xl:grid-cols-2">
         <Section title={t("onSearches")} hint={t("onSearchesHint")}>
@@ -339,7 +339,7 @@ function Report({ projectId, result, onJourney }: { projectId: string; result: O
         </Section>
       </div>
 
-      <div id="online-clicks" className="scroll-mt-16"><Heatmap variants={v} /></div>
+      <div id="online-clicks" className="scroll-mt-16 empty:hidden"><Heatmap variants={v} /></div>
     </>
   );
 }

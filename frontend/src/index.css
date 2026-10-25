@@ -458,6 +458,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .crowd-dot, .crowd-dot.crowd-bought { animation: none; }
 }
+/* A report section the analyst cites lights up once when its line is clicked. */
+@keyframes figure-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  25% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 50%, transparent); }
+}
+.figure-flash { animation: figure-flash 1.6s ease-out; border-radius: 1.6rem; }
+@media (prefers-reduced-motion: reduce) {
+  .figure-flash { animation: none; outline: 2px solid var(--primary); outline-offset: 4px; }
+}
 /* Page flow: particles of visits running along each ribbon. */
 @keyframes flow-run { to { stroke-dashoffset: -64; } }
 .flow-particles { animation: flow-run 1.6s linear infinite; }
