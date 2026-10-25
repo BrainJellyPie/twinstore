@@ -13,6 +13,8 @@ vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(),
   createFileRoute: () => (options: { component: () => ReactNode }) => ({ options }),
   useNavigate: () => navigate,
+  Link: ({ to, params, children, className }: { to: string; params?: { pid: string }; children: ReactNode; className?: string }) =>
+    <a href={params ? to.replace("$pid", params.pid) : to} className={className}>{children}</a>,
 }));
 vi.mock("@/shared/queries/useProjects", () => ({
   useProjects: () => ({ data: projects.list, isLoading: projects.loading, isFetching: false, error: projects.error, refetch: vi.fn() }),
@@ -31,7 +33,7 @@ beforeEach(() => {
   projects.loading = false;
   projects.error = null;
 });
-afterEach(() => { cleanup(); navigate.mockReset(); });
+afterEach(() => { cleanup(); navigate.mockReset(); localStorage.clear(); });
 
 async function mount() {
   const client = new QueryClient();
@@ -69,4 +71,22 @@ it.each(["loading", "failed"])("does not treat a %s store list as a confirmed em
   expect(button.hasAttribute("disabled")).toBe(true);
   fireEvent.click(button);
   expect(navigate).not.toHaveBeenCalled();
+});
+
+it("leads a returning visitor back to the store opened last, or else the latest changed one", async () => {
+  projects.list = [store("old", "Old shop", "2026-10-01T00:00:00Z"), store("new", "New shop", "2026-10-20T00:00:00Z")];
+  await mount();
+  expect((await screen.findByRole("link", { name: /Continue where you left off.*New shop/ })).getAttribute("href")).toBe("/projects/new");
+  expect(screen.getByRole("button", { name: "Your stores: 2" })).toBeTruthy();
+  cleanup();
+  localStorage.setItem("twinstore.lastStore", "old");
+  await mount();
+  expect((await screen.findByRole("link", { name: /Continue where you left off.*Old shop/ })).getAttribute("href")).toBe("/projects/old");
+});
+
+it("offers no shortcut before there is a store", async () => {
+  projects.list = [];
+  await mount();
+  await screen.findByRole("button", { name: "Online stores" });
+  expect(screen.queryByText("Continue where you left off")).toBeNull();
 });

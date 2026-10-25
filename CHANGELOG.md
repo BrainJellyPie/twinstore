@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Back to work in one click: once there is a store, the home page opens with
+  a **Continue where you left off** card for the store used last (or the
+  latest changed), plus a **Your stores: N** link down to the list, so a
+  returning visitor no longer scrolls past the hero.
+- A top bar that fits: on mid-size screens (1024–1279 px) the tabs show
+  icons and only the current tab's name, and below that the tabs move to
+  their own row, so the store name stays readable instead of shrinking to a
+  letter; the search box and status shorten until a very wide screen.
+  Previously the tabs ran over the logo at 1024 px.
+- A long online report is easier to find your way around: its section strip
+  highlights the section you are reading, scrolls along with you, and fades
+  at an edge where more sections are hidden.
+- The marketing studio on a phone: its eleven tabs are one scrolling row
+  instead of a block that pushed the work below the fold, and an A/B result
+  notice puts its CSV button under the text. The neighborhood's area
+  description gets a full-width box with a character count.
 - Shelf capture leads with the photo drop zone: a large target with an icon
   sits right under the settings, the browser recovery copy moves below it as
   a quieter box, and the settings use the app's field style.

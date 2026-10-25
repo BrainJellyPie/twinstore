@@ -1,11 +1,12 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Aperture, ArrowRight, CloudSun, Eye, Globe2, KeyRound, Megaphone, MessagesSquare, Sparkles, Wand2 } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Aperture, ArrowDown, ArrowRight, CloudSun, Eye, Globe2, KeyRound, Megaphone, MessagesSquare, Sparkles, Store, Wand2 } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { MOD_KEY } from "@/app/commandPalette";
+import { LAST_STORE } from "@/app/paths";
 import { HeroStore } from "@/features/home/HeroStore";
 import { StoreGallery } from "@/features/home/StoreGallery";
 import { Button } from "@/shared/components/ui/button";
@@ -44,6 +45,11 @@ function HomePage() {
   // Online stores belong to a store: open the most recently changed one's, or start a store first.
   const latest = projects?.length ? projects.reduce((a, b) => (b.updated_at > a.updated_at ? b : a)) : null;
   const openOnline = () => (latest ? navigate({ to: "/online/$pid", params: { pid: latest.project_id } }) : newStore());
+  // A returning visitor goes straight back to the store opened last (or the latest changed) without scrolling past the hero.
+  const [remembered] = useState(() => {
+    try { return localStorage.getItem(LAST_STORE); } catch { return null; }  // storage unavailable: nothing remembered
+  });
+  const resume = projects?.find((p) => p.project_id === remembered) ?? latest;
   const templates = useQuery({ queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity });
   const scenarios = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios({}, signal), staleTime: Infinity });
   const counted = (label: typeof CAPABILITIES[number]["label"]) =>
@@ -55,6 +61,28 @@ function HomePage() {
         <div className="hero-glow pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]" aria-hidden />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 pt-12 pb-14 lg:grid-cols-[1.1fr_1fr] lg:pt-14">
           <div className="max-w-[44rem]">
+            {resume && (
+              <div className="mb-6 flex animate-rise flex-wrap items-center gap-2">
+                <Link to="/projects/$pid" params={{ pid: resume.project_id }}
+                  className="glass group inline-flex max-w-full min-w-0 items-center gap-3 rounded-2xl py-2 pr-4 pl-2 transition-colors hover:bg-card/80">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl heat-gradient text-white shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
+                    <Store className="size-4.5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs text-muted-foreground">{t("homeContinue")}</span>
+                    <span className="block truncate font-semibold tracking-[-0.01em]">{resume.name}</span>
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+                {projects && projects.length > 1 && (
+                  <button type="button" onClick={() => document.getElementById("stores-heading")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground">
+                    {t("homeAllStores", { count: projects.length })}
+                    <ArrowDown className="size-3.5" aria-hidden />
+                  </button>
+                )}
+              </div>
+            )}
             <div className="glass inline-flex animate-rise items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium">
               <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.6</span>
               <Sparkles className="size-3.5 text-heat-2" aria-hidden />
