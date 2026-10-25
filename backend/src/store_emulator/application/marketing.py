@@ -274,7 +274,8 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                         uris[c.asset_id] = "file://" + str(package_path(pid, c.asset_id).resolve())
             built: list[tuple[str, Store, list[str], list[str]]] = []
             for v in req.variants:
-                store, applied, warnings = apply_changes(control, v.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
+                store, applied, warnings = apply_changes(control, v.changes, package_uris=uris, minor_per_major=_minor_per_major(currency),
+                                                         currency=currency)
                 if not applied:
                     raise AppError(f"variant '{v.name}' changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
                 built.append((v.name, store, applied, warnings))
@@ -657,7 +658,8 @@ def _shelf_arms(pid: str, req: ShelfTestRequest | ShelfPreviewRequest, config: S
         raise AppError(f"rack not in this layout: {req.rack_id}", 404)
     currency = simulation_currency(pid, control, config.currency)
     uris = {c.asset_id: "file://" + str(package_path(pid, c.asset_id).resolve()) for c in req.changes if c.kind == "package" and c.asset_id}
-    test_store, applied, warnings = apply_changes(control, req.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
+    test_store, applied, warnings = apply_changes(control, req.changes, package_uris=uris, minor_per_major=_minor_per_major(currency),
+                                                  currency=currency)
     test_rack = next(r for r in test_store.racks if r.id == req.rack_id)
     faces = {s.face for r in (rack, test_rack) for s in r.slots for i in s.items if not req.target_sku or i.sku == req.target_sku}
     face = Face(req.face) if req.face else (sorted(faces, key=lambda f: f.value)[0] if faces else None)

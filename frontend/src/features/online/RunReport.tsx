@@ -23,6 +23,7 @@ import {
   AD_PLACEMENT_LABELS, DELTA_LABELS, FRICTION_HARMS, FRICTION_LABELS, PAGE_LABELS, segmentValueLabel, storeColor,
 } from "./labels";
 import { PageFlow } from "./PageFlow";
+import { PricesToStore } from "./PricesToStore";
 import { RunHero } from "./RunHero";
 import { ShopperGallery } from "./ShopperGallery";
 import { ShopperRiver } from "./ShopperRiver";
@@ -251,6 +252,7 @@ function Report({ projectId, result, onJourney }: { projectId: string; result: O
                   note: clear ? undefined : <Needed delta={d} />,
                 };
               })} />
+              <PricesToStore projectId={projectId} runId={result.run_id} variant={ci + 1} />
             </div>
           ))}
         </Section>

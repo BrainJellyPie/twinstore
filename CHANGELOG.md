@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Bring an online variant's prices to the store: under each variant of an
+  online run's comparison, **Keep it in the store** reviews the prices the
+  variant changed (the run's own copy, matched by SKU) on a chosen layout in
+  the same currency and keeps them as a new layout; the page design, pictures
+  and ads are listed as staying online. Products of two unrelated stores are
+  never matched by their internal ids.
+- Price changes in A/B variant notes and layout reviews read as on a tag
+  ($4.29 → $3.65) instead of in cents.
 - Ask about an online run: the report has an **Ask about this run** section
   (also on the floating dock) where a model answers questions from the run's
   report — each store's funnel, money, friction, survey, ads, segments and the

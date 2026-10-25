@@ -10,11 +10,15 @@ import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 
-export function KeepAsLayout({ projectId, setupId, variant }: { projectId: string; setupId: string; variant: Variant }) {
+export function KeepAsLayout({ projectId, setupId, variant, currency, hint }: {
+  projectId: string; setupId: string; variant: Variant;
+  /** The currency of the variant's prices, checked against the layout's (changes made in another store). */
+  currency?: string; hint?: string;
+}) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [requestId] = useState(() => crypto.randomUUID().replace(/-/g, ""));
-  const check = useMutation({ mutationFn: () => checkLayoutEdit(projectId, setupId, { name: variant.name, changes: variant.changes }) });
+  const check = useMutation({ mutationFn: () => checkLayoutEdit(projectId, setupId, { name: variant.name, changes: variant.changes, currency }) });
   const save = useMutation({
     mutationFn: () => applyLayoutEdit(projectId, setupId, {
       name: variant.name, changes: check.data!.changes, source_sha256: check.data!.source_sha256, request_id: requestId,
@@ -45,7 +49,7 @@ export function KeepAsLayout({ projectId, setupId, variant }: { projectId: strin
         </div>
       ) : (
         <>
-          <p className="text-muted-foreground">{t("mkKeepHint")}</p>
+          <p className="text-muted-foreground">{hint ?? t("mkKeepHint")}</p>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => check.mutate()} disabled={check.isPending}>
             {check.isPending && <Loader2 className="animate-spin" aria-hidden />} {t("mkKeepReview")}
           </Button>

@@ -1,9 +1,10 @@
-"""A marketing A/B variant, carried over to an online store.
+"""A marketing A/B variant, carried over to an online store, and an online variant's prices back to the store.
 
 The marketing studio tests changes on the physical store's layout: a new price, a discount, a category's prices, a
 new package. The same changes reach an online store through its products' SKUs (a store put online from a layout
 keeps them), so one idea is tested in both channels on the same kind of shoppers. A shelf sign or a move to another
-shelf has no web counterpart and is reported as skipped rather than guessed.
+shelf has no web counterpart and is reported as skipped rather than guessed; the other way, an online variant's
+prices reach the layout's products with the same SKU, and its design, pictures and ads stay online.
 """
 
 from collections.abc import Mapping
@@ -81,3 +82,28 @@ def apply_store_changes(site: OnlineSite, changes: list[VariantChange], *, minor
             product.image_url = uri
             applied.append(f"{product.name}: new package picture")
     return products, applied, skipped
+
+
+def price_changes(control: OnlineSite, variant: OnlineSite) -> tuple[list[VariantChange], list[str]]:
+    """The variant's prices that differ from the control's, as layout changes matched by SKU, and what stays online.
+    A product without a SKU is matched by its id only in a copy of the control: other stores reuse ids."""
+    by_sku = {p.sku: p for p in control.products if p.sku}
+    by_id = {p.id: p for p in control.products} if variant.variant_of == control.id else {}
+    changes: list[VariantChange] = []
+    skipped: list[str] = []
+    for p in variant.products:
+        old = by_sku.get(p.sku) if p.sku else by_id.get(p.id)
+        if old is None:
+            continue
+        if old.price != p.price:
+            if p.sku:
+                changes.append(VariantChange(kind="price", sku=p.sku, price=p.price))
+            else:
+                skipped.append(f"{p.name}: no SKU, so no shelf product to match")
+        if old.image_url != p.image_url:
+            skipped.append(f"{p.name}: the new picture stays online")
+    if variant.options != control.options:
+        skipped.append("the page design, delivery and checkout options have no shelf counterpart")
+    if variant.ads != control.ads:
+        skipped.append("ads stay online")
+    return changes, skipped

@@ -53,11 +53,12 @@ class LayoutEditApply(BaseModel):
 
 
 class LayoutEditCheck(BaseModel):
-    """Changes made elsewhere (a marketing test's variant) to review on this layout before keeping them."""
+    """Changes made elsewhere (a marketing test's variant, an online run's prices) to review on this layout before keeping them."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(default="", max_length=80)
     changes: list[VariantChange] = Field(min_length=1, max_length=20)
+    currency: str = Field(default="", max_length=3, description="the currency of the changes' prices; \"\" = the layout's")
 
 
 class LayoutEditRecord(BaseModel):
@@ -90,6 +91,9 @@ def check_edit(pid: str, sid: str, req: LayoutEditCheck) -> LayoutEditDraft:
     """The changes applied to a copy of this layout, as a draft to review and keep with `apply_edit`: a tested price
     becomes the everyday price, and what a saved layout cannot hold (a test-only package) is listed. Nothing is saved."""
     store, currency, digest = _source(pid, sid)
+    if req.currency and req.currency.upper() != currency:
+        raise AppError(f"This layout's prices are in {currency} and the changes' in {req.currency.upper()}; "
+                       "pick a layout in the same currency", 400)
     changes = [c.model_copy(update={"keep_reference": False}) if c.kind == "price" else c for c in req.changes]
     _, applied, warnings = apply_layout_edit(store, changes, currency)
     return LayoutEditDraft(name=req.name or "Edited layout", source_sha256=digest, applied=applied, warnings=warnings,

@@ -69,7 +69,7 @@ from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site
 from store_emulator.engine.layout_edit import ZERO_DECIMAL
 from store_emulator.engine.online.analyst import answer_online_question, online_facts
 from store_emulator.engine.online.design_chat import apply_design, chat_design
-from store_emulator.engine.online.store_changes import apply_store_changes
+from store_emulator.engine.online.store_changes import apply_store_changes, price_changes
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
 from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
@@ -829,6 +829,26 @@ def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> Session
         shopper = at_rival(stores[variant], shopper, sites[0]) or shopper
     return SessionView(variant=variant, site_id=stores[variant].id, site_name=stores[variant].name, shopper=shopper,
                        session=session)
+
+
+class RunStoreChanges(BaseModel):
+    """A variant's prices from an online run, as changes for a physical layout (see engine/online/store_changes)."""
+    name: str
+    currency: str
+    changes: list[VariantChange]
+    skipped: list[str]
+
+
+def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
+    sites, _ = _snapshot(pid, run_id)
+    if not 1 <= variant < len(sites):
+        raise AppError("Pick a variant of this run, not its control", 404)
+    changes, skipped = price_changes(sites[0], sites[variant])
+    if len(changes) > 20:  # a layout edit takes 20 changes
+        skipped.append(f"{len(changes) - 20} more price changes: keep them with another edit")
+        changes = changes[:20]
+    return RunStoreChanges(name=sites[variant].name[:80], currency=sites[variant].currency.upper(), changes=changes,
+                           skipped=skipped)
 
 
 def _analyst_path(pid: str, run_id: str) -> Path:
