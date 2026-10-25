@@ -435,6 +435,8 @@ def site_from_store(store: Store, *, site_id: str, name: str, currency: str, see
         if not any(c.id == key for c in categories):
             categories.append(OnlineCategory(id=key, name=label[:80], glyph=glyph_for(label)))
         for item in items:
+            if item.sku in seen:
+                continue
             seen.add(item.sku)
             rng = random.Random(stable_seed("online-store-product", item.sku, seed))
             _, rating, reviews, badges, stock, weekly = _web_attributes(rng, item.name, item.price, currency, 0.0)

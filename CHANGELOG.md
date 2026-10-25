@@ -30,6 +30,8 @@
   the same required word coverage as names while name matches still rank first.
 - Preserve projects while online runs are pending or running, including a
   simultaneous run-start/delete request. Completed runs still allow deletion.
+- Import each physical-store SKU once into an online catalog even when it appears
+  several times on the same rack, preserving its first placement's price and photo.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
