@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Give each generated-customer batch a stable sample identity, including its
+  seed and daily position range. Identical hourly specifications no longer
+  reuse another batch's customers as newly written people. Probe requests,
+  short probe responses and context/truncation recovery keep distinct ranges;
+  repeating the same generation still reuses its own cache.
+
 - Validate cached model responses with the same strict JSON rules as fresh
   Instructor responses. Invalid cached quantities, coordinates and other typed
   values now trigger a fresh request instead of silently changing simulation

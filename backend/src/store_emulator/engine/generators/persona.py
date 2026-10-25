@@ -419,6 +419,7 @@ async def generate_personas_for_day(
     *,
     customer_profile: str = "",
     supplemental_summary: str = "",
+    sample_offset: int = 0,
     semaphore: asyncio.Semaphore | None = None,
     tally: BatchTally | None = None,
     on_written: Callable[[int], None] | None = None,
@@ -480,9 +481,13 @@ async def generate_personas_for_day(
         cat_list = "\n".join(f"  - {c}" for c in categories)
         category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
 
-    async def _generate_batch(chunk: list[tuple[int, str]], *, recover: bool = True) -> list[tuple[GeneratedPersona, int]]:
+    async def _generate_batch(chunk: list[tuple[int, str]], start: int, *, recover: bool = True) -> list[tuple[GeneratedPersona, int]]:
         persona_input = (
             f"매장 위치: {address}\n요일: {day_label}\n\n"
+            # Identical hourly specs still represent different people. Include
+            # their sample positions even when the provider cannot accept seed.
+            f"Generation bookkeeping, not customer traits: sample seed={seed}; "
+            f"daily customer positions={start + 1}-{start + len(chunk)}.\n\n"
             f"## identity 목록 (반드시 이 중 하나 선택)\n{identity_list}\n\n"
             f"## purpose 목록 (반드시 이 중 하나 선택)\n{purpose_list}\n\n"
             f"{category_section}"
@@ -514,15 +519,15 @@ async def generate_personas_for_day(
             logger.info("[persona] %s: splitting an oversized or truncated %s-customer request once", day_label, len(chunk))
             middle = len(chunk) // 2
             # Release the shared request slot before either child acquires it.
-            first = await _generate_batch(chunk[:middle], recover=False)
-            second = await _generate_batch(chunk[middle:], recover=False)
+            first = await _generate_batch(chunk[:middle], start, recover=False)
+            second = await _generate_batch(chunk[middle:], start + middle, recover=False)
             return first + second
         # Preserve each child's original hours even when a small model returns fewer customers.
         return [(generated, hour) for generated, (hour, _) in zip(batch.personas, chunk)]
 
     for batch_start in range(0, len(specs), batch_size):
         chunk = specs[batch_start:batch_start + batch_size]
-        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(chunk))))
+        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(chunk, sample_offset + batch_start))))
 
     all_personas: list[Persona] = []
     for hours, task in tasks:
@@ -618,6 +623,7 @@ async def generate_batched(
 
     probe: list[Persona] = []
     probe_at: tuple[Weekday, int] | None = None
+    probe_positions = 0
 
     def size(cap: int) -> WriteSize:   # requests take batch_size customers of a day, across its hours
         per_day = [sum(h.visitor_count for h in _scale_hourly(visitors, cap) if h.person_types and h.visitor_count > 0)
@@ -639,11 +645,11 @@ async def generate_batched(
         if on_progress is not None:
             on_progress(min(done, total), total)
 
-    def write(day: Weekday, hourly: list[HourlyProfile]) -> Awaitable[list[Persona]]:
+    def write(day: Weekday, hourly: list[HourlyProfile], *, sample_offset: int = 0) -> Awaitable[list[Persona]]:
         return generate_personas_for_day(
             llm, address, profile, day, hourly,
             seed=seed, custom_instruction=custom_instruction,
-            customer_profile=customer_profile, supplemental_summary=supplemental_summary,
+            customer_profile=customer_profile, supplemental_summary=supplemental_summary, sample_offset=sample_offset,
             batch_size=batch_size, max_concurrent=max_concurrent,
             categories=categories, currency=currency, semaphore=shared, tally=tally, on_written=written,
         )
@@ -655,6 +661,7 @@ async def generate_batched(
         # One request first, timed: what the rest will take on this model, before asking for all of them.
         schedule, hour = max(busy, key=lambda pair: pair[1].visitor_count)
         n = min(batch_size, hour.visitor_count, sample_cap)
+        probe_positions = n
         get_usage = getattr(llm, "get_usage", None)
         before = get_usage() if callable(get_usage) else None
         started = time.monotonic()
@@ -685,7 +692,10 @@ async def generate_batched(
                       if h.hour == probe_hour else h for h in target]
             # A small sample may allocate fewer customers to this hour than the probe already wrote.
             target = _scale_hourly(target, max(0, cap - len(kept)))
-        out = await write(schedule.day, target)
+        # A short recovered probe can leave gaps between its child ranges.
+        # Reserve the entire request span so later batches cannot reuse a child.
+        offset = probe_positions if probe_at is not None and probe_at[0] == schedule.day else 0
+        out = await write(schedule.day, target, sample_offset=offset)
         if kept:
             out = _renumber([*kept, *out], schedule.day)
         return fill_population(out, visitors, schedule.day)
