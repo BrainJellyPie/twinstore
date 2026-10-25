@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Shelf capture's queue reads in the order you use it: drop zone, then
+  **Start / resume queue** and its status, then the photos; keeping the queue
+  in this browser moves below them as the optional step it is.
 - The "Explore without an API key" notice is one line on a wide screen —
   title, hint and **Set up vision shoppers** side by side — so it takes less
   of every page; it still opens to the local model and settings buttons.
