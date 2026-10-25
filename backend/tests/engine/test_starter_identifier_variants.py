@@ -6,6 +6,7 @@ import json
 import httpx
 import pytest
 from openai import AsyncOpenAI
+from pydantic import ValidationError
 
 from store_emulator.domain.config import LLMConfig
 from store_emulator.engine import llm_client
@@ -124,10 +125,15 @@ def test_spelling_recovery_never_deduplicates_sku_choices():
                           {"groups": [{"category": "HOME_COFFEE_TEA", "skus": values}]})
             return schema.model_validate(answer)
 
-    with pytest.raises(ValueError, match="Select each SKU only once"):
+    with pytest.raises(ValueError, match="requested selection format") as caught:
         asyncio.run(select_starter_products(Model(), store, rack_choices(store), "Coffee",
             allowed_categories={"home_coffee_tea"}))
-    assert len(calls) == 5 and store.model_dump() == before
+    # Small choices now reject duplicates inside model validation, before the
+    # outer semantic-correction pass or any cache write.
+    cause = caught.value.__cause__
+    assert isinstance(cause, ValidationError)
+    assert any("Select each SKU only once" in error["msg"] for error in cause.errors(include_input=False))
+    assert len(calls) == 4 and store.model_dump() == before
 
 
 def test_exact_whitespace_ids_take_precedence_over_trimmed_aliases():
