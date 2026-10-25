@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep whole-trip and shelf-specific purchase conditions together in customer
+  search, so a nonbuyer search cannot silently include shoppers who bought elsewhere.
+
 - Validate automatically drafted event hours before caching: empty or reversed
   windows now request correction instead of silently increasing traffic until midnight.
 

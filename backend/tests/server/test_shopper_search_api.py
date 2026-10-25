@@ -102,11 +102,12 @@ def test_bought_nothing_there_is_about_the_shelves_not_the_trip(client, monkeypa
     assert d["criteria"] == [f"Stopped at {rack.rack_name}", f"Bought nothing at {rack.rack_name}"]
 
 
-def test_bought_nothing_twice_means_there_and_empty_results_say_what_blocks_them(client, monkeypatch):
-    _, _, store, _ = _run()
+def test_trip_and_shelf_conditions_both_apply_and_empty_results_say_what_blocks_them(client, monkeypatch):
+    customers, _, store, _ = _run()
     rack = next(r for r in store.product_racks if r.rack_name)
     d, _ = _find(client, monkeypatch, {"label": "x", "stopped_at": [rack.rack_name], "bought": "no", "bought_there": "no"})
-    assert "Bought nothing" not in d["criteria"] and any("bought nothing at all" in w for w in d["warnings"])
+    assert "Bought nothing" in d["criteria"] and not d["warnings"]
+    assert all(not customers[pid].purchases for pid in d["persona_ids"])
     d, _ = _find(client, monkeypatch, {"label": "x", "bought": "no", "min_spent": 1.0})
     assert d["persona_ids"] == [] and d["near_misses"]
     assert any(m.startswith('Without "Bought nothing": ') for m in d["near_misses"])
