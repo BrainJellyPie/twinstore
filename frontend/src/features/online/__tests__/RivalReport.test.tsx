@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -7,7 +8,7 @@ import { useLocale } from "@/shared/i18n/i18n";
 import { JourneyViewer } from "../JourneyViewer";
 import { RunReport } from "../RunReport";
 
-vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof online>(), getRun: vi.fn(), getSession: vi.fn() }));
+vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof online>(), getRun: vi.fn(), getSession: vi.fn(), deleteRun: vi.fn() }));
 const clients: QueryClient[] = [];
 beforeEach(() => useLocale.getState().setLocale("en"));
 afterEach(() => { cleanup(); clients.splice(0).forEach((c) => c.clear()); vi.resetAllMocks(); });
@@ -119,4 +120,22 @@ it("offers the visit as a GIF download", async () => {
   const link = await screen.findByRole("link", { name: "Download GIF" });
   expect(link.getAttribute("href")).toMatch(/\/api\/projects\/p1\/online\/runs\/r1\/sessions\/1\/os0001\/replay\.gif$/);
   expect(link.hasAttribute("download")).toBe(true);
+});
+
+it("does not fetch a run again after deleting it", async () => {
+  mountReport("");
+  await screen.findByText("Study");
+  cleanup();
+  // Like the online page: a deleted run's report goes away.
+  function Page() {
+    const [open, setOpen] = useState(true);
+    return open ? <RunReport projectId="p1" runId="r1" onDeleted={() => setOpen(false)} /> : <p>No run</p>;
+  }
+  vi.mocked(online.getRun).mockClear();
+  vi.mocked(online.deleteRun).mockResolvedValue(undefined as never);
+  render(<QueryClientProvider client={client()}><Page /></QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  await screen.findByText("No run");
+  await new Promise((r) => setTimeout(r, 50));
+  expect(online.getRun).toHaveBeenCalledTimes(1);
 });

@@ -41,7 +41,12 @@ export function RunReport({ projectId, runId, onDeleted }: { projectId: string; 
   });
   const remove = useMutation({
     mutationFn: () => deleteRun(projectId, runId),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: onlineKeys.runs(projectId) }); onDeleted(); },
+    onSuccess: () => {
+      // Drop the deleted run and its replays rather than refetching them into 404s; only the list changes.
+      onDeleted();
+      qc.removeQueries({ queryKey: onlineKeys.run(projectId, runId) });
+      void qc.invalidateQueries({ queryKey: onlineKeys.runs(projectId), exact: true });
+    },
   });
   if (run.isPending) return <div className="panel rounded-[1.6rem] p-4 text-sm text-muted-foreground">{t("studioLoading")}</div>;
   if (run.isError) return <div role="alert" className="panel rounded-[1.6rem] p-4 text-sm text-destructive">{run.error.message}</div>;

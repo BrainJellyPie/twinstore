@@ -158,3 +158,18 @@ it("blocks saving while an ad cost is invalid, until the ad is fixed or removed"
   fireEvent.click(screen.getByRole("button", { name: "Remove ad" }));
   expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
 });
+
+it("does not fetch a store again after deleting it", async () => {
+  vi.mocked(online.deleteSite).mockResolvedValue(undefined as never);
+  const deleted = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <SiteDesigner projectId="p1" siteId="s1" onCopied={vi.fn()} onDeleted={deleted} />
+  </QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete this store" }));
+  await waitFor(() => expect(deleted).toHaveBeenCalledTimes(1));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(online.getSite).toHaveBeenCalledTimes(1);
+  expect(client.getQueryCache().find({ queryKey: online.onlineKeys.site("p1", "s1") })).toBeUndefined();
+});
