@@ -12,6 +12,7 @@ from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import MAX_PRICE, ProductEditsReceipt
 from store_emulator.domain.store import Store
 from store_emulator.engine.layout_edit import (
+    EDIT_KINDS,
     LayoutEditDraft,
     apply_layout_edit,
     draft_layout_edit,
@@ -51,6 +52,14 @@ class LayoutEditApply(BaseModel):
         return changes
 
 
+class LayoutEditCheck(BaseModel):
+    """Changes made elsewhere (a marketing test's variant) to review on this layout before keeping them."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(default="", max_length=80)
+    changes: list[VariantChange] = Field(min_length=1, max_length=20)
+
+
 class LayoutEditRecord(BaseModel):
     layout_edit_request: LayoutEditApply
     layout_edit_result: dict[str, object]
@@ -75,6 +84,16 @@ def draft_edit(pid: str, sid: str, req: LayoutEditRequest, config: SimulationCon
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[layout-edit] draft failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The edits could not be drafted"), 502) from e
+
+
+def check_edit(pid: str, sid: str, req: LayoutEditCheck) -> LayoutEditDraft:
+    """The changes applied to a copy of this layout, as a draft to review and keep with `apply_edit`: a tested price
+    becomes the everyday price, and what a saved layout cannot hold (a test-only package) is listed. Nothing is saved."""
+    store, currency, digest = _source(pid, sid)
+    changes = [c.model_copy(update={"keep_reference": False}) if c.kind == "price" else c for c in req.changes]
+    _, applied, warnings = apply_layout_edit(store, changes, currency)
+    return LayoutEditDraft(name=req.name or "Edited layout", source_sha256=digest, applied=applied, warnings=warnings,
+                           changes=[c for c in changes if c.kind in EDIT_KINDS])
 
 
 def apply_edit(pid: str, sid: str, req: LayoutEditApply) -> dict[str, object]:

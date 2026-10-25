@@ -19,6 +19,7 @@ import { richText } from "@/shared/i18n/richText";
 
 import { DemandChart, LiftChart, type LiftRow } from "./charts";
 import { FactorialReview } from "./FactorialReview";
+import { KeepAsLayout } from "./KeepAsLayout";
 import { TestOnline } from "./TestOnline";
 import { segmentLabel } from "@/shared/i18n/personaLabels";
 
@@ -189,7 +190,12 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
             {v.warnings.map((w) => <p key={w} className="mt-1.5 flex items-start gap-1.5 text-xs text-warn"><TriangleAlert className="mt-0.5 size-3.5 shrink-0" /> {w}</p>)}
             {(() => {
               const asked = variants?.find((x) => x.name === v.name);
-              return asked && <TestOnline projectId={projectId} testName={r.name} variant={asked} currency={r.currency} />;
+              return asked && (
+                <>
+                  <KeepAsLayout projectId={projectId} setupId={r.setup_id} variant={asked} />
+                  <TestOnline projectId={projectId} testName={r.name} variant={asked} currency={r.currency} />
+                </>
+              );
             })()}
           </div>
         ))}

@@ -326,3 +326,23 @@ def test_saved_variant_keeps_operations_and_retry_preserves_later_settings(clien
     save_layout_operations(PID, child, changed)
     assert client.post(url, json=body).json() == response.json()
     assert run_operations(PID, child, None, None) == changed
+
+
+def test_a_tested_variant_is_reviewed_on_the_layout_and_kept_as_a_new_one(client):
+    (a_name, a_sku, _), (b_name, b_sku, _), _store_now = _two_products()
+    changes = [{"kind": "price", "sku": b_sku, "price": 149, "keep_reference": True},
+               {"kind": "promo", "sku": a_sku, "promo": "1+1"},
+               {"kind": "package", "sku": a_sku, "asset_id": "pkg_x"}]
+    before = len(client.get(f"/api/projects/{PID}/setups").json())
+    r = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit/check", json={"name": "Winner", "changes": changes})
+    assert r.status_code == 200, r.text
+    assert len(client.get(f"/api/projects/{PID}/setups").json()) == before  # reviewing never saves
+    d = r.json()
+    assert d["name"] == "Winner" and len(d["source_sha256"]) == 64
+    # A kept price is the new everyday price; a test-only package is not kept.
+    assert [c["kind"] for c in d["changes"]] == ["price", "promo"] and d["changes"][0]["keep_reference"] is False
+    assert any(b_name in a for a in d["applied"]) and any("package" in w for w in d["warnings"])
+    saved = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit", json={"name": "Winner", "changes": d["changes"],
+                                                                         "source_sha256": d["source_sha256"], "request_id": "b" * 32})
+    assert saved.status_code == 200, saved.text
+    assert len(client.get(f"/api/projects/{PID}/setups").json()) == before + 1

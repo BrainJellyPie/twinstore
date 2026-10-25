@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep a tested marketing variant in the store: **Keep it in the store** in an
+  A/B report reviews the variant's edits on the tested layout as it is now (a
+  tested price becomes the everyday price; a test-only package is not kept)
+  and saves them as a new layout, leaving the original as it is.
 - Test a marketing A/B variant online: each variant in an A/B report can
   become a variant of an online store in the same currency, its price,
   discount, category-price and package changes applied to the products with

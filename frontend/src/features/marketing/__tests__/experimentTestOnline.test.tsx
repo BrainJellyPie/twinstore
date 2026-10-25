@@ -3,12 +3,14 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as marketing from "@/shared/api/marketing";
 import type { ExperimentReport, VariantResult } from "@/shared/api/marketing";
 import * as online from "@/shared/api/online";
 import { useLocale } from "@/shared/i18n/i18n";
 import { ExperimentReportView } from "../ExperimentReport";
 
 vi.mock("@/shared/api/client", () => ({ BASE: "", getModels: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/shared/api/marketing", async (original) => ({ ...await original<typeof marketing>(), checkLayoutEdit: vi.fn(), applyLayoutEdit: vi.fn() }));
 vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof online>(), listSites: vi.fn(), variantFromTest: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, search }: { children: ReactNode; search?: { site?: string; compare?: string } }) =>
@@ -58,4 +60,21 @@ it("points to putting a store online when none has the test's currency", async (
   expect(await screen.findByText(/No online store has prices in USD yet/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "Put a store online" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+});
+
+it("reviews a tested variant on its layout and keeps it as a new layout", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([]);
+  vi.mocked(marketing.checkLayoutEdit).mockResolvedValue({ name: "Cheaper tea", source_sha256: "f".repeat(64), summary: "",
+    changes: variants[0]!.changes, applied: ["Green tea: price 299 → 249"], warnings: ["a new package is only shown in tests, not saved to a layout"] });
+  vi.mocked(marketing.applyLayoutEdit).mockResolvedValue({ id: "setup_new", name: "Cheaper tea", applied: [], warnings: [] });
+  show();
+  fireEvent.click(screen.getByRole("button", { name: "Review on the layout" }));
+  expect(await screen.findByText("· a new package is only shown in tests, not saved to a layout")).toBeTruthy();
+  expect(marketing.checkLayoutEdit).toHaveBeenCalledWith("p", "s", { name: "Cheaper tea", changes: variants[0]!.changes });
+  fireEvent.click(screen.getByRole("button", { name: "Save as a new layout" }));
+  expect(await screen.findByText("Saved as a new layout: Cheaper tea")).toBeTruthy();
+  const [, setup, body] = vi.mocked(marketing.applyLayoutEdit).mock.calls[0]!;
+  expect(setup).toBe("s");
+  expect(body).toMatchObject({ name: "Cheaper tea", changes: variants[0]!.changes, source_sha256: "f".repeat(64) });
+  expect(body.request_id).toMatch(/^[0-9a-f]{32}$/);
 });
