@@ -42,6 +42,8 @@ def test_first_http_request_constrains_exact_ids_and_reuses_successful_cache(mon
             assert set(fields["rack_ids"]["items"].get("enum", [])) == set(ids)
             assert "section_999" not in fields["rack_ids"]["items"]["enum"]
             assert "occupied" not in fields["rack_ids"]["items"]["enum"]
+            assert schema["properties"]["groups"]["maxItems"] == min(16, len(ids), len(allowed))
+            assert context["maximum_categories"] == min(16, len(ids), len(allowed))
             answer = {"groups": [{"category": sorted(allowed)[0], "rack_ids": ids}]}
         else:
             assert response_schema["name"] == "ProductSelection"

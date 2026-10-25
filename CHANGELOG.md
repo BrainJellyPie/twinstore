@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reduce local-model starter-selection retries and truncated responses: bound category
+  groups by the actual task and use short product codes that resolve to exact catalog
+  SKUs. Catalog identity changes invalidate cached code mappings. Add a real local-model
+  probe that retains requests, responses and the resulting store for review.
+
 - Show only the configured welcome discount: zero-percent popups no longer
   promise 10% off, and rule shoppers receive no discount incentive for them.
   Offers without a coupon code no longer invent a `WELCOME` code.
