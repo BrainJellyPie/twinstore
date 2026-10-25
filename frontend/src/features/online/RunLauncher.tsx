@@ -43,6 +43,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color">[]>([]);
+  const listedSites = [...sites, ...createdSites.filter((copy) => !sites.some((site) => site.id === copy.id))];
   const controlId = chosen[0] ?? "";
   const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
   const available = control.data ? experimentsFor(control.data.options) : [];
@@ -76,6 +78,11 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
         const base = control.data!;
         const copy = await copySite(projectId, base.id, { name: `${base.name} – ${label}`.slice(0, 60), note: label, options: x.options });
         created.push(copy.id);
+        // Keep confirmed copies selected if a later copy or the run start fails.
+        setCreatedSites((previous) => [...previous, { id: copy.id, name: copy.name, theme_color: copy.options.theme_color }]);
+        setChosen((previous) => [...previous, copy.id]);
+        setPicked((previous) => previous.filter((id) => id !== x.id));
+        qc.setQueryData(onlineKeys.site(projectId, copy.id), copy);
       }
       return startRun(projectId, {
         site_ids: [...chosen, ...created], name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
@@ -91,7 +98,6 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
       setPicked([]);
       onStarted(status.run_id);
     },
-    // Variants created before a failed start are kept: they show up in the store list.
     onSettled: () => void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId) }),
   });
   const toggleSite = (id: string) =>
@@ -103,13 +109,13 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
         <h3 className="font-semibold">{t("onRunStores")}</h3>
         <p className="text-xs text-muted-foreground">{t("onRunStoresHint", { max: MAX_VARIANTS })}</p>
         <ul className="space-y-1">
-          {sites.map((s) => {
+          {listedSites.map((s) => {
             const index = chosen.indexOf(s.id);
             return (
               <li key={s.id}>
                 <label className={cn("flex items-center gap-2 rounded-lg border px-2 py-1.5", index >= 0 && "border-primary bg-primary/5")}>
                   <input type="checkbox" checked={index >= 0} onChange={() => toggleSite(s.id)}
-                    disabled={index < 0 && chosen.length >= MAX_VARIANTS} />
+                    disabled={start.isPending || (index < 0 && chosen.length >= MAX_VARIANTS)} />
                   <span className="size-3 shrink-0 rounded-full" style={{ background: s.theme_color }} aria-hidden />
                   <span className="min-w-0 flex-1 truncate">{s.name}</span>
                   {index >= 0 && (
@@ -123,7 +129,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
           })}
         </ul>
         {control.data && (
-          <fieldset className="space-y-2 rounded-xl border border-dashed p-3">
+          <fieldset disabled={start.isPending} className="space-y-2 rounded-xl border border-dashed p-3">
             <legend className="flex items-center gap-1 px-1 text-xs font-medium">
               <FlaskConical className="size-3.5 text-primary" aria-hidden /> {t("onXpTitle")}
             </legend>

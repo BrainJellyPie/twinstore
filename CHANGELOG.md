@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reuse confirmed quick-experiment variants after a copy or run-start failure.
+  Keep them visible and selected for retry, and lock comparison choices while
+  creation is pending.
+
 - Keep a better coupon available after a cart-reminder discount, and avoid
   repeatedly offering an already applied coupon whose rounded discount is zero.
 
