@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve complete Unicode characters when copying experiment and survey
+  names. An emoji at the 80-character boundary no longer becomes an invalid
+  string that prevents the copied study from starting.
+
 - Normalize trailing slashes on native Ollama request endpoints. Saved and raw
   model addresses now reach `/api/chat` instead of doubled or repeated paths,
   including servers behind a path prefix and an explicitly supplied chat URL.

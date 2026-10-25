@@ -80,7 +80,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const packages = usePackages(projectId).data ?? [];
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
 
-  const [name, setName] = useState(initial?.name ? t("mkCopySuffix", { name: initial.name }).slice(0, 80) : "");
+  const [name, setName] = useState(initial?.name ? Array.from(t("mkCopySuffix", { name: initial.name })).slice(0, 80).join("") : "");
   const [hero, setHero] = useState(initial?.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean) ?? "");
   const [variants, setVariants] = useState<DraftVariant[]>(() => initial?.variants.length
     ? initial.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) }))

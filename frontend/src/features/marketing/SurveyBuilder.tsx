@@ -47,7 +47,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);
   const [genders, setGenders] = useState<string[]>(initial?.genders ?? []);
   const [model, setModel] = useState(initial?.model ?? "");
-  const [name, setName] = useState(initial?.name ? t("mkCopySuffix", { name: initial.name }).slice(0, 80) : "");
+  const [name, setName] = useState(initial?.name ? Array.from(t("mkCopySuffix", { name: initial.name })).slice(0, 80).join("") : "");
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const pickStimulus = (id: string) => setStimuli((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < 4 ? [...s, id] : s));
