@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep credentials isolated for named llama.cpp, vLLM and custom providers.
+  Without their own key, requests now use an explicit SDK placeholder instead
+  of inheriting an OpenAI or unrelated local-provider environment credential.
+
 - Retry rival matching in smaller batches after a confirmed context overflow or
   truncated output. Successful rows are retained, later rows use the smaller
   size, and replies about products outside the current batch are excluded.

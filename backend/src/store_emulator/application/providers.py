@@ -383,6 +383,10 @@ def resolve_model(
         model_id = "local-model"
         parallel = _local_slots(_api_base(preset, s))
     api_base = _api_base(preset, s)
+    if not key and preset.local and preset.litellm_prefix == "openai":
+        # The SDK needs a key even for no-auth servers. An explicit placeholder
+        # prevents it from borrowing another provider's environment credential.
+        key = "not-needed"
     return base.model_copy(update={
         "model": f"{preset.litellm_prefix}/{model_id}",
         "api_base": api_base,
