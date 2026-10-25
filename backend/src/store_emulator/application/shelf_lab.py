@@ -654,7 +654,9 @@ def _model_matches(store: Store, result: CaptureResult, req: RivalRequest, confi
     missing, ours = unmatched_names(store, result)
     if not missing:
         return {}, ""
-    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1500})
+    # Up to 80 pairs repeat both full product names. A short narration budget
+    # can truncate the entire comparison even when every match is valid.
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 6144})
     try:
         llm = assistive_client(req.model, llm_config)
         return asyncio.run(match_products(llm, missing, ours)), ""

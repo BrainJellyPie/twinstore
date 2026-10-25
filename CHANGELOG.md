@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Allow enough output for a rival shelf's full product-match list. The previous
+  1,500-token narration cap could truncate otherwise valid multi-product replies
+  and discard every model-confirmed match before price comparison.
+
 - Resolve rival-model product names by exact spelling first, then a unique
   case/whitespace variant. Unicode case-fold collisions no longer select a
   different product by list order, and valid copied rival labels are retained.
