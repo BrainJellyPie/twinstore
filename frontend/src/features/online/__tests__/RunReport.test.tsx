@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { ApiError } from "@/shared/api/errors";
 import * as online from "@/shared/api/online";
 import { useLocale } from "@/shared/i18n/i18n";
 import { RunReport } from "../RunReport";
@@ -65,3 +66,20 @@ it.each([[1, 0.04, null, null], [100, 0, -0.1, 0.1], [100, 0.04, 0.01, 0.09]])(
     expect(screen.queryByText(/about \d+|limit of 500 shoppers per store/)).toBeNull();
   },
 );
+
+it("offers the way back to the list for a deleted run, and shows other failures as they are", async () => {
+  vi.mocked(online.getRun).mockRejectedValue(new ApiError("online run not found: r1", 404));
+  const onDeleted = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  const { unmount } = render(<QueryClientProvider client={client}><RunReport projectId="p1" runId="r1" onDeleted={onDeleted} /></QueryClientProvider>);
+  expect((await screen.findByRole("alert")).textContent).toContain("This run no longer exists.");
+  expect(screen.queryByText(/online run not found/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Back to the list" }));
+  expect(onDeleted).toHaveBeenCalledOnce();
+  unmount();
+  client.clear();
+  vi.mocked(online.getRun).mockRejectedValue(new ApiError("disk unreadable", 500));
+  render(<QueryClientProvider client={client}><RunReport projectId="p1" runId="r1" onDeleted={onDeleted} /></QueryClientProvider>);
+  expect((await screen.findByRole("alert")).textContent).toBe("disk unreadable");
+});

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Old links say what happened: a page of a deleted store shows **This store
+  no longer exists** with the way back to the stores (the floor page showed
+  the router's bare "Something went wrong!", and the other store pages
+  opened empty), an address that matches no page explains itself instead of
+  a plain "Not Found", a page that fails keeps its technical details one
+  click away, and a deleted online run offers **Back to the list** instead of
+  the server's message.
 - Easier to read: no label in the app is smaller than about 11 px any more
   (badges, chart axes, the shopper stream, the phone tab labels), and the
   dark report header's secondary lines are brighter.

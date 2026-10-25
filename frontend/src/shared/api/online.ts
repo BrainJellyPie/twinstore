@@ -5,13 +5,13 @@
 import { BASE, type EnsembleConfig } from "./client";
 import type { VariantChange } from "./marketing";
 import type { AnalystThread, InterviewMessage } from "./interview";
-import { apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));
+    throw new ApiError(apiErrorMessage(body, `${res.status} ${res.statusText}`), res.status);
   }
   return res.json() as Promise<T>;
 }

@@ -1,12 +1,13 @@
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "@/routeTree.gen";
-import { RouteError } from "@/app/RouteError";
+import { NotFound, RouteError } from "@/app/RouteError";
 
 export const router = createRouter({
   routeTree,
   defaultPreload: "intent",
   defaultPreloadStaleTime: 0,
   defaultErrorComponent: RouteError,
+  defaultNotFoundComponent: NotFound,
 });
 
 declare module "@tanstack/react-router" {

@@ -149,7 +149,7 @@ export function CommandBar() {
   const storeId = pid ?? (projects?.some((p) => p.project_id === remembered) ? remembered
     : projects?.length === 1 ? projects[0]!.project_id : null);
 
-  const { data: project } = useQuery({
+  const { data: project, isError: projectMissing } = useQuery({
     queryKey: pid ? queryKeys.project(pid) : ["project", "disabled"],
     queryFn: ({ signal }) => api.getProject(pid!, signal),
     enabled: !!pid,
@@ -179,7 +179,7 @@ export function CommandBar() {
             <span className="aurora-text">twin</span>store
           </span>
         </Link>
-        {(pid || pageTitle) && (
+        {((pid && !projectMissing) || pageTitle) && (
           <nav aria-label={t("breadcrumb")} className="flex min-w-0 items-center gap-2 text-sm">
             <span className="h-5 w-px rotate-[18deg] bg-foreground/15" aria-hidden />
             {pid ? (

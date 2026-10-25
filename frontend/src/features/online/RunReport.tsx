@@ -11,6 +11,7 @@ import {
   clickstreamUrl, deleteRun, getRun, onlineKeys, runReportUrl,
   type ClickPoint, type Device, type OnlineRunResult, type PageKind, type PairedDelta, type SegmentRow, type VariantSummary,
 } from "@/shared/api/online";
+import { ApiError } from "@/shared/api/errors";
 import { cn } from "@/shared/utils/cn";
 import { currencyCode, formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
@@ -72,6 +73,15 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
     },
   });
   if (run.isPending) return <div className="panel rounded-[1.6rem] p-4 text-sm text-muted-foreground">{t("studioLoading")}</div>;
+  if (run.isError && run.error instanceof ApiError && run.error.status === 404) {
+    // An old link to a deleted run: say so and offer the way back to the list.
+    return (
+      <div role="alert" className="panel flex flex-wrap items-center gap-3 rounded-[1.6rem] p-4 text-sm">
+        <span className="min-w-0 flex-[1_1_14rem]"><b className="font-medium">{t("onRunMissing")}</b> <span className="text-muted-foreground">{t("onRunMissingHint")}</span></span>
+        <button type="button" onClick={onDeleted} className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-muted">{t("onRunMissingClose")}</button>
+      </div>
+    );
+  }
   if (run.isError) return <div role="alert" className="panel rounded-[1.6rem] p-4 text-sm text-destructive">{run.error.message}</div>;
   const { status, result } = run.data;
   const running = status.status === "pending" || status.status === "running";
