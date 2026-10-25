@@ -34,7 +34,7 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [at, setAt] = useState<{ index: number; phase: Phase }>({ index, phase: "arrive" });
-  const [loaded, setLoaded] = useState("");
+  const [loaded, setLoaded] = useState<{ src: string; width: number; height: number } | null>(null);
   const [failed, setFailed] = useState("");
   const [retry, setRetry] = useState({ page: "", attempt: 0 });
   const phase: Phase = at.index === index ? at.phase : "arrive";
@@ -44,7 +44,9 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
   const pageSrc = step ? stepScreenshotUrl(projectId, runId, view.variant, shopper.id, step.index, false) : "";
   const src = pageSrc && retry.page === pageSrc ? `${pageSrc}&retry=${retry.attempt}` : pageSrc;
   const imageFailed = failed === src && src !== "";
-  const ready = loaded === src && frame !== undefined && !imageFailed && !frames.isError;
+  // The page shows as soon as its picture loads; the timeline (and the cursor's aim) waits for the click boxes too.
+  const shown = loaded?.src === src && !imageFailed;
+  const ready = shown && frame !== undefined && !frames.isError;
   const box = step?.choice ? frame?.box ?? null : null;
   const reading = (step?.thought.length ?? 0) + (step?.search_text.length ?? 0) + (step?.choice?.label.length ?? 0);
   const duration = (phase === "read" ? Math.min(4500, 1300 + 25 * reading) : PHASE_MS[phase]) / speed;
@@ -77,8 +79,8 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
       <Button size="sm" variant="outline" disabled={frames.isFetching} onClick={() => void frames.refetch()}>{t("studioRetry")}</Button>
     </div>
   );
-  const width = frame?.width ?? 1024;
-  const height = frame?.height ?? 640;
+  const width = frame?.width ?? (shown ? loaded.width : 1024);
+  const height = frame?.height ?? (shown ? loaded.height : 640);
   const phone = width < 700;
   const windowHeight = Math.min(height, width / (phone ? PHONE_RATIO : DESKTOP_RATIO));
   const aiming = phase !== "arrive" && box !== null;
@@ -131,16 +133,19 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
           <div className="absolute inset-x-0 top-0 transition-transform ease-in-out motion-reduce:transition-none"
             style={{ aspectRatio: `${width} / ${height}`, transform: `translateY(-${(scroll / height) * 100}%)`, transitionDuration: move }}>
             <img key={src} src={src} alt={t("onScreenshotAlt", { title: step.url })}
-              onLoad={() => { setLoaded(src); setFailed((previous) => previous === src ? "" : previous); }}
+              onLoad={(e) => {
+                setLoaded({ src, width: e.currentTarget.naturalWidth || 1024, height: e.currentTarget.naturalHeight || 640 });
+                setFailed((previous) => previous === src ? "" : previous);
+              }}
               onError={() => setFailed(src)}
-              className={cn("block w-full transition-opacity duration-300", ready ? "opacity-100" : "opacity-0")} />
+              className={cn("block w-full transition-opacity duration-300", shown ? "opacity-100" : "opacity-0")} />
             {box && (phase === "click" || phase === "read") && (
               <span className="pointer-events-none absolute rounded-lg ring-4 ring-rose-500/80" style={{
                 left: `${(box[0] / width) * 100}%`, top: `${(box[1] / height) * 100}%`,
                 width: `${((box[2] - box[0]) / width) * 100}%`, height: `${((box[3] - box[1]) / height) * 100}%`,
               }} />
             )}
-            {ready && (
+            {shown && (
               <span className="pointer-events-none absolute z-10 transition-[left,top] ease-in-out motion-reduce:transition-none"
                 style={{ left: `${(cx / width) * 100}%`, top: `${(cy / height) * 100}%`, transitionDuration: move }} aria-hidden>
                 {phase === "click" && <span className="absolute -top-4 -left-4 size-8 animate-ping rounded-full bg-rose-500/50 motion-reduce:animate-none" />}
@@ -155,7 +160,7 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
                 page: pageSrc, attempt: previous.page === pageSrc ? previous.attempt + 1 : 1,
               }))}>{t("studioRetry")}</Button>
             </div>
-          ) : !ready && <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">{t("onPlayLoading")}</p>}
+          ) : !shown && <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">{t("onPlayLoading")}</p>}
           {ended && (
             <div className="absolute inset-x-3 bottom-3 rounded-xl border bg-background/95 p-3 text-xs shadow-lg animate-in fade-in slide-in-from-bottom-2">
               <div className="text-sm font-semibold">{t(OUTCOME_LABELS[session.outcome])}{session.order_total ? ` · ${money(session.order_total)}` : ""}</div>

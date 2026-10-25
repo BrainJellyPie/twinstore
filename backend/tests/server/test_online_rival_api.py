@@ -95,3 +95,26 @@ def test_a_rival_must_use_the_same_currency(client: TestClient) -> None:
                       json={"site_ids": [sites[0]["id"]], "shoppers": 5, "rival_site_id": sites[1]["id"]})
     assert run.status_code == 400 and "same currency" in run.text
     assert client.get(f"/api/projects/{PID}/online/runs").json() == []
+
+
+def test_a_rival_visit_is_a_new_visit_not_a_replay_of_the_one_left(client: TestClient) -> None:
+    # A rival exactly like the store, reached the way the shoppers reached it (a search engine): on shared random
+    # numbers every lost shopper would leave it the same way.
+    control, rival = _site(client, "pet_store"), _site(client, "pet_store")
+    runs = f"/api/projects/{PID}/online/runs"
+    status = client.post(runs, json={"site_ids": [control["id"]], "rival_site_id": rival["id"], "shoppers": 60, "seed": 4,
+                                      "max_steps": 30, "missions": {"purchase": 1.0},
+                                      "arrivals": {"search_engine": 1.0}}).json()
+    view = _wait(client, status["run_id"])
+    assert view["status"]["status"] == "completed", view["status"]["error"]
+    row = view["result"]["variants"][0]["rival"]
+    assert row["went"] >= 10 and row["bought"] > 0
+    replayed = 0
+    for shopper in view["result"]["shoppers"]:
+        there = client.get(f"{runs}/{status['run_id']}/sessions/1/{shopper['id']}")
+        if there.status_code != 200:
+            continue
+        here = client.get(f"{runs}/{status['run_id']}/sessions/0/{shopper['id']}").json()["session"]
+        pick = lambda s: [(step["url"], step["choice"] and step["choice"]["label"]) for step in s["steps"]]  # noqa: E731
+        replayed += pick(here) == pick(there.json()["session"])
+    assert replayed < row["went"] / 2

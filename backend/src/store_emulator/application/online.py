@@ -47,7 +47,7 @@ from store_emulator.domain.online import (
 )
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import ResourceId
+from store_emulator.domain.types import ResourceId, stable_seed
 from store_emulator.engine.files import remove_tree
 from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
@@ -565,9 +565,9 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
     slots = asyncio.Semaphore(_MODEL_CONCURRENCY if request.policy != "rule" else 1)
     out: list[list[SessionResult]] = []
 
-    async def one(site: OnlineSite, shopper: OnlineShopper, phase: str, surveyor: Surveyor | None) -> SessionResult:
+    async def one(site: OnlineSite, shopper: OnlineShopper, phase: str, surveyor: Surveyor | None, seed: int) -> SessionResult:
         async with slots:
-            result = await run_session(site, shopper, policy, seed=request.seed, max_steps=request.max_steps,
+            result = await run_session(site, shopper, policy, seed=seed, max_steps=request.max_steps,
                                        render=render, shuffle_marks=request.shuffle_marks,
                                        image_width=request.image_width, picture=picture, surveyor=surveyor)
         progress(phase)
@@ -614,7 +614,7 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
                                         else category_ids.get(shopper.target_category, "")),
                 }))
 
-        out.append(list(await asyncio.gather(*(one(site, s, phase, surveyor) for s in visiting))))
+        out.append(list(await asyncio.gather(*(one(site, s, phase, surveyor, request.seed) for s in visiting))))
     if rival is None:
         return out, []
     lost = [there for i, s in enumerate(shoppers)
@@ -622,8 +622,10 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
             and (there := at_rival(rival, s, sites[0])) is not None]
     for _ in range(len(shoppers) - len(lost)):
         progress("rival shop")
-    # No exit survey at the rival: the survey is about the stores being compared.
-    visits = list(await asyncio.gather(*(one(rival, s, "rival shop", None) for s in lost)))
+    # No exit survey at the rival: the survey is about the stores being compared. The visit draws its own random
+    # numbers: on the run's seed it would replay, page for page, the visit the shopper just left at a store like it.
+    visits = list(await asyncio.gather(*(one(rival, s, "rival shop", None, stable_seed(request.seed, "online-rival-visit"))
+                                         for s in lost)))
     went = {v.shopper_id: RivalVisit(outcome=v.outcome, order_total=v.order_total, exit_thought=v.exit_thought,
                                      steps=sum(1 for step in v.steps if step.choice is not None)) for v in visits}
     return [[s.model_copy(update={"rival": went[s.shopper_id]}) if s.outcome != "purchased" and s.shopper_id in went
@@ -784,7 +786,8 @@ def playback(pid: str, run_id: str, variant: int, shopper_id: str) -> list[Playb
     site, picture = _stores(pid, run_id)[variant], _picture(pid, run_id)
     frames: list[PlaybackFrame] = []
     for step in view.session.steps:
-        shot, box = _shot(site, view.shopper, step, picture)
+        # Eyesight filters blur pixels but move no box, and they are the slow part of drawing a page.
+        shot, box = _shot(site, view.shopper, step, picture, eyes=False)
         frames.append(PlaybackFrame(step=step.index, width=shot.width, height=shot.height, box=box))
     return frames
 
@@ -803,12 +806,15 @@ def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> bytes:
     return animate(frames)
 
 
-def _shot(site: OnlineSite, shopper: OnlineShopper, found: SessionStep,
-          picture: ProductPicture) -> tuple[Screenshot, tuple[int, int, int, int] | None]:
-    """The step's screenshot through the shopper's eyes, and the box of the option they chose."""
+def _shot(site: OnlineSite, shopper: OnlineShopper, found: SessionStep, picture: ProductPicture, *,
+          eyes: bool = True) -> tuple[Screenshot, tuple[int, int, int, int] | None]:
+    """The step's screenshot through the shopper's eyes (`eyes`; otherwise as drawn), and the box of the option they
+    chose."""
     page = build_page(site, found.state)
     numbers = numbering(page, found.mark_seed)
-    shot = see_as(render_page(page, site, numbers, picture), shopper.vision, large_text=page.large_text)
+    shot = render_page(page, site, numbers, picture)
+    if eyes:
+        shot = see_as(shot, shopper.vision, large_text=page.large_text)
     chosen = next((i for i, n in numbers.items() if found.choice is not None and n == found.choice.number), None)
     return shot, shot.boxes.get(chosen) if chosen is not None else None
 

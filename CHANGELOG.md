@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Give rival-shop visits their own random draws. On the run's seed, a shopper who
+  reached the store from a search engine replayed at a rival like it, page for
+  page, the visit they had just left, so such a rival never sold to them.
+- Start an online visit's playback as soon as its first page has loaded, and
+  work out where each click landed without the slow eyesight filters, instead
+  of waiting for every page of the visit to be drawn twice.
+
 - Preserve complete study statistics and caveats in model commentary input by
   compacting repeated table keys instead of cutting large reports mid-JSON.
 

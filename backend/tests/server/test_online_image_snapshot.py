@@ -95,9 +95,9 @@ def test_replay_screenshots_metadata_and_gif_use_accepted_art(queued, monkeypatc
     seen = []
     original = online._shot
 
-    def shot(site, shopper, step, picture):
+    def shot(site, shopper, step, picture, **options):
         seen.append(pixels(picture(site.products[0])))
-        return original(site, shopper, step, picture)
+        return original(site, shopper, step, picture, **options)
 
     monkeypatch.setattr(online, "_shot", shot)
     for variant in range(3):

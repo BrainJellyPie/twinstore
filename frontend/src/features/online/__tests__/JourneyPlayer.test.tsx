@@ -137,3 +137,24 @@ it("retries failed playback metadata without reopening the visit", async () => {
   for (const ms of [800, 1100, 600, 4500]) await wait(ms);
   expect(screen.getByText("Step 2 of 3")).toBeTruthy();
 });
+
+it("shows the first page before the click boxes arrive and starts once they do", async () => {
+  let resolve: (frames: online.PlaybackFrame[]) => void = () => {};
+  vi.mocked(online.getPlayback).mockReturnValue(new Promise((done) => { resolve = done; }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  render(<QueryClientProvider client={client}><Harness /></QueryClientProvider>);
+  await load();
+  expect(screen.queryByText("Loading the page…")).toBeNull();
+  expect(screen.getByRole("img").className).toContain("opacity-100");
+  await wait(20000);
+  expect(screen.getByText("Step 1 of 3")).toBeTruthy();
+  expect(screen.getByText("Now on: Home page")).toBeTruthy();
+  await act(async () => { resolve([
+    { step: 0, width: 1024, height: 2000, box: [100, 1500, 300, 1540] },
+    { step: 1, width: 1024, height: 900, box: [500, 200, 700, 400] },
+    { step: 2, width: 1024, height: 700, box: null },
+  ]); });
+  for (const ms of [800, 1100]) await wait(ms);
+  expect(screen.getByText("Searches for “dog food”")).toBeTruthy();
+});
