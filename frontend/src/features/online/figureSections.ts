@@ -2,6 +2,7 @@
 // (wording from engine/online/analyst.py).
 
 const FIGURE_SECTIONS: [RegExp, string][] = [
+  [/^Store and online/, "online-channels"],
   [/ minus control /, "online-compare"],
   [/ vs control: | conversion difference by segment: /, "online-changed"],
   [/ overall conversion: | revenue: | engagement: /, "online-kpis"],

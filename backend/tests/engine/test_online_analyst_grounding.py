@@ -20,7 +20,7 @@ FACT = "Control: visits 8, orders 2 (25.0%), revenue $71.97."
 def test_numerical_answers_need_report_evidence_before_caching(monkeypatch, tmp_path, mode, kind):
     calls = []
     original = llm_client.litellm.acompletion
-    monkeypatch.setattr(analyst, "online_facts", lambda _: FACT)
+    monkeypatch.setattr(analyst, "online_facts", lambda _result, _extra=(): FACT)
     run = OnlineRunResult(run_id="r", policy="rule", currency="USD", variants=[], shoppers=[])
     question = "What exact real-world sales uplift will this store achieve next year?"
 

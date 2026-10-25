@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Count free physical purchases in the store/online comparison and accumulate
+  all online visits for each shared customer. A later non-purchase no longer
+  erases an earlier order or its spending; changing customer-list order leaves
+  the comparison unchanged.
+
 - Use the same configured arrival mix for quick design scans and ordinary runs.
   Search, social and email visitors no longer silently become direct visitors
   during the scan. A real CPU-model design probe now checks the generated draft
@@ -13,6 +18,21 @@
   products, compound edits and Korean instructions; retain remaining semantic
   failures as failed probes.
 
+- Shelf capture leads with the photo drop zone: a large target with an icon
+  sits right under the settings, the browser recovery copy moves below it as
+  a quieter box, and the settings use the app's field style.
+- Easier to get around: the Floor, Area, Capture, Market and Online tabs no
+  longer go dead on the home and settings pages — they open the store used
+  last (or the only store); on a phone the top bar labels each icon; and the
+  online page folds its store and run lists behind one button that names what
+  is open, so the store or report comes first.
+- The same customers in the store and online: an online run whose shoppers
+  are the store's customers has a **Store and online** section that reads
+  each customer next to the newest store run of them — bought in both, only
+  in the store, only online or nowhere — with what they spent in each channel
+  and the split by age and gender (`GET …/online/runs/{id}/channels`). The
+  run analyst reads the same lines, so it can answer who prefers which
+  channel, and a cited line links to the section.
 - Find a store or run: once the online page lists more than six stores or
   runs, a box above them filters both by name (and a store's note); a
   variant that matches opens its group.
