@@ -353,6 +353,21 @@ class LiteLLMClient:
     def _openai_hosted(self) -> bool:
         return self.model.startswith("openai/gpt-") and "api.openai.com" in (self.api_base or "api.openai.com")
 
+    def _ollama_direct_answer(self) -> bool:
+        # The recommended Qwen3.5 renderer defaults to thinking and supports an
+        # explicit false. Other families can require reasoning or named levels.
+        if not self.model.startswith("ollama_chat/"):
+            return False
+        name = self.model.removeprefix("ollama_chat/").casefold()
+        if name.endswith((":cloud", "-cloud")) or name.partition(":")[0] not in {
+            "qwen3.5", "library/qwen3.5", "registry.ollama.ai/library/qwen3.5",
+        }:
+            return False
+        try:
+            return (urlsplit(self.api_base or "").hostname or "").rstrip(".") != "ollama.com"
+        except ValueError:
+            return False
+
     def _call_kwargs(self, seed: int | None, max_tokens: int | None = None, *, structured: bool = False) -> dict[str, object]:
         """Provider-agnostic sampling kwargs. Unsupported params are dropped by LiteLLM."""
         kwargs: dict[str, object] = {
@@ -396,7 +411,10 @@ class LiteLLMClient:
         if self.model.startswith("ollama_chat/"):
             # Preserve requirements both when loading input and when generation
             # fills the context, so oversized tasks can recover explicitly.
-            cast(dict[str, object], kwargs.setdefault("extra_body", {})).update(truncate=False, shift=False)
+            body = cast(dict[str, object], kwargs.setdefault("extra_body", {}))
+            body.update(truncate=False, shift=False)
+            if self._ollama_direct_answer():
+                body["think"] = False
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -457,6 +475,8 @@ class LiteLLMClient:
             # Older SDKs accepted native length cutoffs as successful replies.
             extra["ollama_finish_reason"] = "native-v1"
             extra["ollama_context"] = "preserve-context-v2"
+            if self._ollama_direct_answer():
+                extra["ollama_thinking"] = "false"
         if self._chat_template_thinking is not None:
             extra["chat_template_thinking"] = str(self._chat_template_thinking)
         if self.seed is None and seed is not None:
