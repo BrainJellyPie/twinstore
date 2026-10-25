@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The online report on a phone: the run's title takes the whole row (it was
+  squeezed beside the action buttons into one word per line) and the shopper
+  cards are one swipeable row, which takes about 3,000 px off the page.
 - The online page remembers where you are: the address now carries the open
   store and run, so a reload or a copied link comes back to the same store or
   report (before, it fell back to the first store), and the store or run's
