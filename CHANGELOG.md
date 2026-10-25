@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep automatic products working with small JSON-mode models: share repeated
+  category definitions, accept valid choices with extra schema commentary, and
+  bound complete, valid, unique SKU fallback lists without hiding bad IDs or
+  dropping positional shelf assignments.
+
 - Give small local models a separate, constrained starting-layout choice so a
   pharmacy or bookshop is not left without a format or treated as a convenience
   store. The other drafted form fields remain available for user review.

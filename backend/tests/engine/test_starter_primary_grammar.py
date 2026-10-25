@@ -38,7 +38,8 @@ def test_first_http_request_constrains_exact_ids_and_reuses_successful_cache(mon
             assignments = schema["properties"]["assignments"]
             fields = assignments["properties"]
             # Assert the actual OpenAI wire contract, not just the prompt or Pydantic class.
-            assert all(set(field["enum"]) == allowed for field in fields.values())
+            assert all(set((schema["$defs"]["StarterCategoryId"] if "$ref" in field else field)["enum"]) == allowed
+                       for field in fields.values())
             assert set(fields) == set(assignments["required"]) == set(ids)
             assert assignments["additionalProperties"] is False
             assert "section_999" not in fields and "occupied" not in fields
@@ -89,7 +90,8 @@ def test_concurrent_requests_keep_their_own_identifier_grammars():
                 fields = contract["properties"]["assignments"]["properties"]
                 ids = context["expected_rack_ids"]
                 keys = [row["id"] for row in context["categories"]]
-                assert all(set(field["enum"]) == set(keys) for field in fields.values())
+                assert all(set((contract["$defs"]["StarterCategoryId"] if "$ref" in field else field)["enum"]) == set(keys)
+                           for field in fields.values())
                 assert set(fields) == set(ids)
                 return schema.model_validate({"assignments": {rid: keys[0] for rid in ids}})
             fields = schema.model_json_schema()["properties"]["selections"]

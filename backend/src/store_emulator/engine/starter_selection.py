@@ -4,11 +4,12 @@ import json
 import logging
 from collections import Counter
 from collections.abc import Callable
-from typing import Annotated, Protocol, Self
+from typing import Annotated, Literal, Protocol, Self, cast
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
 from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field, JsonValue, ValidationError, ValidationInfo, create_model, field_validator, model_validator
+from pydantic.json_schema import DEFAULT_REF_TEMPLATE, GenerateJsonSchema, JsonSchemaMode
 
 from store_emulator.domain.starter_fill import RackFill, StarterRack
 from store_emulator.domain.store import Store
@@ -39,6 +40,37 @@ class CategoryGroup(BaseModel):
 class CategorySelection(BaseModel):
     groups: list[CategoryGroup] = Field(min_length=1, max_length=100)
 
+    @classmethod
+    def model_json_schema(
+        cls, by_alias: bool = True, ref_template: str = DEFAULT_REF_TEMPLATE,
+        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema, mode: JsonSchemaMode = "validation",
+        *, union_format: Literal["any_of", "primitive_type_array"] = "any_of",
+    ) -> dict[str, JsonValue]:
+        schema = cast(dict[str, JsonValue], super().model_json_schema(
+            by_alias, ref_template, schema_generator, mode, union_format=union_format))
+        # JSON-mode providers receive the schema as prompt text. Repeating the
+        # whole category catalog at every rack exceeded 8K even for a small shop.
+        # Factor after Pydantic resolves its own references; inserting custom
+        # references inside json_schema_extra breaks its reference accounting.
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            return schema
+        for container in properties.values():
+            if not isinstance(container, dict):
+                continue
+            fields = container.get("properties")
+            if not isinstance(fields, dict) or len(fields) < 2:
+                continue
+            first = next(iter(fields.values()))
+            if (not isinstance(first, dict) or first.get("type") != "string" or not first.get("enum")
+                    or not all(value == first for value in fields.values())):
+                continue
+            definitions = schema.setdefault("$defs", {})
+            if isinstance(definitions, dict):
+                definitions["StarterCategoryId"] = first
+                container["properties"] = {key: {"$ref": "#/$defs/StarterCategoryId"} for key in fields}
+        return schema
+
 
 class ProductGroup(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -51,7 +83,10 @@ class ProductSelection(BaseModel):
 
 
 class CatalogChoices(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # Tiny JSON-mode models sometimes append schema annotations (title, type,
+    # minItems) to an otherwise valid choice list. Ignore advisory extra fields;
+    # the required list, catalog membership, counts and uniqueness stay validated.
+    model_config = ConfigDict(extra="ignore", json_schema_extra={"additionalProperties": False})
     choices: list[str]
 
 
@@ -154,6 +189,21 @@ async def _small_choices(
     constraints: dict[str, JsonValue] = {"items": item_schema}
     class BoundedCatalogChoices(CatalogChoices):
         choices: list[str] = Field(min_length=minimum, max_length=maximum, json_schema_extra=constraints)
+
+        @field_validator("choices", mode="before")
+        @classmethod
+        def bound_complete_product_selection(cls, value: JsonValue) -> JsonValue:
+            # The SKU task asks for a bounded subset, unlike the category task
+            # whose positions must cover every rack. A complete list of valid,
+            # distinct SKUs can safely keep its first maximum selections. Check
+            # the entire reply before reducing it: never hide bad tail entries.
+            if unique and isinstance(value, list) and len(value) > maximum and all(isinstance(v, str) for v in value):
+                selected = [canonical_identifier(cast(str, v), allowed) for v in value]
+                if set(selected) <= allowed and len(set(selected)) == len(selected):
+                    logger.warning("Limited starter product choices from %s to %s valid unique catalog IDs",
+                                   len(selected), maximum)
+                    return [code for code in selected[:maximum]]
+            return value
 
         @field_validator("choices")
         @classmethod
