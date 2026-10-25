@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from html import escape
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from store_emulator.engine.interview import code_themes
 
@@ -62,8 +62,13 @@ class _Commentary(BaseModel):
     summary: str = Field(min_length=1, max_length=900, description=(
         "the finding a manager acts on, in two or three plain sentences; at most two figures"))
     interpretation: str = Field(
-        max_length=1400, description="why it may have happened: hypotheses tied to the numbers and to the reasons given")
-    next_steps: str = Field(max_length=1000, description="what to test or do next, concretely")
+        default="", max_length=1400, description="why it may have happened: hypotheses tied to the numbers and to the reasons given")
+    next_steps: str = Field(default="", max_length=1000, description="what to test or do next, concretely")
+
+    @field_validator("interpretation", "next_steps", mode="before")
+    @classmethod
+    def _absent_detail(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 COMMENTARY_PROMPT = """You are a market research analyst writing the commentary of a {study} for a brand or category
@@ -71,6 +76,7 @@ manager. The respondents are synthetic shoppers (personas answering through a la
 the report (JSON) and the coded reasons below; do not invent figures, products or causes you cannot support from them.
 When a difference's 95 % interval includes zero, or a group is small, say so plainly instead of calling a winner.
 Refer to products and options by their names. Always provide a nonblank summary of what the report shows.
+Use empty strings for interpretation or next_steps when no supported detail can be given; do not use null.
 Some report tables use columns and rows: each row's values follow the listed column order.
 Write in English: short plain paragraphs, no headings, no markdown."""
 

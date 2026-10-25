@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep valid model-written report summaries when optional interpretation or
+  next-step text is null or omitted, while still rejecting empty summaries.
+
 - Keep run-analysis locks outside project folders so a pending model response
   does not leave an open lock handle that blocks project deletion on Windows.
 
