@@ -5,6 +5,7 @@ import { AppBackdrop } from "@/app/AppBackdrop";
 import { CommandBar } from "@/app/CommandBar";
 import { CommandPalette } from "@/app/CommandPalette";
 import { ModelSetupBanner } from "@/app/ModelSetupBanner";
+import { RunNotice } from "@/app/RunNotice";
 import { projectIdFromPath } from "@/app/paths";
 import { TabCloseNotice } from "@/app/QuitTwinStore";
 import { StoreMissing } from "@/app/RouteError";
@@ -46,6 +47,7 @@ function RootLayout() {
         </RouteErrorBoundary>
       </main>
       <CommandPalette />
+      <RunNotice />
     </div>
   );
 }

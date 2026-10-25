@@ -31,6 +31,9 @@ class RepairModel:
             self.counts["small"] += 1
             self.calls.append(("small", payload))
             count = schema.model_json_schema()["properties"]["choices"]["minItems"]
+            if not self.persistent and isinstance(payload["categories"], dict):
+                rows = next(iter(payload["categories"].values()))
+                return schema.model_validate({"choices": [row["sku"] for row in rows[:count]]})
             return schema.model_validate({"choices": ["not_in_catalog"] * count})
         stage = "category" if issubclass(schema, CategorySelection) else "product"
         self.counts[stage] += 1
@@ -88,8 +91,11 @@ def test_one_corrected_response_recovers_and_only_valid_products_are_placed(curr
                                                 product_limits={key: 1 for key in CATALOG}))
     assert len(model.calls) == 3
     corrections = [payload for _, payload in model.calls if "correction" in payload]
-    assert len(corrections) == 1 and corrections[0]["correction"]["error"]
-    assert corrections[0]["correction"]["previous_response"]["groups"]
+    if fault in CATEGORY_FAULTS or fault == "duplicate_product_category":
+        assert len(corrections) == 1 and corrections[0]["correction"]["error"]
+        assert corrections[0]["correction"]["previous_response"]["groups"]
+    else:
+        assert not corrections and model.counts["small"] == 1
     result, report = fill_empty_racks(store, chosen, 2)
     assert {row.rack_id for row in chosen} == {"a", "b"}
     assert store.model_dump() == before and report.placements_added > 0
@@ -108,7 +114,7 @@ def test_persistent_invalid_choices_stop_after_bounded_small_task_recovery(fault
         asyncio.run(select_starter_products(model, store, rack_choices(store), "",
                                             product_limits={key: 1 for key in CATALOG}))
     stage = "category" if fault in CATEGORY_FAULTS else "product"
-    assert model.counts[stage] == 2
+    assert model.counts[stage] == (2 if stage == "category" or fault == "duplicate_product_category" else 1)
     # This fake validates directly, without Instructor's retry loop. Each invalid small task now fails before caching.
     assert model.counts["small"] == (2 if stage == "category" else 1)
     assert not any(r.slots for r in store.racks)
@@ -132,7 +138,9 @@ def test_generated_boundary_combinations_preserve_coverage_exclusions_and_limits
             allowed_categories=allowed, product_limits={key: 1 for key in allowed}, products_per_slot=per_slot))
         assert Counter(row.rack_id for row in chosen) == Counter(f"section_{i}" for i in range(count))
         assert all(row.category in allowed and len(row.skus) == 1 for row in chosen)
-        assert model.counts == {"category": 2, "product": 2}
+        primary = next(payload for stage, payload in model.calls if stage == "product")
+        partial = len(primary["categories"]) > 1 and product_fault != "duplicate_product_category"
+        assert model.counts == ({"category": 2, "product": 1, "small": 1} if partial else {"category": 2, "product": 2})
 
 
 @pytest.mark.parametrize("error", [TimeoutError("offline timeout"), ValueError("invalid provider configuration")])
@@ -169,5 +177,5 @@ def test_cached_incomplete_answer_does_not_trap_retries(tmp_path, monkeypatch):
     assert len(fake.calls) == 4
     second = asyncio.run(select_starter_products(client, store, rack_choices(store), ""))
     assert second == first
-    assert len(fake.calls) == 4  # all four responses are now cached, including the two invalid first answers
+    assert len(fake.calls) == 4  # invalid primary answers are revalidated; the good subset and its repair are reused
     assert client.get_usage().cached_requests == 4

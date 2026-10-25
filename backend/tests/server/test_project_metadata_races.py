@@ -155,13 +155,13 @@ def test_metadata_save_busy_tree_is_retryable_but_layout_locks_do_not_block_it(l
         path = path.with_name(".setup-tree.lock")
     before = read_json(metadata_path(PID))
     with FileLock(path, timeout=0):
-        response = TestClient(app).put(f"/api/projects/{PID}/metadata", json={"name": ""})
+        response = TestClient(app).put(f"/api/projects/{PID}/metadata", json={"name": "Renamed while busy"})
     assert response.status_code == (503 if locked == "tree" else 200), response.text
     saved = read_json(metadata_path(PID))
     if locked == "tree":
         assert saved == before
     else:
-        assert saved["name"] == ""
+        assert saved["name"] == "Renamed while busy"
         assert saved["currency"] == before["currency"]
 
 

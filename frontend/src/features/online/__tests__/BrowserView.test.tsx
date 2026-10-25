@@ -117,3 +117,10 @@ it("does not start a second page transition while the first is pending", async (
   await act(async () => { release(home); });
   expect(mobile.disabled || shuffle.disabled || restart.disabled).toBe(false);
 });
+
+it("starts with the store's mobile page on a phone-sized screen", async () => {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 639px)", media: query } as MediaQueryList));
+  mount();
+  await waitFor(() => expect(online.browse).toHaveBeenCalledWith("p1", "s1", expect.objectContaining({ state: null, device: "mobile" })));
+  vi.unstubAllGlobals();
+});

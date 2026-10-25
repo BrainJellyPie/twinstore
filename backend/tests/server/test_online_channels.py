@@ -71,6 +71,16 @@ def test_the_online_analyst_reads_the_channel_mix(client: TestClient) -> None:
     assert "Store and online" not in client.get(f"/api/projects/{PID}/online/runs/{panel}/analyst/facts").text
 
 
+def test_the_store_run_analyst_reads_the_same_customers_online(client: TestClient) -> None:
+    url = f"/api/projects/{PID}/runs/{STORE_RUN}/analyst/facts"
+    assert "Store and online" not in client.get(url).text
+    _run(client, "panel")  # the built-in panel are not the store's customers
+    assert "Store and online" not in client.get(url).text
+    _run(client, "project")
+    facts = client.get(url).text
+    assert "Store and online (the same " in facts and f"in store run {STORE_RUN}" in facts
+
+
 @pytest.mark.parametrize("kind", ["running_partial", "running_complete", "failed_complete", "completed_partial",
                                   "damaged_json", "missing_identity", "wrong_shape", "wrong_personas", "wrong_summary"])
 def test_unusable_newer_store_run_does_not_hide_channels_or_analyst_facts(client, kind):

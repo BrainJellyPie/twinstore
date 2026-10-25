@@ -412,6 +412,28 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
             return [references.get(code, code) for value in values
                     for code in [canonical_identifier(value, allowed_skus | references.keys())]]
 
+    retained_products: dict[str, list[str]] = {}
+
+    class PartialProductSelection(Exception):
+        """Valid category subsets are available for targeted recovery."""
+
+    def check_primary_products(chosen: ProductSelection) -> None:
+        try:
+            validate_products(chosen)
+        except ValueError as error:
+            counts = Counter(group.category for group in chosen.groups)
+            for group in chosen.groups:
+                key, skus = group.category, group.skus
+                if (key in candidates and counts[key] == 1 and 1 <= len(skus) <= limits[key]
+                        and len(set(skus)) == len(skus)
+                        and set(skus) <= {product.sku for product in candidates[key]}):
+                    retained_products[key] = list(skus)
+            if retained_products:
+                # Avoid echoing every normalized SKU in a full correction: that
+                # can overflow a local model even when only one category is bad.
+                raise PartialProductSelection(str(error)) from error
+            raise
+
     product_schema = create_model("ProductSelection", __base__=ProductSelection,
         groups=(Annotated[list[BoundedProductGroup], BeforeValidator(product_groups)],
                 Field(min_length=1, max_length=len(keys), validation_alias=AliasChoices("selections", "groups"),
@@ -419,11 +441,15 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
     try:
         chosen = await _validated_selection(llm, product_schema, PRODUCT_PROMPT, {
             **product_context, "currency": store.currency, "maximum_products_per_category": limits, "categories": catalog,
-        }, validate_products)
-    except _InvalidSelection:
-        logger.info("Starter product selection needs separate tasks for %s categories", len(keys))
+        }, check_primary_products)
+    except (_InvalidSelection, PartialProductSelection):
+        logger.info("Starter product selection needs smaller tasks for %s of %s categories",
+                    len(keys) - len(retained_products), len(keys))
         recovered_groups: list[ProductGroup] = []
         for key in keys:
+            if key in retained_products:
+                recovered_groups.append(ProductGroup(category=key, skus=retained_products[key]))
+                continue
             skus = await _small_choices(llm, SMALL_PRODUCT_PROMPT, {
                 **product_context, "currency": store.currency, "maximum_products_per_category": limits[key],
                 "categories": {key: catalog[key]},

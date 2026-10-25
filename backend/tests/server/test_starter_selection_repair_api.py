@@ -25,7 +25,7 @@ def test_wizard_corrects_missing_sections_and_invalid_products_before_creating_p
     assert response.status_code == 200, response.text
     data = response.json()
     saved = read_setup(data["metadata"]["project_id"], data["setup"]["id"])
-    assert model.counts == {"category": 2, "product": 2}
+    assert model.counts == {"category": 2, "product": 1, "small": 1}
     assert saved["store"]["currency"] == currency
     assignments = saved["starter_selection"]["assignments"]
     assert assignments and all(row["category"] != "beer_alcohol" and len(row["skus"]) == 1 for row in assignments)
@@ -68,7 +68,7 @@ def test_existing_layout_repair_preserves_source_and_rechecks_changes(workflow, 
     monkeypatch.setattr(starter_fill, "assistive_client", lambda *args: model)
     response = api.post(URL + "/auto-select", json=automatic_request(api))
     assert response.status_code == (409 if change_during_correction else 200), response.text
-    assert model.counts == {"category": 2, "product": 2}
+    assert model.counts == {"category": 2, "product": 1, "small": 1}
     if change_during_correction:
         assert read_setup(PID, SID)["store"]["name"] == "Changed during correction"
     else:

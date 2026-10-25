@@ -23,6 +23,7 @@ from store_emulator.engine.run_analyst import (
     suggest_run_questions,
 )
 
+from .channels import store_channel_lines
 from .errors import AppError, model_failure
 from .interview import _load, _run_dir  # pyright: ignore[reportPrivateUsage]
 from .providers import answered_by, assistive_client, assistive_model
@@ -60,8 +61,11 @@ def clear_thread(pid: str, run_id: str) -> None:
 
 
 def facts(pid: str, run_id: str) -> str:
+    """The run's fact sheet, with how the same customers bought online when an online run of them exists."""
     customers, personas, store, currency = _load(pid, run_id)
-    return run_facts(list(customers.values()), personas, store, currency)
+    sheet = run_facts(list(customers.values()), personas, store, currency)
+    channels = store_channel_lines(pid, run_id)
+    return "\n".join([sheet, *channels]) if channels else sheet
 
 
 def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> AnalystThread:

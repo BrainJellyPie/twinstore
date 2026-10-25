@@ -2,15 +2,33 @@
 
 ## Unreleased
 
+- Keep valid automatic-product selections when another category needs repair,
+  and ask the model only for missing or invalid categories. This avoids repeating
+  the full catalog and discarding otherwise valid choices on small local models.
 - Keep automatic products working with small JSON-mode models: share repeated
   category definitions, accept valid choices with extra schema commentary, and
   bound complete, valid, unique SKU fallback lists without hiding bad IDs or
   dropping positional shelf assignments.
 
+- Know when a run is done: if an online run or a store simulation of the
+  store finishes or fails while you are on another page, a notice in the
+  corner names it and opens its report or results (on the right layout); the
+  run whose report or floor page is already on screen shows it there.
+- File pickers (CSV uploads in the marketing studio, run tools and elsewhere)
+  show their button as a rounded pill that matches the app instead of the
+  browser's bare grey button.
+- Both analysts know both channels: a store run's analyst now also reads how
+  the same customers bought online (from the newest finished online run of
+  the store's customers), as the online analyst already reads the store run,
+  so "who buys here but not online?" has an answer on the floor too.
+- Browsing an online store on a phone starts on the store's mobile page; the
+  desktop page shrank too small to read. **Desktop** is still one tap away.
+- A store's name is required and at most 200 characters both when it is
+  created and when it is renamed through the API (`PUT …/metadata` accepted
+  a blank or 5,000-character name); the new-store form stops at 200.
 - Give small local models a separate, constrained starting-layout choice so a
   pharmacy or bookshop is not left without a format or treated as a convenience
   store. The other drafted form fields remain available for user review.
-
 - An online run form with more than eight stores gets a **Find a store** box
   over its store list; the stores already chosen stay listed.
 - Shelf capture's queue reads in the order you use it: drop zone, then
