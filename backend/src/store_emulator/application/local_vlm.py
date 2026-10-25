@@ -105,10 +105,13 @@ def pick_runtime_assets(names: list[str], *, os_name: str, arch: str, backend: s
             hits = [(n, m) for n, m in hits if ver(m)[:2] <= driver]
             if not hits:
                 continue
-            name, m = max(hits, key=lambda nm: ver(nm[1]))
-            version = m.group(1)
-            extra = [n for n in names if n.startswith("cudart-") and f"cuda-{version}-{arch_tag}" in n]
-            return [name, *extra[:1]]
+            for name, m in sorted(hits, key=lambda nm: ver(nm[1]), reverse=True):
+                version = m.group(1)
+                extra = [n for n in names if n.startswith("cudart-") and re.search(pat, n)
+                         and f"cuda-{version}-{arch_tag}" in n]
+                if extra:
+                    return [name, extra[0]]
+            continue  # An incomplete CUDA pair cannot run; try the CPU build.
         return [hits[0][0]]
     return []
 
@@ -432,7 +435,17 @@ class LocalVLMManager:
             self._set(runtime=own)
             return Path(own)
         target = self.home / "bin" / plan.backend
-        whole = (target / _COMPLETE).is_file() or _unpacked_before_marker(target, plan.backend)
+        marker = target / _COMPLETE
+        whole = marker.is_file() or _unpacked_before_marker(target, plan.backend)
+        if whole and plan.backend == "cuda" and marker.is_file():
+            try:
+                recorded = marker.read_text(encoding="utf-8").split()[1:]
+            except (OSError, UnicodeError):
+                whole = False
+            else:
+                # Older selectors could mark a Windows server plus Linux CUDA libraries complete.
+                if any(name.startswith("llama-") and "-bin-" in name and "-cuda-" in name for name in recorded):
+                    whole = len(pick_runtime_assets(recorded, os_name=hw.os, arch=hw.arch, backend="cuda")) == 2
         found = _find_server(target) if whole else None
         if found is not None:
             self._set(runtime=str(found))

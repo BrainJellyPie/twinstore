@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Match CUDA runtime libraries to the local server's operating system,
+  architecture and version. Incomplete GPU pairs are skipped, and cached
+  installs recorded with a foreign runtime are repaired on an authorized start.
+
 - Recover known age-group labels in shelf-test drafts when model replies add
   spaces or change letter case. Requested customer quotas remain intact;
   unknown ages and malformed values still fail validation.
