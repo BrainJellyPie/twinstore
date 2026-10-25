@@ -233,6 +233,7 @@ class DesignChatReply(BaseModel):
     reply: str
     options: SiteOptions  # the design with the proposed changes; not saved
     changed: list[str]  # the options that changed
+    unapplied: list[str] = []  # options of changes the reply mentions without setting them (small models narrate more)
     model: str = ""
 
 

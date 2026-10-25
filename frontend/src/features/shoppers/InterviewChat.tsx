@@ -10,6 +10,7 @@ import { askShopper, clearInterview, getInterview, interviewKeys, suggestQuestio
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { suggestedQuestions } from "./shopperStats";
@@ -101,7 +102,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
         {pending && (
           <>
             <div className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-[0.8rem] text-primary-foreground opacity-80">{pending}</div></div>
-            <div className="flex items-center gap-1.5 text-[0.75rem] text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> {t("interviewThinking", { name: first })}</div>
+            <div className="text-[0.75rem] text-muted-foreground"><ModelWaiting label={t("interviewThinking", { name: first })} /></div>
           </>
         )}
         {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}

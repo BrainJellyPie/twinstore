@@ -715,6 +715,7 @@ export const onlineMessages = {
   onAiPlaceholder: ["Describe a change… (Enter to send)", "바꾸고 싶은 점을 적어 주세요… (Enter로 보내기)", "描述想要的修改…（按 Enter 发送）", "変えたいことを書いてください…（Enterで送信）", "Describe un cambio… (Intro para enviar)", "Décrivez un changement… (Entrée pour envoyer)"],
   onAiSend: ["Send", "보내기", "发送", "送信", "Enviar", "Envoyer"],
   onAiThinking: ["Redesigning…", "디자인을 바꾸는 중…", "正在重新设计…", "デザインを変更中…", "Rediseñando…", "Refonte en cours…"],
+  onAiNotApplied: ["Mentioned but not changed:", "언급했지만 바뀌지 않음:", "提到但未修改：", "言及されたが未変更：", "Mencionado pero sin cambiar:", "Mentionné mais non modifié :"],
   onAiNoChange: ["No design option changed.", "바뀐 디자인 옵션이 없습니다.", "没有修改任何设计选项。", "変更されたデザイン設定はありません。", "No se cambió ninguna opción de diseño.", "Aucune option de design n’a changé."],
   onAiUndo: ["Undo", "되돌리기", "撤销", "元に戻す", "Deshacer", "Annuler"],
   onAiUndone: ["Undone", "되돌림", "已撤销", "元に戻しました", "Deshecho", "Annulé"],

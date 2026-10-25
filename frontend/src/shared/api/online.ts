@@ -349,7 +349,8 @@ export function variantFromTest(pid: string, siteId: string, body: {
 
 /** One turn of a conversation about a store's design (see backend engine/online/design_chat.py). */
 export interface DesignMessage { role: "owner" | "designer"; text: string; changed?: string[] }
-export interface DesignChatReply { reply: string; options: SiteOptions; changed: string[]; model: string }
+/** `unapplied`: options of changes the reply mentions without setting them (small models narrate more than they do). */
+export interface DesignChatReply { reply: string; options: SiteOptions; changed: string[]; unapplied?: string[]; model: string }
 
 export function designChat(pid: string, siteId: string, body: { messages: DesignMessage[]; options: SiteOptions; model?: string }):
   Promise<DesignChatReply> {

@@ -6,11 +6,12 @@ store format the starting layout is generated from (one of the listed formats). 
 every field for the user to check.
 """
 
-from collections.abc import Sequence
+import re
+from collections.abc import Collection, Sequence
 from typing import Literal, Protocol
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, create_model, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, create_model, field_validator, model_validator
 
 from store_emulator.engine.generators.profile_writer import LANGUAGES
 from store_emulator.engine.prompting import resolve_listed
@@ -23,6 +24,14 @@ class StructuredLLM(Protocol):
     ) -> T: ...
 
 
+def _instance_values(value: JsonValue, fields: Collection[str]) -> JsonValue:
+    # Some JSON-mode replies put actual values under "properties". Definitions
+    # under that key still fail ordinary field validation; never read defaults.
+    if isinstance(value, dict) and "properties" in value and not any(key in value for key in fields):
+        return value["properties"]
+    return value
+
+
 class _Setup(BaseModel):
     name: str = Field(default="", max_length=80, description="the given name, or a plain descriptive one")
     description: str = Field(default="", max_length=400, description="one or two sentences about the store")
@@ -33,6 +42,18 @@ class _Setup(BaseModel):
     close_hour: int | None = Field(default=None, description="1 to 24; 24 means midnight")
     currency: Literal["USD", "KRW", "JPY"] | None = Field(default=None, description="from the place, when it is clear")
     rationale: str = Field(default="", max_length=400)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _instance_shape(cls, value: JsonValue) -> JsonValue:
+        return _instance_values(value, cls.model_fields)
+
+    @field_validator("open_hour", "close_hour", mode="before")
+    @classmethod
+    def _integer_hours(cls, value: object) -> object:
+        if isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]+", value.strip()):
+            return int(value.strip())
+        return value
 
     @field_validator("open_days", mode="before")
     @classmethod
@@ -72,7 +93,8 @@ given (never invent a street), which listed store format fits best, the opening 
 (copy "7" for every day, "weekday" for weekdays, "weekend" for weekends, null when unspecified) and hours
 (an all-night store is 0 to 24), and the currency when the place makes it clear (USD, KRW or JPY only, in uppercase).
 Use empty strings for unspecified text; reserve null for unspecified days, hours and currency.
-Write the name and description in {language}; give a short rationale in English."""
+Write the name and description in {language}; give a short rationale in English.
+Return field values, not a JSON schema."""
 
 
 def to_setup(draft: _Setup, formats: Sequence[tuple[str, str, str]]) -> StoreSetup:
@@ -139,6 +161,11 @@ async def draft_store_setup(
         model_config = ConfigDict(json_schema_extra={"required": ["format"]})
         format: str = Field(default="", max_length=80, json_schema_extra={"enum": format_ids})
 
+        @model_validator(mode="before")
+        @classmethod
+        def _instance_shape(cls, value: JsonValue) -> JsonValue:
+            return _instance_values(value, cls.model_fields)
+
         @field_validator("format", mode="before")
         @classmethod
         def _optional_format(cls, value: object) -> object:
@@ -147,7 +174,9 @@ async def draft_store_setup(
     compact = "\n".join(f"{fid}: {name} ({store_type})" for fid, name, store_type, _ in formats)
     format_prompt = ("Choose one store layout whose primary business matches the owner's description. "
                      "Match the primary business, not secondary goods. Copy one supplied format ID. "
-                     "The opening schedule does not determine the business type.")
+                     "The opening schedule does not determine the business type. "
+                     'Return only {"format": "chosen ID"}, using a supplied ID as the value. '
+                     "Do not output properties, enum, default, required, or any other schema definitions.")
     format_input = f"Store: {text.strip()}\nFormats:\n{compact}"
     chosen = await _short_choice(llm, ListedFormat, format_prompt, format_input)
     setup = to_setup(draft.model_copy(update={"format": chosen.format}),
@@ -161,6 +190,11 @@ async def draft_store_setup(
         model_config = ConfigDict(json_schema_extra={"required": ["store_type"]})
         store_type: str = Field(default="", max_length=80, json_schema_extra={"enum": type_ids})
 
+        @model_validator(mode="before")
+        @classmethod
+        def _instance_shape(cls, value: JsonValue) -> JsonValue:
+            return _instance_values(value, cls.model_fields)
+
         @field_validator("store_type", mode="before")
         @classmethod
         def _optional_type(cls, value: object) -> object:
@@ -168,7 +202,9 @@ async def draft_store_setup(
 
     business = await _short_choice(llm, ListedStoreType,
         "Choose the primary business type described by the owner. Copy one supplied business type. "
-        "Match what the store principally sells, not its hours or location.\n## 언어\nUse the exact supplied type ID.",
+        "Match what the store principally sells, not its hours or location. "
+        'Return only {"store_type": "chosen ID"}, using one supplied type ID. Do not output schema definitions.'
+        "\n## 언어\nUse the exact supplied type ID.",
         f"Owner: {text.strip()}\nBusiness types: " + ", ".join(types))
     kind = resolve_listed(business.store_type, {kind.casefold(): kind for kind in types})
     if kind is None or kind == setup.store_type:

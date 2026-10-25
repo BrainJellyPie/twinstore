@@ -357,6 +357,10 @@ try:
         if args.case == "setup-night" and draft.template_id not in {"compact_cvs", "urban_cvs"}:
             format_issues.append("A plain night convenience store acquired an unrelated specialized setting")
         issues = list(format_issues)
+        if not draft.name.strip():
+            issues.append("The draft lost the supplied store identity instead of proposing a name")
+        if not draft.description.strip():
+            issues.append("The draft lost the supplied store description")
         if (draft.open_hour, draft.close_hour) != expected_hours:
             issues.append(f"Expected hours {expected_hours}, received {(draft.open_hour, draft.close_hour)}")
         if args.case == "setup-night" and not draft.warnings:

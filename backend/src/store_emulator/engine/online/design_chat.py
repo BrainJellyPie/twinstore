@@ -7,6 +7,7 @@ keeps the draft, saves it as a variant and tests it against the original on the 
 the other online prompts; the "Language" block keeps the reply in English.
 """
 
+import re
 from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Protocol
@@ -155,6 +156,43 @@ def apply_design(options: SiteOptions, changes: DesignChanges, currency: str) ->
     edited = SiteOptions.model_validate({**options.model_dump(), **update})
     changed = [key for key in update if getattr(edited, key) != getattr(options, key)]
     return edited, changed
+
+
+# What a reply calls each group of options, to catch a reply that describes a change it did not set (small models
+# often narrate more than their updates hold). A mention counts as set when any option of its group was set.
+_MENTION_PATTERNS: list[tuple[str, str, tuple[str, ...]]] = [
+    ("page style", r"\b(luxury|minimal|brutalist|playful|marketplace|editorial|neon|retro|organic|page style)\b", ("page_style",)),
+    ("colour", r"\bcolou?rs?\b|#[0-9a-f]{6}\b", ("theme_color",)),
+    ("product grid", r"\bcolumns?\b|\bper page\b", ("grid_columns", "products_per_page")),
+    ("banner", r"\bbanner\b|\bheadline\b", ("hero_banner", "hero_text")),
+    ("home page sections", r"\bsections?\b", ("home_sections",)),
+    ("text size", r"\b(large|larger|bigger) text\b|\b(text|font) size\b", ("large_text",)),
+    ("ratings", r"\bratings?\b", ("show_ratings",)),
+    ("sort order", r"\bsort(ed|ing)?\b", ("default_sort",)),
+    ("add-to-cart buttons", r"\badd[- ]to[- ]cart\b|\bquick[- ]add\b", ("quick_add",)),
+    ("wishlist", r"\bwish ?list\b", ("wishlist",)),
+    ("urgency and popularity notes", r"\burgency\b|\bscarcity\b|\bsocial proof\b|\bbought this week\b", ("urgency", "social_proof")),
+    ("welcome popup", r"\bpop-?ups?\b|\bnewsletter\b", ("welcome_popup",)),
+    ("cookie banner", r"\bcookies?\b", ("cookie_banner",)),
+    ("chat widget", r"\bchat\b", ("chat_widget",)),
+    ("trust badges", r"\btrust\b", ("trust_badges",)),
+    ("delivery fees", r"\bshipping\b|\bdelivery\b", ("shipping_fee", "free_shipping_threshold")),
+    ("coupon", r"\bcoupons?\b|\b(discount|promo) code\b", ("coupon_code", "coupon_percent", "welcome_popup")),
+    ("guest checkout", r"\bguest\b", ("guest_checkout",)),
+    ("checkout steps", r"\bone[- ]page checkout\b|\bmulti[- ]step\b|\bcheckout steps\b", ("checkout_flow",)),
+    ("one-click buying", r"\bone[- ]click\b|\bbuy now\b", ("one_click_buy",)),
+    ("page speed", r"\bload(ing)? time\b|\bpage speed\b|\b\d+ ?ms\b|\b(faster|slower) pages?\b", ("page_load_ms",)),
+]
+_MENTIONS = [(name, re.compile(pattern, re.IGNORECASE), options) for name, pattern, options in _MENTION_PATTERNS]
+
+
+def unapplied_mentions(reply: str, set_options: Sequence[str]) -> list[str]:
+    """The kinds of change `reply` talks about although none of their options was set, each as its first option's
+    name, in a fixed order. A question (the designer asking what the owner wants) changes nothing and claims nothing."""
+    if reply.rstrip().endswith("?"):
+        return []
+    done = set(set_options)
+    return [options[0] for _name, pattern, options in _MENTIONS if pattern.search(reply) and not done.intersection(options)]
 
 
 def _describe(site: OnlineSite, options: SiteOptions) -> str:

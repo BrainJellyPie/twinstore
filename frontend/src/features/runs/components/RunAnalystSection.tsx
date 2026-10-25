@@ -10,6 +10,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { useAssistStore } from "@/stores/assistStore";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -108,7 +109,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         {pending && (
           <>
             <p className="ml-6 rounded-2xl rounded-br-md bg-primary px-3 py-1.5 text-[0.78rem] text-primary-foreground opacity-80">{pending}</p>
-            <p className="flex items-center gap-1.5 text-[0.72rem] text-muted-foreground"><Loader2 className="size-3 animate-spin" /> {t("analystReading")}</p>
+            <p className="text-[0.72rem] text-muted-foreground"><ModelWaiting label={t("analystReading")} /></p>
           </>
         )}
         {(ask.error || clear.error) && <p role="alert" className="text-[0.72rem] text-destructive">{(ask.error ?? clear.error)?.message}</p>}

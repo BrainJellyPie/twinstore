@@ -2,9 +2,27 @@
 
 ## Unreleased
 
+- Read local-model setup values wrapped in `properties` and exact quoted integer
+  hours without silently losing the draft. Layout-choice prompts request a selected
+  value explicitly, avoiding long copied schema enums. Schema definitions are not
+  treated as values; the model's factual mistakes still need user review.
 - Check a drafted store layout against a separate, short business-type choice.
   If they disagree, choose again within that business so a bakery or café is not
   silently started as a convenience store or the wrong retail category.
+- The store designer no longer lets a reply pass for changes it did not make:
+  a real 450M local model set only the colour and the home sections while its
+  reply also described a coupon, removing the popup, a chat widget, a delivery
+  fee, guest checkout and page speed. Such replies now carry **Mentioned but
+  not changed** chips naming each of those options (`unapplied` in the
+  design-chat reply); questions are left as they are.
+- Waiting on a model is easier to read: the store designer shows your request
+  in the conversation at once, and every model wait (designer, both analysts,
+  shopper interviews) adds after 15 seconds that a small local model can take
+  a few minutes, with the seconds so far. A real CPU run of the 450M model
+  took over three minutes to redesign a store, with nothing but "Redesigning…"
+  on screen.
+- A store whose brand colour is near black (Threadline's navy) keeps a
+  visible colour dot in dark mode: the dots' outline is stronger there.
 - Keep valid automatic-product selections when another category needs repair,
   and ask the model only for missing or invalid categories. This avoids repeating
   the full catalog and discarding otherwise valid choices on small local models.
@@ -12,7 +30,6 @@
   category definitions, accept valid choices with extra schema commentary, and
   bound complete, valid, unique SKU fallback lists without hiding bad IDs or
   dropping positional shelf assignments.
-
 - Know when a run is done: if an online run or a store simulation of the
   store finishes or fails while you are on another page, a notice in the
   corner names it and opens its report or results (on the right layout); the

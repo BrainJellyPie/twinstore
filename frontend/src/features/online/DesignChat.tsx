@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FlaskConical, Loader2, Radar, RotateCcw, Send, Sparkles, Undo2, Wand2 } from "lucide-react";
+import { FlaskConical, Loader2, Radar, RotateCcw, Send, Sparkles, TriangleAlert, Undo2, Wand2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
@@ -15,6 +15,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -32,7 +33,7 @@ const OPTION_LABELS: Partial<Record<keyof SiteOptions, MessageKey>> = {
 };
 const IDEAS: MessageKey[] = ["onAiIdeaPremium", "onAiIdeaKids", "onAiIdeaCalm", "onAiIdeaCheckout", "onAiIdeaNeon"];
 
-export interface Turn extends DesignMessage { before?: SiteOptions; undone?: boolean }
+export interface Turn extends DesignMessage { before?: SiteOptions; undone?: boolean; unapplied?: string[] }
 
 export function DesignChat({ projectId, site, options, onOptions, onWorking, turns, onTurns, onTest, testing, testError }: {
   projectId: string; site: OnlineSite; options: SiteOptions; onOptions: (options: SiteOptions) => void;
@@ -59,7 +60,8 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
     onMutate: () => { setText(""); onWorking(true); },
     onSuccess: (reply, owner) => {
       onTurns((all) => [...all, { role: "owner", text: owner },
-        { role: "designer", text: reply.reply, changed: reply.changed, before: reply.changed.length ? options : undefined }]);
+        { role: "designer", text: reply.reply, changed: reply.changed, unapplied: reply.unapplied,
+          before: reply.changed.length ? options : undefined }]);
       if (reply.changed.length) { onOptions(reply.options); setView("after"); }
     },
     onError: (_e, owner) => setText((current) => current || owner),
@@ -145,12 +147,27 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
                   {turn.undone && <span className="text-[0.7rem] text-muted-foreground">{t("onAiUndone")}</span>}
                 </div>
               )}
+              {/* What the reply talks about but did not change: the preview and chips above are what changed. */}
+              {(turn.unapplied?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap items-center gap-1 text-[0.7rem]">
+                  <span className="inline-flex items-center gap-1 text-warn"><TriangleAlert className="size-3" aria-hidden /> {t("onAiNotApplied")}</span>
+                  {turn.unapplied!.map((key) => (
+                    <span key={key} className="rounded-full border border-dashed border-warn/50 px-2 py-0.5 text-muted-foreground">
+                      {OPTION_LABELS[key as keyof SiteOptions] ? t(OPTION_LABELS[key as keyof SiteOptions]!) : key}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
           {ask.isPending && (
-            <p className="flex w-fit items-center gap-2 rounded-2xl border bg-card px-3 py-2 text-sm text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden /> {t("onAiThinking")}
-            </p>
+            <>
+              {/* The request shows at once; it joins the conversation for good when the reply arrives. */}
+              <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground opacity-80">{ask.variables}</p>
+              <p className="w-fit max-w-[92%] rounded-2xl border bg-card px-3 py-2 text-sm text-muted-foreground">
+                <ModelWaiting label={t("onAiThinking")} />
+              </p>
+            </>
           )}
           <div ref={end} />
         </div>
