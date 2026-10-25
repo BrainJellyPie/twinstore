@@ -13,6 +13,11 @@
   that only describes a change is asked once more to make it. Nothing is
   saved until you save it.
 
+- Reduce local-model starter-selection retries and truncated responses: bound category
+  groups by the actual task and use short product codes that resolve to exact catalog
+  SKUs. Catalog identity changes invalidate cached code mappings. Add a real local-model
+  probe that retains requests, responses and the resulting store for review.
+
 - Add eleven page styles for online stores: classic, minimal, luxury,
   brutalist, playful, marketplace, editorial, neon (dark), retro web, organic
   and tech. Each changes colours, corners, type (serif and monospace faces for
