@@ -731,6 +731,7 @@ export const studioMessages = {
   mkKeepHint: ["Review this variant's edits on the tested layout as it is now, then keep them as a new layout. The original stays as it is.", "이 변형의 변경을 지금의 테스트 배치에서 검토한 뒤 새 배치로 저장합니다. 원래 배치는 그대로 남습니다.", "在当前的测试布局上检查此变体的改动，然后另存为新布局。原布局保持不变。", "このバリエーションの変更を現在のテスト対象レイアウトで確認し、新しいレイアウトとして保存します。元のレイアウトはそのまま残ります。", "Revisa los cambios de esta variante sobre el plano probado tal como está ahora y guárdalos como un plano nuevo. El original no cambia.", "Vérifiez les changements de cette variante sur le plan testé tel qu’il est aujourd’hui, puis enregistrez-les comme nouveau plan. L’original reste inchangé."],
   mkKeepReview: ["Review on the layout", "배치에서 검토하기", "在布局上检查", "レイアウトで確認する", "Revisar en el plano", "Vérifier sur le plan"],
   mkKeepSaved: ["Saved as a new layout: {name}", "새 배치로 저장됨: {name}", "已另存为新布局：{name}", "新しいレイアウトとして保存しました：{name}", "Guardado como plano nuevo: {name}", "Enregistré comme nouveau plan : {name}"],
+  mkBestPriceVariant: ["Best price {price}", "최적 가격 {price}", "最佳价格 {price}", "最適価格 {price}", "Mejor precio {price}", "Meilleur prix {price}"],
   mkChanged: ["{name} changed", "{name} 변경 내용", "{name} 的更改", "{name} の変更点", "Cambios de {name}", "Modifications de {name}"],
   mkFooterControl: ["Control: {name} · ", "대조군: {name} · ", "对照组：{name} · ", "対照群：{name} · ", "Control: {name} · ", "Témoin : {name} · "],
   mkFooterVision: ["Vision shoppers", "비전 AI 고객", "视觉顾客", "ビジョン買い物客", "Compradores con visión", "Clients avec vision"],

@@ -161,6 +161,12 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
               ))}
             </tbody>
           </table>
+          {r.price_response.best_price != null && r.price_response.sku && (
+            <TestOnline projectId={projectId} testName={r.name} currency={r.currency} variant={{
+              name: t("mkBestPriceVariant", { price: money(r.price_response.best_price) }),
+              changes: [{ kind: "price", sku: r.price_response.sku, price: r.price_response.best_price }],
+            }} />
+          )}
         </section>
       )}
 

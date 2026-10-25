@@ -78,3 +78,18 @@ it("reviews a tested variant on its layout and keeps it as a new layout", async 
   expect(body).toMatchObject({ name: "Cheaper tea", changes: variants[0]!.changes, source_sha256: "f".repeat(64) });
   expect(body.request_id).toMatch(/^[0-9a-f]{32}$/);
 });
+
+it("offers the best tested price as an online variant", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([site("s1", "Tea shop")]);
+  vi.mocked(online.variantFromTest).mockResolvedValue({ site: { id: "v2", name: "Tea shop – Best price $2.49" } as online.OnlineSite, applied: ["x"], skipped: [] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <ExperimentReportView projectId="p" report={{ ...report, price_response: { sku: "tea", name: "Green tea", points: [], elasticity: null, best_price: 249 } }} />
+  </QueryClientProvider>);
+  await screen.findByRole("option", { name: "Tea shop" });
+  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  expect(await screen.findByText("Online variant ready: Tea shop – Best price $2.49")).toBeTruthy();
+  expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({
+    name: "Tea shop – Best price $2.49", changes: [{ kind: "price", sku: "tea", price: 249 }],
+  }));
+});

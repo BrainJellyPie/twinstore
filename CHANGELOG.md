@@ -19,7 +19,8 @@
   the same SKU (a store put online from a layout keeps them). Shelf signs and
   moves, which have no web counterpart, are listed as not carried over, and
   **Compare online** opens the online store's run form already comparing the
-  two. Online store links can now open a store and a comparison directly.
+  two. Online store links can now open a store and a comparison directly. A
+  price test's best price can be tried online the same way.
 
 ## 0.6.0 — Online stores you can see, style and design by asking
 
