@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Native Ollama requests for official Qwen3.5 models now disable optional thinking so short automatic-answer budgets remain available for the final response. Other model families, custom namespaces and cloud references keep their existing behavior; changed-policy caches are separated.
 - Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
 
 - Add online stores. Each project can build browser-style web shops from 42
