@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- An online run form with more than eight stores gets a **Find a store** box
+  over its store list; the stores already chosen stay listed.
 - Shelf capture's queue reads in the order you use it: drop zone, then
   **Start / resume queue** and its status, then the photos; keeping the queue
   in this browser moves below them as the optional step it is.

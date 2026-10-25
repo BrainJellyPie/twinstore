@@ -62,3 +62,16 @@ it("starts with the quick experiments the run analyst suggested ticked", async (
   const box = await screen.findByRole("checkbox", { name: "Drop the last-step service fee" }) as HTMLInputElement;
   expect(box.checked).toBe(true);
 });
+
+it("filters a long store list by name and keeps the chosen stores listed", async () => {
+  const many = [summary, ...Array.from({ length: 9 }, (_, i) => ({ ...summary, id: `v${i}`, name: i === 4 ? "Glow Room" : `Variant ${i}` }))];
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}><RunLauncher projectId="p1" sites={many} firstSiteId="s1" hasCustomers onStarted={vi.fn()} /></QueryClientProvider>);
+  const find = await screen.findByRole("searchbox", { name: "Find a store" });
+  const listed = () => screen.getAllByRole("checkbox").filter((b) => !b.closest("fieldset")).map((b) => b.closest("label")!.textContent);
+  expect(listed()).toHaveLength(10);
+  fireEvent.change(find, { target: { value: "glow" } });
+  expect(listed()).toEqual([expect.stringContaining("Shop"), expect.stringContaining("Glow Room")]);  // the control stays
+  fireEvent.change(find, { target: { value: "zzz" } });
+  expect(listed()).toEqual([expect.stringContaining("Shop")]);
+});

@@ -13,6 +13,7 @@ export const onlineMessages = {
   onStoreStats: ["Products: {products} · Categories: {categories}", "상품: {products} · 카테고리: {categories}", "商品：{products} · 类别：{categories}", "商品：{products} · カテゴリ：{categories}", "Productos: {products} · Categorías: {categories}", "Produits : {products} · Catégories : {categories}"],
   onListToggle: ["Stores: {stores} · Runs: {runs}", "스토어: {stores} · 실행: {runs}", "商店：{stores} · 运行：{runs}", "ストア：{stores} · 実行：{runs}", "Tiendas: {stores} · Simulaciones: {runs}", "Boutiques : {stores} · Simulations : {runs}"],
   onFind: ["Find a store or run", "스토어나 실행 찾기", "查找商店或运行", "ストアや実行を探す", "Buscar una tienda o simulación", "Chercher une boutique ou une simulation"],
+  onFindStore: ["Find a store", "스토어 찾기", "查找商店", "ストアを探す", "Buscar una tienda", "Trouver une boutique"],
   onFindNone: ["Nothing matches.", "일치하는 항목이 없습니다.", "没有匹配的结果。", "一致するものはありません。", "Nada coincide.", "Aucun résultat."],
   onVariantsCount: ["Variants: {count}", "변형: {count}", "变体：{count}", "バリエーション：{count}", "Variantes: {count}", "Variantes : {count}"],
   onRunFailed: ["Failed", "실패", "失败", "失敗", "Fallida", "Échec"],

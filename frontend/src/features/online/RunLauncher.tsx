@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FlaskConical, Loader2, Play, Radar, Sparkles } from "lucide-react";
+import { FlaskConical, Loader2, Play, Radar, Search, Sparkles } from "lucide-react";
 
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
 import { useAvailableModels } from "@/features/runs/hooks";
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
+import { searchText } from "@/shared/utils/searchText";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { experimentsFor } from "./experiments";
@@ -144,6 +145,10 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
   const toggleSite = (id: string) =>
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length >= MAX_VARIANTS ? c : [...c, id]));
 
+  const [storeFind, setStoreFind] = useState("");
+  const storeNeedle = searchText(storeFind);
+  const shownSites = listedSites.filter((s) => !storeNeedle || chosen.includes(s.id) || searchText(s.name).includes(storeNeedle));
+
   return (
     <div className="grid gap-3 xl:grid-cols-2">
       <section className="panel flex flex-col gap-3 rounded-[1.4rem] p-4 text-sm">
@@ -162,8 +167,17 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
             );
           })}
         </ul>
+        {/* A long list gets a filter by name; the chosen stores stay listed whatever it says. */}
+        {listedSites.length > 8 && (
+          <label className="relative block">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input type="search" value={storeFind} onChange={(e) => setStoreFind(e.target.value)} placeholder={t("onFindStore")} aria-label={t("onFindStore")}
+              className="h-8 w-full rounded-lg border bg-background pr-2 pl-8 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
+          </label>
+        )}
+        {shownSites.length === 0 && <p className="text-xs text-muted-foreground">{t("onFindNone")}</p>}
         <ul className="max-h-[22rem] space-y-1 overflow-y-auto pr-1">
-          {listedSites.map((s) => {
+          {shownSites.map((s) => {
             const index = chosen.indexOf(s.id);
             return (
               <li key={s.id}>
