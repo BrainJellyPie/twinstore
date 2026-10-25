@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Count each distinct rival product/price offer once. Repeated shelf detections,
+  facings, case variants and confirmed aliases no longer overweight a product
+  in the price index or inflate the unique-product count.
+
 - Exclude ambiguous reference identities and conflicting shelf prices from
   rival price comparisons. Reordering shelves no longer chooses a different
   SKU or price and reverses the suggested venue adjustment.

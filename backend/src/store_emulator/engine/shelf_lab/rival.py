@@ -2,7 +2,7 @@
 
 Products are matched by normalized name or an explicit alias to products our layout sells. Similar
 names alone cannot establish the same brand, variant or pack size. The price index is the geometric mean
-of rival / our price over matched products (1.0 = same prices, 0.9 = the rival is 10 % cheaper);
+of rival / our price over distinct matched offers (1.0 = same prices, 0.9 = the rival is 10 % cheaper);
 assortment overlap is the Jaccard index of the two product sets in the shelf's categories. A
 price-adjusted pull for the rival venue scales its Huff attractiveness by (1 / index)^elasticity.
 """
@@ -91,7 +91,7 @@ def compare_rival(
                 ours[key] = (item.name, set(), category)
             ours[key][1].add(item.price)
     ours_here = {k: v for k, v in ours.items() if not categories or v[2] in categories}
-    prices: list[PriceComparison] = []
+    prices: dict[tuple[str, int], PriceComparison] = {}
     canonical: dict[str, str] = {}                      # rival product name → our key, or its own normalized name
     for item in rival.items:
         if not item.labeled:
@@ -114,17 +114,18 @@ def compare_rival(
             continue  # A known SKU may have several offers; shelf order cannot select its reference price.
         our_price = next(iter(our_prices))
         if item.price is not None and not item.price_estimated and item.price > 0 and our_price > 0:
-            prices.append(PriceComparison(name=our_name, rival_price=item.price, our_price=our_price, ratio=item.price / our_price))
-    index = math.exp(sum(math.log(p.ratio) for p in prices) / len(prices)) if prices else None
+            prices.setdefault((hit, item.price), PriceComparison(
+                name=our_name, rival_price=item.price, our_price=our_price, ratio=item.price / our_price))
+    index = math.exp(sum(math.log(p.ratio) for p in prices.values()) / len(prices)) if prices else None
     theirs = set(canonical.values())
     mine = set(ours_here) | {k for k in theirs if k in ours}
     matched = len(theirs & set(ours))
     overlap = len(theirs & mine) / len(theirs | mine) if theirs | mine else 0.0
-    only_rival = [n for n, k in canonical.items() if k.startswith("rival:")]
+    only_rival = list({k: n for n, k in canonical.items() if k.startswith("rival:")}.values())
     only_ours = [v[0] for k, v in ours_here.items() if k not in theirs]
     return RivalComparison(
-        matched=matched, rival_products=len(canonical), our_products_in_categories=len(ours_here),
+        matched=matched, rival_products=len(theirs), our_products_in_categories=len(ours_here),
         price_index=index, overlap=round(overlap, 4),
-        only_rival=only_rival[:20], only_ours=only_ours[:20], prices=sorted(prices, key=lambda p: p.ratio),
+        only_rival=only_rival[:20], only_ours=only_ours[:20], prices=sorted(prices.values(), key=lambda p: p.ratio),
         suggested_pull_factor=round(min(1.5, max(0.67, (1 / index) ** elasticity)), 3) if index else None,
     )
