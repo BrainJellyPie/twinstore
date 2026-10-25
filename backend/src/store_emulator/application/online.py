@@ -836,6 +836,9 @@ def export_clickstream(pid: str, run_id: str) -> str:
     view = get_run(pid, run_id)
     if view.status.status != "completed":
         raise AppError("The run has not finished yet", 409)
-    _, shoppers = _snapshot(pid, run_id)
+    sites, shoppers = _snapshot(pid, run_id)
     stores = _stores(pid, run_id)
-    return clickstream_csv([(site, _sessions(pid, run_id, i)) for i, site in enumerate(stores)], {s.id: s for s in shoppers})
+    visitors = [{s.id: s for s in shoppers} for _ in sites]
+    if len(stores) > len(sites):  # the rival's visitors, as they arrived there
+        visitors.append({s.id: there for s in shoppers if (there := at_rival(stores[-1], s, sites[0])) is not None})
+    return clickstream_csv([(site, _sessions(pid, run_id, i), visitors[i]) for i, site in enumerate(stores)])

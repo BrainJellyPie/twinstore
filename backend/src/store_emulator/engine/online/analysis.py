@@ -351,12 +351,13 @@ def _cell(value: object) -> object:
     return value
 
 
-def clickstream_csv(variants: list[tuple[OnlineSite, list[SessionResult]]], shoppers: dict[str, OnlineShopper]) -> str:
-    """Every click of every session, one row each (an event export in the manner of web analytics)."""
+def clickstream_csv(stores: list[tuple[OnlineSite, list[SessionResult], dict[str, OnlineShopper]]]) -> str:
+    """Every click of every session, one row each (an event export in the manner of web analytics). Each store comes
+    with its sessions and the shoppers as they visited it (a rival shop's arrive from a search engine)."""
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(CLICKSTREAM_COLUMNS)
-    for index, (site, sessions) in enumerate(variants):
+    for index, (site, sessions, shoppers) in enumerate(stores):
         for session in sessions:
             shopper = shoppers.get(session.shopper_id)
             for step in session.steps:

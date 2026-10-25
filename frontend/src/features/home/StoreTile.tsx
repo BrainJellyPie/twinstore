@@ -2,7 +2,7 @@
 // name, format and status. The card follows the pointer with a soft spotlight.
 
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, CalendarDays, Camera, Clock, Map, Megaphone, Plus, Ruler, Store } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Camera, Clock, Globe2, Map, Megaphone, Plus, Ruler, Store } from "lucide-react";
 
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import type { Locale, MessageKey } from "@/shared/i18n/messages";
@@ -23,6 +23,7 @@ const QUICK_LINKS = [
   { to: "/marketing/$pid", label: "market", icon: Megaphone },
   { to: "/capture/$pid", label: "capture", icon: Camera },
   { to: "/town/$pid", label: "area", icon: Map },
+  { to: "/online/$pid", label: "online", icon: Globe2 },
 ] as const;
 
 function relativeTime(iso: string, locale: Locale): string | null {

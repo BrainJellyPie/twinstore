@@ -285,7 +285,7 @@ def test_analysis_and_paired_deltas() -> None:
     assert deltas["conversion"].ci_low is not None and deltas["conversion"].ci_low <= deltas["conversion"].diff
     loads = [step.load_seconds for s in slow_sessions for step in s.steps if step.choice]
     assert sum(loads) / len(loads) > 4
-    csv_text = clickstream_csv([(site, sessions)], {s.id: s for s in shoppers})
+    csv_text = clickstream_csv([(site, sessions, {s.id: s for s in shoppers})])
     assert csv_text.splitlines()[0].startswith("variant,site,shopper")
 
 

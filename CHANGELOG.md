@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reach online stores from the home screen: an **Online stores** button next to
+  **New store** opens the most recently changed store's web shops (or the new
+  store form when there is none), every store card has an **Online** link, and
+  online stores join the capability list. The home badge reads v0.5.
+- Export a rival shop's visits in the clickstream CSV with the traffic source
+  they actually had (a search engine) instead of the one each shopper came to
+  the compared stores from.
+
 - Give rival-shop visits their own random draws. On the run's seed, a shopper who
   reached the store from a search engine replayed at a rival like it, page for
   page, the visit they had just left, so such a rival never sold to them.

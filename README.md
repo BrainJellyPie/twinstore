@@ -377,8 +377,8 @@ writes a short commentary on the numbers, labelled as model-written.
 
 ## Online stores
 
-**Online** in the command bar builds web shops for a store and sends virtual shoppers through them the way people
-use a browser. Start from 42 ready-made shops — groceries, quick commerce, pharmacy, beauty, fashion, electronics,
+**Online stores** on the home screen, **Online** on a store card or in the command bar builds web shops for a store
+and sends virtual shoppers through them the way people use a browser. Start from 42 ready-made shops — groceries, quick commerce, pharmacy, beauty, fashion, electronics,
 pets, toys, food delivery, a marketplace, flash sales and more, about 2,500 listings, most with photos — or put a
 layout's own shelves online, then change what a designer would: layout, search quality, sponsored listings, urgency
 and social proof, popups, cookie banners, delivery fees, coupons, guest checkout, checkout steps, payment methods,

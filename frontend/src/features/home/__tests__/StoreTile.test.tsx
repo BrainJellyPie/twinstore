@@ -28,7 +28,7 @@ it.each([
   expect(screen.getByText(label)).toBeTruthy();
   fireEvent.click(screen.getByRole("button"));
   expect(onOpen).toHaveBeenCalledTimes(1);
-  for (const [name, href] of [["Floor", "/projects/shop-1"], ["Market", "/marketing/shop-1"], ["Capture", "/capture/shop-1"], ["Area", "/town/shop-1"]]) {
+  for (const [name, href] of [["Floor", "/projects/shop-1"], ["Market", "/marketing/shop-1"], ["Capture", "/capture/shop-1"], ["Area", "/town/shop-1"], ["Online", "/online/shop-1"]]) {
     expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(href);
   }
 });
