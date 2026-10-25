@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover unique case and surrounding-whitespace variants of offered conjoint
+  choices. A lowercase product letter or differently cased `none` no longer
+  discards all of a respondent's tasks. Missing, multiple and unoffered choices
+  remain invalid, including `none` in forced-choice studies.
+
 - Keep per-request sampling identities in the model cache when provider
   seeding is disabled. Different respondents with identical profile text no
   longer share one answer or overwrite each other's cached draws; repeating

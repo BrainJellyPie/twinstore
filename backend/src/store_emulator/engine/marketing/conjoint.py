@@ -14,7 +14,7 @@ from typing import Any, Literal, Protocol
 
 import numpy as np
 import numpy.typing as npt
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, ValidationInfo, create_model, field_validator
 
 from store_emulator.domain.marketing import (
     AttributeImportance,
@@ -27,7 +27,7 @@ from store_emulator.domain.marketing import (
 )
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import stable_seed
-from store_emulator.engine.prompting import display_price
+from store_emulator.engine.prompting import canonical_identifier, display_price
 
 from .survey import LETTERS, StudyResponse, persona_text
 
@@ -91,10 +91,20 @@ Use an empty string, not null, when no explanation is given."""
 
 
 def choice_model(tasks: int, options: int, none_option: bool) -> type[BaseModel]:
-    allowed = tuple([*LETTERS[:options], *(["none"] if none_option else [])])
+    choices = [*LETTERS[:options], *(["none"] if none_option else [])]
+    allowed = tuple(choices)
+
+    class ConjointChoices(StudyResponse):
+        @field_validator("*", mode="before")
+        @classmethod
+        def canonical_choice(cls, value: object, info: ValidationInfo) -> object:
+            if isinstance(value, str) and info.field_name and info.field_name.startswith("task_"):
+                return canonical_identifier(value, choices)
+            return value
+
     fields: dict[str, Any] = {f"task_{t + 1}": (Literal[allowed], ...) for t in range(tasks)}
     fields["why"] = (str, Field(default="", max_length=240, description="in one sentence, what mattered most in your choices"))
-    return create_model("ConjointChoices", __base__=StudyResponse, **fields)
+    return create_model("ConjointChoices", __base__=ConjointChoices, **fields)
 
 
 def profile_text(attributes: Sequence[ConjointAttribute], prices: Sequence[int], currency: str, profile: Sequence[int]) -> str:
