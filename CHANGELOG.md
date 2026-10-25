@@ -11,10 +11,16 @@
 - The online report on a phone: the run's title takes the whole row (it was
   squeezed beside the action buttons into one word per line) and the shopper
   cards are one swipeable row, which takes about 3,000 px off the page.
+- Require product and badge fields in the local vision shopper's output grammar,
+  preventing positive interest scores with no target from discarding whole shelf
+  decisions. Preserve legacy name-only/number-only parsing and explicit no-choice
+  answers. A real CPU probe now saves shelf images, model outputs and purchases.
 - The online page remembers where you are: the address now carries the open
   store and run, so a reload or a copied link comes back to the same store or
   report (before, it fell back to the first store), and the store or run's
-  entry scrolls into view in the list when it opens.
+  entry scrolls into view in the list when it opens. Saving the address keeps
+  the current designer, comparison and customer replay open; routed links still
+  load their incoming selection.
 - Old links say what happened: a page of a deleted store shows **This store
   no longer exists** with the way back to the stores (the floor page showed
   the router's bare "Something went wrong!", and the other store pages

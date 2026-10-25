@@ -56,7 +56,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   }, [designAsk]);
 
   // The address keeps the open store and run, so a reload or a copied link comes back to them. It is rewritten in
-  // place: telling the router would rebuild this page, and its search only carries links in from other pages.
+  // place, preserving this history entry's key so the route keeps the current editing state.
   useEffect(() => {
     const url = new URL(window.location.href);
     for (const key of ["site", "compare", "run", "shopper", "variant"]) url.searchParams.delete(key);

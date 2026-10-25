@@ -105,6 +105,11 @@ def shelf_glance_model(view: ShelfView, *, numbered: bool = True) -> type[ShelfG
     constraints: dict[str, JsonValue] = {"enum": [*numbers]}
 
     class VisibleShelfGlance(ShelfGlance):
+        # Grammar-driven models otherwise omit both optional identifiers and emit
+        # an unusable positive score. Keep default/legacy parsing permissive, but
+        # require an explicit target (or "", 0 for no target) on the wire.
+        model_config = ConfigDict(json_schema_extra={"required": ["product", "number", "interest"]})
+
         # Keep name-based resolution for providers that do not enforce the grammar:
         # an invalid badge must not discard an otherwise identifiable printed name.
         number: int = Field(default=0, ge=0, le=10000, json_schema_extra=constraints)

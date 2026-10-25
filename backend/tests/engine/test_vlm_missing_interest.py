@@ -117,12 +117,12 @@ def test_photo_comparison_excludes_invalid_interest_but_counts_explicit_zero(she
     assert all(pair.pairs == 1 and pair.same_pick == 1 for pair in agreement)
 
 
-def test_model_grammar_requires_interest_without_changing_internal_defaults(shelf):
+def test_model_grammar_requires_target_and_interest_without_changing_internal_defaults(shelf):
     _, view = shelf
     assert ShelfGlance().interest == 0
     for numbered in [False, True]:
         schema = shelf_glance_model(view, numbered=numbered).model_json_schema()
-        assert "interest" in schema.get("required", [])
+        assert {"product", "number", "interest"} <= set(schema.get("required", []))
         assert schema["properties"]["interest"]["minimum"] == 0
         assert schema["properties"]["interest"]["maximum"] == 10
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
 
 import { OnlinePage } from "@/features/online/OnlinePage";
 
@@ -19,6 +19,10 @@ export const Route = createFileRoute("/online/$pid")({
 function OnlineRoute() {
   const { pid } = Route.useParams();
   const { site, compare, run, shopper, variant } = Route.useSearch();
-  return <OnlinePage key={JSON.stringify([pid, site, compare, run, shopper, variant])} projectId={pid} initialSite={site}
+  // Saving the current selection replaces this entry's URL, retaining its key.
+  // Routed links get a new key, so their incoming selection still opens afresh.
+  // Wait for the resolved location: a pending entry can still have the old route search.
+  const entry = useRouterState({ select: (state) => (state.resolvedLocation ?? state.location).state.__TSR_key });
+  return <OnlinePage key={JSON.stringify([pid, entry])} projectId={pid} initialSite={site}
     initialCompare={compare} initialRun={run} initialShopper={shopper ? { shopper, variant: variant ?? 0 } : undefined} />;
 }
