@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Camera, ImagePlus } from "lucide-react";
 import * as api from "@/shared/api/client";
 import { captureUploadStatus } from "@/services/queries/captureUpload";
 import { queryKeys } from "@/shared/queries/keys";
@@ -323,7 +324,7 @@ export function CaptureUploadQueue({
       aria-label={t("capQueueAria")}
       className="min-w-0 max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border bg-card p-4 text-sm md:max-h-full [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2"
     >
-      <h2 className="text-lg font-semibold">{t("capQueueTitle")}</h2>
+      <h2 className="flex items-center gap-2 font-display text-xl"><Camera className="size-5 text-primary" aria-hidden /> {t("capQueueTitle")}</h2>
       <p>{t("capQueueIntro")}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>label]:min-w-0">
         <label>
@@ -331,7 +332,7 @@ export function CaptureUploadQueue({
           <select
             aria-label={t("capFindWith")}
             disabled={locked}
-            className="block h-10 w-full rounded border"
+            className="mt-1 block h-10 w-full rounded-xl border bg-card/60 px-2.5 text-sm"
             value={detector}
             onChange={(e) => setDetector(e.target.value as api.CaptureDetector)}
           >
@@ -346,7 +347,7 @@ export function CaptureUploadQueue({
           <select
             aria-label={t("capReadWith")}
             disabled={locked}
-            className="block h-10 w-full rounded border"
+            className="mt-1 block h-10 w-full rounded-xl border bg-card/60 px-2.5 text-sm"
             value={model}
             onChange={(e) => setModel(e.target.value)}
           >
@@ -367,7 +368,7 @@ export function CaptureUploadQueue({
           <select
             aria-label={t("capPricesInLabel")}
             disabled={locked}
-            className="block h-10 w-full rounded border"
+            className="mt-1 block h-10 w-full rounded-xl border bg-card/60 px-2.5 text-sm"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
           >
@@ -381,7 +382,7 @@ export function CaptureUploadQueue({
           <select
             aria-label={t("capFixture")}
             disabled={locked}
-            className="block h-10 w-full rounded border"
+            className="mt-1 block h-10 w-full rounded-xl border bg-card/60 px-2.5 text-sm"
             value={rackType}
             onChange={(e) => setRackType(e.target.value as "shelf" | "fridge")}
           >
@@ -391,24 +392,10 @@ export function CaptureUploadQueue({
         </label>
       </div>
       <p>{t("capQueueSettingsHint")}</p>
-      <section aria-label={t("capRecoveryAria")} className="space-y-2 rounded border p-3">
-        <h3 className="font-semibold">{t("capRecoveryTitle")}</h3>
-        <p>{t("capRecoveryIntro")}</p>
-        {saved && <p>{t("capRecoverySavedPhotos", { count: saved.photos.length })}</p>}
-        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? t("capRecoveryCurrent") : t("capRecoveryUnsaved")}</p>}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>{t("capSaveQueue")}</Button>
-          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? t("capReplaceFromSaved") : t("capRestoreSaved")}</Button>
-          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>{t("capForgetSaved")}</Button>
-        </div>
-        <p>{t("capRestoreHint")}</p>
-        {recovering && <p role="status">{t("capCheckingRecovery")}</p>}
-        {recoveryMessage && <p role="status" className="break-words">{recoveryMessage}</p>}
-      </section>
       <button
         type="button"
         disabled={!canPick}
-        className="w-full rounded-xl border-2 border-dashed p-6 disabled:opacity-50"
+        className="group flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/[0.03] p-8 py-8! text-center transition-colors hover:border-primary hover:bg-primary/[0.07] disabled:opacity-50"
         onClick={() => input.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -416,7 +403,10 @@ export function CaptureUploadQueue({
           void pick(Array.from(e.dataTransfer.files));
         }}
       >
-        {t("capChooseOrDrop")}
+        <span className="grid size-12 place-items-center rounded-2xl heat-gradient text-white shadow-[0_10px_28px_-12px_var(--heat-2)] transition-transform group-hover:scale-105" aria-hidden>
+          <ImagePlus className="size-6" />
+        </span>
+        <span className="text-base font-semibold text-foreground">{t("capChooseOrDrop")}</span>
       </button>
       <input
         ref={input}
@@ -438,6 +428,20 @@ export function CaptureUploadQueue({
         </p>
       )}
       {picking && <p role="status">{t("capCheckingFiles")}</p>}
+      <section aria-label={t("capRecoveryAria")} className="space-y-2 rounded-xl border border-dashed bg-muted/30 p-3 text-[0.8rem] text-muted-foreground [&_h3]:text-foreground">
+        <h3 className="font-semibold">{t("capRecoveryTitle")}</h3>
+        <p>{t("capRecoveryIntro")}</p>
+        {saved && <p>{t("capRecoverySavedPhotos", { count: saved.photos.length })}</p>}
+        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? t("capRecoveryCurrent") : t("capRecoveryUnsaved")}</p>}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>{t("capSaveQueue")}</Button>
+          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? t("capReplaceFromSaved") : t("capRestoreSaved")}</Button>
+          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>{t("capForgetSaved")}</Button>
+        </div>
+        <p>{t("capRestoreHint")}</p>
+        {recovering && <p role="status">{t("capCheckingRecovery")}</p>}
+        {recoveryMessage && <p role="status" className="break-words">{recoveryMessage}</p>}
+      </section>
       {messages.length > 0 && (
         <ul role="alert" className="max-h-32 overflow-auto">
           {messages.map((m, i) => (

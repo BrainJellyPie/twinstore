@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Shelf capture leads with the photo drop zone: a large target with an icon
+  sits right under the settings, the browser recovery copy moves below it as
+  a quieter box, and the settings use the app's field style.
 - Easier to get around: the Floor, Area, Capture, Market and Online tabs no
   longer go dead on the home and settings pages — they open the store used
   last (or the only store); on a phone the top bar labels each icon; and the
