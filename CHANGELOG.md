@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 — Online stores you can see, style and design by asking
+
 - Try a shelf test online: a shelf test's report can make a variant of an
   online store from its changes, like an A/B variant. A move to another shelf
   height now has a web counterpart: an eye-level (or higher) shelf puts the
@@ -38,8 +40,6 @@
 - Keep the stores chosen for an online run in sight: they are listed together
   above the store list, which now scrolls on its own when a project has many
   stores, so a comparison opened from another tab shows what it compares.
-
-## 0.6.0 — Online stores you can see, style and design by asking
 
 - Ask for a web shop change from the command bar: a request such as "make the
   web shop look premium" now opens the online store's designer, where **Design
