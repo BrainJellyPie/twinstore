@@ -95,7 +95,7 @@ images side by side (A to D) and answer a short standard questionnaire. From the
 Use [] for unspecified images, age_groups and genders, and empty strings for unspecified context and rationale.
 Copy the lowercase question IDs exactly, including underscores. Use age labels 10s, 20s, 30s, 40s, 50s, 60s+
 and gender labels Male, Female exactly as written.
-Use null only when reference_price is not given.
+Use null only when reference_price is not given. Use 0 for an explicitly free offer.
 When several shelf offers are listed for an image, use a reference price only when the question identifies the offer
 or states a price; otherwise leave it null. Do not choose between different offers by their listing order.
 Write in English."""
@@ -159,7 +159,7 @@ def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str)
     zero = currency.upper() in ZERO_DECIMAL
     price = draft.reference_price
     reference: int | None = None
-    if price is not None and price > 0:
+    if price is not None:
         if not isfinite(price):
             warnings.append("The reference price is not finite; it was left out.")
         else:
@@ -168,7 +168,7 @@ def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str)
                 warnings.append("The reference price exceeds the safe integer limit; it was left out.")
             else:
                 rounded = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                if rounded == 0:
+                if rounded == 0 and price > 0:
                     warnings.append(f"The reference price rounds to zero in {currency.upper()}; it was left out.")
                 else:
                     reference = rounded
