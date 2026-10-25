@@ -346,3 +346,14 @@ it("keeps the design conversation when the store is saved", async () => {
   await waitFor(() => expect(screen.getByRole("radio", { name: /Minimal/ }).textContent).toContain("In use"));
   expect(screen.getByText("Minimal it is.")).toBeTruthy();
 });
+
+it("draws the unsaved design once typing settles, not on every key", async () => {
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  mount();
+  const hero = await screen.findByRole("textbox", { name: "Banner headline" });
+  for (const text of ["N", "Ne", "New", "New in"]) fireEvent.change(hero, { target: { value: text } });
+  await waitFor(() => expect(online.draftPreview).toHaveBeenCalled());
+  await new Promise((r) => setTimeout(r, 500));
+  expect(online.draftPreview).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(online.draftPreview).mock.calls[0]![2].hero_text).toBe("New in");
+});

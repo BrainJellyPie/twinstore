@@ -58,10 +58,16 @@ export function DesignChat({ projectId, site, options, onOptions, turns, onTurns
     },
     onError: (_e, owner) => setText((current) => current || owner),
   });
+  // Typing in the designer's fields changes the draft on every key; draw the preview once it settles.
+  const [settled, setSettled] = useState(options);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(options), 400);
+    return () => window.clearTimeout(timer);
+  }, [options]);
   const preview = useQuery({
-    queryKey: onlineKeys.draftPreview(projectId, site.id, options, device),
-    queryFn: ({ signal }) => draftPreview(projectId, site.id, options, device, signal),
-    enabled: edited && view === "after",
+    queryKey: onlineKeys.draftPreview(projectId, site.id, settled, device),
+    queryFn: ({ signal }) => draftPreview(projectId, site.id, settled, device, signal),
+    enabled: edited && view === "after" && JSON.stringify(settled) !== JSON.stringify(site.options),
     staleTime: Infinity,
   });
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [turns.length, ask.isPending]);
