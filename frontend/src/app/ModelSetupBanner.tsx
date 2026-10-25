@@ -80,7 +80,7 @@ export function ModelSetupBanner() {
               <p className="break-words text-xs leading-relaxed text-muted-foreground">{data.warning}</p>
               <div className="flex flex-wrap items-center gap-2">
                 {(state === "off" || failed) && (
-                  <Button size="sm" variant="outline" onClick={() => start.mutate()} disabled={start.isPending}>
+                  <Button size="sm" variant="outline" className="h-auto min-h-8 max-w-full py-1.5 whitespace-normal" onClick={() => start.mutate()} disabled={start.isPending}>
                     <Cpu className="size-3.5" aria-hidden /> {start.isPending ? t("starting") : failed ? t("retryLocal")
                       : data.local.downloaded === false ? t("downloadLocal", { size: data.plan.model.download_gb }) : t("startLocal")}
                   </Button>

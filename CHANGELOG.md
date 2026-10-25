@@ -4,6 +4,10 @@
 
 ## 0.7.0 — The same customers in both twins, and answers that become tests
 
+- Nothing is cut off on a 360 px phone: the tab row fits in English and
+  Korean and scrolls sideways in longer languages with the current tab kept
+  in view (the last tab used to fall off the screen), and the local model's
+  download buttons wrap instead of running past their card.
 - The online report on a phone: the run's title takes the whole row (it was
   squeezed beside the action buttons into one word per line) and the shopper
   cards are one swipeable row, which takes about 3,000 px off the page.
