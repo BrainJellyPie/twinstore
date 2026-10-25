@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exclude empty normalized names from shelf-photo SKU matching. Cleared or
+  punctuation-only labels can no longer inherit an unrelated existing SKU or
+  its price, including through the generic Unknown product display name.
+  Other recognized products in the same capture still match normally.
+
 - Accept unique case and surrounding-whitespace variants of the offered survey
   preference letters. A lowercase selection no longer discards valid ratings
   from the same respondent; missing, multiple and unoffered choices remain invalid.

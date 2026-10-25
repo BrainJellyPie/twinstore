@@ -155,7 +155,9 @@ def match_store_skus(store: Store, result: CaptureResult, report: PlacementRepor
     known: dict[str, list[SlotItem]] = {}
     for _, slot in store.all_slots:
         for entry in slot.items:
-            known.setdefault(normalize_text(entry.name), []).append(entry)
+            key = normalize_text(entry.name)
+            if key:
+                known.setdefault(key, []).append(entry)
     if not known:
         return result
     names = list(known)
@@ -164,7 +166,7 @@ def match_store_skus(store: Store, result: CaptureResult, report: PlacementRepor
     ambiguous = 0
     uncertain_prices = 0
     for item in result.items:
-        if not item.labeled:
+        if not item.labeled or not normalize_text(f"{item.brand} {item.name}"):
             items.append(item)
             continue
         key = normalize_text(display_name(item))
