@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Count sponsored listing tiles within the first page's product limit so large
+  text and cookie controls remain visible. Continue later pages without skipping
+  or repeating organic results.
+
 - Omit new shopper-switch claims from older saved reports that have no segment
   analysis, instead of presenting their compatibility defaults as measured zeros.
 

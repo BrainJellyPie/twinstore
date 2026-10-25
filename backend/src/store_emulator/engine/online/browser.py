@@ -403,8 +403,9 @@ def _popular(site: OnlineSite, exclude: set[str] | None = None, limit: int = _HO
 def _ad_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, placement: AdPlacement, title: str,
              keep: set[str] | None = None, exclude: str = "") -> Grid | None:
     """A sponsored row of one placement's ads (only products in `keep`, when given)."""
+    limit = min(_HOME_ROW, site.options.products_per_page - 1) if placement == "sponsored_listing" else _HOME_ROW
     ads = [ad for ad in active_ads(site, placement)
-           if ad.product_id != exclude and (keep is None or ad.product_id in keep)][:_HOME_ROW]
+           if ad.product_id != exclude and (keep is None or ad.product_id in keep)][:limit]
     cards = tuple(card for ad in ads if (product := site.product(ad.product_id)) is not None
                   for card in _cards(site, state, [product], ctl, ad_id=ad.id))
     if not cards:
@@ -415,15 +416,19 @@ def _ad_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, placement: Ad
 def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str,
                   products: list[OnlineProduct] | None = None) -> Grid:
     ref = state.at
+    per = site.options.products_per_page
+    reserved = 0
     if products is None:
         products, ads = _with_sponsored(site, listing(site, ref))
+        ids = {p.id for p in products}
+        reserved = min(_HOME_ROW, per - 1, sum(ad.product_id in ids for ad in active_ads(site, "sponsored_listing")))
     else:
         products = sort_products(products, ref.sort or site.options.default_sort)
         ads = set[str]()
-    per = site.options.products_per_page
-    pages = page_count(site, len(products))
+    # First-page ads consume slots; subsequent pages resume at the first unshown organic result.
+    pages = page_count(site, len(products) + reserved)
     index = min(ref.page_index, pages - 1)
-    shown = products[index * per:(index + 1) * per]
+    shown = products[max(0, index * per - reserved):(index + 1) * per - reserved]
     current = ref.sort or site.options.default_sort
     controls: list[Control] = []
     if len(products) > 1:
