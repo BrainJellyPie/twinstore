@@ -5,7 +5,7 @@ answers only from it and lists the figures it used, so every claim can be checke
 sheet cannot answer gets "the run does not show that" and a pointer to the analysis that would.
 """
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
@@ -92,9 +92,10 @@ def run_facts(customers: Sequence[CustomerResult], personas: Mapping[str, Person
     bought: dict[str, int] = defaultdict(int)
     rack_rev: dict[str, int] = defaultdict(int)
     rack_units: dict[str, int] = defaultdict(int)
-    prod_rev: dict[str, int] = defaultdict(int)
-    prod_units: dict[str, int] = defaultdict(int)
-    prod_impulse: dict[str, int] = defaultdict(int)
+    prod_rev: dict[tuple[str, str], int] = defaultdict(int)
+    prod_units: dict[tuple[str, str], int] = defaultdict(int)
+    prod_impulse: dict[tuple[str, str], int] = defaultdict(int)
+    prod_names: dict[tuple[str, str], str] = {}
     for c in customers:
         bought_here = {e.target_rack for e in c.purchases if e.target_rack}
         # A stop is a browse or a buy at the shelf (planned picks can skip the browse step).
@@ -107,11 +108,12 @@ def run_facts(customers: Sequence[CustomerResult], personas: Mapping[str, Person
             if e.target_rack:
                 rack_rev[e.target_rack] += line
                 rack_units[e.target_rack] += e.quantity
-            name = e.product_name or e.product_sku
-            prod_rev[name] += line
-            prod_units[name] += e.quantity
+            product = ("sku", e.product_sku) if e.product_sku else ("name", e.product_name)
+            prod_names.setdefault(product, e.product_name or e.product_sku)
+            prod_rev[product] += line
+            prod_units[product] += e.quantity
             if e.origin == "impulse":
-                prod_impulse[name] += e.quantity
+                prod_impulse[product] += e.quantity
     stocked = {r.id for r in store.product_racks}
     shelf_ids = sorted((set(stops) | set(rack_rev)) & stocked, key=lambda r: -rack_rev.get(r, 0))[:TOP]
     if shelf_ids:
@@ -120,8 +122,11 @@ def run_facts(customers: Sequence[CustomerResult], personas: Mapping[str, Person
             f"{bought.get(r, 0) / max(1, stops.get(r, 0)):.0%}" for r in shelf_ids))
     top_products = sorted(prod_rev, key=lambda k: -prod_rev[k])[:TOP]
     if top_products:
+        name_counts = Counter(prod_names.values())
+        labels = {key: (f"{name} (SKU {key[1] if key[0] == 'sku' else 'unavailable'})"
+                        if name_counts[name] > 1 else name) for key, name in prod_names.items()}
         lines.append("Products by revenue (units / revenue / impulse units): " + "; ".join(
-            f"{k} {prod_units[k]} / {money(prod_rev[k])} / {prod_impulse.get(k, 0)}" for k in top_products))
+            f"{labels[k]} {prod_units[k]} / {money(prod_rev[k])} / {prod_impulse.get(k, 0)}" for k in top_products))
 
     for label, key in (("age group", "age_group"), ("gender", "gender")):
         groups: dict[str, list[CustomerResult]] = defaultdict(list)

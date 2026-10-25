@@ -39,6 +39,30 @@ def test_the_fact_sheet_is_the_runs_own_numbers(client):
     assert all(0 <= r <= 100 for r in rates)  # buys count as stops, so no shelf converts above 100 %
 
 
+def test_same_name_products_remain_distinct_in_facts_and_saved_answers(client, monkeypatch):
+    from store_emulator.application import run_analyst
+    from tests.engine.test_analyst_product_identity import purchases
+    from tests.engine.test_shopper_filter_boundaries import STORE
+
+    customers = purchases()
+    monkeypatch.setattr(run_analyst, "_load", lambda *args: ({"p": customers[0]}, {}, STORE, "USD"))
+    expected = ["Milk (SKU regular) 3 / $4.00 / 1", "Milk (SKU oat) 1 / $5.00 / 1"]
+
+    class Analyst:
+        async def generate_structured_async(self, schema, system, user, **kwargs):
+            assert all(line in user for line in expected)
+            return schema.model_validate({"answer": "The oat SKU earned more.", "figures": expected})
+
+    monkeypatch.setattr(run_analyst, "assistive_client", lambda *args: Analyst())
+    url = f"/api/projects/{PID}/runs/{RUN}/analyst"
+    sheet = client.get(url + "/facts").text
+    assert all(line in sheet for line in expected) and "Milk 4 / $9.00" not in sheet
+    response = client.post(url, json={"question": "Compare the two Milk products."})
+    assert response.status_code == 200, response.text
+    assert response.json()["messages"][-1]["figures"] == expected
+    assert client.get(url).json()["messages"][-1]["figures"] == expected
+
+
 def test_questions_are_answered_from_the_sheet_and_kept(client, monkeypatch):
     from store_emulator.application import run_analyst
     fake = _Analyst()

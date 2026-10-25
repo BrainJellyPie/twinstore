@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Aggregate analyst product facts by exact SKU so identical display names do
+  not combine different products' sales, and renamed records of one SKU stay
+  together. Ambiguous names include IDs in the model's facts and citations.
+
 - Remove duplicate respondent quotations before large study reports reach the
   commentary size cap, preserving aggregates and interpretation caveats.
   Responses still feed theme coding; smaller reports retain their quotations.
