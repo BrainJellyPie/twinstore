@@ -2,7 +2,7 @@
  * A shopper's visit played back as it happened: each page loads in a browser window, the view scrolls to what the
  * shopper picked, the cursor moves there and clicks, and their thought appears, from arrival to the end of the visit.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageCircle, MousePointer2, Pause, Play, RotateCcw, Search } from "lucide-react";
 import { getPlayback, onlineKeys, stepScreenshotUrl, type SessionView } from "@/shared/api/online";
@@ -46,17 +46,19 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
   const duration = (phase === "read" ? Math.min(4500, 1300 + 25 * reading) : PHASE_MS[phase]) / speed;
   const ended = last && phase === "read" && !playing;
 
+  // An effect event: a parent re-rendering (another player beside this one) must not restart the phase timer.
+  const advance = useEffectEvent(() => {
+    if (phase === "arrive") setAt({ index, phase: box ? "aim" : "read" });
+    else if (phase === "aim") setAt({ index, phase: "click" });
+    else if (phase === "click") setAt({ index, phase: "read" });
+    else if (last) setPlaying(false);
+    else onIndex(index + 1);
+  });
   useEffect(() => {
     if (!playing || !ready) return;
-    const timer = window.setTimeout(() => {
-      if (phase === "arrive") setAt({ index, phase: box ? "aim" : "read" });
-      else if (phase === "aim") setAt({ index, phase: "click" });
-      else if (phase === "click") setAt({ index, phase: "read" });
-      else if (last) setPlaying(false);
-      else onIndex(index + 1);
-    }, duration);
+    const timer = window.setTimeout(advance, duration);
     return () => window.clearTimeout(timer);
-  }, [playing, ready, phase, index, box, last, duration, onIndex]);
+  }, [playing, ready, phase, index, duration]);
 
   const next = session.steps[index + 1];
   useEffect(() => {
@@ -77,8 +79,9 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
   const move = `${PHASE_MS.aim / speed}ms`;
   const restart = () => { setAt({ index: 0, phase: "arrive" }); onIndex(0); setPlaying(true); };
   const choice = step.choice;
+  // The localized action first; the option's own (server-written) label below it.
   const said = choice
-    ? step.search_text ? t("onPlaySearch", { text: step.search_text }) : `${t(ACTION_LABELS[choice.kind])}: ${choice.label}`
+    ? step.search_text ? t("onPlaySearch", { text: step.search_text }) : t(ACTION_LABELS[choice.kind])
     : t(OUTCOME_LABELS[session.outcome]);
 
   return (
@@ -156,8 +159,10 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
           <div key={`${index}:${phase === "read"}`} className="space-y-1 animate-in fade-in">
             <p className="flex items-center gap-1 font-medium">
               {step.search_text ? <Search className="size-3.5 text-primary" aria-hidden /> : <MousePointer2 className="size-3.5 text-primary" aria-hidden />}
+              {choice && <span className="rounded bg-rose-600 px-1.5 font-mono text-[0.7rem] font-bold text-white">{choice.number}</span>}
               {said}
             </p>
+            {choice && !step.search_text && <p className="truncate text-muted-foreground" title={choice.label}>{choice.label}</p>}
             {step.thought && (phase === "read" || phase === "click") && (
               <p className="flex items-start gap-1 italic"><MessageCircle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />“{step.thought}”</p>
             )}

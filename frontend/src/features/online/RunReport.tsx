@@ -89,7 +89,7 @@ export function RunReport({ projectId, runId, onDeleted }: { projectId: string; 
 
 function Report({ projectId, result }: { projectId: string; result: OnlineRunResult }) {
   const { t } = useI18n();
-  const [journey, setJourney] = useState<{ variant: number; shopper: string; play?: boolean } | null>(null);
+  const [journey, setJourney] = useState<{ variant: number; shopper: string; play?: boolean; compare?: boolean } | null>(null);
   const code = currencyCode(result.currency);
   const money = (x: number) => formatMoney(Math.round(x), code);
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
@@ -168,7 +168,8 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
         </Section>
       )}
 
-      <WhoChanged result={result} money={money} onReplay={(variant, shopper) => setJourney({ variant, shopper })} />
+      <WhoChanged result={result} money={money} onReplay={(variant, shopper) => setJourney({ variant, shopper })}
+        onCompare={(variant, shopper) => setJourney({ variant, shopper, compare: true })} />
 
       <div className="grid gap-3 xl:grid-cols-2">
         <Section title={t("onFunnel")}>
@@ -293,6 +294,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
       {journey && (
         <JourneyViewer projectId={projectId} runId={result.run_id} variant={journey.variant} shopperId={journey.shopper}
           variants={v.map((s) => s.site_name)} rival={result.rival_name ?? ""} currency={result.currency} play={journey.play}
+          compare={journey.compare}
           onVariant={(variant) => setJourney({ ...journey, variant })} onClose={() => setJourney(null)} />
       )}
     </>

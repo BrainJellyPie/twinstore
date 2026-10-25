@@ -2,6 +2,7 @@
 // the shoppers whose visit ended differently in the two stores, with where and why each visit ended.
 
 import { useState } from "react";
+import { Columns2 } from "lucide-react";
 
 import type { OnlineRunResult, SegmentDimension, SwitchRow } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -18,8 +19,9 @@ const DIMENSIONS: { id: SegmentDimension; label: MessageKey }[] = [
 ];
 const FIRST_SWITCHES = 12;
 
-export function WhoChanged({ result, money, onReplay }: {
+export function WhoChanged({ result, money, onReplay, onCompare }: {
   result: OnlineRunResult; money: (x: number) => string; onReplay: (variant: number, shopperId: string) => void;
+  onCompare: (variant: number, shopperId: string) => void;
 }) {
   const { t } = useI18n();
   const [dimension, setDimension] = useState<SegmentDimension>("mission");
@@ -93,7 +95,12 @@ export function WhoChanged({ result, money, onReplay }: {
                 <ul className="space-y-1">
                   {shown.map((r) => (
                     <li key={r.shopper_id} className="grid gap-1 rounded-lg border p-2 text-xs sm:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)]">
-                      <span className="font-medium">{names.get(r.shopper_id) ?? r.shopper_id}</span>
+                      <span className="flex flex-col items-start gap-0.5">
+                        <span className="font-medium">{names.get(r.shopper_id) ?? r.shopper_id}</span>
+                        <Button variant="outline" size="xs" onClick={() => onCompare(ci + 1, r.shopper_id)} title={t("onSideHint")}>
+                          <Columns2 aria-hidden /> {t("onSideBySide")}
+                        </Button>
+                      </span>
                       {([[0, r.control_outcome, r.control_total, r.control_exit, r.control_thought],
                         [ci + 1, r.variant_outcome, r.variant_total, r.variant_exit, r.variant_thought]] as const).map(([variant, outcome, total, page, thought]) => (
                         <div key={variant} className="min-w-0">

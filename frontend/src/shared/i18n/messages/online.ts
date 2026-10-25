@@ -621,4 +621,10 @@ export const onlineMessages = {
   onWatchShopper: ["Shopper", "쇼핑객", "购物者", "買い物客", "Comprador", "Acheteur"],
   onWatchStore: ["Store", "스토어", "商店", "ストア", "Tienda", "Boutique"],
   onPlayRow: ["Play the visit of {shopper} to {store}", "{shopper}의 {store} 방문 재생", "播放 {shopper} 在 {store} 的访问", "{shopper} の {store} への訪問を再生", "Reproducir la visita de {shopper} a {store}", "Lire la visite de {shopper} chez {store}"],
+  onSideBySide: ["Side by side", "나란히 보기", "并排查看", "並べて見る", "Lado a lado", "Côte à côte"],
+  onSideHint: ["Play this shopper’s visits to the control and this store together, to see where the change made them part ways", "이 쇼핑객의 기준 스토어 방문과 이 스토어 방문을 함께 재생해, 변경 때문에 어디서 갈라지는지 봅니다", "同时播放该购物者在对照商店和本商店的访问，看看改动让他们在哪里分道扬镳", "この買い物客の基準ストアとこのストアへの訪問を同時に再生し、変更でどこから分かれたかを見ます", "Reproduce juntas las visitas de este comprador a la tienda de control y a esta, para ver dónde el cambio las separa", "Lire ensemble les visites de cet acheteur à la boutique témoin et à celle-ci, pour voir où le changement les fait diverger"],
+  onSideSame: ["The two visits are the same from start to finish", "두 방문이 처음부터 끝까지 같습니다", "两次访问从头到尾完全相同", "2つの訪問は最初から最後まで同じです", "Las dos visitas son iguales de principio a fin", "Les deux visites sont identiques du début à la fin"],
+  onSideParts: ["The visits part ways at step {step}", "{step}단계에서 두 방문이 갈라집니다", "两次访问在第 {step} 步分开", "ステップ {step} で訪問が分かれます", "Las visitas se separan en el paso {step}", "Les visites divergent à l’étape {step}"],
+  onSideJump: ["Play from just before", "직전부터 재생", "从分开前一步播放", "直前から再生", "Reproducir desde justo antes", "Lire depuis juste avant"],
+  onSideApart: ["Different from here", "여기서부터 다름", "从这里开始不同", "ここから違う", "Distinta desde aquí", "Différente à partir d’ici"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

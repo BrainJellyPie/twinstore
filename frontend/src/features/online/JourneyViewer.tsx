@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Film, ListOrdered, Mail, MessageCircle, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Columns2, Film, ListOrdered, Mail, MessageCircle, Play } from "lucide-react";
 
 import { getSession, journeyGifUrl, onlineKeys, stepScreenshotUrl, type SessionView } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -15,15 +15,21 @@ import { personaLabel } from "@/shared/i18n/personaLabels";
 
 import { JourneyPlayer } from "./JourneyPlayer";
 import { ShopperChat } from "./ShopperChat";
+import { SideBySide } from "./SideBySide";
 import { ACTION_LABELS, ARRIVAL_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
 
 /** `rival`: the run's rival shop ("" without one); its visits are the store index after the variants. `play`: open on
- * the animated playback instead of the step-by-step view. */
-export function JourneyViewer({ projectId, runId, variant, shopperId, variants, rival = "", currency, play = false, onVariant, onClose }: {
+ * the animated playback instead of the step-by-step view; `compare`: on the control and this store played side by
+ * side. */
+export function JourneyViewer({ projectId, runId, variant, shopperId, variants, rival = "", currency, play = false, compare = false,
+  onVariant, onClose }: {
   projectId: string; runId: string; variant: number; shopperId: string; variants: string[]; rival?: string; currency: string;
-  play?: boolean; onVariant: (variant: number) => void; onClose: () => void;
+  play?: boolean; compare?: boolean; onVariant: (variant: number) => void; onClose: () => void;
 }) {
   const { t } = useI18n();
+  const [sideBySide, setSideBySide] = useState(compare && variants.length > 1);
+  const pairable = variants.length > 1 && variant < variants.length;
+  const code = currencyCode(currency);
   const session = useQuery({
     queryKey: onlineKeys.session(projectId, runId, variant, shopperId),
     queryFn: ({ signal }) => getSession(projectId, runId, variant, shopperId, signal),
@@ -36,19 +42,34 @@ export function JourneyViewer({ projectId, runId, variant, shopperId, variants, 
           <DialogDescription>{t("onJourneyHint")}</DialogDescription>
         </DialogHeader>
         {(variants.length > 1 || variant >= variants.length) && (
-          <div className="inline-flex flex-wrap rounded-md border p-0.5 text-xs" role="group" aria-label={t("onRunStores")}>
-            {/* The rival tab shows only while its visit is open: not every shopper went there. */}
-            {[...variants, ...(variant >= variants.length ? [t("onRivalTab", { rival })] : [])].map((name, i) => (
-              <button key={i} type="button" aria-pressed={variant === i} onClick={() => onVariant(i)}
-                className={cn("rounded px-2 py-0.5", variant === i ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{name}</button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex flex-wrap rounded-md border p-0.5 text-xs" role="group" aria-label={t("onRunStores")}>
+              {/* The rival tab shows only while its visit is open: not every shopper went there. */}
+              {[...variants, ...(variant >= variants.length ? [t("onRivalTab", { rival })] : [])].map((name, i) => (
+                <button key={i} type="button" aria-pressed={variant === i} onClick={() => onVariant(i)}
+                  className={cn("rounded px-2 py-0.5", variant === i ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{name}</button>
+              ))}
+            </div>
+            {pairable && (
+              <Button size="xs" variant={sideBySide ? "default" : "outline"} aria-pressed={sideBySide}
+                onClick={() => setSideBySide((x) => !x)} title={t("onSideHint")}>
+                <Columns2 aria-hidden /> {t("onSideBySide")}
+              </Button>
+            )}
           </div>
         )}
-        {session.isPending && <p className="text-sm text-muted-foreground">{t("studioLoading")}</p>}
-        {session.isError && <p role="alert" className="text-sm text-destructive">{session.error.message}</p>}
-        {session.data && (
-          <Journey key={`${variant}:${shopperId}`} projectId={projectId} runId={runId} view={session.data} currency={currency}
-            rival={rival} play={play} onRival={() => onVariant(variants.length)} />
+        {sideBySide && pairable ? (
+          <SideBySide key={variant} projectId={projectId} runId={runId} shopperId={shopperId} stores={[0, variant || 1]}
+            names={variants} money={(x) => formatMoney(x, code)} />
+        ) : (
+          <>
+            {session.isPending && <p className="text-sm text-muted-foreground">{t("studioLoading")}</p>}
+            {session.isError && <p role="alert" className="text-sm text-destructive">{session.error.message}</p>}
+            {session.data && (
+              <Journey key={`${variant}:${shopperId}`} projectId={projectId} runId={runId} view={session.data} currency={currency}
+                rival={rival} play={play} onRival={() => onVariant(variants.length)} />
+            )}
+          </>
         )}
       </DialogContent>
     </Dialog>

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Watch one shopper's visits to the control and a variant side by side ("Side
+  by side" in a replay or next to each shopper whose visit ended differently):
+  both play together on the same shopper and random draws, the step where they
+  part ways is named, and one click plays both from just before it.
+
 - Play back any online shopper's visit as an animation, from arrival to the end
   of the visit. Pick a shopper and store under "Watch a shopper's visit" (or
   the play button on a row, or "Play the visit" in a replay): each page loads
