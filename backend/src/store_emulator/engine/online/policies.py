@@ -26,6 +26,7 @@ from store_emulator.domain.online import (
     OnlineSite,
     PageKind,
     PaymentMethod,
+    ShopperMission,
     StepSource,
 )
 
@@ -183,6 +184,18 @@ def _as_seen(card: Card, cards: list[Card], shopper: OnlineShopper, view: StepVi
     if ad is None or ad is card:
         return card
     return ad if _keyed(view, "ad", ad.open.action.ad_id) < _ad_discount(shopper) else card
+
+
+# Share of shoppers a reminder email about the cart they left brings back, by mission: most reminders go unopened or
+# unclicked.
+_REMINDER_RETURN: dict[ShopperMission, float] = {"purchase": 0.16, "replenish": 0.18, "gift": 0.14, "compare": 0.1,
+                                                 "deal_hunt": 0.1, "browse": 0.05}
+
+
+def comes_back(shopper: OnlineShopper, percent: int) -> float:
+    """Chance that the cart reminder email brings this shopper back; a discount pulls price-sensitive shoppers most.
+    Rule and model shoppers alike: the email is not a page they see."""
+    return min(0.6, _REMINDER_RETURN[shopper.mission] * (1 + shopper.price_sensitivity * percent / 10))
 
 
 def _goal_link(page: Page, shopper: OnlineShopper) -> Control | None:

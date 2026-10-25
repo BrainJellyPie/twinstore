@@ -78,6 +78,7 @@ export interface SiteOptions {
   coupon_percent: number; coupon_public: boolean; guest_checkout: boolean; checkout_flow: "one_page" | "multi_step";
   payment_methods: PaymentMethod[]; one_click_buy: boolean; service_fee: number; preselected_addon_percent: number;
   return_policy: "free_30" | "paid" | "hidden"; trust_badges: boolean; page_load_ms: number;
+  cart_reminder: boolean; cart_reminder_percent: number;
 }
 
 export interface AdCampaign {
@@ -103,11 +104,11 @@ export interface PageRef {
 }
 
 export interface BrowserState {
-  at: PageRef; history: PageRef[]; overlay: "none" | "menu" | "welcome"; cart: { product_id: string; quantity: number }[];
+  at: PageRef; history: PageRef[]; overlay: "none" | "menu" | "welcome" | "promo"; cart: { product_id: string; quantity: number }[];
   wishlist: string[]; viewed: string[]; reviews_open: boolean; welcome_seen: boolean; cookies_answered: boolean;
   coupon_known: boolean; coupon_applied: boolean; signed_in: boolean; guest: boolean; address_added: boolean;
   payment_method: PaymentMethod | null; addon_removed: boolean; large_text: boolean; text_size_changed?: boolean;
-  device: Device; notice: string;
+  device: Device; reminder_percent?: number; notice: string;
   order_id: string; order: { product_id: string; quantity: number }[]; order_total: number;
 }
 
@@ -143,7 +144,8 @@ export interface SessionResult {
   order: { product_id: string; name: string; category_id: string; quantity: number; price: number }[];
   subtotal: number; order_total: number; seconds: number; reached: FunnelStage[]; viewed_products: string[];
   searches: { query: string; results: number; step: number }[]; exit_page: PageKind; exit_thought: string;
-  model_requests: number; fallbacks: number; survey: ExitSurvey | null; addon_paid: number;
+  model_requests: number; fallbacks: number; survey: ExitSurvey | null; addon_paid: number; discount: number;
+  reminded: boolean; returned_at: number | null;
 }
 
 export interface OnlineRunRequest {
@@ -177,6 +179,8 @@ export interface SurveySummary {
   improvements: string[];
 }
 
+export interface RecoveryRow { emails: number; returned: number; recovered: number; revenue: number; discount: number }
+
 export interface VariantSummary {
   site_id: string; site_name: string; sessions: number; purchases: number; conversion: number; revenue: number;
   aov: number; revenue_per_session: number; bounce_rate: number; cart_abandonment: number; add_to_cart_rate: number;
@@ -184,6 +188,7 @@ export interface VariantSummary {
   outcomes: Partial<Record<SessionOutcome, number>>; actions: Partial<Record<ActionKind, number>>;
   funnel: FunnelRow[]; exits: { page: PageKind; sessions: number }[]; segments: SegmentRow[]; products: ProductRow[];
   searches: SearchTermRow[]; clicks: ClickPoint[]; frictions: FrictionRow[]; survey: SurveySummary | null; ads: AdRow[];
+  recovery: RecoveryRow | null;
 }
 
 export type DeltaMetric = "conversion" | "revenue_per_session" | "add_to_cart_rate" | "steps" | "seconds" | "satisfaction" | "recommend";

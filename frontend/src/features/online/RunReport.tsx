@@ -199,6 +199,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
       </div>
 
       <Ads result={result} money={money} pct={pct} />
+      <Recovery variants={v} money={money} pct={pct} />
       <Frictions variants={v} money={money} pct={pct} />
       <Surveys variants={v} pct={pct} />
       <Segments result={result} money={money} pct={pct} />
@@ -348,6 +349,42 @@ function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: numbe
           )))}
         </div>
       )}
+    </Section>
+  );
+}
+
+function Recovery({ variants, money, pct }: { variants: VariantSummary[]; money: (x: number) => string; pct: (x: number) => string }) {
+  const { t } = useI18n();
+  if (variants.every((s) => !s.recovery)) return null;
+  return (
+    <Section title={t("onRecovery")} hint={t("onRecoveryHint")}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-xs">
+          <thead><tr className="text-left text-muted-foreground">
+            <th className="font-medium">{t("onRecoveryStore")}</th><th className="font-medium">{t("onRecoveryEmails")}</th>
+            <th className="font-medium">{t("onRecoveryReturned")}</th><th className="font-medium">{t("onRecoveryRecovered")}</th>
+            <th className="font-medium">{t("onRecoveryRevenue")}</th><th className="font-medium">{t("onRecoveryDiscount")}</th>
+            <th className="font-medium">{t("onRecoveryPerEmail")}</th>
+          </tr></thead>
+          <tbody>
+            {variants.map((s) => (
+              <tr key={s.site_id} className="border-t">
+                <td className="py-1 pr-2 font-medium">{s.site_name}</td>
+                {s.recovery ? (
+                  <>
+                    <td className="tabular-nums">{s.recovery.emails}</td>
+                    <td className="tabular-nums">{s.recovery.returned} · {pct(s.recovery.emails ? s.recovery.returned / s.recovery.emails : 0)}</td>
+                    <td className="tabular-nums">{s.recovery.recovered} · {pct(s.recovery.emails ? s.recovery.recovered / s.recovery.emails : 0)}</td>
+                    <td className="tabular-nums">{money(s.recovery.revenue)}</td>
+                    <td className="tabular-nums">{money(s.recovery.discount)}</td>
+                    <td className="tabular-nums">{money(s.recovery.emails ? Math.round(s.recovery.revenue / s.recovery.emails) : 0)}</td>
+                  </>
+                ) : <td colSpan={6} className="text-muted-foreground">{t("onRecoveryOff")}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Section>
   );
 }

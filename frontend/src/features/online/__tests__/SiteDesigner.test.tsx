@@ -23,7 +23,7 @@ const source: online.OnlineSite = {
     cookie_banner: true, chat_widget: false, shipping_fee: 499, free_shipping_threshold: 3500, coupon_code: "",
     coupon_percent: 0, coupon_public: true, guest_checkout: true, checkout_flow: "multi_step",
     payment_methods: ["card"], one_click_buy: false, service_fee: 0, preselected_addon_percent: 0,
-    return_policy: "free_30", trust_badges: true, page_load_ms: 600,
+    return_policy: "free_30", trust_badges: true, page_load_ms: 600, cart_reminder: false, cart_reminder_percent: 0,
   },
   ads: [],
 };

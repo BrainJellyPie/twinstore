@@ -188,6 +188,8 @@ class SiteOptions(BaseModel):
     coupon_code: str = Field(default="", max_length=20)
     coupon_percent: int = Field(default=0, ge=0, le=90)
     coupon_public: bool = True  # code printed on the home banner; otherwise only the welcome popup gives it
+    cart_reminder: bool = False  # an email reminds shoppers who leave items in the cart; some come back to it
+    cart_reminder_percent: int = Field(default=0, ge=0, le=50)  # discount on the cart the reminder offers
     guest_checkout: bool = True  # False = shoppers must sign in or create an account
     checkout_flow: CheckoutFlow = "multi_step"
     payment_methods: list[PaymentMethod] = ["card", "paypal", "apple_pay"]
@@ -284,6 +286,7 @@ class BrowserState(BaseModel):
     large_text: bool = False
     text_size_changed: bool = False  # distinguish an explicit normal-size choice from the site's default
     device: Device = "desktop"
+    reminder_percent: int = 0  # discount from a cart reminder email (the better of it and a coupon applies)
     notice: str = ""  # one-line message on this page ("Added to cart")
     order_id: str = ""
     order: list[CartLine] = []  # what was bought, once the order is placed
@@ -399,6 +402,9 @@ class SessionResult(BaseModel):
     fallbacks: int = 0
     survey: ExitSurvey | None = None
     addon_paid: int = 0  # what a pre-ticked add-on the shopper left ticked cost them
+    discount: int = 0  # coupon or reminder discount on the order
+    reminded: bool = False  # left a cart and got the reminder email
+    returned_at: int | None = None  # first step of the visit the reminder brought them back for
 
 
 class OnlineRunRequest(BaseModel):
@@ -503,6 +509,15 @@ class AdLift(BaseModel):
     iroas: float | None  # revenue_diff / cost
 
 
+class RecoveryRow(BaseModel):
+    """What the cart reminder email did in one store variant."""
+    emails: int  # visits that left items in the cart and got the reminder
+    returned: int
+    recovered: int  # returns that ended in an order
+    revenue: int  # what the recovered orders paid
+    discount: int  # discount given on the recovered orders
+
+
 class FrictionRow(BaseModel):
     """How often one known friction point (or dark pattern) came up, and how many sessions ended right there."""
     code: FrictionCode
@@ -548,6 +563,7 @@ class VariantSummary(BaseModel):
     frictions: list[FrictionRow] = []
     survey: SurveySummary | None = None
     ads: list[AdRow] = []
+    recovery: RecoveryRow | None = None  # stores that send the cart reminder
 
 
 class PairedDelta(BaseModel):

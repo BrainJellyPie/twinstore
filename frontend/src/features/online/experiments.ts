@@ -45,6 +45,11 @@ export const QUICK_EXPERIMENTS: QuickExperiment[] = [
       return missing.length ? { payment_methods: [...o.payment_methods, ...missing] } : null;
     },
   },
+  { id: "cart_reminder", label: "onXpReminder", change: (o) => (o.cart_reminder ? null : { cart_reminder: true }) },
+  {
+    id: "reminder_discount", label: "onXpReminderDiscount",
+    change: (o) => (o.cart_reminder_percent ? null : { cart_reminder: true, cart_reminder_percent: 10 }),
+  },
   { id: "free_returns", label: "onXpFreeReturns", change: (o) => (o.return_policy !== "free_30" ? { return_policy: "free_30" } : null) },
   { id: "large_text", label: "onXpLargeText", change: (o) => (o.large_text ? null : { large_text: true }) },
   { id: "quick_add", label: "onXpQuickAdd", change: (o) => (o.quick_add ? null : { quick_add: true }) },
