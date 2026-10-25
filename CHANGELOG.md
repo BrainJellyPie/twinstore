@@ -33,6 +33,9 @@
 - Easier to read: no label in the app is smaller than about 11 px any more
   (badges, chart axes, the shopper stream, the phone tab labels), and the
   dark report header's secondary lines are brighter.
+- The command palette (Ctrl K) offers a store's pages from the home and
+  settings pages too, for the store opened last (named in the list); before,
+  "capture" or "area" found nothing off a store.
 - Back to work in one click: once there is a store, the home page opens with
   a **Continue where you left off** card for the store used last (or the
   latest changed), plus a **Your stores: N** link down to the list, so a

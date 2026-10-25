@@ -197,3 +197,22 @@ it("shows Quit only in the launcher and uses its action without navigation", () 
   state.launched = true; view.rerender(); fireEvent.click(screen.getByRole("option", { name: /Quit TwinStore/ }));
   expect(state.quit).toHaveBeenCalledOnce(); expect(state.navigate).not.toHaveBeenCalled();
 });
+
+it("offers the pages of the store opened last off a store's pages, under its name, and none for a deleted one", () => {
+  state.pathname = "/settings";
+  localStorage.setItem("twinstore.lastStore", "proj_pharmacy");
+  render(<CommandPalette />);
+  const input = screen.getByRole("combobox", { name: "Command" });
+  fireEvent.change(input, { target: { value: "capture" } });
+  const option = screen.getByRole("option", { name: /Shelf capture/ });
+  expect(screen.getByText("약국 Sakura", { selector: "[role=presentation], div, p, span" })).toBeTruthy();
+  fireEvent.click(option);
+  expect(state.navigate).toHaveBeenCalledWith({ to: "/capture/$pid", params: { pid: "proj_pharmacy" } });
+  cleanup();
+  useCommandPalette.setState({ open: true });
+  localStorage.setItem("twinstore.lastStore", "proj_deleted");
+  render(<CommandPalette />);
+  fireEvent.change(screen.getByRole("combobox", { name: "Command" }), { target: { value: "capture" } });
+  expect(screen.queryByRole("option", { name: /Shelf capture/ })).toBeNull();
+  localStorage.removeItem("twinstore.lastStore");
+});

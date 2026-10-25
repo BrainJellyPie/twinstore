@@ -39,7 +39,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 
 import { useCommandPalette } from "./commandPalette";
 import { quitLauncher, useLauncher } from "./launcher";
-import { projectIdFromPath } from "./paths";
+import { projectIdFromPath, rememberedStore } from "./paths";
 import { useTheme } from "./theme";
 
 interface Command {
@@ -105,14 +105,18 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
     });
     const go = (to: string, params?: Record<string, string>) => () => navigate({ to, params });
     const list: Command[] = [];
-    if (pid) {
-      list.push(
-        localize({ id: "floor", group: "commandThisStore", label: "commandFloor", hint: "commandFloorHint", icon: Store, run: go("/projects/$pid", { pid }) }),
-        localize({ id: "area", group: "commandThisStore", label: "neighborhood", hint: "commandAreaHint", icon: Map, run: go("/town/$pid", { pid }) }),
-        localize({ id: "capture", group: "commandThisStore", label: "shelfCapture", hint: "commandCaptureHint", icon: Camera, run: go("/capture/$pid", { pid }) }),
-        localize({ id: "marketing", group: "commandThisStore", label: "marketingStudio", hint: "commandMarketingHint", icon: Megaphone, run: go("/marketing/$pid", { pid }) }),
-        localize({ id: "online", group: "commandThisStore", label: "onlineStores", hint: "commandOnlineHint", icon: Globe2, run: go("/online/$pid", { pid }) }),
-      );
+    // Off a store's pages (home, settings) its pages are those of the store opened last, named in the group.
+    const storeId = pid ?? rememberedStore(projects);
+    if (storeId) {
+      const pages = [
+        localize({ id: "floor", group: "commandThisStore", label: "commandFloor", hint: "commandFloorHint", icon: Store, run: go("/projects/$pid", { pid: storeId }) }),
+        localize({ id: "area", group: "commandThisStore", label: "neighborhood", hint: "commandAreaHint", icon: Map, run: go("/town/$pid", { pid: storeId }) }),
+        localize({ id: "capture", group: "commandThisStore", label: "shelfCapture", hint: "commandCaptureHint", icon: Camera, run: go("/capture/$pid", { pid: storeId }) }),
+        localize({ id: "marketing", group: "commandThisStore", label: "marketingStudio", hint: "commandMarketingHint", icon: Megaphone, run: go("/marketing/$pid", { pid: storeId }) }),
+        localize({ id: "online", group: "commandThisStore", label: "onlineStores", hint: "commandOnlineHint", icon: Globe2, run: go("/online/$pid", { pid: storeId }) }),
+      ];
+      const name = pid ? null : projects?.find((p) => p.project_id === storeId)?.name;
+      list.push(...(name ? pages.map((page) => ({ ...page, group: name, aliases: `${page.aliases ?? ""} ${name}` })) : pages));
     }
     list.push(
       localize({ id: "home", group: "commandGoTo", label: "allStores", hint: "commandHomeHint", icon: LayoutGrid, run: go("/") }),
