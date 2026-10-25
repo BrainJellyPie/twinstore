@@ -5,13 +5,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, ChevronRight, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronRight, Globe2, Loader2, MousePointerClick, Plus, Search, Settings2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus, type SiteSummary } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { searchText } from "@/shared/utils/searchText";
 import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -86,12 +87,17 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
     }
     return current.id;
   };
-  const roots = list.filter((s) => rootOf(s) === s.id);
+  // One box finds stores (a variant's group opens when the variant matches) and runs by name or note.
+  const [find, setFind] = useState("");
+  const needle = searchText(find);
+  const found = (...texts: string[]) => !needle || texts.some((text) => searchText(text).includes(needle));
   const family = new Map<string, SiteSummary[]>();
   for (const s of list) {
     const root = rootOf(s);
-    if (root !== s.id) family.set(root, [...(family.get(root) ?? []), s]);
+    if (root !== s.id && found(s.name, s.note)) family.set(root, [...(family.get(root) ?? []), s]);
   }
+  const roots = list.filter((s) => rootOf(s) === s.id && (found(s.name, s.note) || family.has(s.id)));
+  const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
   const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); reveal(); };
 
   return (
@@ -106,6 +112,13 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         </div>
         <Button onClick={() => { setGallery(true); setRunId(null); }}><Plus className="size-4" aria-hidden /> {t("onNewStore")}</Button>
 
+        {(list.length > 6 || (runs.data?.length ?? 0) > 6) && (
+          <label className="relative block">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={t("onFind")} aria-label={t("onFind")}
+              className="h-8 w-full rounded-xl border bg-card/60 pr-2 pl-8 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
+          </label>
+        )}
         <section aria-labelledby="online-sites" className="space-y-2">
           <h2 id="online-sites" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onStores")}</h2>
           {sites.isPending && <p className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
@@ -113,7 +126,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ul className="space-y-1.5">
             {roots.map((root) => {
               const variants = family.get(root.id) ?? [];
-              const expanded = open[root.id] ?? variants.some((v) => v.id === selected?.id);
+              const expanded = open[root.id] ?? (variants.some((v) => v.id === selected?.id) || (!!needle && variants.length > 0));
               return (
                 <li key={root.id} className="space-y-1">
                   <SiteButton site={root} active={!showGallery && !runId && selected?.id === root.id} onOpen={openSite} />
@@ -142,8 +155,9 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         <section aria-labelledby="online-runs" className="space-y-2">
           <h2 id="online-runs" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onRuns")}</h2>
           {runs.data?.length === 0 && <p className="text-xs text-muted-foreground">{t("onNoRuns")}</p>}
+          {needle && roots.length === 0 && shownRuns.length === 0 && <p className="text-xs text-muted-foreground">{t("onFindNone")}</p>}
           <ul className="space-y-1.5">
-            {(runs.data ?? []).map((r) => (
+            {shownRuns.map((r) => (
               <li key={r.run_id}>
                 <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); reveal(); }}
                   aria-current={runId === r.run_id ? "true" : undefined}

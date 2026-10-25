@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Find a store or run: once the online page lists more than six stores or
+  runs, a box above them filters both by name (and a store's note); a
+  variant that matches opens its group.
 - A quick read while designing: as soon as the designer's draft differs from
   the saved store, 150 rule shoppers visit both (about a second, nothing
   saved) and the preview shows the draft's paired difference in revenue per

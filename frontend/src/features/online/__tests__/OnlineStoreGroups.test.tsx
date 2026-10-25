@@ -46,3 +46,30 @@ it("nests variants (copies of copies too) under the store they came from, collap
   expect(stores.getByRole("button", { name: /Shop A – faster/ })).toBeTruthy();
   expect(toggle.getAttribute("aria-expanded")).toBe("true");
 });
+
+it("finds stores and runs by name, opening the group of a matching variant", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([
+    site("a", "Shop A"), site("a1", "Shop A – no popup", "a"), site("a2", "Shop A – faster", "a"),
+    site("b", "Shop B"), site("c", "Corner Mart"), site("d", "Glow Room"), site("e", "Edge pets"),
+  ]);
+  vi.mocked(online.listRuns).mockResolvedValue([
+    { run_id: "r1", name: "Popup test", site_ids: ["a", "a1"], site_names: ["Shop A", "Shop A – no popup"], status: "completed",
+      phase: "", done: 2, total: 2, error: "", created_at: "2026-10-01T10:00:00", finished_at: "", request: { shoppers: 1 } } as online.OnlineRunStatus,
+    { run_id: "r2", name: "Pets", site_ids: ["e"], site_names: ["Edge pets"], status: "completed",
+      phase: "", done: 1, total: 1, error: "", created_at: "2026-10-01T10:00:00", finished_at: "", request: { shoppers: 1 } } as online.OnlineRunStatus,
+  ]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><OnlinePage projectId="p1" /></QueryClientProvider>);
+  const box = await screen.findByRole("searchbox", { name: "Find a store or run" });
+  await screen.findByRole("button", { name: /Corner Mart/ });
+  fireEvent.change(box, { target: { value: "popup" } });
+  const stores = within(screen.getByRole("region", { name: "Stores" }));
+  expect(stores.getByRole("button", { name: /Shop A – no popup/ })).toBeTruthy();  // its group opened by itself
+  expect(stores.queryByRole("button", { name: /Shop A – faster/ })).toBeNull();
+  expect(stores.queryByRole("button", { name: /Corner Mart/ })).toBeNull();
+  const runs = within(screen.getByRole("region", { name: "Runs" }));
+  expect(runs.getByRole("button", { name: /Popup test/ })).toBeTruthy();
+  expect(runs.queryByRole("button", { name: /Pets/ })).toBeNull();
+  fireEvent.change(box, { target: { value: "zzz" } });
+  expect(screen.getByText("Nothing matches.")).toBeTruthy();
+});
