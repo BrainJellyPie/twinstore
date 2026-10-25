@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Show only the configured welcome discount: zero-percent popups no longer
+  promise 10% off, and rule shoppers receive no discount incentive for them.
+  Offers without a coupon code no longer invent a `WELCOME` code.
+
 - Keep online-store editing and conflicting writes locked until a save and its
   refreshed snapshot finish; failed writes preserve the draft for correction or retry.
 

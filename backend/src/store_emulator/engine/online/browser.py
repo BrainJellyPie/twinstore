@@ -722,13 +722,18 @@ def _menu(site: OnlineSite, ctl: _Builder) -> Overlay:
 
 def _welcome(site: OnlineSite, ctl: _Builder) -> Overlay:
     o = site.options
-    percent = o.coupon_percent or 10
+    percent = o.coupon_percent
     if o.welcome_popup == "newsletter":
-        title, body, accept = (f"Get {percent}% off your first order", "Join our newsletter for offers and new arrivals.",
+        title, body, accept = (f"Get {percent}% off your first order" if percent else "Join our newsletter",
+                               "Join our newsletter for offers and new arrivals.",
                                "Sign up for the newsletter")
-    else:
-        title, body, accept = (f"A gift for you: {percent}% off", f"Use code {o.coupon_code or 'WELCOME'} at checkout today.",
+    elif percent:
+        title, body, accept = (f"A gift for you: {percent}% off",
+                               f"Use code {o.coupon_code} at checkout today." if o.coupon_code else
+                               "Claim this discount to apply it at checkout.",
                                "Claim the offer")
+    else:
+        title, body, accept = (f"Welcome to {site.name}", "Discover our latest products.", "Continue shopping")
     return Overlay("welcome", title, (
         Line(body),
         Line(accept, "strong", ctl(ActionKind.ACCEPT_POPUP, f"Popup: {accept.lower()}")),

@@ -265,9 +265,12 @@ def decide(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Mem
     if page.overlay is not None and page.overlay.kind == "welcome":
         if rng.random() < 0.03 + 0.05 * (1 - shopper.tech_savvy):
             return Choice(leave, thought="A popup before I even see anything? I'm out.")
-        accept = 0.15 + 0.55 * shopper.price_sensitivity + (0.2 if shopper.mission == "deal_hunt" else 0)
+        discount = site.options.coupon_percent > 0
+        accept = 0.15 + (0.55 * shopper.price_sensitivity + (0.2 if shopper.mission == "deal_hunt" else 0) if discount else 0)
         if rng.random() < accept:
-            return pick(_find(page, ActionKind.ACCEPT_POPUP), "A discount? Sure, I'll take it.") or Choice(leave)
+            thought = ("A discount? Sure, I'll take it." if discount else "I'll sign up for updates."
+                       if site.options.welcome_popup == "newsletter" else "I'll have a look.")
+            return pick(_find(page, ActionKind.ACCEPT_POPUP), thought) or Choice(leave)
         return pick(_find(page, ActionKind.CLOSE_POPUP), "No thanks, just let me shop.") or Choice(leave)
     if page.overlay is not None and page.overlay.kind == "menu":
         target = _goal_link(page, shopper)
