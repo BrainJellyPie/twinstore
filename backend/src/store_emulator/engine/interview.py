@@ -14,9 +14,10 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
-from instructor.core.exceptions import InstructorRetryException
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model, field_validator
+from pydantic_core import PydanticCustomError
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import (
@@ -37,7 +38,7 @@ MAX_SHELF_ITEMS = 16
 class StructuredLLM(Protocol):
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -94,11 +95,14 @@ listed step by step with what went through your mind at each step, followed by w
 
 Rules:
 - Answer only from your trip, the shelves you saw and who you are. Do not invent stops, products, prices or events.
+- Answer the researcher's latest question; do not repeat a question as your answer.
 - If you did not see or notice something, say so plainly ("I didn't go to that aisle", "I didn't notice it").
 - You may explain your reasons with your tastes, budget, habits and mood as described, as a real person would.
 - Prices are those on the shelf tags. Do not mention that you are simulated, a model or an AI.
 - Put the numbers of the trip steps your answer is about in `steps` ([] if none, not null).
-- Write in English."""
+
+## Language
+Write answer in English."""
 
 
 class ShopperReply(BaseModel):
@@ -154,10 +158,41 @@ async def ask_shopper(
 ) -> ShopperReply:
     convo = "\n".join(f"{'Researcher' if m.role == 'interviewer' else 'You'}: {m.text}" for m in history[-12:])
     user = f"{trip_text(journey, store)}\n\n{('Conversation so far:\n' + convo + '\n\n') if convo else ''}Researcher: {question}"
-    reply = await llm.generate_structured_async(  # a second retry: models now and then put the answer outside the JSON
-        ShopperReply, INTERVIEW_PROMPT, user, max_retries=2,
-        seed=stable_seed("interview", journey.run_id, journey.persona.id, len(history)),
-    )
+    asked = {_norm(m.text) for m in history if m.role == "interviewer"} | {_norm(question)}
+
+    class TripReply(ShopperReply):
+        @field_validator("answer")
+        @classmethod
+        def _answer_the_question(cls, value: str) -> str:
+            if _norm(value) in asked:
+                raise PydanticCustomError("interview_echo", "the model repeated the question instead of answering. "
+                                          "Answer the researcher's latest question in the shopper's first-person voice.")
+            return value
+
+    seed = stable_seed("interview", journey.run_id, journey.persona.id, len(history))
+
+    async def answer() -> ShopperReply:
+        try:
+            return await llm.generate_structured_async(
+                TripReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=700,
+            )
+        except Exception as error:
+            cause = (error.failed_attempts[-1].exception
+                     if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+            if not isinstance(cause, IncompleteOutputException):
+                raise
+            return await llm.generate_structured_async(
+                TripReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=1400,
+            )
+
+    try:
+        reply = await answer()
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if isinstance(cause, ValidationError) and any(e["type"] == "interview_echo" for e in cause.errors()):
+            raise ValueError("the model repeated the question instead of answering") from error
+        raise
     valid = {s.index for s in journey.steps}
     return reply.model_copy(update={"answer": reply.answer.strip(), "steps": [s for s in reply.steps if s in valid]})
 

@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Freeze product artwork for online runs, including variants and rival shops, so
+  later photo changes cannot alter model input or historical screenshots and GIFs.
+
+- Let animated visits recover from failed page images or playback metadata,
+  preserving the current step and paused state while retrying.
+
+- Reduce GIF export memory by decoding and releasing each full-color screenshot
+  in turn, preserving frame sizes, captions and playback timing.
+
+- Match rival-shop targets against the original catalog's product/SKU and
+  category identity before using search alternatives; shared local IDs cannot
+  turn a lost shopper's goal into an unrelated product or category.
+
+- Recover explicitly truncated physical-store interview answers once with a
+  larger output budget, while keeping ordinary errors and echoes bounded.
+
+- Reject question echoes in physical-store interviews before caching or saving
+  them, and exclude failed answers from group interview themes.
+
+- Serialize photo-applied layouts with source operating settings, capture links
+  and deletion. Preserve both concurrent applications and avoid orphaned drafts
+  when a selected photo disappears during preparation.
+
+- Validate online interview echoes before caching, give the model corrective
+  retry feedback, and let a failed question recover when the user asks again.
+
 - Watch one shopper's visits to the control and a variant side by side ("Side
   by side" in a replay or next to each shopper whose visit ended differently):
   both play together on the same shopper and random draws, the step where they

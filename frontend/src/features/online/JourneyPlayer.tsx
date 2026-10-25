@@ -35,12 +35,16 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [at, setAt] = useState<{ index: number; phase: Phase }>({ index, phase: "arrive" });
   const [loaded, setLoaded] = useState("");
+  const [failed, setFailed] = useState("");
+  const [retry, setRetry] = useState({ page: "", attempt: 0 });
   const phase: Phase = at.index === index ? at.phase : "arrive";
   const step = session.steps[Math.min(index, session.steps.length - 1)];
   const frame = frames.data?.[index];
   const last = index >= session.steps.length - 1;
-  const src = step ? stepScreenshotUrl(projectId, runId, view.variant, shopper.id, step.index, false) : "";
-  const ready = loaded === src && frame !== undefined;
+  const pageSrc = step ? stepScreenshotUrl(projectId, runId, view.variant, shopper.id, step.index, false) : "";
+  const src = pageSrc && retry.page === pageSrc ? `${pageSrc}&retry=${retry.attempt}` : pageSrc;
+  const imageFailed = failed === src && src !== "";
+  const ready = loaded === src && frame !== undefined && !imageFailed && !frames.isError;
   const box = step?.choice ? frame?.box ?? null : null;
   const reading = (step?.thought.length ?? 0) + (step?.search_text.length ?? 0) + (step?.choice?.label.length ?? 0);
   const duration = (phase === "read" ? Math.min(4500, 1300 + 25 * reading) : PHASE_MS[phase]) / speed;
@@ -67,7 +71,12 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
   }, [next, projectId, runId, view.variant, shopper.id]);
 
   if (!step) return null;
-  if (frames.isError) return <p role="alert" className="text-sm text-destructive">{frames.error.message}</p>;
+  if (frames.isError) return (
+    <div role="alert" className="space-y-2 text-sm text-destructive">
+      <p>{frames.error.message}</p>
+      <Button size="sm" variant="outline" disabled={frames.isFetching} onClick={() => void frames.refetch()}>{t("studioRetry")}</Button>
+    </div>
+  );
   const width = frame?.width ?? 1024;
   const height = frame?.height ?? 640;
   const phone = width < 700;
@@ -121,7 +130,9 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
         <div className="relative overflow-hidden" style={{ aspectRatio: `${width} / ${windowHeight}` }}>
           <div className="absolute inset-x-0 top-0 transition-transform ease-in-out motion-reduce:transition-none"
             style={{ aspectRatio: `${width} / ${height}`, transform: `translateY(-${(scroll / height) * 100}%)`, transitionDuration: move }}>
-            <img key={src} src={src} alt={t("onScreenshotAlt", { title: step.url })} onLoad={() => setLoaded(src)}
+            <img key={src} src={src} alt={t("onScreenshotAlt", { title: step.url })}
+              onLoad={() => { setLoaded(src); setFailed((previous) => previous === src ? "" : previous); }}
+              onError={() => setFailed(src)}
               className={cn("block w-full transition-opacity duration-300", ready ? "opacity-100" : "opacity-0")} />
             {box && (phase === "click" || phase === "read") && (
               <span className="pointer-events-none absolute rounded-lg ring-4 ring-rose-500/80" style={{
@@ -137,7 +148,14 @@ export function JourneyPlayer({ projectId, runId, view, index, onIndex, money, r
               </span>
             )}
           </div>
-          {!ready && <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">{t("onPlayLoading")}</p>}
+          {imageFailed ? (
+            <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-xs">
+              <p>{t("onPlayImageFailed")}</p>
+              <Button size="sm" variant="outline" onClick={() => setRetry((previous) => ({
+                page: pageSrc, attempt: previous.page === pageSrc ? previous.attempt + 1 : 1,
+              }))}>{t("studioRetry")}</Button>
+            </div>
+          ) : !ready && <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">{t("onPlayLoading")}</p>}
           {ended && (
             <div className="absolute inset-x-3 bottom-3 rounded-xl border bg-background/95 p-3 text-xs shadow-lg animate-in fade-in slide-in-from-bottom-2">
               <div className="text-sm font-semibold">{t(OUTCOME_LABELS[session.outcome])}{session.order_total ? ` · ${money(session.order_total)}` : ""}</div>

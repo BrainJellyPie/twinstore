@@ -203,15 +203,16 @@ def save(
                 checked.store.model_dump(mode="json"),
                 "Combined reviewed shelf photos; source layouts unchanged.",
             )
-            source = read_setup(pid, req.setup_id)
-            if source.get("building") is not None:
-                draft["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
-            if source.get("operations") is not None:
-                draft["operations"] = source["operations"]
             draft["id"] = path.stem
             draft["capture_batch_request"] = req.model_dump(mode="json")
             draft["capture_batch_result"] = saved.model_dump(mode="json")
-            write_json(path, draft)
+            with FileLock(setup_lock_path(pid, req.setup_id), timeout=10):
+                source = read_setup(pid, req.setup_id)
+                if source.get("building") is not None:
+                    draft["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
+                if source.get("operations") is not None:
+                    draft["operations"] = source["operations"]
+                write_json(path, draft)
             return saved
     except Timeout as exc:
         raise AppError(

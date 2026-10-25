@@ -3,7 +3,7 @@
 import asyncio
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from store_emulator.application.errors import model_failure
 from store_emulator.domain.interview import InterviewMessage
@@ -67,9 +67,17 @@ class _Echo:
 
     async def generate_structured_async[T: BaseModel](self, response_model: type[T], system_prompt: str, user_prompt: str,
                                                       **kwargs: object) -> T:
-        self.seeds.append(kwargs["seed"])
-        answer = "why did you leave" if len(self.seeds) <= self.echoes else "I couldn't find my size."
-        return response_model.model_validate({"answer": answer, "steps": []})
+        retries = kwargs["max_retries"]
+        assert isinstance(retries, int) and retries > 0
+        for attempt in range(retries):
+            self.seeds.append(kwargs["seed"])
+            answer = "why did you leave" if len(self.seeds) <= self.echoes else "I couldn't find my size."
+            try:
+                return response_model.model_validate({"answer": answer, "steps": []})
+            except ValidationError:
+                if attempt + 1 == retries:
+                    raise
+        raise AssertionError("no model attempt")
 
 
 def test_an_echoed_question_is_asked_again_and_then_refused() -> None:
@@ -78,7 +86,7 @@ def test_an_echoed_question_is_asked_again_and_then_refused() -> None:
                InterviewMessage(role="shopper", text="Too pricey.")]
     once = _Echo(1)
     reply = asyncio.run(ask_shopper(once, site, shopper, session, history, "What did you look for?", run_id="r1"))
-    assert reply.answer == "I couldn't find my size." and len(set(once.seeds)) == 2
+    assert reply.answer == "I couldn't find my size." and len(once.seeds) == 2
     always = _Echo(9)
     with pytest.raises(ValueError, match="repeated the question"):
         asyncio.run(ask_shopper(always, site, shopper, session, history, "What did you look for?", run_id="r1"))

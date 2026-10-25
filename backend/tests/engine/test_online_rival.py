@@ -10,9 +10,9 @@ _MIX = {"purchase": 1.0, "compare": 1.0, "gift": 1.0, "browse": 1.0}
 def test_a_shopper_looks_for_the_same_thing_in_the_rival_catalog_or_does_not_go() -> None:
     home, rival = build_site("pet_store", site_id="home"), build_site("beauty", site_id="rival")
     shoppers = sample_shoppers(home, 60, seed=3, missions={**_MIX, "deal_hunt": 1.0}, mobile_share=0.5)
-    went = [(s, there) for s in shoppers if (there := at_rival(rival, s)) is not None]
+    went = [(s, there) for s in shoppers if (there := at_rival(rival, s, home)) is not None]
     assert 0 < len(went) < len(shoppers)
-    assert all(at_rival(rival, s) is not None for s in shoppers if s.mission == "deal_hunt")
+    assert all(at_rival(rival, s, home) is not None for s in shoppers if s.mission == "deal_hunt")
     for shopper, there in went:
         assert there.arrival == "search_engine" and there.id == shopper.id and there.goal == shopper.goal
         assert there.vision == shopper.vision and there.budget == shopper.budget
@@ -23,22 +23,25 @@ def test_a_shopper_looks_for_the_same_thing_in_the_rival_catalog_or_does_not_go(
         assert rival.product(landing(rival, there).product_id) is not None
     # The same shop as the rival: everyone fits and looks for exactly the same thing.
     twin = build_site("pet_store", site_id="twin")
-    assert [at_rival(twin, s) for s in shoppers] == [s.model_copy(update={"arrival": "search_engine"}) for s in shoppers]
+    assert [at_rival(twin, s, home) for s in shoppers] == [s.model_copy(update={"arrival": "search_engine"}) for s in shoppers]
 
 
 def test_a_product_the_rival_also_sells_stays_the_target_under_the_rival_category() -> None:
     home, rival = build_site("grocery_delivery", site_id="home"), build_site("quick_commerce", site_id="rival")
+    by_name = {p.name: p for p in rival.products}
     shopper = next(s for s in sample_shoppers(home, 80, seed=2, missions={"replenish": 1.0}, mobile_share=0.0)
-                   if s.target_product and rival.product(s.target_product) is not None)
-    there = at_rival(rival, shopper)
-    product = rival.product(shopper.target_product)
-    assert there is not None and product is not None and there.target_product == product.id and there.target_category == product.category_id
+                   if (wanted := home.product(s.target_product)) is not None and wanted.name in by_name)
+    there = at_rival(rival, shopper, home)
+    wanted = home.product(shopper.target_product)
+    assert wanted is not None
+    product = by_name[wanted.name]
+    assert there is not None and there.target_product == product.id and there.target_category == product.category_id
     assert landing(rival, there).product_id == product.id
     theirs = {c.name: c.id for c in rival.categories}
     ours = {c.id: c.name for c in home.categories}
     named = next(s for s in sample_shoppers(home, 80, seed=2, missions={"compare": 1.0}, mobile_share=0.0)
                  if ours[s.target_category] in theirs)
-    renamed = at_rival(rival, named)
+    renamed = at_rival(rival, named, home)
     assert renamed is not None and renamed.target_category == theirs[ours[named.target_category]]
 
 

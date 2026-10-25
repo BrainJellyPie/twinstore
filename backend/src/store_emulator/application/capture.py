@@ -631,28 +631,32 @@ def apply_captures(
     errors = [i for i in validate(new_store) if i.severity == "error"]
     if errors:
         raise AppError(f"the resulting layout is invalid: {errors[0].message}", 409)
-    for cid, result in zip(capture_ids, results, strict=True):
-        matched = match_store_skus(new_store, result, PlacementReport(), exact=True)
-        _save_sku_images(pid, cid, matched)
     label = "shelf photo" if len(results) == 1 else f"{len(results)} shelf photos"
     final_name = name or f"{source.get('name') or 'layout'} ({label})"
     memo = _memo(capture_ids, results, report)
     new_setup = new_setup_data(final_name, setup_id, new_store.model_dump(mode="json"), memo[:1000])
-    if source.get("building") is not None:
-        new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
-    if source.get("operations") is not None:
-        new_setup["operations"] = source["operations"]
-    with setup_tree_transaction(pid, [setup_id]):
-        write_json(setup_path(pid, new_setup["id"]), new_setup)
-        set_active_setup(pid, new_setup["id"])
-    for cid in capture_ids:
-        status = _read_status(pid, cid)
-        _write_status(pid, status.model_copy(update={"applied_setup_ids": [*status.applied_setup_ids, new_setup["id"]]}))
-    return ApplyResult(
-        setup_id=new_setup["id"], setup=setup_summary(pid, new_setup), rack_ids=report.rack_ids,
-        face=report.face.value, placed_items=report.placed_items, placed_facings=report.placed_facings,
-        dropped=report.dropped, notes=report.notes,
-    )
+    try:
+        with setup_tree_transaction(pid, [setup_id]), FileLock(setup_lock_path(pid, setup_id), timeout=10):
+            statuses = [_read_status(pid, cid) for cid in capture_ids]
+            source = read_setup(pid, setup_id)
+            if source.get("building") is not None:
+                new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
+            if source.get("operations") is not None:
+                new_setup["operations"] = source["operations"]
+            for cid, result in zip(capture_ids, results, strict=True):
+                matched = match_store_skus(new_store, result, PlacementReport(), exact=True)
+                _save_sku_images(pid, cid, matched)
+            write_json(setup_path(pid, new_setup["id"]), new_setup)
+            set_active_setup(pid, new_setup["id"])
+            for status in statuses:
+                _write_status(pid, status.model_copy(update={"applied_setup_ids": [*status.applied_setup_ids, new_setup["id"]]}))
+            return ApplyResult(
+                setup_id=new_setup["id"], setup=setup_summary(pid, new_setup), rack_ids=report.rack_ids,
+                face=report.face.value, placed_items=report.placed_items, placed_facings=report.placed_facings,
+                dropped=report.dropped, notes=report.notes,
+            )
+    except Timeout as exc:
+        raise AppError("Another request is changing this layout. Retry applying the photos shortly", 409) from exc
 
 
 def _memo(capture_ids: list[str], results: list[CaptureResult], report: PlacementReport) -> str:

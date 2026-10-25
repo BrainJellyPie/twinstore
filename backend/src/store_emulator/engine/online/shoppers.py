@@ -217,7 +217,7 @@ def landing(site: OnlineSite, shopper: OnlineShopper) -> PageRef:
     return PageRef()
 
 
-def at_rival(rival: OnlineSite, shopper: OnlineShopper) -> OnlineShopper | None:
+def at_rival(rival: OnlineSite, shopper: OnlineShopper, source: OnlineSite) -> OnlineShopper | None:
     """The same shopper looking for the same thing at a rival shop after leaving without buying, or None when the rival
     has nothing that fits (a search engine would not send them there). They arrive from a search engine on the rival's
     best match. A product the rival does not sell becomes its best search match for the same words; a category it does
@@ -225,15 +225,24 @@ def at_rival(rival: OnlineSite, shopper: OnlineShopper) -> OnlineShopper | None:
     particular, always fit."""
     moved = shopper.model_copy(update={"arrival": "search_engine"})
     matches = search_products(rival, " ".join(shopper.target_terms), mode="smart") if shopper.target_terms else []
+    category = source.category(shopper.target_category) if shopper.target_category else None
     if shopper.target_product:
-        found = rival.product(shopper.target_product) or (matches[0] if matches else None)
+        wanted = source.product(shopper.target_product)
+        same = [] if wanted is None else [p for p in rival.products if (
+            p.sku == wanted.sku if wanted.sku else p.name.strip().casefold() == wanted.name.strip().casefold()
+            and category is not None and (c := rival.category(p.category_id)) is not None
+            and c.name.strip().casefold() == category.name.strip().casefold())]
+        found = (next((p for p in same if p.id == shopper.target_product), None)
+                 or (same[0] if len(same) == 1 else None) or (matches[0] if matches else None))
         if found is None:
             return None
         return moved.model_copy(update={"target_product": found.id, "target_category": found.category_id})
-    if not shopper.target_category or rival.category(shopper.target_category) is not None:
+    if not shopper.target_category:
         return moved
-    terms = {t.casefold() for t in shopper.target_terms}
-    named = next((c.id for c in rival.categories if c.name.casefold() in terms), None)
+    names = {category.name.strip().casefold()} if category is not None else {t.strip().casefold() for t in shopper.target_terms}
+    same_categories = [c.id for c in rival.categories if c.name.strip().casefold() in names]
+    named = (shopper.target_category if shopper.target_category in same_categories
+             else same_categories[0] if len(same_categories) == 1 else None)
     if named is None and not matches:
         return None
     return moved.model_copy(update={"target_category": named or matches[0].category_id})
