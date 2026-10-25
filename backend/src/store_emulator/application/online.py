@@ -366,6 +366,9 @@ def _policy(request: OnlineRunRequest, config: SimulationConfig) -> tuple[Shoppe
     """The shopper policy of a run and the model it uses ("" for rules). Raises AppError when the model cannot be used."""
     if request.policy == "rule":
         return RulePolicy(), ""
+    if request.ensemble is not None and request.ensemble.mode != "mixture":
+        raise AppError("Online shoppers support mixture ensembles (one model per shopper); "
+                       "voting is only available for physical-store vision glances", 400)
     ensemble = request.ensemble if request.ensemble is not None and request.ensemble.members else None
     if request.policy == "vlm":
         run_config = with_vision_default(
