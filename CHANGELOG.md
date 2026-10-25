@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Screen every quick change at once: **Scan these changes** in an online
+  store's run form sends rule shoppers (150 of them) through the store and
+  through a copy for each applicable quick experiment, in memory and in about
+  ten seconds, and marks each change with its paired difference in revenue
+  per visit (clearly better, clearly worse or unclear), best first. **Tick the
+  clear winners** selects them for a proper comparison, ideally with model
+  shoppers (`POST …/online/sites/{id}/scan`).
 - Jump from an analyst's answer to the chart: each report line an online
   analyst answer cites is a link to the report section that draws it (the
   paired differences, funnel, ads, friction, survey, segments…), which

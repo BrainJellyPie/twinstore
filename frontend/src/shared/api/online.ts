@@ -307,6 +307,16 @@ export function saveSite(pid: string, site: OnlineSite): Promise<OnlineSite> {
   return fetchJson(`/api/projects/${pid}/online/sites/${site.id}`, { method: "PUT", ...json(site) });
 }
 
+/** Changes screened on rule shoppers against the store, on the same shoppers; nothing is saved. */
+export interface ScanRow { id: string; deltas: PairedDelta[]; won: number; lost: number }
+export interface ScanResult { shoppers: number; conversion: number; revenue_per_session: number; rows: ScanRow[]; seconds: number }
+
+export function scanSite(pid: string, siteId: string, body: {
+  candidates: { id: string; options: SiteOptions; products?: OnlineProduct[] }[]; shoppers?: number; seed?: number;
+}): Promise<ScanResult> {
+  return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/scan`, { method: "POST", ...json(body) });
+}
+
 export function copySite(pid: string, siteId: string, body: {
   name?: string; note?: string; options?: SiteOptions | null; products?: OnlineProduct[] | null; ads?: AdCampaign[] | null;
 }): Promise<OnlineSite> {
