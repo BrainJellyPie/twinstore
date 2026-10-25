@@ -6,6 +6,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from store_emulator.domain.rack import SlotItem
 from store_emulator.engine.prompting import display_price
 
 PID = "proj_67916afd"
@@ -68,3 +69,63 @@ def test_two_different_stores_share_no_products(client: TestClient) -> None:
     found = client.get(f"/api/projects/{PID}/online/runs/{run['run_id']}/variants/1/store-changes").json()
     # Template products reuse ids across stores; none of them is the other store's product.
     assert found["changes"] == [] and not any("SKU" in s or "picture" in s for s in found["skipped"])
+
+
+@pytest.mark.parametrize("count", [21, 30])
+def test_all_changed_prices_survive_review_save_and_retry(client: TestClient, count: int) -> None:
+    source = client.get(f"/api/projects/{PID}/setups/{SETUP}").json()["store"]
+    site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "from_store", "setup_id": SETUP}).json()
+    selected = {p["sku"]: p["price"] - 10 for p in site["products"][:count]}
+    products = [{**p, "price": selected.get(p["sku"], p["price"])} for p in site["products"]]
+    variant = client.post(f"/api/projects/{PID}/online/sites/{site['id']}/copy",
+                          json={"name": "Lower prices", "products": products}).json()
+    run = client.post(f"/api/projects/{PID}/online/runs",
+                     json={"site_ids": [site["id"], variant["id"]], "shoppers": 1}).json()
+    for _ in range(300):
+        if client.get(f"/api/projects/{PID}/online/runs/{run['run_id']}").json()["status"]["status"] == "completed":
+            break
+        time.sleep(.1)
+    found = client.get(f"/api/projects/{PID}/online/runs/{run['run_id']}/variants/1/store-changes").json()
+    assert len(found["changes"]) == count and not found["skipped"]
+    check = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit/check",
+                        json={"name": found["name"], "changes": found["changes"], "currency": found["currency"]})
+    assert check.status_code == 200, check.text
+    draft = check.json()
+    body = {"name": draft["name"], "changes": draft["changes"], "source_sha256": draft["source_sha256"], "request_id": "c" * 32}
+    saved = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit", json=body)
+    assert saved.status_code == 200, saved.text
+    assert client.post(f"/api/projects/{PID}/setups/{SETUP}/edit", json=body).json()["id"] == saved.json()["id"]
+    edited = client.get(f"/api/projects/{PID}/setups/{saved.json()['id']}").json()["store"]
+    for rack in edited["racks"]:
+        for slot in rack["slots"]:
+            for item in slot["items"]:
+                if item["sku"] in selected:
+                    assert item["price"] == selected[item["sku"]]
+    assert [SlotItem.model_validate(i) for r in edited["racks"] for s in r["slots"] for i in s["items"] if i["sku"] not in selected] == [
+        SlotItem.model_validate(i) for r in source["racks"] for s in r["slots"] for i in s["items"] if i["sku"] not in selected]
+    assert client.get(f"/api/projects/{PID}/setups/{SETUP}").json()["store"] == source
+
+
+@pytest.mark.parametrize("count", [500, 501])
+def test_large_price_transfers_are_complete_or_explicitly_rejected(monkeypatch, count):
+    from store_emulator.application import online
+    from store_emulator.application.errors import AppError
+    from store_emulator.application.layout_edit import LayoutEditApply, LayoutEditCheck
+    from store_emulator.engine.online.catalog import build_site
+
+    control = build_site("fashion", site_id="control", currency="USD")
+    control.products = [control.products[0].model_copy(update={"id": f"p{i}", "sku": f"s{i}", "price": 100}) for i in range(count)]
+    variant = control.model_copy(deep=True, update={"id": "variant", "variant_of": control.id})
+    for product in variant.products:
+        product.price = 90
+    monkeypatch.setattr(online, "_snapshot", lambda *_: ([control, variant], []))
+    if count > 500:
+        with pytest.raises(AppError, match="500"):
+            online.run_store_changes("p", "r", 1)
+        with pytest.raises(ValueError):
+            LayoutEditCheck(changes=[{"kind": "price", "sku": p.sku, "price": 90} for p in variant.products])
+        return
+    found = online.run_store_changes("p", "r", 1)
+    assert len(found.changes) == count and not found.skipped
+    assert len(LayoutEditCheck(changes=found.changes).changes) == count
+    assert len(LayoutEditApply(changes=found.changes, source_sha256="a" * 64, request_id="b" * 32).changes) == count

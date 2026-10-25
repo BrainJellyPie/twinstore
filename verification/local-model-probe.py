@@ -19,7 +19,7 @@ import httpx
 from PIL import Image, ImageDraw
 from pydantic import SecretStr
 
-from store_emulator.application import template_assortment
+from store_emulator.application import online, template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.domain.online import DesignMessage, OnlineRunResult, VariantComparison
@@ -30,13 +30,14 @@ from store_emulator.engine.generators.persona import Pace, generate_batched
 from store_emulator.engine.layout_gen import generate_store
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.llm_client import LiteLLMClient
-from store_emulator.engine.online.catalog import build_site
+from store_emulator.engine.online.catalog import build_site, site_from_store
 from store_emulator.engine.online.analysis import paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.analyst import answer_online_question, online_facts
 from store_emulator.engine.online.design_chat import apply_design, chat_design
 from store_emulator.engine.online.policies import RulePolicy
 from store_emulator.engine.online.session import run_session
 from store_emulator.engine.online.shoppers import sample_shoppers
+from store_emulator.engine.online.store_changes import apply_store_changes
 from store_emulator.engine.package_reader import read_pack
 from store_emulator.engine.perception.product_images import bundled_product_image
 from store_emulator.engine.perception.shelf_render import load_font
@@ -54,6 +55,7 @@ layout_requests = {
     "layout-price-krw": "Green Tea 가격만 3,000원으로 바꿔 주세요. 다른 상품이나 설정은 그대로 유지해 주세요.",
     "layout-discount-promo": "Discount Green Tea by 10 percent and put a SALE sign on Potato Chips. Change nothing else.",
     "layout-category": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
+    "layout-bulk-bridge": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
     "layout-move": "Move Green Tea to eye level on its current Drinks shelf. Keep its price and other products unchanged.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
@@ -155,19 +157,39 @@ try:
             return {item.sku: {"rack": rack.id, "level": slot.level, **item.model_dump(mode="json")}
                     for rack in layout.racks for slot in rack.slots for item in slot.items}
 
+        if args.case == "layout-bulk-bridge":
+            items = [SlotItem(sku=f"drink-{i:02}", name=f"Beverage {i:02}", price=500 + i * 10) for i in range(30)]
+            store.racks[0].shape = [[1, 1]]
+            store.racks[0].slots = [Slot(block=i // 4, face="N", level=i % 4 + 1, items=items[i * 4:(i + 1) * 4]) for i in range(8)]
         expected = products(store)
         if args.case == "layout-price-krw":
             expected["tea"]["price"] = 3000
         elif args.case == "layout-discount-promo":
             expected["tea"].update(price=450, regular_price=500)
             expected["chips"]["promo"] = "SALE"
-        elif args.case == "layout-category":
-            expected["tea"]["price"], expected["water"]["price"] = 450, 90
+        elif args.case in {"layout-category", "layout-bulk-bridge"}:
+            for item in expected.values():
+                if item["rack"] == "drinks":
+                    item["price"] = round(item["price"] * .9)
         else:
             expected["tea"]["level"] = 3
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reply = asyncio.run(draft_layout_edit(client, layout_requests[args.case], store, currency))
         edited, applied, warnings = apply_layout_edit(store, reply.changes, currency)
+        if args.case == "layout-bulk-bridge":
+            control = site_from_store(store, site_id="control", name="Control", currency=currency)
+            web_products, _, skipped = apply_store_changes(control, reply.changes, minor_per_major=100)
+            variant = control.model_copy(deep=True, update={"id": "variant", "variant_of": control.id, "products": web_products})
+            # Exercise the production snapshot reader without touching any saved user project.
+            with patch.object(online, "DATA_DIR", str(output / "data")):
+                folder = online._run_dir("proj_cpu", "orun_cpu")
+                folder.mkdir(parents=True)
+                (folder / "sites.json").write_text(json.dumps([site.model_dump(mode="json") for site in [control, variant]]))
+                (folder / "shoppers.json").write_text("[]")
+                transfer = online.run_store_changes("proj_cpu", "orun_cpu", 1)
+            edited, applied, warnings = apply_layout_edit(store, transfer.changes, currency)
+            warnings += skipped + transfer.skipped
+            result["transferred_changes"] = len(transfer.changes)
         after = products(edited)
         issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
         if set(after) != set(expected):

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve every price change when bringing an online variant back to a store.
+  Review and save up to 500 changes; reject larger transfers explicitly instead
+  of repeatedly returning only the first 20. Show transfer errors with a retry
+  action. A real CPU probe follows a 30-product edit through both store formats.
+
 ## 0.6.0 — Online stores you can see, style and design by asking
 
 - Give local layout-edit models an operation-specific grammar: moves require a

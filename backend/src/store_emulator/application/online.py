@@ -66,7 +66,7 @@ from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
-from store_emulator.engine.layout_edit import ZERO_DECIMAL
+from store_emulator.engine.layout_edit import MAX_LAYOUT_EDIT_CHANGES, ZERO_DECIMAL
 from store_emulator.engine.online.analyst import answer_online_question, online_facts, suggest_online_questions
 from store_emulator.engine.online.design_chat import apply_design, chat_design
 from store_emulator.engine.online.store_changes import apply_store_changes, price_changes
@@ -845,9 +845,9 @@ def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
     if not 1 <= variant < len(sites):
         raise AppError("Pick a variant of this run, not its control", 404)
     changes, skipped = price_changes(sites[0], sites[variant])
-    if len(changes) > 20:  # a layout edit takes 20 changes
-        skipped.append(f"{len(changes) - 20} more price changes: keep them with another edit")
-        changes = changes[:20]
+    if len(changes) > MAX_LAYOUT_EDIT_CHANGES:
+        raise AppError(f"This variant changes {len(changes)} prices; a layout can accept at most "
+                       f"{MAX_LAYOUT_EDIT_CHANGES} price changes at once. Use a variant with fewer price changes.", 400)
     return RunStoreChanges(name=sites[variant].name[:80], currency=sites[variant].currency.upper(), changes=changes,
                            skipped=skipped)
 

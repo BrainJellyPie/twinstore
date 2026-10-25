@@ -24,6 +24,7 @@ from store_emulator.engine.marketing.variants import apply_changes
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 EDIT_KINDS = ("price", "discount", "promo", "move", "category_price")
+MAX_LAYOUT_EDIT_CHANGES = 500  # reviewed bulk changes, matching the product editor's batch limit
 
 
 class StructuredLLM(Protocol):
