@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add quick experiments to online runs. Tick up to three one-click changes to the
+  first store (drop the last-step fee, allow guest checkout, untick the add-on,
+  remove the welcome popup or offer a welcome coupon, halve or double page load
+  time, free delivery or a lower threshold, smart search, one-page checkout,
+  urgency messages off or on, no cookie banner or sponsored slots, add wallets,
+  free returns, large text, add-to-cart buttons on cards); each becomes a variant
+  and all are compared on the same shoppers in one run.
 - Add ad campaigns to online stores and measure what they add. A store runs up to
   12 ads for its own products: a home banner, sponsored home tiles, sponsored
   tops of category, search and deal lists, sponsored products on other product

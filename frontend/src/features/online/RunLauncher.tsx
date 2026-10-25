@@ -1,18 +1,20 @@
 // Send virtual shoppers through one store, or compare up to four variants on the very same shoppers.
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FlaskConical, Loader2, Play } from "lucide-react";
 
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
 import {
-  ACCESSIBILITY, MISSIONS, onlineKeys, startRun, type Accessibility, type ShopperMission, type ShopperPolicyKind, type SiteSummary,
+  ACCESSIBILITY, copySite, getSite, MISSIONS, onlineKeys, startRun, type Accessibility, type ShopperMission, type ShopperPolicyKind,
+  type SiteSummary,
 } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
+import { experimentsFor } from "./experiments";
 import { ACCESSIBILITY_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
@@ -39,22 +41,42 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [accessibility, setAccessibility] = useState<Accessibility>("typical");
   const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const controlId = chosen[0] ?? "";
+  const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
+  const available = control.data ? experimentsFor(control.data.options) : [];
+  const room = MAX_VARIANTS - chosen.length;
+  // Picks that no longer apply (another first store, or no room left) simply drop out.
+  const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
-  const sessions = shoppers * chosen.length;
+  const sessions = shoppers * (chosen.length + experiments.length);
 
   const start = useMutation({
-    mutationFn: () => startRun(projectId, {
-      site_ids: chosen, name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
-      missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
-      mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle, accessibility,
-      exit_survey: survey,
-      model: policy !== "rule" && model.kind === "single" ? model.model ?? null : null,
-      ensemble: policy !== "rule" && model.kind === "ensemble" && model.ensemble?.members.length ? model.ensemble : null,
-    }),
+    mutationFn: async () => {
+      // Each picked change becomes a copy of the first store, then all are run on the same shoppers.
+      const created: string[] = [];
+      for (const x of experiments) {
+        const label = t(x.label);
+        const base = control.data!;
+        const copy = await copySite(projectId, base.id, { name: `${base.name} – ${label}`.slice(0, 60), note: label, options: x.options });
+        created.push(copy.id);
+      }
+      return startRun(projectId, {
+        site_ids: [...chosen, ...created], name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
+        missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
+        mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle, accessibility,
+        exit_survey: survey,
+        model: policy !== "rule" && model.kind === "single" ? model.model ?? null : null,
+        ensemble: policy !== "rule" && model.kind === "ensemble" && model.ensemble?.members.length ? model.ensemble : null,
+      });
+    },
     onSuccess: (status) => {
       void qc.invalidateQueries({ queryKey: onlineKeys.runs(projectId) });
+      setPicked([]);
       onStarted(status.run_id);
     },
+    // Variants created before a failed start are kept: they show up in the store list.
+    onSettled: () => void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId) }),
   });
   const toggleSite = (id: string) =>
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length >= MAX_VARIANTS ? c : [...c, id]));
@@ -84,6 +106,29 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
             );
           })}
         </ul>
+        {control.data && (
+          <fieldset className="space-y-2 rounded-xl border border-dashed p-3">
+            <legend className="flex items-center gap-1 px-1 text-xs font-medium">
+              <FlaskConical className="size-3.5 text-primary" aria-hidden /> {t("onXpTitle")}
+            </legend>
+            <p className="text-[0.7rem] text-muted-foreground">{t("onXpHint", { name: control.data.name })}</p>
+            {available.length === 0 ? <p className="text-xs text-muted-foreground">{t("onXpNone")}</p> : (
+              <div className="grid gap-1 sm:grid-cols-2">
+                {available.map((x) => {
+                  const on = experiments.some((e) => e.id === x.id);
+                  return (
+                    <label key={x.id} className={cn("flex items-center gap-2 text-xs", !on && experiments.length >= room && "opacity-50")}>
+                      <input type="checkbox" checked={on} disabled={!on && experiments.length >= room}
+                        onChange={() => setPicked((p) => (on ? p.filter((id) => id !== x.id) : [...p.filter((id) => experiments.some((e) => e.id === id)), x.id]))} />
+                      {t(x.label)}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[0.7rem] text-muted-foreground">{t("onXpRoom", { count: Math.max(0, room - experiments.length) })}</p>
+          </fieldset>
+        )}
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">{t("onRunName")}</span>
           <Input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
@@ -169,7 +214,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => start.mutate()} disabled={start.isPending || chosen.length === 0 || mixTotal === 0}>
             {start.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
-            {chosen.length > 1 ? t("onRunStartCompare", { count: chosen.length }) : t("onRunStart")}
+            {experiments.length ? t("onXpStart") : chosen.length > 1 ? t("onRunStartCompare", { count: chosen.length }) : t("onRunStart")}
           </Button>
           <span className="text-xs text-muted-foreground">{t("onRunSessions", { count: sessions })}</span>
         </div>
