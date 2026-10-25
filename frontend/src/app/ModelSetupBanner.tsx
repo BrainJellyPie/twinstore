@@ -50,15 +50,16 @@ export function ModelSetupBanner() {
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-foreground/[0.06]" aria-hidden>
           {busy ? <Loader2 className="size-4 animate-spin" /> : ready ? <Cpu className="size-4" /> : failed ? <TriangleAlert className="size-4" /> : <Sparkles className="size-4" />}
         </span>
-        <div className="min-w-0 flex-1">
+        {/* One line on a wide screen (title, hint, setup link), so the notice costs little of every page. */}
+        <div className="min-w-0 flex-1 md:flex md:flex-wrap md:items-baseline md:gap-x-3 md:pt-1">
           <p className="font-medium leading-snug">
             {busy ? t("preparingVision") : ready ? t("localReady") : failed ? t("modelAttention") : t("exploreFree")}
           </p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground md:mt-0 md:min-w-0 md:flex-1">
             {ready ? t("localReadyHint") : busy ? t("preparingHint") : t("freePreviewHint")}
           </p>
           {busy && (
-            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground md:order-last md:basis-full">
               <div role="progressbar" aria-label={t("modelDownload")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress ?? undefined}
                 className="h-1.5 w-32 max-w-full overflow-hidden rounded-full bg-foreground/10">
                 <div className={cn("h-full rounded-full bg-primary transition-[width] duration-500", progress === null && "w-1/3 animate-pulse")}
@@ -71,7 +72,7 @@ export function ModelSetupBanner() {
               </span>
             </div>
           )}
-          <details className="group mt-1.5">
+          <details className="group mt-1.5 md:mt-0 md:open:basis-full">
             <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-xs font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring">
               {busy || ready ? t("modelDetails") : t("setupVision")}
               <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />

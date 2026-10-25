@@ -428,20 +428,6 @@ export function CaptureUploadQueue({
         </p>
       )}
       {picking && <p role="status">{t("capCheckingFiles")}</p>}
-      <section aria-label={t("capRecoveryAria")} className="space-y-2 rounded-xl border border-dashed bg-muted/30 p-3 text-[0.8rem] text-muted-foreground [&_h3]:text-foreground">
-        <h3 className="font-semibold">{t("capRecoveryTitle")}</h3>
-        <p>{t("capRecoveryIntro")}</p>
-        {saved && <p>{t("capRecoverySavedPhotos", { count: saved.photos.length })}</p>}
-        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? t("capRecoveryCurrent") : t("capRecoveryUnsaved")}</p>}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>{t("capSaveQueue")}</Button>
-          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? t("capReplaceFromSaved") : t("capRestoreSaved")}</Button>
-          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>{t("capForgetSaved")}</Button>
-        </div>
-        <p>{t("capRestoreHint")}</p>
-        {recovering && <p role="status">{t("capCheckingRecovery")}</p>}
-        {recoveryMessage && <p role="status" className="break-words">{recoveryMessage}</p>}
-      </section>
       {messages.length > 0 && (
         <ul role="alert" className="max-h-32 overflow-auto">
           {messages.map((m, i) => (
@@ -556,6 +542,21 @@ export function CaptureUploadQueue({
           </li>
         ))}
       </ol>
+      {/* Secondary: keeping the queue in this browser, after the queue itself. */}
+      <section aria-label={t("capRecoveryAria")} className="space-y-2 rounded-xl border border-dashed bg-muted/30 p-3 text-[0.8rem] text-muted-foreground [&_h3]:text-foreground">
+        <h3 className="font-semibold">{t("capRecoveryTitle")}</h3>
+        <p>{t("capRecoveryIntro")}</p>
+        {saved && <p>{t("capRecoverySavedPhotos", { count: saved.photos.length })}</p>}
+        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? t("capRecoveryCurrent") : t("capRecoveryUnsaved")}</p>}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>{t("capSaveQueue")}</Button>
+          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? t("capReplaceFromSaved") : t("capRestoreSaved")}</Button>
+          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>{t("capForgetSaved")}</Button>
+        </div>
+        <p>{t("capRestoreHint")}</p>
+        {recovering && <p role="status">{t("capCheckingRecovery")}</p>}
+        {recoveryMessage && <p role="status" className="break-words">{recoveryMessage}</p>}
+      </section>
       {!!entries.length && (
         <p>{t("capQueueFooter")}</p>
       )}

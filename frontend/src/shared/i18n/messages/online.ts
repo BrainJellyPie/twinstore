@@ -13,6 +13,7 @@ export const onlineMessages = {
   onStoreStats: ["Products: {products} · Categories: {categories}", "상품: {products} · 카테고리: {categories}", "商品：{products} · 类别：{categories}", "商品：{products} · カテゴリ：{categories}", "Productos: {products} · Categorías: {categories}", "Produits : {products} · Catégories : {categories}"],
   onListToggle: ["Stores: {stores} · Runs: {runs}", "스토어: {stores} · 실행: {runs}", "商店：{stores} · 运行：{runs}", "ストア：{stores} · 実行：{runs}", "Tiendas: {stores} · Simulaciones: {runs}", "Boutiques : {stores} · Simulations : {runs}"],
   onFind: ["Find a store or run", "스토어나 실행 찾기", "查找商店或运行", "ストアや実行を探す", "Buscar una tienda o simulación", "Chercher une boutique ou une simulation"],
+  onFindStore: ["Find a store", "스토어 찾기", "查找商店", "ストアを探す", "Buscar una tienda", "Trouver une boutique"],
   onFindNone: ["Nothing matches.", "일치하는 항목이 없습니다.", "没有匹配的结果。", "一致するものはありません。", "Nada coincide.", "Aucun résultat."],
   onVariantsCount: ["Variants: {count}", "변형: {count}", "变体：{count}", "バリエーション：{count}", "Variantes: {count}", "Variantes : {count}"],
   onRunFailed: ["Failed", "실패", "失败", "失敗", "Fallida", "Échec"],
@@ -768,6 +769,7 @@ export const onlineMessages = {
   onChSpendOnline: ["Paid online", "온라인 결제", "线上支付", "オンラインでの支払い", "Pagado online", "Payé en ligne"],
   onChByAge: ["By age", "연령대별", "按年龄", "年代別", "Por edad", "Par âge"],
   onChByGender: ["By gender", "성별", "按性别", "性別", "Por género", "Par genre"],
+  onChOpenStoreRun: ["Open the store run", "매장 시뮬레이션 열기", "打开门店运行", "店舗の実行を開く", "Abrir la simulación de la tienda", "Ouvrir la simulation du magasin"],
   onChNoStoreRun: ["No store run of these customers yet. Run the store simulation with the project's customers to see who buys where.", "아직 이 고객들의 매장 시뮬레이션이 없습니다. 프로젝트 고객으로 매장 시뮬레이션을 실행하면 누가 어디서 사는지 볼 수 있습니다.", "这些顾客还没有门店运行。用项目顾客运行门店模拟，即可看到谁在哪里购买。", "この顧客の店舗シミュレーションはまだありません。プロジェクトの顧客で店舗シミュレーションを実行すると、誰がどこで買うかが分かります。", "Todavía no hay una simulación de la tienda con estos clientes. Ejecútala con los clientes del proyecto para ver quién compra dónde.", "Pas encore de simulation du magasin avec ces clients. Lancez-la avec les clients du projet pour voir qui achète où."],
   // ── Questions about a run ────────────────────────────────────────────────
   onAnalystHint: ["A model answers from this run's report. It may quote only lines of the report; any other figure is dropped.", "모델이 이 실행의 보고서를 읽고 답합니다. 보고서에 있는 줄만 인용할 수 있으며, 그 밖의 수치는 버려집니다.", "模型根据本次运行的报告作答，只能引用报告中的内容，其他数据会被丢弃。", "モデルがこの実行のレポートを読んで答えます。引用できるのはレポートの行だけで、それ以外の数値は除かれます。", "Un modelo responde a partir del informe de esta simulación. Solo puede citar líneas del informe; cualquier otra cifra se descarta.", "Un modèle répond à partir du rapport de cette simulation. Il ne peut citer que des lignes du rapport ; tout autre chiffre est écarté."],

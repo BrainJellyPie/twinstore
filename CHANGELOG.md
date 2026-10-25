@@ -6,6 +6,20 @@
   pharmacy or bookshop is not left without a format or treated as a convenience
   store. The other drafted form fields remain available for user review.
 
+- An online run form with more than eight stores gets a **Find a store** box
+  over its store list; the stores already chosen stay listed.
+- Shelf capture's queue reads in the order you use it: drop zone, then
+  **Start / resume queue** and its status, then the photos; keeping the queue
+  in this browser moves below them as the optional step it is.
+- The "Explore without an API key" notice is one line on a wide screen —
+  title, hint and **Set up vision shoppers** side by side — so it takes less
+  of every page; it still opens to the local model and settings buttons.
+- Sentence case for three English labels: Synthetic customers, Rack details
+  and Floor configuration.
+- From the online report to the store: the **Store and online** section has
+  an **Open the store run** link that opens the store run it compares with,
+  on its layout, at the results (`store_setup_id` in
+  `GET …/online/runs/{id}/channels`).
 ## 0.7.0 — The same customers in both twins, and answers that become tests
 
 - Nothing is cut off on a 360 px phone: the tab row fits in English and
