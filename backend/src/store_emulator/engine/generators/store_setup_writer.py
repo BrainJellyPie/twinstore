@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import Literal, Protocol
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, create_model, field_validator
 
 from store_emulator.engine.generators.profile_writer import LANGUAGES
 from store_emulator.engine.prompting import resolve_listed
@@ -105,6 +105,17 @@ def to_setup(draft: _Setup, formats: Sequence[tuple[str, str, str]]) -> StoreSet
     )
 
 
+async def _short_choice[T: BaseModel](llm: StructuredLLM, schema: type[T], system: str, user: str) -> T:
+    try:
+        return await llm.generate_structured_async(schema, system, user, max_retries=2, seed=0, max_tokens=160)
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if not isinstance(cause, IncompleteOutputException):
+            raise
+        return await llm.generate_structured_async(schema, system, user, max_retries=2, seed=0, max_tokens=320)
+
+
 async def draft_store_setup(
     llm: StructuredLLM, text: str, formats: Sequence[tuple[str, str, str, str]], locale: str = "en",
 ) -> StoreSetup:
@@ -138,15 +149,40 @@ async def draft_store_setup(
                      "Match the primary business, not secondary goods. Copy one supplied format ID. "
                      "The opening schedule does not determine the business type.")
     format_input = f"Store: {text.strip()}\nFormats:\n{compact}"
-    try:
-        chosen = await llm.generate_structured_async(ListedFormat, format_prompt, format_input,
-                                                     max_retries=2, seed=0, max_tokens=160)
-    except Exception as error:
-        cause = (error.failed_attempts[-1].exception
-                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
-        if not isinstance(cause, IncompleteOutputException):
-            raise
-        chosen = await llm.generate_structured_async(ListedFormat, format_prompt, format_input,
-                                                     max_retries=2, seed=0, max_tokens=320)
-    return to_setup(draft.model_copy(update={"format": chosen.format}),
-                    [(fid, name, store_type) for fid, name, store_type, _ in formats])
+    chosen = await _short_choice(llm, ListedFormat, format_prompt, format_input)
+    setup = to_setup(draft.model_copy(update={"format": chosen.format}),
+                     [(fid, name, store_type) for fid, name, store_type, _ in formats])
+    types = sorted({kind for _, _, kind, _ in formats})
+    if len(types) < 2:
+        return setup
+    type_ids: list[JsonValue] = [kind for kind in types]
+
+    class ListedStoreType(BaseModel):
+        model_config = ConfigDict(json_schema_extra={"required": ["store_type"]})
+        store_type: str = Field(default="", max_length=80, json_schema_extra={"enum": type_ids})
+
+        @field_validator("store_type", mode="before")
+        @classmethod
+        def _optional_type(cls, value: object) -> object:
+            return "" if value is None else value
+
+    business = await _short_choice(llm, ListedStoreType,
+        "Choose the primary business type described by the owner. Copy one supplied business type. "
+        "Match what the store principally sells, not its hours or location.\n## 언어\nUse the exact supplied type ID.",
+        f"Owner: {text.strip()}\nBusiness types: " + ", ".join(types))
+    kind = resolve_listed(business.store_type, {kind.casefold(): kind for kind in types})
+    if kind is None or kind == setup.store_type:
+        return setup
+    # The short classification can identify a bakery even when the long layout
+    # list led the model to a convenience store. Keep compatible specific layouts;
+    # reselecting all of them can lose a previously correct setting.
+    matching = [row for row in formats if row[2] == kind]
+    matching_ids: list[JsonValue] = [fid for fid, _, _, _ in matching]
+    repair_schema = create_model("ListedFormat", __base__=ListedFormat,
+        format=(str, Field(default="", max_length=80, json_schema_extra={"enum": matching_ids})))
+    details = "\n".join(f"{fid}: {name} ({kind}): {description}" for fid, name, kind, description in matching)
+    repaired = await _short_choice(llm, repair_schema,
+        format_prompt + " Prefer a general-purpose layout unless the owner explicitly describes a specialized setting.",
+        f"Store: {text.strip()}\nFormats:\n{details}")
+    return to_setup(draft.model_copy(update={"format": repaired.format}),
+                    [(fid, name, kind) for fid, name, kind, _ in matching])

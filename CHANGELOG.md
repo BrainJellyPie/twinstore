@@ -7,7 +7,8 @@
   reply also described a coupon, removing the popup, a chat widget, a delivery
   fee, guest checkout and page speed. Such replies now carry **Mentioned but
   not changed** chips naming each of those options (`unapplied` in the
-  design-chat reply); questions are left as they are.
+  design-chat reply), also when the reply quotes option names such as
+  `shipping_fee`; questions are left as they are.
 - Waiting on a model is easier to read: the store designer shows your request
   in the conversation at once, and every model wait (designer, both analysts,
   shopper interviews) adds after 15 seconds that a small local model can take
@@ -16,6 +17,9 @@
   on screen.
 - A store whose brand colour is near black (Threadline's navy) keeps a
   visible colour dot in dark mode: the dots' outline is stronger there.
+- Check a drafted store layout against a separate, short business-type choice.
+  If they disagree, choose again within that business so a bakery or café is not
+  silently started as a convenience store or the wrong retail category.
 - Keep valid automatic-product selections when another category needs repair,
   and ask the model only for missing or invalid categories. This avoids repeating
   the full catalog and discarding otherwise valid choices on small local models.
