@@ -96,7 +96,7 @@ def test_persistent_invalid_choices_stop_after_bounded_small_task_recovery(fault
                                             product_limits={key: 1 for key in CATALOG}))
     stage = "category" if fault in CATEGORY_FAULTS else "product"
     assert model.counts[stage] == 2
-    assert model.counts["small"] == 2
+    assert model.counts["small"] == (4 if stage == "category" else 2)
     assert not any(r.slots for r in store.racks)
 
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Further reduce failed starter-category recovery batches, down to one rack
+  when needed. Models that cannot complete an eight-row request can now finish
+  all assignments. The smaller size carries forward, while category limits,
+  exact rack coverage and rejection of incomplete results remain enforced.
+
 - Keep model-written everyday-price edits separate from A/B-test reference
   prices. Setting 1.49 and then discounting 10% now produces 1.34 instead of
   discounting an old 1.99 price to 1.79. Draft previews use the same price

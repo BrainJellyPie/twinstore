@@ -43,7 +43,8 @@ def test_persistent_incomplete_wizard_response_leaves_no_project_or_generation(c
         "starter_selection": "automatic", "layout": {"template_id": "community_pharmacy"},
     })})
     assert response.status_code == 502 and "format defaults" in response.text
-    assert model.counts == {"category": 2, "small": 2}
+    assert model.counts == {"category": 2, "small": 8}
+    assert [len(payload["racks"]) for stage, payload in model.calls if stage == "small"] == [8, 8, 4, 4, 2, 2, 1, 1]
     assert api.get("/api/projects").json() == before
     generation.assert_not_called()
 

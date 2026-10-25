@@ -168,19 +168,28 @@ async def _small_categories(llm: SelectionClient, context: dict[str, object], ra
                             allowed: set[str]) -> CategorySelection:
     groups: dict[str, list[str]] = {}
     start = 0
+    batch_limit = 8
     while start < len(racks):
         # Each row can introduce one new category. Near the global cap, a full
         # eight-row task permits a locally valid but globally impossible answer.
-        batch_size = min(8, 16 - len(groups)) if len(groups) < 16 else 8
+        batch_size = min(batch_limit, 16 - len(groups)) if len(groups) < 16 else batch_limit
         batch = racks[start:start + batch_size]
         choices = set(groups) if len(groups) == 16 else allowed
-        selected = await _small_choices(llm, SMALL_CATEGORY_PROMPT, {
-            **context,
-            "racks": [{"position": i + 1, "name": r.name[:200], "type": r.type,
-                       "suggested_category": r.suggested_category} for i, r in enumerate(batch)],
-            "categories": [{"id": key, "label": category_label(key, "USD")} for key in sorted(choices)],
-            "already_selected_categories": list(groups),
-        }, choices, len(batch), len(batch), previous_categories=set(groups))
+        try:
+            selected = await _small_choices(llm, SMALL_CATEGORY_PROMPT, {
+                **context,
+                "racks": [{"position": i + 1, "name": r.name[:200], "type": r.type,
+                           "suggested_category": r.suggested_category} for i, r in enumerate(batch)],
+                "categories": [{"id": key, "label": category_label(key, "USD")} for key in sorted(choices)],
+                "already_selected_categories": list(groups),
+            }, choices, len(batch), len(batch), previous_categories=set(groups))
+        except _InvalidSelection:
+            if len(batch) == 1:
+                raise
+            # Retry these same rows; keep the smaller cap for the remaining
+            # racks so a weak model does not repeatedly face oversized tasks.
+            batch_limit = max(1, len(batch) // 2)
+            continue
         for rack, key in zip(batch, selected, strict=True):
             groups.setdefault(key, []).append(rack.id)
         start += len(batch)

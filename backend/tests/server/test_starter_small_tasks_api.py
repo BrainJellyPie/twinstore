@@ -12,9 +12,18 @@ from tests.server.test_project_templates import _meta, client
 
 @pytest.mark.parametrize("template", ["specialty_cafe", "hypermarket"])
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
-def test_wizard_recovers_repeated_invented_sections_and_skus(client, monkeypatch, template, currency):
+@pytest.mark.parametrize("max_rows", [1, 8])
+def test_wizard_recovers_repeated_invented_sections_and_skus(client, monkeypatch, template, currency, max_rows):
     api, generation = client
-    model = SmallTaskModel()
+    class LimitedRows(SmallTaskModel):
+        async def generate_structured_async(self, schema, system, user, **kwargs):
+            payload = json.loads(user)
+            if "choices" in schema.model_fields and "racks" in payload and len(payload["racks"]) > max_rows:
+                self.calls.append((schema, payload, system))
+                return schema.model_validate({"choices": ["home_coffee_tea"]})
+            return await super().generate_structured_async(schema, system, user, **kwargs)
+
+    model = LimitedRows()
     monkeypatch.setattr(template_assortment, "assistive_client", lambda *args: model)
     response = api.post("/api/projects/create-store", data={"meta": json.dumps({**_meta(),
         "starter_selection": "automatic", "customer_profile": "동네 주민",
