@@ -15,6 +15,11 @@
   email; replays mark where the second visit starts and the clickstream CSV
   gains a `visit` column. Quick experiments offer a plain reminder and one with
   10 % off.
+- Keep impressions, clicks and costs attached to the selected ad campaign when
+  multiple sponsored tiles promote the same product.
+- Recover an online exit survey once when a local model explicitly cuts its
+  answer off at the output limit. Keep invalid answers and ordinary service
+  errors within their original attempt budget, and exclude unanswered surveys.
 - Add quick experiments to online runs. Tick up to three one-click changes to the
   first store (drop the last-step fee, allow guest checkout, untick the add-on,
   remove the welcome popup or offer a welcome coupon, halve or double page load

@@ -578,10 +578,16 @@ class ModelPolicy:
     async def survey(self, site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: SessionOutcome,
                      seconds: float, paid: int, seed: int) -> ExitSurvey | None:
         prompt = survey_prompt(site, shopper, history=history, outcome=OUTCOME_WORDS[outcome], seconds=seconds, paid=paid)
-        try:
-            answer = await self.llm.generate_structured_async(
-                SurveyAnswer, SURVEY_PROMPT, prompt, max_retries=self.max_retries, seed=seed, route=shopper.id,
-                max_tokens=self.max_tokens)
-        except Exception:  # noqa: BLE001 — a survey without an answer is left out, the visit still counts
-            return None
-        return answer.survey()
+        for attempt, budget in enumerate((self.max_tokens, 2 * self.max_tokens)):
+            try:
+                answer = await self.llm.generate_structured_async(
+                    SurveyAnswer, SURVEY_PROMPT, prompt, max_retries=self.max_retries, seed=seed, route=shopper.id,
+                    max_tokens=budget)
+            except Exception as e:  # noqa: BLE001 — an unanswered survey is omitted; the visit still counts
+                cause = (e.failed_attempts[-1].exception
+                         if isinstance(e, InstructorRetryException) and e.failed_attempts else e)
+                if attempt == 0 and isinstance(cause, IncompleteOutputException):
+                    continue
+                return None
+            return answer.survey()
+        return None
