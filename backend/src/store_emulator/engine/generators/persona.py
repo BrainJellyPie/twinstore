@@ -10,7 +10,7 @@ from typing import Annotated, Self, cast
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, Field, JsonValue, ValidationInfo, create_model, field_validator, model_validator
+from pydantic import BaseModel, Field, JsonValue, StringConstraints, ValidationInfo, create_model, field_validator, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
@@ -143,8 +143,8 @@ class GeneratedPersona(BaseModel):
     identity: PersonaLabel
     age_group: AgeGroup
     gender: Gender
-    description: str = Field(max_length=600)
-    intent: str = Field(max_length=400)
+    description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    intent: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)]
     purpose: PersonaLabel
     preferred_categories: list[Annotated[str, Field(max_length=80)]] = Field(default_factory=list[str], max_length=10)
     budget_min: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
@@ -301,6 +301,7 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 - gender: 반드시 다음 중 하나: {genders}
 - description: 이 사람의 상황, 성격 1~2문장. 해당 국가의 실제 생활상을 반영. 특정 브랜드명이나 구체적 상품명(예: 바나나맛 우유, 컨디션)을 사용하지 말고, 니즈/카테고리 수준으로 표현 (예: "a sweet dairy beverage", "a hangover-relief drink")
 - intent: 매장에서 하고 싶은 것 1문장 (자유 서술). 구체적 상품명 대신 카테고리나 니즈로 표현. 예: "조깅 후 수분 보충할 이온음료를 사고 싶다", "간단한 간식과 음료를 고르고 싶다"
+- description과 intent는 반드시 내용이 있는 문장으로 작성하세요. 빈 문자열이나 공백만 쓰지 마세요. 구매할 의도가 없으면 구경 등 실제 방문 의도를 적으세요.
 - purpose: 반드시 아래 제공된 purpose 목록 중 하나를 그대로 사용 (통계 집계용 짧은 라벨)
 - preferred_categories: {category_rule}
   - 선호 카테고리가 없으면 []를 사용하세요. null을 사용하지 마세요.

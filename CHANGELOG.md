@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
+
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
 - Exclude staff-script ratings with blank required replies or reasons. Spaces
