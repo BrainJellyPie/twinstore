@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- From the online report to the store: the **Store and online** section has
+  an **Open the store run** link that opens the store run it compares with,
+  on its layout, at the results (`store_setup_id` in
+  `GET …/online/runs/{id}/channels`).
 ## 0.7.0 — The same customers in both twins, and answers that become tests
 
 - Nothing is cut off on a 360 px phone: the tab row fits in English and

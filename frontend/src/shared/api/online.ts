@@ -427,7 +427,7 @@ export function clearShopperInterview(pid: string, runId: string, variant: numbe
 /** The run's customers in a store run of the same customers and online (mirrors application/channels.py). */
 export interface ChannelGroup { group: string; customers: number; both: number; store_only: number; online_only: number; neither: number }
 export interface ChannelMix {
-  store_run_id: string; store_run_at: string; online_store: string; customers: number;
+  store_run_id: string; store_setup_id: string; store_run_at: string; online_store: string; customers: number;
   both: number; store_only: number; online_only: number; neither: number;
   store_spend: number; online_spend: number; store_currency: string; online_currency: string;
   by_age: ChannelGroup[]; by_gender: ChannelGroup[];

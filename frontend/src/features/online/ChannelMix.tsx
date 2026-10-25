@@ -2,13 +2,15 @@
 // store run of those customers, online, in both or in neither, what they spent in each, and the split by age and gender.
 
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ArrowUpRight, Loader2 } from "lucide-react";
 
 import { getChannelMix, onlineKeys, type ChannelGroup } from "@/shared/api/online";
 import { currencyCode, formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { personaLabel } from "@/shared/i18n/personaLabels";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 type Cell = "both" | "store_only" | "online_only" | "neither";
 const CELLS: { key: Cell; label: MessageKey; color: string }[] = [
@@ -20,6 +22,7 @@ const CELLS: { key: Cell; label: MessageKey; color: string }[] = [
 
 export function ChannelMix({ projectId, runId }: { projectId: string; runId: string }) {
   const { t, locale } = useI18n();
+  const navigate = useNavigate();
   const mix = useQuery({ queryKey: onlineKeys.channels(projectId, runId), queryFn: ({ signal }) => getChannelMix(projectId, runId, signal) });
   if (mix.isPending) return <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" aria-hidden /> {t("studioLoading")}</p>;
   if (mix.isError) return <p role="alert" className="text-xs text-destructive">{mix.error.message}</p>;
@@ -35,9 +38,24 @@ export function ChannelMix({ projectId, runId }: { projectId: string; runId: str
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        {t("onChFrom", { date: m.store_run_at ? new Date(m.store_run_at).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : m.store_run_id, store: m.online_store, count: m.customers })}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-xs text-muted-foreground">
+          {t("onChFrom", { date: m.store_run_at ? new Date(m.store_run_at).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : m.store_run_id, store: m.online_store, count: m.customers })}
+        </p>
+        {/* The other twin's side of the comparison: that store run's results on its layout. */}
+        {m.store_setup_id && (
+          <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            onClick={() => {
+              const store = useSimulationStore.getState();
+              store.setSelectedSetupId(m.store_setup_id);
+              store.setViewRunId(m.store_run_id);
+              store.setActiveTab("dashboard");
+              void navigate({ to: "/projects/$pid", params: { pid: projectId } });
+            }}>
+            {t("onChOpenStoreRun")} <ArrowUpRight className="size-3.5" aria-hidden />
+          </button>
+        )}
+      </div>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="grid grid-cols-2 gap-2 self-start">
           {CELLS.map((c) => (

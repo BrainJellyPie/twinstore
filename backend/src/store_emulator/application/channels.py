@@ -27,6 +27,7 @@ class ChannelGroup(BaseModel):
 
 class ChannelMix(BaseModel):
     store_run_id: str
+    store_setup_id: str  # the layout the store run was made on, to open it there; empty when its status is unreadable
     store_run_at: str
     online_store: str  # the online run's first store, whose visits are read
     customers: int  # customers in both runs
@@ -42,11 +43,11 @@ class ChannelMix(BaseModel):
     by_gender: list[ChannelGroup]
 
 
-def _store_runs(pid: str) -> list[tuple[str, str]]:
-    """(run id, created at) of the project's finished store runs, newest first."""
+def _store_runs(pid: str) -> list[tuple[str, str, str]]:
+    """(run id, created at, layout id) of the project's finished store runs, newest first."""
     runs = Path(DATA_DIR) / pid / "runs"
     folders: list[Path] = sorted(runs.iterdir()) if runs.is_dir() else []
-    found: list[tuple[str, str]] = []
+    found: list[tuple[str, str, str]] = []
     for folder in folders:
         if not all((folder / name).is_file() for name in ("output/timeline.json", "output/personas.json", "input/store.json")):
             continue
@@ -55,10 +56,10 @@ def _store_runs(pid: str) -> list[tuple[str, str]]:
             status = cast(dict[str, object], raw) if isinstance(raw, dict) else {}
             if status.get("status") not in (None, "", "completed"):
                 continue
-            created = str(status.get("created_at", ""))
+            created, setup = str(status.get("created_at", "")), str(status.get("setup_id", ""))
         except (OSError, ValueError, AttributeError):  # missing or damaged: still a finished run
-            created = ""
-        found.append((folder.name, created))
+            created, setup = "", ""
+        found.append((folder.name, created, setup))
     return sorted(found, key=lambda r: r[1], reverse=True)
 
 
@@ -80,7 +81,7 @@ def channel_mix(pid: str, online_run_id: str, store_run_id: str | None = None) -
     candidates = [r for r in _store_runs(pid) if store_run_id in (None, r[0])]
     if store_run_id is not None and not candidates:
         raise AppError(f"store run not found: {store_run_id}", 404)
-    for run_id, created in candidates:
+    for run_id, created, setup in candidates:
         try:
             customers, personas, _store, currency = _load(pid, run_id)
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
@@ -110,7 +111,7 @@ def channel_mix(pid: str, online_run_id: str, store_run_id: str | None = None) -
 
         total = cells(shared, "all")
         return ChannelMix(
-            store_run_id=run_id, store_run_at=created, online_store=result.variants[0].site_name, customers=len(shared),
+            store_run_id=run_id, store_setup_id=setup, store_run_at=created, online_store=result.variants[0].site_name, customers=len(shared),
             both=total.both, store_only=total.store_only, online_only=total.online_only, neither=total.neither,
             store_spend=sum(customers[p].total_spent for p in shared), online_spend=sum(online[p][1] for p in shared),
             store_currency=currency.upper(), online_currency=result.currency.upper(),

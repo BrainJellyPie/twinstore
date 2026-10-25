@@ -35,6 +35,7 @@ def test_customers_split_into_store_online_both_and_neither(client: TestClient) 
     assert r.status_code == 200, r.text
     mix = r.json()
     assert mix["store_run_id"] == STORE_RUN and mix["online_store"] == view["result"]["variants"][0]["site_name"]
+    assert mix["store_setup_id"].startswith("setup_")  # the layout to open the store run on
     assert 0 < mix["customers"] <= 40
     assert mix["both"] + mix["store_only"] + mix["online_only"] + mix["neither"] == mix["customers"]
     online_buyers = sum(1 for s in view["result"]["shoppers"]
@@ -125,4 +126,4 @@ def test_complete_legacy_store_run_remains_readable_without_good_status(client, 
         status.write_text(status_text)
     result = client.get(url, params={"store_run": STORE_RUN})
     assert result.status_code == 200
-    assert result.json() == {**expected, "store_run_at": ""}
+    assert result.json() == {**expected, "store_run_at": "", "store_setup_id": ""}

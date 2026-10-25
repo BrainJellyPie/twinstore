@@ -34,7 +34,7 @@ def test_free_or_legacy_paid_purchase_and_every_online_visit_are_counted(monkeyp
             TimelineEvent(elapsed_sec=1, x=1, y=1, action=Action.BUY, product_sku="free", price=0, quantity=1)])
     store = Store(id="store", name="Store", type="convenience", grid_size=(8, 8))
     monkeypatch.setattr(channels, "get_run", lambda *_: view)
-    monkeypatch.setattr(channels, "_store_runs", lambda _: [("store_run", "2026-10-25")])
+    monkeypatch.setattr(channels, "_store_runs", lambda _: [("store_run", "2026-10-25", "setup_1")])
     monkeypatch.setattr(channels, "_load", lambda *_: ({persona.id: customer}, {persona.id: persona}, store, "USD"))
     mix = channels.channel_mix("project", report.run_id)
     assert mix is not None
