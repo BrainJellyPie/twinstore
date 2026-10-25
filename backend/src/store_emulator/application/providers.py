@@ -378,10 +378,8 @@ def resolve_model(
             f"no API key for {preset.label}: add it in Settings → Model providers or set {preset.api_key_env}",
         )
     model_id = parsed.model
-    parallel: int | None = None
     if parsed.provider == ProviderKind.LLAMACPP and model_id == "local":
         model_id = "local-model"
-        parallel = _local_slots(_api_base(preset, s))
     api_base = _api_base(preset, s)
     if preset.local and not api_base:
         raise ValueError(f"No model server address is configured for {preset.label}. Set its HTTP or HTTPS endpoint "
@@ -390,12 +388,13 @@ def resolve_model(
         # The SDK needs a key even for no-auth servers. An explicit placeholder
         # prevents it from borrowing another provider's environment credential.
         key = "not-needed"
+    parallel = _local_slots(api_base) if api_base else None
     return base.model_copy(update={
         "model": f"{preset.litellm_prefix}/{model_id}",
         "api_base": api_base,
         "structured_output": preset.structured_output,
         "api_key": SecretStr(key) if key else None,
-        "max_parallel": parallel or base.max_parallel,
+        "max_parallel": min(parallel, base.max_parallel) if parallel and base.max_parallel else parallel or base.max_parallel,
         "cache_namespace": _local_cache_namespace(api_base),
     })
 
@@ -417,17 +416,23 @@ def _local_cache_namespace(api_base: str | None) -> str:
 
 def _on_local_server(config: LLMConfig) -> LLMConfig:
     """A model at the local model's usual address (the default vision model, `openai/local-vlm` at port 8081) goes
-    where TwinStore's own server runs now — another port when 8081 was taken — with its request limit."""
-    usual = (PRESETS[ProviderKind.LLAMACPP].default_api_base or "").rstrip("/")
-    if not config.api_base or config.api_base.rstrip("/") != usual:
+    where TwinStore's own server runs now — another port when 8081 was taken. A reference already pointing at that
+    server keeps its address and gets the same capacity limit, regardless of its model alias."""
+    if not config.api_base:
         return config
     from .local_vlm import manager  # late import: local_vlm imports this module
 
     status = manager().status()
     if status.state != "ready" or not status.api_base:
         return config
-    return config.model_copy(update={"api_base": status.api_base,
-                                     "max_parallel": config.max_parallel or status.slots or None})
+    usual = PRESETS[ProviderKind.LLAMACPP].default_api_base or ""
+    api_base = status.api_base if _same_local_endpoint(config.api_base, usual) else config.api_base
+    if not _same_local_endpoint(api_base, status.api_base):
+        return config
+    parallel = config.max_parallel
+    if status.slots > 0:
+        parallel = min(parallel, status.slots) if parallel else status.slots
+    return config.model_copy(update={"api_base": api_base, "max_parallel": parallel})
 
 
 def _local_slots(api_base: str | None) -> int | None:

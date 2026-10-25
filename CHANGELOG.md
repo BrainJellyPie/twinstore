@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Apply a known local server's capacity to every model reference targeting it,
+  including custom/vLLM aliases and its actual alternate port. Smaller existing
+  client limits are preserved; larger limits cannot bypass the known slots.
+
 - Preserve local model request limits across equivalent endpoint spellings.
   A trailing slash or host-name casing change no longer disables the known
   llama.cpp slot limit and sends the whole request batch at once.
