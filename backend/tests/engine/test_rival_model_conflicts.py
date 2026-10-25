@@ -19,13 +19,16 @@ from tests.engine.test_rival_comparison_boundaries import pair
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("outcome", ["corrected", "repeated", "legacy_cache"])
-def test_conflicting_rival_matches_retry_before_pricing_and_caching(monkeypatch, tmp_path, mode, reverse, outcome):
+@pytest.mark.parametrize("conflict", ["different_product", "unmatched", "null_unmatched", "blank_unmatched"])
+def test_conflicting_rival_matches_retry_before_pricing_and_caching(monkeypatch, tmp_path, mode, reverse, outcome, conflict):
     store, capture = pair(our_name="Twin Tea 500 ml", rival_name="Different label", our_price=200, rival_price=100)
     store.racks[0].slots[0].items.append(SlotItem(sku="large", name="Twin Tea 1 L", price=50))
     missing, ours = unmatched_names(store, capture)
     assert missing == ["Different label"]
     good = {"pairs": [{"rival": missing[0], "ours": ours[0]}]}
-    bad = {"pairs": [{"rival": missing[0], "ours": name} for name in (ours[::-1] if reverse else ours)]}
+    answers = [ours[0], {"different_product": ours[1], "unmatched": "", "null_unmatched": None,
+                        "blank_unmatched": "  \t"}[conflict]]
+    bad = {"pairs": [{"rival": missing[0], "ours": name} for name in (answers[::-1] if reverse else answers)]}
     phase = "prime" if outcome == "legacy_cache" else "invalid"
     original, requests = llm_client.litellm.acompletion, []
 
@@ -85,6 +88,8 @@ def test_conflicting_rival_matches_retry_before_pricing_and_caching(monkeypatch,
     ([{"rival": "Label", "ours": "Tea"}, {"rival": "Label", "ours": "Invented"}], {"Label": "Tea"}),
     ([{"rival": "Label", "ours": "Tea"}, {"rival": "Other", "ours": "Coffee"}], {"Label": "Tea"}),
     ([{"rival": "Label", "ours": ""}], {}),
+    ([{"rival": "Label", "ours": ""}, {"rival": "Label", "ours": None}], {}),
+    ([{"rival": "Label", "ours": "  "}, {"rival": "Label", "ours": ""}], {}),
     ([], {}),
 ])
 def test_equivalent_duplicates_and_existing_unmatched_controls_remain_supported(pairs, expected):

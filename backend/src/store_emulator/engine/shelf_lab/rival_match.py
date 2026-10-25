@@ -35,6 +35,7 @@ MATCH_PROMPT = """You match products on a rival store's shelf to the same produc
 same brand, the same variant or flavour and the same size; a similar product is not a match. For each rival product,
 give our product's name exactly as listed, or an empty string, not null, when we do not sell that exact product.
 Return at most one match per rival product; never assign different products to the same rival name.
+Do not return both a match and an empty unmatched answer for the same rival product.
 For a name longer than 160 characters, copy its first 160 characters only when the prefix identifies one product
 in that list. Omit an ambiguous pair; do not guess between products sharing that prefix."""
 
@@ -57,16 +58,16 @@ async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_nam
     rivals = {n: n for n in rival_names}
 
     def resolved_pairs(pairs: list[_Pair]) -> dict[str, str]:
-        matched: dict[str, str] = {}
+        matched: dict[str, str | None] = {}
         for pair in pairs:
             rival = _listed_name(pair.rival, rivals, fold=False)
             target = _listed_name(pair.ours, ours, fold=True)
-            if rival is None or target is None:
+            if rival is None or (target is None and pair.ours.strip()):
                 continue
             if rival in matched and matched[rival] != target:
                 raise ValueError("Conflicting matches for the same rival product; return only one listed product per rival name.")
             matched[rival] = target
-        return matched
+        return {rival: target for rival, target in matched.items() if target is not None}
 
     class MatchedPairs(_Pairs):
         @model_validator(mode="after")

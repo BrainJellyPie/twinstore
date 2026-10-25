@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject rival-model replies that both match a product and declare it unmatched.
+  Contradictory empty/null answers now trigger correction before price comparison
+  or caching, instead of silently keeping only the positive match.
+
 - Recheck an adopted local model server when refreshing setup or pressing Start.
   A server that exits or becomes unavailable no longer stays permanently ready
   and prevents starting a replacement; slow probes do not hold the manager lock.
