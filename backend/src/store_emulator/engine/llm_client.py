@@ -243,6 +243,10 @@ class LiteLLMClient:
         self.temperature = config.temperature
         self.max_tokens = config.max_tokens
         self.api_base = config.api_base
+        if self.model.startswith("ollama_chat/") and self.api_base and not any(c in self.api_base for c in "?#"):
+            # The native adapter appends /api/chat without trimming directory
+            # slashes; even a trailing slash on the full route duplicates it.
+            self.api_base = self.api_base.rstrip("/")
         self.seed = config.seed
         self.timeout_sec = config.timeout_sec
         self.cache_dir = Path(config.cache_dir) if config.cache_dir else None

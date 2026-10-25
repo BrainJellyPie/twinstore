@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Normalize trailing slashes on native Ollama request endpoints. Saved and raw
+  model addresses now reach `/api/chat` instead of doubled or repeated paths,
+  including servers behind a path prefix and an explicitly supplied chat URL.
+
 - Send JSON schemas to local Ollama models instead of requesting JSON syntax
   alone. Automatic starter selection now transmits rack/SKU constraints through
   Ollama's native format field, as do other structured text and image calls.
