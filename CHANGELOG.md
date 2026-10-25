@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Resolve generated shopping categories against both catalog label languages.
+  English preferences such as `Fresh Produce` now find Korean shelves carrying
+  the `fresh_produce` category, and Korean preferences find English shelves.
+  Rule and vision shopping plans share the correction, including cached answers.
+
 - Treat recognized foreign currency marks on captured shelf tags as unreadable
   prices instead of silently interpreting their amounts in the store's currency.
   Keep the product and original tag text with the existing estimated-price flag;

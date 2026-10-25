@@ -33,6 +33,7 @@ from store_emulator.domain.types import (
     TokenUsage,
     stable_seed,
 )
+from store_emulator.engine.layout_gen.catalog import CATEGORY_LABELS
 from store_emulator.engine.routing.route_builder import (
     build_journey,
     entrance_position,
@@ -165,8 +166,11 @@ class RuleBasedEngine:
         if cached is not None and cached[0] is store:
             return cached[1]
         grid = self._planning_grid(store)
+        # Generated and captured racks retain a catalog category id in rack_desc.
+        # Match its labels in either language even when the visible sign is localized.
         entries = [
-            (rack, slot, item, tokenize(f"{rack.rack_name} {rack.rack_desc}"), tokenize(item.name))
+            (rack, slot, item, tokenize(f"{rack.rack_name} {rack.rack_desc} "
+                                       f"{' '.join(CATEGORY_LABELS.get(rack.rack_desc, ()))}"), tokenize(item.name))
             for rack in store.product_racks for slot in rack.slots
             if face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block) is not None
             for item in slot.items
