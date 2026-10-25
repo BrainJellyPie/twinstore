@@ -2,11 +2,13 @@
 
 ## Unreleased
 
+## 0.5.0 — Online stores shopped by vision shoppers
+
 - Native Ollama requests for official Qwen3.5 models now disable optional thinking so short automatic-answer budgets remain available for the final response. Other model families, custom namespaces and cloud references keep their existing behavior; changed-policy caches are separated.
 - Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
 
 - Add online stores. Each project can build browser-style web shops from 42
-  ready-made templates (2,500+ catalog products, most with photos) or from a
+  ready-made templates (about 2,500 listings, most with photos) or from a
   layout's own shelves, and tune their design: layout, search quality,
   sponsored listings, urgency and social proof, welcome popups, cookie banner,
   delivery fees, coupons, guest checkout, checkout steps, payment methods,
