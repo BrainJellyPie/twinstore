@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The "Explore without an API key" notice is one line on a wide screen —
+  title, hint and **Set up vision shoppers** side by side — so it takes less
+  of every page; it still opens to the local model and settings buttons.
+- Sentence case for three English labels: Synthetic customers, Rack details
+  and Floor configuration.
 - From the online report to the store: the **Store and online** section has
   an **Open the store run** link that opens the store run it compares with,
   on its layout, at the results (`store_setup_id` in
