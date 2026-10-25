@@ -2,7 +2,7 @@
 // intervals, the funnel, where they left, segments, what they searched and bought, where they clicked, and every
 // shopper's visit.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Columns2, Filter, GitCompareArrows, MessageSquareText, Play, Route, ShoppingBag, Store, Users, Waves } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -196,12 +196,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
 
   return (
     <>
-      <nav aria-label={t("onNavLabel")} className="sticky top-0 z-20 flex gap-1 overflow-x-auto rounded-2xl border bg-background/80 p-1 text-xs shadow-sm backdrop-blur-xl">
-        {sections.filter((x) => x.show).map((x) => (
-          <a key={x.id} href={`#${x.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(x.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-            className="shrink-0 rounded-xl px-3 py-1.5 whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">{x.label}</a>
-        ))}
-      </nav>
+      <SectionNav label={t("onNavLabel")} sections={sections.filter((x) => x.show)} />
       {result.notes.length > 0 && (
         <ul className="panel list-disc space-y-0.5 rounded-[1.4rem] py-3 pr-4 pl-8 text-xs text-muted-foreground">
           {result.notes.map((n, i) => <li key={i}>{n}</li>)}
@@ -646,6 +641,63 @@ function Heatmap({ variants }: { variants: VariantSummary[] }) {
       </div>
       <p className="text-xs text-muted-foreground">{t("onHeatmapCount", { count: shown.length })}</p>
     </Section>
+  );
+}
+
+// The report's table of contents: the section being read is highlighted and kept in view, and a fade at either end
+// shows that more sections are hidden off the strip.
+function SectionNav({ label, sections }: { label: string; sections: { id: string; label: string }[] }) {
+  const strip = useRef<HTMLElement>(null);
+  const [active, setActive] = useState<string | null>(null);
+  const [more, setMore] = useState({ left: false, right: false });
+  // After a click the highlight stays on the chosen section while the page scrolls past the ones before it.
+  const jumpUntil = useRef(0);
+  const ids = sections.map((x) => x.id).join(" ");
+  useEffect(() => {
+    const el = strip.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const order = ids.split(" ");
+    const showing = new Set<string>();
+    // A section is being read while it crosses a reading line a third of the way down the screen.
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) showing.add(e.target.id);
+        else showing.delete(e.target.id);
+      }
+      const first = order.find((id) => showing.has(id));
+      if (first && Date.now() > jumpUntil.current) setActive(first);
+    }, { rootMargin: "-30% 0px -65% 0px" });
+    for (const id of order) {
+      const section = document.getElementById(id);
+      if (section) io.observe(section);
+    }
+    const measure = () => setMore({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => { io.disconnect(); ro?.disconnect(); el.removeEventListener("scroll", measure); };
+  }, [ids]);
+  useEffect(() => {
+    const el = strip.current;
+    const chip = el?.querySelector<HTMLElement>(`[data-section="${active}"]`);
+    if (el && chip && (chip.offsetLeft < el.scrollLeft || chip.offsetLeft + chip.offsetWidth > el.scrollLeft + el.clientWidth)) {
+      el.scrollTo?.({ left: chip.offsetLeft - el.clientWidth / 3, behavior: "smooth" });
+    }
+  }, [active]);
+  const fade = more.left && more.right ? "[mask-image:linear-gradient(90deg,transparent,#000_2.5rem,#000_calc(100%-2.5rem),transparent)]"
+    : more.right ? "[mask-image:linear-gradient(90deg,#000_calc(100%-2.5rem),transparent)]"
+    : more.left ? "[mask-image:linear-gradient(90deg,transparent,#000_2.5rem)]" : "";
+  return (
+    <div className="sticky top-0 z-20 rounded-2xl border bg-background/80 shadow-sm backdrop-blur-xl">
+      <nav ref={strip} aria-label={label} className={cn("relative flex gap-1 overflow-x-auto p-1 text-xs [scrollbar-width:none]", fade)}>
+        {sections.map((x) => (
+          <a key={x.id} href={`#${x.id}`} data-section={x.id} aria-current={active === x.id ? "location" : undefined}
+            onClick={(e) => { e.preventDefault(); setActive(x.id); jumpUntil.current = Date.now() + 1200; document.getElementById(x.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+            className={cn("shrink-0 rounded-xl px-3 py-1.5 whitespace-nowrap transition-colors",
+              active === x.id ? "bg-foreground font-medium text-background shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>{x.label}</a>
+        ))}
+      </nav>
+    </div>
   );
 }
 
