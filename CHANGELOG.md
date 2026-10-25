@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject echoed manager questions before caching or saving run-analysis answers,
+  so failed local-model replies can be retried without polluting the conversation.
+
 - Recover cut-off customer-profile and store-form drafts once with a larger
   output budget, without retrying ordinary errors as truncation.
 

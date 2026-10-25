@@ -8,8 +8,11 @@ sheet cannot answer gets "the run does not show that" and a pointer to the analy
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Protocol
+from unicodedata import normalize
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from instructor.core.exceptions import InstructorRetryException
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic_core import PydanticCustomError
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import AnalystMessage
@@ -46,6 +49,7 @@ ANALYST_PROMPT = """You are a retail analyst answering a store manager's questio
 The shoppers are synthetic; the fact sheet below is everything the run measured. Answer only from it: quote its
 numbers, compare them, and say what they suggest, as a hypothesis when it is one. If the sheet cannot answer the
 question, say "The run does not show that" and name what would (a group interview, an A/B test, a scenario run).
+Answer the manager's latest question; do not repeat a question as your answer.
 Copy the sheet lines you used into figures, exactly as written. Use [] for absent figures or follow_ups, not null.
 Plain sentences, no markdown. Write in English."""
 
@@ -146,7 +150,26 @@ async def answer_run_question(
 ) -> RunAnswer:
     convo = "\n".join(f"{'Manager' if m.role == 'user' else 'Analyst'}: {m.text}" for m in history[-8:])
     user = f"Fact sheet:\n{facts}\n\n{'Conversation so far:' + chr(10) + convo + chr(10) + chr(10) if convo else ''}Manager: {question.strip()}"
-    answer = await llm.generate_structured_async(RunAnswer, ANALYST_PROMPT, user, max_retries=2, seed=seed)
+    questions = [question, *(m.text for m in history[-8:] if m.role == "user")]
+    asked = {"".join(c for c in normalize("NFKC", text).casefold() if c.isalnum()) for text in questions}
+
+    class AnalystAnswer(RunAnswer):
+        @field_validator("answer")
+        @classmethod
+        def answer_the_question(cls, value: str) -> str:
+            if "".join(c for c in normalize("NFKC", value).casefold() if c.isalnum()) in asked:
+                raise PydanticCustomError("analyst_echo", "the model repeated the question instead of answering. "
+                                          "Answer the manager's latest question using the supplied fact sheet.")
+            return value
+
+    try:
+        answer = await llm.generate_structured_async(AnalystAnswer, ANALYST_PROMPT, user, max_retries=2, seed=seed)
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if isinstance(cause, ValidationError) and any(e["type"] == "analyst_echo" for e in cause.errors()):
+            raise ValueError("the model repeated the question instead of answering") from error
+        raise
     sheet = facts.casefold()
     figures = [f.strip() for f in answer.figures if f.strip() and f.strip().casefold() in sheet]
     return answer.model_copy(update={"figures": figures[:8], "follow_ups": [q.strip() for q in answer.follow_ups if q.strip()][:3]})
