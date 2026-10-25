@@ -20,8 +20,9 @@ import { personaLabel } from "@/shared/i18n/personaLabels";
 import { JourneyViewer } from "./JourneyViewer";
 import {
   AD_PLACEMENT_LABELS, DELTA_LABELS, DEVICE_LABELS, FRICTION_HARMS, FRICTION_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_COLORS, OUTCOME_LABELS,
-  PAGE_LABELS, POLICY_LABELS, VISION_LABELS,
+  PAGE_LABELS, POLICY_LABELS, segmentValueLabel,
 } from "./labels";
+import { WhoChanged } from "./WhoChanged";
 
 const DIMENSIONS: { id: SegmentRow["dimension"]; label: MessageKey }[] = [
   { id: "mission", label: "onSegMission" }, { id: "device", label: "onSegDevice" },
@@ -162,6 +163,8 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
           ))}
         </Section>
       )}
+
+      <WhoChanged result={result} money={money} onReplay={(variant, shopper) => setJourney({ variant, shopper })} />
 
       <div className="grid gap-3 xl:grid-cols-2">
         <Section title={t("onFunnel")}>
@@ -466,12 +469,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Segments({ result, money, pct }: { result: OnlineRunResult; money: (x: number) => string; pct: (x: number) => string }) {
   const { t } = useI18n();
   const [dimension, setDimension] = useState<SegmentRow["dimension"]>("mission");
-  const label = (value: string) => {
-    if (dimension === "mission" && value in MISSION_LABELS) return t(MISSION_LABELS[value as keyof typeof MISSION_LABELS]);
-    if (dimension === "device" && value in DEVICE_LABELS) return t(DEVICE_LABELS[value as Device]);
-    if (dimension === "vision" && value in VISION_LABELS) return t(VISION_LABELS[value as keyof typeof VISION_LABELS]);
-    return personaLabel(value, t);
-  };
+  const label = (value: string) => segmentValueLabel(dimension, value, t);
   const values = [...new Set(result.variants.flatMap((s) => s.segments.filter((r) => r.dimension === dimension).map((r) => r.value)))];
   return (
     <Section title={t("onSegments")}>

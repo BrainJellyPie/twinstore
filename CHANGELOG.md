@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Omit new shopper-switch claims from older saved reports that have no segment
+  analysis, instead of presenting their compatibility defaults as measured zeros.
+
+- Show who an online change won and lost. Each comparison breaks the paired
+  conversion difference down by mission, device, age, gender and eyesight with
+  95 % intervals and revenue per visit, counts orders won and lost, and lists the
+  shoppers whose visit ended differently with where each visit ended, the
+  shopper's last thought and a replay in either store.
+
 - Reuse confirmed quick-experiment variants after a copy or run-start failure.
   Keep them visible and selected for retry, and lock comparison choices while
   creation is pending.

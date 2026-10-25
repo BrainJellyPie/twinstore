@@ -2,9 +2,10 @@
 
 import type {
   Accessibility, ActionKind, AdPlacement, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
-  SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
+  SegmentDimension, SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
 } from "@/shared/api/online";
 import { messages, type MessageKey } from "@/shared/i18n/messages";
+import { personaLabel } from "@/shared/i18n/personaLabels";
 
 export const PAGE_LABELS: Record<PageKind, MessageKey> = {
   home: "onPageHome", category: "onPageCategory", search: "onPageSearch", deals: "onPageDeals", product: "onPageProduct",
@@ -120,3 +121,11 @@ export const AD_PLACEMENT_HINTS: Record<AdPlacement, MessageKey> = {
   hero_banner: "onAdPlaceHeroHint", sponsored_listing: "onAdPlaceListingHint", home_tile: "onAdPlaceTileHint",
   product_page: "onAdPlaceProductHint", cart_upsell: "onAdPlaceCartHint", popup: "onAdPlacePopupHint",
 };
+
+/** How a segment value reads: missions, devices and eyesight from their labels, ages and genders as persona labels. */
+export function segmentValueLabel(dimension: SegmentDimension, value: string, t: (key: MessageKey) => string): string {
+  if (dimension === "mission" && value in MISSION_LABELS) return t(MISSION_LABELS[value as ShopperMission]);
+  if (dimension === "device" && value in DEVICE_LABELS) return t(DEVICE_LABELS[value as Device]);
+  if (dimension === "vision" && value in VISION_LABELS) return t(VISION_LABELS[value as Vision]);
+  return personaLabel(value, t);
+}
