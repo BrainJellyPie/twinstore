@@ -1,12 +1,12 @@
 """A rival's shelf against ours: prices and assortment from a capture of the rival's shelf.
 
-Products are matched by name to the products our layout sells. The price index is the geometric mean
+Products are matched by normalized name or an explicit alias to products our layout sells. Similar
+names alone cannot establish the same brand, variant or pack size. The price index is the geometric mean
 of rival / our price over matched products (1.0 = same prices, 0.9 = the rival is 10 % cheaper);
 assortment overlap is the Jaccard index of the two product sets in the shelf's categories. A
 price-adjusted pull for the rival venue scales its Huff attractiveness by (1 / index)^elasticity.
 """
 
-import difflib
 import math
 from collections.abc import Mapping
 
@@ -51,23 +51,22 @@ def _product_key(name: str) -> str:
     return normalize_text(name) or f"symbol:{name.strip()}"
 
 
-def unmatched_names(store: Store, rival: CaptureResult, *, cutoff: float = 0.86) -> tuple[list[str], list[str]]:
-    """Rival product names that neither an exact nor a close name match reaches, and our product names."""
+def unmatched_names(store: Store, rival: CaptureResult) -> tuple[list[str], list[str]]:
+    """Names without an exact normalized match, for explicit product matching, and our product names."""
     ours = {_product_key(item.name): item.name for _, slot in store.all_slots for item in slot.items}
-    keys = [key for key in ours if not key.startswith("symbol:")]
     missing: list[str] = []
     for item in rival.items:
         if not item.labeled:
             continue
         name = display_name(item)
         key = _product_key(name)
-        if key not in ours and (not normalize_text(name) or not difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)):
+        if key not in ours:
             missing.append(name)
     return list(dict.fromkeys(missing)), list(dict.fromkeys(ours.values()))
 
 
 def compare_rival(
-    store: Store, rival: CaptureResult, *, elasticity: float = 1.0, cutoff: float = 0.86,
+    store: Store, rival: CaptureResult, *, elasticity: float = 1.0,
     aliases: Mapping[str, str] | None = None,
 ) -> RivalComparison:
     """`aliases`: rival product name → our product name for matches the names alone miss (e.g. read by a model)."""
@@ -80,7 +79,6 @@ def compare_rival(
                 category = _category_of(rack.rack_desc, rack.rack_name, item.name, rack.type) if categories else ""
                 ours[key] = (item.name, item.price, category)
     ours_here = {k: v for k, v in ours.items() if not categories or v[2] in categories}
-    keys = [key for key in ours if not key.startswith("symbol:")]
     prices: list[PriceComparison] = []
     canonical: dict[str, str] = {}                      # rival product name → our key, or its own normalized name
     for item in rival.items:
@@ -95,7 +93,7 @@ def compare_rival(
         elif alias is not None and alias in ours:
             hit = alias
         else:
-            hit = next(iter(difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)), None) if normalize_text(name) else None
+            hit = None
         canonical[name] = hit if hit is not None else f"rival:{key}"
         if hit is None:
             continue

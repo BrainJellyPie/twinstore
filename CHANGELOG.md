@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Stop treating similar rival product names as confirmed identities. Different
+  sizes, flavors, brands and pack counts reach optional model matching and stay
+  out of price and venue-pull calculations unless explicitly matched.
+
 - Search recent llama.cpp releases for a compatible GPU build before falling
   back to CPU. A partially uploaded newest release no longer forces a smaller
   CPU model when an earlier complete CUDA or Vulkan build is available.
