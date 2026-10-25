@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reset online run forms and report selections when switching stores or runs,
+  preventing starts against the previous store and replays with the previous run’s shoppers.
+
 - Keep whole-trip and shelf-specific purchase conditions together in customer
   search, so a nonbuyer search cannot silently include shoppers who bought elsewhere.
 

@@ -119,7 +119,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
 
       <main className="m-3 flex min-h-[32rem] min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
         {runId ? (
-          <RunReport projectId={projectId} runId={runId} onDeleted={() => setRunId(null)} />
+          <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => setRunId(null)} />
         ) : showGallery ? (
           <TemplateGallery
             projectId={projectId} currency={currency} templates={templates.data ?? []} loading={templates.isPending}
@@ -131,7 +131,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
           <>
             <div className="panel flex flex-wrap items-center gap-2 rounded-[1.4rem] p-2" role="tablist" aria-label={t("onStoreTabs")}>
               {TABS.map(({ id, label, icon: Icon }) => (
-                <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+                <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => { setSiteId(selected.id); setTab(id); }}
                   className={cn("flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium", tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
                   <Icon className="size-4" aria-hidden /> {t(label)}
                 </button>
@@ -144,7 +144,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
                 onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)} />
             )}
             {tab === "simulate" && (
-              <RunLauncher projectId={projectId} sites={list} firstSiteId={selected.id}
+              <RunLauncher key={`${projectId}:${selected.id}`} projectId={projectId} sites={list} firstSiteId={selected.id}
                 hasCustomers={(project.data?.personas.length ?? 0) > 0}
                 onStarted={(id) => { setRunId(id); }} />
             )}
