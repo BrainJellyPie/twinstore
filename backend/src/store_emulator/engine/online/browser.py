@@ -516,11 +516,20 @@ def _cart(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[Panel]:
     if not state.cart:
         return [Panel("Your cart is empty", (Line("Find something you like and add it here.", "muted"),
                                             Line("Continue shopping", "strong", ctl(ActionKind.HOME, "Continue shopping"))))]
+    items = [(item, p) for item in state.cart if (p := site.product(item.product_id)) is not None]
+    per = o.products_per_page
+    pages = page_count(site, len(items))
+    index = min(state.at.page_index, pages - 1)
     lines: list[Line] = []
-    for item in state.cart:
-        p = site.product(item.product_id)
-        if p is None:
-            continue
+    if pages > 1:
+        lines.append(Line(f"{len(items)} products · page {index + 1} of {pages}", "muted"))
+    if index > 0:
+        label = f"Previous page (page {index} of {pages})"
+        lines.append(Line(label, "text", ctl(ActionKind.PREVIOUS_PAGE, label)))
+    if index + 1 < pages:
+        label = f"Next page (page {index + 2} of {pages})"
+        lines.append(Line(label, "text", ctl(ActionKind.NEXT_PAGE, label)))
+    for item, p in items[index * per:(index + 1) * per]:
         lines.append(Line(f"{p.name}  ×{item.quantity}   {money(p.price * item.quantity, site)}", "strong"))
         if _can_add(state, p):
             lines.append(Line("+ one more", "muted", ctl(ActionKind.INCREASE_QUANTITY, f"Add one more: {p.name}", p.id)))
@@ -880,8 +889,12 @@ def apply(
     if kind == ActionKind.READ_REVIEWS:
         return state.model_copy(update={"reviews_open": True})
     if kind == ActionKind.REMOVE_FROM_CART:
-        return state.model_copy(update={"cart": [line for line in state.cart if line.product_id != target],
-                                        "notice": "Removed from your cart"})
+        cart = [line for line in state.cart if line.product_id != target]
+        at = state.at
+        if at.page == PageKind.CART:
+            pages = page_count(site, sum(site.product(line.product_id) is not None for line in cart))
+            at = at.model_copy(update={"page_index": min(at.page_index, pages - 1)})
+        return state.model_copy(update={"cart": cart, "at": at, "notice": "Removed from your cart"})
     if kind == ActionKind.APPLY_COUPON:
         if state.coupon_known and o.coupon_percent:
             return state.model_copy(update={"coupon_applied": True, "notice": f"Coupon {o.coupon_code} applied"})

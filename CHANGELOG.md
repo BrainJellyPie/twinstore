@@ -40,6 +40,8 @@
   Keep unfinished price text and its validation when a product filter hides a row.
 - Keep online preview numbers and device selection aligned with the displayed
   page when a transition fails, and prevent overlapping page transitions.
+- Paginate large online carts so quantity, removal and checkout controls stay
+  visible to vision shoppers. Keep totals and orders based on the complete cart.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
