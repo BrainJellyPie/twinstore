@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Use the loaded managed model's family for shelf-grounding coordinates even
+  when its API name is `local-model`. Managed Qwen3.5 now uses the same 0–1000
+  prompt and decoder as a named Qwen model, preventing misplaced product boxes.
+  Other endpoints and unloaded model recommendations retain their own behavior.
+
 - Treat `null` as no extra candidates only in the optional impulse shortlist.
   Context recovery can now retain an already planned purchase instead of failing
   the entire visit. Required primary shortlists still reject missing or null

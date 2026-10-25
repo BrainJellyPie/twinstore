@@ -210,7 +210,18 @@ def choose_detector(options: CaptureOptions, llm: LiteLLMClient | None) -> Facin
     if kind == "vlm":
         if llm is None:
             raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
-        return VLMGroundingDetector(llm, model=llm.model)
+        model = llm.model
+        if llm.cache_namespace.startswith("managed-local:"):
+            from .local_vlm import manager
+
+            status = manager().status()
+            if (status.state == "ready" and status.managed and status.plan is not None
+                    and status.api_base and llm.api_base
+                    and status.api_base.rstrip("/") == llm.api_base.rstrip("/")):
+                # The server's local-model alias hides the loaded family's coordinate convention.
+                # Keep that API alias on the client; only the detector needs this family hint.
+                model = status.plan.model.key
+        return VLMGroundingDetector(llm, model=model)
     return ClassicDetector()
 
 
