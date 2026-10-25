@@ -78,12 +78,21 @@ def budget_example(currency: str) -> str:
 
 
 def relevant_first[T](entries: list[tuple[str, str, T]], query: str, limit: int) -> list[T]:
-    """Up to `limit` entries for a prompt, those whose text shares a word with `query` first, then the rest taken in
-    turn from each group (a shelf), so a long catalog is never cut off at whichever shelf happens to come last.
+    """Up to `limit` entries for a prompt, the strongest word matches first, then the rest taken in turn from
+    each group (a shelf), so a long catalog is never cut off at whichever shelf happens to come last.
 
     `entries` are (group, text, payload)."""
     asked = _words(query)
-    hits = [e for e in entries if asked & _words(f"{e[0]} {e[1]}")]
+    scored: list[tuple[int, int, tuple[str, str, T]]] = []
+    for entry in entries:
+        text_matches = asked & _words(entry[1])
+        all_matches = asked & _words(f"{entry[0]} {entry[1]}")
+        if all_matches:
+            # A plural and its generated singular are one clue, not two. Prefer product text over shelf words.
+            text_score = len(text_matches) - sum(w.endswith("s") and w[:-1] in text_matches for w in text_matches)
+            all_score = len(all_matches) - sum(w.endswith("s") and w[:-1] in all_matches for w in all_matches)
+            scored.append((text_score, all_score, entry))
+    hits = [entry for _, _, entry in sorted(scored, key=lambda row: (-row[0], -row[1]))]
     taken = {id(e) for e in hits}
     rest: dict[str, list[tuple[str, str, T]]] = {}
     for e in entries:

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Prioritize specifically named products in bounded model catalogs, so a large
+  assortment sharing a generic word cannot crowd out the requested product.
+  Layout edits, promotions and study drafts retain the selected target while
+  keeping existing prompt limits and stable ordering for equal matches.
+
 - Preserve requested shopper groups and sorting when model replies vary the
   case or surrounding spaces of known age, gender and purchase choices.
   Unknown or null conditions still fail instead of widening the search.
