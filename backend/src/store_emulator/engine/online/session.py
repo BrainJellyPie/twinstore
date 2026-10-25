@@ -31,6 +31,7 @@ from store_emulator.domain.types import stable_seed
 from .browser import Page, apply, build_page, cart_totals, initial_state, numbering, outline, returning, search_products
 from .policies import Choice, Memory, ShopperPolicy, StepView, Surveyor, comes_back
 from .render import ProductPicture, render_page, see_as
+from .shoppers import landing
 
 _EXTRA_SECONDS: dict[ActionKind, float] = {
     ActionKind.SEARCH: 3.0, ActionKind.ADD_ADDRESS: 38.0, ActionKind.ADD_PAYMENT: 32.0, ActionKind.CREATE_ACCOUNT: 45.0,
@@ -95,14 +96,14 @@ async def run_session(
 ) -> SessionResult:
     """`render`: draw a screenshot of every page (vision models need it; rules and text models do not). The
     screenshot is filtered to the shopper's eyesight. `surveyor`: asks the exit survey when the visit is over."""
-    state = initial_state(site, device=shopper.device)
+    state = initial_state(site, device=shopper.device, at=landing(site, shopper))
     rng = random.Random(stable_seed(seed, "online-session", shopper.id))
-    memory = Memory(want_views=_want_views(shopper, rng))
+    memory = Memory(want_views=_want_views(shopper, rng), views=len(state.viewed))
     steps: list[SessionStep] = []
-    reached: set[FunnelStage] = {"visit"}
+    reached: set[FunnelStage] = {"visit", "product_view"} if state.at.page == PageKind.PRODUCT else {"visit"}
     searches: list[SearchRecord] = []
     pages_seen: set[str] = set()
-    viewed: list[str] = []
+    viewed: list[str] = list(state.viewed)  # a visit can start on a product page
     outcome: SessionOutcome = "step_limit"
     exit_thought = ""
     requests = fallbacks = addon_paid = discount = 0

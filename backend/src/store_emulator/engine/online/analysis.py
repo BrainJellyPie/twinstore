@@ -43,7 +43,7 @@ _TOP_SEARCHES = 25
 _MAX_CLICKS = 1500
 _BOOTSTRAP = 2000
 _MAX_SWITCHES = 60
-_SEGMENT_DIMENSIONS: tuple[SegmentDimension, ...] = ("mission", "device", "age_group", "gender", "vision")
+_SEGMENT_DIMENSIONS: tuple[SegmentDimension, ...] = ("mission", "device", "age_group", "gender", "vision", "arrival")
 
 
 def _share(part: int, whole: int) -> float:
@@ -115,6 +115,7 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
                 conversion=_share(sum(s.outcome == "purchased" for s in group), len(group)),
                 revenue_per_session=round(sum(s.order_total for s in group) / len(group), 2),
                 avg_steps=round(mean(_steps(s) for s in group), 2),
+                bounce_rate=_share(sum(s.outcome == "bounced" for s in group), len(group)),
             ))
     return VariantSummary(
         site_id=site.id, site_name=site.name, sessions=n, purchases=len(bought), conversion=_share(len(bought), n),
@@ -324,9 +325,8 @@ def switches(control: list[SessionResult], variant: list[SessionResult]) -> tupl
 
 
 CLICKSTREAM_COLUMNS = (
-    "variant", "site", "shopper", "mission", "device", "age_group", "gender", "vision", "visit", "step", "page", "url", "option",
-    "action",
-    "target", "label", "ad_id", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
+    "variant", "site", "shopper", "mission", "device", "age_group", "gender", "vision", "arrival", "visit", "step", "page",
+    "url", "option", "action", "target", "label", "ad_id", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
 )
 
 
@@ -352,7 +352,7 @@ def clickstream_csv(variants: list[tuple[OnlineSite, list[SessionResult]]], shop
                 writer.writerow([_cell(v) for v in (
                     index, site.name, session.shopper_id, shopper.mission if shopper else "",
                     shopper.device if shopper else "", shopper.age_group if shopper else "",
-                    shopper.gender if shopper else "", shopper.vision if shopper else "",
+                    shopper.gender if shopper else "", shopper.vision if shopper else "", shopper.arrival if shopper else "",
                     2 if session.returned_at is not None and step.index >= session.returned_at else 1,
                     step.index, step.page.value, step.url, choice.number,
                     choice.kind.value, choice.target, choice.label, choice.ad_id, step.search_text, step.thought, step.seconds,

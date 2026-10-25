@@ -121,3 +121,17 @@ it("allows an explicitly chosen server default while the catalog is unavailable"
   fireEvent.click(start());
   await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({ policy: "text", model: null, ensemble: null })));
 });
+
+it("sends where visitors come from, and needs at least one source", async () => {
+  mount();
+  fireEvent.change(screen.getByRole("slider", { name: "Direct" }), { target: { value: "0" } });
+  expect(start().disabled).toBe(true);
+  expect(screen.getByText("Give at least one traffic source a share above zero.")).toBeTruthy();
+  fireEvent.change(screen.getByRole("slider", { name: "Direct" }), { target: { value: "100" } });
+  fireEvent.change(screen.getByRole("slider", { name: "Search engine" }), { target: { value: "50" } });
+  expect(start().disabled).toBe(false);
+  fireEvent.click(start());
+  await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({
+    arrivals: { direct: 1, search_engine: 0.5, social: 0, email: 0 },
+  })));
+});

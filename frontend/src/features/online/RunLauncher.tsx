@@ -7,7 +7,8 @@ import { FlaskConical, Loader2, Play } from "lucide-react";
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
 import { useAvailableModels } from "@/features/runs/hooks";
 import {
-  ACCESSIBILITY, copySite, getSite, MISSIONS, onlineKeys, startRun, type Accessibility, type ShopperMission, type ShopperPolicyKind,
+  ACCESSIBILITY, ARRIVALS, copySite, getSite, MISSIONS, onlineKeys, startRun, type Accessibility, type Arrival, type ShopperMission,
+  type ShopperPolicyKind,
   type SiteSummary,
 } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -16,9 +17,10 @@ import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { experimentsFor } from "./experiments";
-import { ACCESSIBILITY_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
+import { ACCESSIBILITY_LABELS, ARRIVAL_HINTS, ARRIVAL_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
+const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 100, search_engine: 0, social: 0, email: 0 };
 const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, compare: 15, deal_hunt: 10, gift: 7, replenish: 8 };
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
 const TYPICAL_STEPS = 11;
@@ -36,6 +38,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [maxSteps, setMaxSteps] = useState(24);
   const [mix, setMix] = useState(DEFAULT_MIX);
   const [mobile, setMobile] = useState(55);
+  const [arrivals, setArrivals] = useState<Record<Arrival, number>>(DEFAULT_ARRIVALS);
   const [source, setSource] = useState<"panel" | "project">("panel");
   const [imageWidth, setImageWidth] = useState(896);
   const [shuffle, setShuffle] = useState(true);
@@ -52,6 +55,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   // Picks that no longer apply (another first store, or no room left) simply drop out.
   const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
+  const arrivalTotal = Object.values(arrivals).reduce((a, b) => a + b, 0);
   const sessions = shoppers * (chosen.length + experiments.length);
   // Unknown summaries reserve a possible return visit until refreshed by a current server.
   const maxVisits = chosen.reduce((sum, id) => sum + (listedSites.find((site) => site.id === id)?.cart_reminder === false ? 1 : 2), 0)
@@ -95,6 +99,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
       return startRun(projectId, {
         site_ids: [...chosen, ...created], name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
         missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
+        arrivals: Object.fromEntries(ARRIVALS.map((a) => [a, arrivals[a] / 100])),
         mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle, accessibility,
         exit_survey: survey,
         model: policy !== "rule" && model.kind === "single" ? model.model ?? null : null,
@@ -186,6 +191,18 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
             </label>
           ))}
         </fieldset>
+        <fieldset className="space-y-1">
+          <legend className="text-xs font-medium">{t("onRunArrivals")}</legend>
+          <p className="text-[0.7rem] text-muted-foreground">{t("onRunArrivalsHint")}</p>
+          {ARRIVALS.map((a) => (
+            <label key={a} className="grid grid-cols-[110px_minmax(0,1fr)_40px] items-center gap-2 text-xs" title={t(ARRIVAL_HINTS[a])}>
+              <span>{t(ARRIVAL_LABELS[a])}</span>
+              <input type="range" min={0} max={100} value={arrivals[a]} aria-label={t(ARRIVAL_LABELS[a])}
+                onChange={(e) => setArrivals((x) => ({ ...x, [a]: Number(e.target.value) }))} />
+              <span className="text-right tabular-nums">{arrivalTotal ? Math.round((arrivals[a] / arrivalTotal) * 100) : 0}%</span>
+            </label>
+          ))}
+        </fieldset>
         <label className="grid grid-cols-[110px_minmax(0,1fr)_40px] items-center gap-2 text-xs">
           <span>{t("onRunMobile")}</span>
           <input type="range" min={0} max={100} value={mobile} onChange={(e) => setMobile(Number(e.target.value))} aria-label={t("onRunMobile")} />
@@ -243,13 +260,14 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
           </>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => { if (!modelError) start.mutate(); }} disabled={start.isPending || chosen.length === 0 || mixTotal === 0 || modelError !== null}>
+          <Button onClick={() => { if (!modelError) start.mutate(); }} disabled={start.isPending || chosen.length === 0 || mixTotal === 0 || arrivalTotal === 0 || modelError !== null}>
             {start.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
             {experiments.length ? t("onXpStart") : chosen.length > 1 ? t("onRunStartCompare", { count: chosen.length }) : t("onRunStart")}
           </Button>
           <span className="text-xs text-muted-foreground">{t("onRunSessions", { count: sessions })}</span>
         </div>
         {mixTotal === 0 && <p className="text-xs text-destructive">{t("onRunMixEmpty")}</p>}
+        {arrivalTotal === 0 && <p className="text-xs text-destructive">{t("onRunArrivalsEmpty")}</p>}
         {start.error && <p role="alert" className="text-xs text-destructive">{start.error.message}</p>}
       </section>
     </div>

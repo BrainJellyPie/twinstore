@@ -14,7 +14,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 
 import { ShopperChat } from "./ShopperChat";
-import { ACTION_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
+import { ACTION_LABELS, ARRIVAL_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
 
 export function JourneyViewer({ projectId, runId, variant, shopperId, variants, currency, onVariant, onClose }: {
   projectId: string; runId: string; variant: number; shopperId: string; variants: string[]; currency: string;
@@ -67,6 +67,7 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
           <div className="text-muted-foreground">
             {personaLabel(shopper.age_group, t)} · {personaLabel(shopper.gender, t)} · {t(DEVICE_LABELS[shopper.device])}
             {shopper.vision !== "typical" ? ` · ${t(VISION_LABELS[shopper.vision])}` : ""}
+            {shopper.arrival && shopper.arrival !== "direct" ? ` · ${t(ARRIVAL_LABELS[shopper.arrival])}` : ""}
           </div>
           <div className="mt-2"><span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">{t(MISSION_LABELS[shopper.mission])}</span></div>
           <p className="mt-1">{shopper.goal}</p>

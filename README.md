@@ -378,10 +378,11 @@ reminder emails.
 
 Each page is a screenshot with a numbered badge on every clickable element. A **vision model** looks at it and picks
 one option — search (and what to type), go back, open product 3, open the menu or settings, add a payment method,
-close the tab; a **text model** reads the page outline instead; **rule shoppers** run instantly. Shoppers come with a
-mission (buy something, window-shop, compare, hunt bargains, find a gift, reorder), a device, a budget, patience,
-comfort with websites and eyesight (low vision, colour blindness and older eyes see filtered screenshots). You can
-browse any store yourself by clicking the same screenshot.
+close the tab; a **text model** reads the page outline instead; **rule shoppers** run instantly. Shoppers come with
+a mission (buy something, window-shop, compare, hunt bargains, find a gift, reorder), a traffic source that decides
+the page they land on (home, a product found by search, a popular product from social media, the deals from an
+email), a device, a budget, patience, comfort with websites and eyesight (low vision, colour blindness and older
+eyes see filtered screenshots). You can browse any store yourself by clicking the same screenshot.
 
 | Result | What it shows |
 | :-- | :-- |

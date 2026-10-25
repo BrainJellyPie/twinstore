@@ -101,6 +101,9 @@ type ShopperMission = Literal["purchase", "browse", "compare", "deal_hunt", "gif
 # the page outline (no image), e.g. to see what the picture adds.
 type ShopperPolicyKind = Literal["rule", "vlm", "text"]
 type ShopperSource = Literal["panel", "project"]
+# Where a visit comes from, which decides the page it starts on: typing the address (home), a search engine result (the
+# product page that fits), a social media post (a popular product) or the shop's email (its deals).
+type Arrival = Literal["direct", "search_engine", "social", "email"]
 # What the shopper's eyes make of a screen. The screenshot a vision model gets is filtered to match.
 type Vision = Literal["typical", "low_vision", "color_blind", "aging_eyes"]
 # Eyesight of a run's shoppers: all typical, a realistic mix by age and gender, or everyone with one condition
@@ -116,6 +119,7 @@ type SessionOutcome = Literal["purchased", "abandoned_cart", "left", "bounced", 
 type FunnelStage = Literal["visit", "product_view", "add_to_cart", "checkout", "payment", "purchase"]
 
 SHOPPER_MISSIONS: list[ShopperMission] = ["purchase", "browse", "compare", "deal_hunt", "gift", "replenish"]
+ARRIVALS: list[Arrival] = ["direct", "search_engine", "social", "email"]
 FUNNEL_STAGES: list[FunnelStage] = ["visit", "product_view", "add_to_cart", "checkout", "payment", "purchase"]
 PAYMENT_METHODS: list[PaymentMethod] = ["card", "paypal", "apple_pay", "bnpl", "bank_transfer", "cash_on_delivery"]
 SORT_KEYS: list[SortKey] = ["featured", "price_asc", "price_desc", "rating", "newest"]
@@ -339,6 +343,7 @@ class OnlineShopper(BaseModel):
     description: str = ""
     persona_id: str = ""  # project customer this shopper was made from ("" = panel)
     vision: Vision = "typical"
+    arrival: Arrival = "direct"
 
 
 class SearchRecord(BaseModel):
@@ -422,6 +427,7 @@ class OnlineRunRequest(BaseModel):
     missions: dict[ShopperMission, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {
         "purchase": 0.25, "browse": 0.35, "compare": 0.15, "deal_hunt": 0.1, "gift": 0.07, "replenish": 0.08,
     })
+    arrivals: dict[Arrival, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {"direct": 1.0})
     mobile_share: float = Field(default=0.55, ge=0, le=1)
     source: ShopperSource = "panel"
     image_width: int = Field(default=896, ge=480, le=1600)
@@ -436,7 +442,7 @@ class FunnelRow(BaseModel):
     share: float  # of all sessions
 
 
-type SegmentDimension = Literal["mission", "device", "age_group", "gender", "vision"]
+type SegmentDimension = Literal["mission", "device", "age_group", "gender", "vision", "arrival"]
 
 
 class SegmentRow(BaseModel):
@@ -446,6 +452,7 @@ class SegmentRow(BaseModel):
     conversion: float
     revenue_per_session: float
     avg_steps: float
+    bounce_rate: float | None = None  # None in reports saved before it was measured
 
 
 class ProductRow(BaseModel):

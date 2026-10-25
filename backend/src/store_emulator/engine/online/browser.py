@@ -24,6 +24,7 @@ from store_emulator.domain.online import (
     PageKind,
     PageRef,
     PaymentMethod,
+    SearchMode,
     SortKey,
 )
 from store_emulator.engine.prompting import display_price
@@ -241,10 +242,10 @@ def query_terms(query: str) -> list[str]:
     return [w for w in _words(query) if w not in _STOP_WORDS]
 
 
-def search_products(site: OnlineSite, query: str) -> list[OnlineProduct]:
+def search_products(site: OnlineSite, query: str, *, mode: SearchMode | None = None) -> list[OnlineProduct]:
     """Products a search finds, best match first. "smart" matches words and word beginnings anywhere in the name,
     category and tags; "exact" only finds names containing the whole query, as a basic shop search does."""
-    mode = site.options.search
+    mode = site.options.search if mode is None else mode
     text = query.strip().lower()
     if mode == "off" or not text:
         return []
@@ -879,11 +880,15 @@ def outline(page: Page, site: OnlineSite) -> list[str]:
 # ── actions ────────────────────────────────────────────────────────────────────
 
 
-def initial_state(site: OnlineSite, *, device: Literal["desktop", "mobile"] = "desktop", signed_in: bool = False) -> BrowserState:
-    """The landing page; a welcome popup (or else an ad popup) opens over it when the site has one."""
+def initial_state(site: OnlineSite, *, device: Literal["desktop", "mobile"] = "desktop", signed_in: bool = False,
+                  at: PageRef | None = None) -> BrowserState:
+    """The landing page (`at`, default home); a welcome popup (or else an ad popup) opens over it when the site has
+    one."""
     popup = site.options.welcome_popup != "none"
     promo = bool(active_ads(site, "popup"))
-    return BrowserState(device=device, overlay="welcome" if popup else "promo" if promo else "none", welcome_seen=popup,
+    ref = at or PageRef()
+    return BrowserState(at=ref, viewed=[ref.product_id] if ref.page == PageKind.PRODUCT else [], device=device,
+                        overlay="welcome" if popup else "promo" if promo else "none", welcome_seen=popup,
                         signed_in=signed_in)
 
 

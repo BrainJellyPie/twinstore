@@ -37,6 +37,8 @@ export type SessionOutcome = "purchased" | "abandoned_cart" | "left" | "bounced"
 export type FunnelStage = "visit" | "product_view" | "add_to_cart" | "checkout" | "payment" | "purchase";
 export type ProductBadge = "bestseller" | "new" | "limited" | "eco" | "sponsored";
 export type Vision = "typical" | "low_vision" | "color_blind" | "aging_eyes";
+/** Where a visit comes from, which decides the page it starts on. */
+export type Arrival = "direct" | "search_engine" | "social" | "email";
 export type AdPlacement = "hero_banner" | "sponsored_listing" | "home_tile" | "product_page" | "cart_upsell" | "popup";
 export type Accessibility = "typical" | "realistic" | "low_vision" | "color_blind" | "aging_eyes";
 export type FrictionCode =
@@ -50,6 +52,7 @@ export type TemplateHighlight =
 
 export const MISSIONS: ShopperMission[] = ["purchase", "browse", "compare", "deal_hunt", "gift", "replenish"];
 export const VISIONS: Vision[] = ["typical", "low_vision", "color_blind", "aging_eyes"];
+export const ARRIVALS: Arrival[] = ["direct", "search_engine", "social", "email"];
 export const AD_PLACEMENTS: AdPlacement[] = ["hero_banner", "sponsored_listing", "home_tile", "product_page", "cart_upsell", "popup"];
 export const ACCESSIBILITY: Accessibility[] = ["typical", "realistic", "low_vision", "color_blind", "aging_eyes"];
 export const PAYMENT_METHODS: PaymentMethod[] = ["card", "paypal", "apple_pay", "bnpl", "bank_transfer", "cash_on_delivery"];
@@ -128,7 +131,7 @@ export interface OnlineShopper {
   id: string; identity: string; age_group: string; gender: string; device: Device; mission: ShopperMission; goal: string;
   target_category: string; target_terms: string[]; target_product: string; budget: number; price_sensitivity: number;
   patience_sec: number; tech_savvy: number; has_account: boolean; description: string; persona_id: string;
-  vision: Vision;
+  vision: Vision; arrival?: Arrival;
 }
 
 export interface ExitSurvey {
@@ -153,15 +156,16 @@ export interface SessionResult {
 export interface OnlineRunRequest {
   site_ids: string[]; name?: string; shoppers: number; policy: ShopperPolicyKind; model?: string | null;
   ensemble?: EnsembleConfig | null; seed: number; max_steps: number; missions: Record<ShopperMission, number>;
+  arrivals?: Partial<Record<Arrival, number>>;
   mobile_share: number; source: "panel" | "project"; image_width: number; shuffle_marks: boolean;
   accessibility: Accessibility; exit_survey: boolean;
 }
 
 export interface FunnelRow { stage: FunnelStage; sessions: number; share: number }
-export type SegmentDimension = "mission" | "device" | "age_group" | "gender" | "vision";
+export type SegmentDimension = "mission" | "device" | "age_group" | "gender" | "vision" | "arrival";
 export interface SegmentRow {
   dimension: SegmentDimension; value: string; sessions: number; conversion: number;
-  revenue_per_session: number; avg_steps: number;
+  revenue_per_session: number; avg_steps: number; bounce_rate?: number | null;
 }
 export interface ProductRow { product_id: string; name: string; views: number; adds: number; purchases: number; units: number; revenue: number }
 export interface SearchTermRow { query: string; count: number; zero_results: number; purchases: number }

@@ -419,6 +419,8 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
         raise AppError("Pick each online store once", 400)
     if not any(w > 0 for w in request.missions.values()):
         raise AppError("Give at least one shopping mission a share above zero", 400)
+    if not any(w > 0 for w in request.arrivals.values()):
+        raise AppError("Give at least one traffic source a share above zero", 400)
     policy, model = _policy(request, config)
     run_id = f"orun_{uuid.uuid4().hex[:12]}"
     with _write_transaction(pid):
@@ -430,7 +432,7 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
             raise AppError("This project has no customers yet: generate them, or use the built-in panel", 400)
         shoppers = sample_shoppers(sites[0], request.shoppers, seed=request.seed, missions=request.missions,
                                    mobile_share=request.mobile_share, personas=personas,
-                                   accessibility=request.accessibility)
+                                   accessibility=request.accessibility, arrivals=request.arrivals)
         status = OnlineRunStatus(
             run_id=run_id, name=request.name or " vs ".join(s.name for s in sites)[:80], site_ids=[s.id for s in sites],
             site_names=[s.name for s in sites], status="pending", total=len(shoppers) * len(sites), request=request,

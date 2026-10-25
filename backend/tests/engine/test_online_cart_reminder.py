@@ -48,7 +48,9 @@ def test_the_reminder_reaches_carts_left_behind_and_changes_nothing_else() -> No
     assert row is not None and (row.emails, row.returned, row.recovered) == (
         sum(t.reminded for t in test), len(returned), len(won))
     assert row.revenue == sum(t.order_total for t in won) and row.discount == sum(t.discount for t in won)
-    visits = [line.split(",")[8] for line in clickstream_csv([(variant, test)], {s.id: s for s in shoppers}).splitlines()[1:]]
+    header, *rows = clickstream_csv([(variant, test)], {s.id: s for s in shoppers}).splitlines()
+    column = header.lstrip("\ufeff").split(",").index("visit")
+    visits = [line.split(",")[column] for line in rows]
     assert set(visits) == {"1", "2"}
 
 

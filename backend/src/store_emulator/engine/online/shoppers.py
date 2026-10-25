@@ -13,15 +13,20 @@ from statistics import median
 from store_emulator.domain.online import (
     SHOPPER_MISSIONS,
     Accessibility,
+    Arrival,
     OnlineProduct,
     OnlineShopper,
     OnlineSite,
+    PageKind,
+    PageRef,
     ShopperMission,
     Vision,
 )
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Persona
 from store_emulator.domain.types import stable_seed
 from store_emulator.engine.prompting import display_price
+
+from .browser import search_products
 
 _AGE_WEIGHTS: dict[AgeGroup, float] = {"10s": 0.08, "20s": 0.24, "30s": 0.24, "40s": 0.19, "50s": 0.14, "60s+": 0.11}
 _SAVVY: dict[AgeGroup, float] = {"10s": 0.85, "20s": 0.85, "30s": 0.75, "40s": 0.65, "50s": 0.5, "60s+": 0.35}
@@ -162,10 +167,14 @@ def _vision(accessibility: Accessibility, shopper: OnlineShopper, rng: random.Ra
 def sample_shoppers(
     site: OnlineSite, count: int, *, seed: int, missions: dict[ShopperMission, float], mobile_share: float,
     personas: list[Persona] | None = None, accessibility: Accessibility = "typical",
+    arrivals: dict[Arrival, float] | None = None,
 ) -> list[OnlineShopper]:
     """`count` shoppers for `site`. With `personas`, each shopper is one of them (drawn without repeats while there
-    are enough) given an online mission; otherwise the panel's own people. Eyesight is drawn from its own random
-    stream, so changing `accessibility` keeps everything else about the shoppers the same."""
+    are enough) given an online mission; otherwise the panel's own people. Eyesight and where each visit comes from
+    (`arrivals`: share per source, default all direct) are drawn from their own random streams, so changing them
+    keeps everything else about the shoppers the same."""
+    shares: dict[Arrival, float] = {a: w for a, w in (arrivals or {}).items() if w > 0} or {"direct": 1.0}
+    sources, weights = list(shares), list(shares.values())
     pool: list[Persona] = []
     if personas:
         order = list(personas)
@@ -177,5 +186,32 @@ def sample_shoppers(
         persona = pool[i % len(pool)] if pool else None
         shopper = _shopper(site, i, rng, missions=missions, mobile_share=mobile_share, persona=persona)
         eyes = _vision(accessibility, shopper, random.Random(stable_seed(seed, "online-vision", i)))
-        shoppers.append(shopper.model_copy(update={"vision": eyes}))
+        arrival = random.Random(stable_seed(seed, "online-arrival", i)).choices(sources, weights)[0]
+        shoppers.append(shopper.model_copy(update={"vision": eyes, "arrival": arrival}))
     return shoppers
+
+
+_SOCIAL_PICKS = 8  # social posts feature one of the shop's most popular products
+
+
+def landing(site: OnlineSite, shopper: OnlineShopper) -> PageRef:
+    """The page a visit starts on. Direct visits open the home page; a search engine leads to the product page that
+    best fits what the shopper looks for; a social post to one of the shop's most popular products; the shop's email
+    to its deals (or the home page when nothing is discounted)."""
+    if shopper.arrival == "search_engine":
+        product = site.product(shopper.target_product) if shopper.target_product else None
+        if product is None and shopper.target_terms:
+            # An external search engine is independent of the shop's own search configuration.
+            matches = search_products(site, " ".join(shopper.target_terms), mode="smart")
+            product = matches[0] if matches else None
+        if product is None:
+            pool = [p for p in site.products if p.category_id == shopper.target_category] or site.products
+            product = max(pool, key=lambda p: (p.weekly_sales, p.id))
+        return PageRef(page=PageKind.PRODUCT, product_id=product.id)
+    if shopper.arrival == "social":
+        popular = sorted(site.products, key=lambda p: (-p.weekly_sales, p.id))[:_SOCIAL_PICKS]
+        pick = random.Random(stable_seed("online-social", shopper.id)).choice(popular)
+        return PageRef(page=PageKind.PRODUCT, product_id=pick.id)
+    if shopper.arrival == "email" and any(p.discount_percent for p in site.products):
+        return PageRef(page=PageKind.DEALS)
+    return PageRef()
