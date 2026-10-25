@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- Know when an online run is done: if a run of the store finishes or fails
-  while you are on another page, a notice in the corner names it and opens
-  its report (not for the run whose report is already on screen).
+- Know when a run is done: if an online run or a store simulation of the
+  store finishes or fails while you are on another page, a notice in the
+  corner names it and opens its report or results (on the right layout); the
+  run whose report or floor page is already on screen shows it there.
 - File pickers (CSV uploads in the marketing studio, run tools and elsewhere)
   show their button as a rounded pill that matches the app instead of the
   browser's bare grey button.

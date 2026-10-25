@@ -14,7 +14,7 @@ vi.mock("@/app/CommandPalette", () => ({ CommandPalette: () => null }));
 vi.mock("@/app/ModelSetupBanner", () => ({ ModelSetupBanner: () => null }));
 vi.mock("@/app/AppBackdrop", () => ({ AppBackdrop: () => null }));
 vi.mock("@/app/QuitTwinStore", () => ({ TabCloseNotice: () => null }));
-vi.mock("@/app/OnlineRunNotice", () => ({ OnlineRunNotice: () => null }));
+vi.mock("@/app/RunNotice", () => ({ RunNotice: () => null }));
 
 const { Route: root } = await import("../__root");
 const clients: QueryClient[] = [];
