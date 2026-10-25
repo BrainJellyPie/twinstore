@@ -56,7 +56,7 @@ function HomePage() {
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 pt-12 pb-14 lg:grid-cols-[1.1fr_1fr] lg:pt-14">
           <div className="max-w-[44rem]">
             <div className="glass inline-flex animate-rise items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium">
-              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.5</span>
+              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.6</span>
               <Sparkles className="size-3.5 text-heat-2" aria-hidden />
               {t("heroBadge")}
             </div>

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 — Online stores you can see, style and design by asking
+
 - Design an online store by talking to a model: **Design with AI** at the top
   of the designer takes requests such as "make it feel premium" or "remove the
   pressure tactics", and the text model changes the design options (style,
