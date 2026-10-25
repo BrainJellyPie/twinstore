@@ -8,8 +8,20 @@ Fragments are Korean because they are spliced into Korean prompt bodies
 """
 
 import re
+from collections.abc import Collection
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
+
+
+def canonical_identifier(value: str, allowed: Collection[str]) -> str:
+    """Keep exact identifiers; recover only one known whitespace/case variant."""
+    if value in allowed:
+        return value
+    stripped = value.strip()
+    if stripped in allowed:
+        return stripped
+    matches = [key for key in allowed if key.casefold() == stripped.casefold()]
+    return matches[0] if len(matches) == 1 else value
 
 
 def price_unit_rule(currency: str) -> str:

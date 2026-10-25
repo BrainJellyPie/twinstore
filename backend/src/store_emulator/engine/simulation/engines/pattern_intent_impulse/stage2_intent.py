@@ -19,7 +19,7 @@ from store_emulator.domain.rack import Rack, RackType, Slot, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, PathFinder, Position
-from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
+from store_emulator.engine.prompting import canonical_identifier, format_budget, format_price, price_unit_rule
 from store_emulator.engine.routing.route_builder import entrance_position, face_access_tile
 from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 from .prompt_utils import format_cue_prompt
@@ -105,6 +105,7 @@ def catalog_selection_model(records: dict[str, SlotItem], maximum: int, *, requi
         @field_validator("codes")
         @classmethod
         def _known_codes(cls, values: list[str]) -> list[str]:
+            values = [canonical_identifier(value, records) for value in values]
             unknown = sorted(set(values) - records.keys())
             if unknown:
                 raise ValueError(f"Unknown product codes: {unknown}. Copy codes from the supplied catalog.")

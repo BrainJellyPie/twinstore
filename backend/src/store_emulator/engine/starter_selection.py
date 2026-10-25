@@ -13,6 +13,7 @@ from store_emulator.domain.starter_fill import RackFill, StarterRack
 from store_emulator.domain.store import Store
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item, category_label
 from store_emulator.engine.llm_client import is_context_overflow
+from store_emulator.engine.prompting import canonical_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -51,17 +52,6 @@ class ProductSelection(BaseModel):
 class CatalogChoices(BaseModel):
     model_config = ConfigDict(extra="forbid")
     choices: list[str]
-
-
-def _canonical_id(value: str, allowed: set[str]) -> str:
-    """Keep exact identifiers; recover only one known whitespace/case variant."""
-    if value in allowed:
-        return value
-    stripped = value.strip()
-    if stripped in allowed:
-        return stripped
-    matches = [key for key in allowed if key.casefold() == stripped.casefold()]
-    return matches[0] if len(matches) == 1 else value
 
 
 CATEGORY_PROMPT = """Choose a varied starter assortment for this store's category and requirements.
@@ -160,7 +150,7 @@ async def _small_choices(
         @field_validator("choices")
         @classmethod
         def canonical_choices(cls, values: list[str]) -> list[str]:
-            return [_canonical_id(value, allowed) for value in values]
+            return [canonical_identifier(value, allowed) for value in values]
 
     def validate(selected: CatalogChoices) -> None:
         unknown = set(selected.choices) - allowed
@@ -224,12 +214,12 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
         @field_validator("category")
         @classmethod
         def canonical_category(cls, value: str) -> str:
-            return _canonical_id(value, allowed)
+            return canonical_identifier(value, allowed)
 
         @field_validator("rack_ids")
         @classmethod
         def canonical_racks(cls, values: list[str]) -> list[str]:
-            return [_canonical_id(value, expected_ids) for value in values]
+            return [canonical_identifier(value, expected_ids) for value in values]
 
     category_schema = create_model("CategorySelection", __base__=CategorySelection,
         groups=(list[BoundedCategoryGroup], Field(min_length=1, max_length=16)))
@@ -304,14 +294,14 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
         @field_validator("category")
         @classmethod
         def canonical_category(cls, value: str) -> str:
-            return _canonical_id(value, set(keys))
+            return canonical_identifier(value, keys)
 
         @field_validator("skus")
         @classmethod
         def canonical_skus(cls, values: list[str], info: ValidationInfo) -> list[str]:
             category = info.data.get("category")
             allowed_skus = {p.sku for p in candidates.get(category, [])} if isinstance(category, str) else set[str]()
-            return [_canonical_id(value, allowed_skus) for value in values]
+            return [canonical_identifier(value, allowed_skus) for value in values]
 
     product_schema = create_model("ProductSelection", __base__=ProductSelection,
         groups=(list[BoundedProductGroup], Field(min_length=1, max_length=16, json_schema_extra=product_constraint)))

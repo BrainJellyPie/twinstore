@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Accept unique case and surrounding-whitespace variants in compact candidate
+  code lists used to recover oversized shopper prompts. A lowercase `@p1` can
+  now select the supplied `@P1` offer without aborting the visit. Exact SKU and
+  purchase-action interpretation remain unchanged.
+
 - Recover unique case and surrounding-whitespace variants of supplied category,
   rack and SKU IDs during automatic starter selection, including its smaller
   recovery tasks. Exact IDs remain authoritative; ambiguous IDs, duplicate
