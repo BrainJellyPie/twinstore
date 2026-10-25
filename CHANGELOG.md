@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require a unique complete normalized product name for automatic receipt SKU
+  matching. Similar variants and abbreviated labels stay available for manual
+  review instead of silently assigning sales to another product.
+
 - Save applied shelf-photo crops under the SKU used by the resulting layout.
   Products matched to an existing SKU now receive their photo in the viewer
   and vision-model input; existing product images remain intact.

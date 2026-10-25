@@ -94,7 +94,13 @@ def test_receipt_review_uses_saved_run_currency(client, tmp_path):
     ({"a": "Tea 500ml", "b": "Tea 500ml", "c": "Tea 500ml XL"}, "Tea 500ml", ""),
     ({"a": "Tea 500ml", "b": "Tea 500ml", "c": "Tea 500ml XL"}, "Tea 500m", ""),
     ({"a": "Tea 500ml", "b": "Tea 550ml"}, "Tea 50ml", ""),
-    ({"a": "Tea 500ml", "b": "Orange juice"}, "Tea 500m", "a"),
+    ({"a": "Tea 500ml", "b": "Orange juice"}, "Tea 500m", ""),
+    ({"a": "Coca-Cola Original 500ml"}, "Coca-Cola Original 1500ml", ""),
+    ({"a": "Organic Vanilla Yogurt 500g"}, "Organic Banana Yogurt 500g", ""),
+    ({"a": "오리지널 요거트 500ml"}, "오리지널 요거트 1500ml", ""),
+    ({"a": "Organic Tea Pack 6"}, "Organic Tea Pack 16", ""),
+    ({"a": "TwinStore Organic Tea 500ml"}, "WinStore Organic Tea 500ml", ""),
+    ({"a": "Organic Milk 1% 500ml"}, "Organic Milk 2% 500ml", ""),
     ({"a": "Tea 500ml", "b": "Tea 550ml"}, "TEA-500ML", "a"),
     ({"a": "Tea 500ml", "b": "Tea 500ml", "c": "Tea 500ml XL"}, "Tea 500ml XL", "c"),
 ])
@@ -120,6 +126,10 @@ def test_receipt_matching_keeps_ambiguous_products_for_manual_review(client, mon
     assert body["products"] == products
     if not expected:
         assert len(body["csv"].splitlines()) == 1
+        reviewed = client.post(f"/api/projects/{PID}/receipts/review", json={"receipts": body["receipts"]})
+        assert reviewed.status_code == 200, reviewed.text
+        assert not reviewed.json()["ready"] and not reviewed.json()["csv"]
+        assert any(issue["code"] == "sku" for issue in reviewed.json()["issues"])
 
 
 def test_a_failed_vision_model_leaves_the_venue_unchanged(client, monkeypatch):

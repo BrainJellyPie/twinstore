@@ -11,7 +11,6 @@ matched to the store's products so receipts can score a run like a POS export.
 """
 
 import csv
-import difflib
 import io
 from typing import Protocol, Self
 
@@ -187,25 +186,17 @@ async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, defa
                           total=_minor(r.total, currency))
 
 
-def match_lines(reading: ReceiptReading, products: dict[str, str], *, cutoff: float = 0.72) -> ReceiptReading:
-    """Match names to a unique SKU (`products`: SKU → name); ambiguous names need manual review."""
+def match_lines(reading: ReceiptReading, products: dict[str, str]) -> ReceiptReading:
+    """Match complete normalized names to a unique SKU; other names require review before assigning sales."""
     names: dict[str, set[str]] = {}
     for sku, name in products.items():
         key = normalize_text(name)
         if key:
             names.setdefault(key, set()).add(sku)
-    keys = list(names)
     out: list[ReceiptLine] = []
     for line in reading.lines:
         key = normalize_text(line.name)
         candidates = names.get(key, set())
-        if key and key not in names:
-            close = difflib.get_close_matches(key, keys, n=2, cutoff=cutoff)
-            if close:
-                candidates = names[close[0]]
-                if len(close) == 2 and (difflib.SequenceMatcher(None, close[0], key).ratio()
-                                        == difflib.SequenceMatcher(None, close[1], key).ratio()):
-                    candidates = candidates | names[close[1]]
         sku = next(iter(candidates)) if len(candidates) == 1 else ""
         out.append(line.model_copy(update={"sku": sku, "matched": bool(sku)}))
     return reading.model_copy(update={"lines": out})
