@@ -215,7 +215,9 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
         for rack in store.product_racks:
             for slot in rack.slots:
                 for item in slot.items:
-                    names.setdefault(item.name.casefold(), set()).add(item.sku)
+                    key = item.name.strip().casefold()
+                    if key:
+                        names.setdefault(key, set()).add(item.sku)
     chosen = assistive_vision_model(model, config.engines.vlm_glance.llm)
     llm_config = capture_llm_config(config, chosen)
     if llm_config is None:
@@ -236,7 +238,7 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
             meta["name"] = reading.name[:80]
         if reading.brand:
             meta["brand"] = reading.brand[:40]
-        candidates = names.get(reading.shelf_product.casefold(), set())
+        candidates = names.get(reading.shelf_product.strip().casefold(), set())
         linked = len(candidates) == 1 and not meta.get("sku")
         if linked:
             meta["sku"] = next(iter(candidates))

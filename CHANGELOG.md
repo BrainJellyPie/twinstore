@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require a nonblank, unique product name before auto-linking a package image.
+  An unknown or empty model match can no longer select a SKU with an empty name.
+  Trimmed catalog-name matching now links padded names correctly and treats
+  different SKUs sharing that normalized name as ambiguous.
+
 - Strip surrounding whitespace from catalog labels during exact scenario-target
   matching. A correctly named promotion or stock-out no longer expands to other
   products merely because the stored product, shelf or category label is padded.

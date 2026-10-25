@@ -51,7 +51,7 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     reading = await llm.generate_structured_with_image_async(
         _PackResponse, PACK_PROMPT, f"Store products: {listed}", url, max_retries=2, seed=0,
     )
-    known = {p.casefold(): p for p in products}
+    known = {p.strip().casefold(): p for p in products if p.strip()}
     key = reading.shelf_product.strip().casefold()
     if len(reading.shelf_product) == 120:
         matches = [name for name in known if name.startswith(key)]
