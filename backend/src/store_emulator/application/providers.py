@@ -396,6 +396,7 @@ def resolve_model(
         "api_key": SecretStr(key) if key else None,
         "max_parallel": min(parallel, base.max_parallel) if parallel and base.max_parallel else parallel or base.max_parallel,
         "cache_namespace": _local_cache_namespace(api_base),
+        "chat_template_thinking": False if parsed.provider in {ProviderKind.LLAMACPP, ProviderKind.VLLM} else None,
     })
 
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Disable template thinking for named vLLM and llama.cpp requests, matching the
+  managed local server's direct-answer policy. Hybrid models can use short output
+  budgets for the requested answer; other providers keep their own controls,
+  and cached answers from the previous template policy are kept separate.
+
 - Honor an explicitly configured local API key for direct loopback model URLs,
   including the default vision-model configuration, when an OpenAI key is also
   present. Explicit model credentials and remote gateway key selection retain

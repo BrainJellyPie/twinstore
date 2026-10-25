@@ -62,6 +62,8 @@ class LLMConfig(BaseModel):
     # Requests the endpoint serves at once (a llama.cpp server on this computer has that many slots); more wait their
     # turn in the client, so their time-out does not run while they queue on the server. None = no limit. Runtime only.
     max_parallel: int | None = Field(default=None, ge=1, exclude=True)
+    # Resolved for servers with chat-template controls (llama.cpp/vLLM). Runtime only.
+    chat_template_thinking: bool | None = Field(default=None, exclude=True)
 
 
 class DwellRange(BaseModel):

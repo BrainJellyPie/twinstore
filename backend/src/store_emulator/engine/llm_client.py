@@ -249,6 +249,7 @@ class LiteLLMClient:
         self.cache_namespace = config.cache_namespace
         self._api_key = config.api_key.get_secret_value() if config.api_key else None
         self.max_parallel = config.max_parallel
+        self._chat_template_thinking = config.chat_template_thinking
         self._slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
         mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
         self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
@@ -372,6 +373,10 @@ class LiteLLMClient:
         # most glances failed. A model that refuses the switch is remembered and asked without it.
         if self._openai_hosted() and _accepts(self.model, "reasoning_effort", self.api_base):
             kwargs["extra_body"] = {"reasoning_effort": "none"}
+        if self._chat_template_thinking is not None:
+            # Self-hosted hybrid models otherwise spend short answer budgets on
+            # reasoning before their JSON. Only known template-capable providers opt in.
+            kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": self._chat_template_thinking}}
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -428,6 +433,8 @@ class LiteLLMClient:
         if self.cache_dir is None:
             return None
         extra: dict[str, str] = {"reasoning": "none"} if self._openai_hosted() else {}
+        if self._chat_template_thinking is not None:
+            extra["chat_template_thinking"] = str(self._chat_template_thinking)
         if self.seed is None and seed is not None:
             # A per-respondent draw still has an identity when provider seeding
             # is disabled. Keep it separate without sending a seed to the API.
