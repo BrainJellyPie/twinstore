@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve complete study statistics and caveats in model commentary input by
+  compacting repeated table keys instead of cutting large reports mid-JSON.
+
 - Reject echoed manager questions before caching or saving run-analysis answers,
   so failed local-model replies can be retried without polluting the conversation.
 

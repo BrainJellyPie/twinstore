@@ -10,13 +10,13 @@ from collections.abc import Sequence
 from html import escape
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from store_emulator.engine.interview import code_themes
 
 MAX_REASONS = 160        # answers sent to theme coding (the first ones, in respondent order)
 MAX_REASON_CHARS = 300
-MAX_REPORT_CHARS = 16_000
+MAX_REPORT_CHARS = 16_000  # input-size target; never discard figures or caveats to reach it
 EXAMPLES_PER_THEME = 2
 EXAMPLE_CHARS = 150
 
@@ -71,16 +71,43 @@ manager. The respondents are synthetic shoppers (personas answering through a la
 the report (JSON) and the coded reasons below; do not invent figures, products or causes you cannot support from them.
 When a difference's 95 % interval includes zero, or a group is small, say so plainly instead of calling a winner.
 Refer to products and options by their names. Always provide a nonblank summary of what the report shows.
+Some report tables use columns and rows: each row's values follow the listed column order.
 Write in English: short plain paragraphs, no headings, no markdown."""
 
 
 def compact_report(report: BaseModel, exclude: set[str]) -> str:
-    """The bounded report without respondent rows; drop duplicate quotations before cutting aggregates or caveats."""
-    text = json.dumps(report.model_dump(mode="json", exclude=exclude), ensure_ascii=False, separators=(",", ":"))
+    """A compact, complete report: drop duplicate quotations, then encode repeated table keys once."""
+    data: dict[str, JsonValue] = report.model_dump(mode="json", exclude=exclude)
+    text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     if len(text) > MAX_REPORT_CHARS:
         # Long reports already send these reasons separately to theme coding. Small reports keep their quotations.
-        text = json.dumps(report.model_dump(mode="json", exclude=exclude | {"verbatims"}), ensure_ascii=False, separators=(",", ":"))
-    return text if len(text) <= MAX_REPORT_CHARS else text[:MAX_REPORT_CHARS] + "…(truncated)"
+        data.pop("verbatims", None)
+        text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    if len(text) > MAX_REPORT_CHARS:
+        candidates: list[tuple[int, str, dict[str, JsonValue]]] = []
+        for key, rows in data.items():
+            if not isinstance(rows, list) or len(rows) < 2:
+                continue
+            records = [row for row in rows if isinstance(row, dict)]
+            if len(records) != len(rows) or not records:
+                continue
+            columns = list(records[0])
+            if not columns or any(list(row) != columns for row in records):
+                continue
+            table: dict[str, JsonValue] = {"columns": [column for column in columns],
+                "rows": [[row[column] for column in columns] for row in records]}
+            saving = (len(json.dumps(rows, ensure_ascii=False, separators=(",", ":")))
+                      - len(json.dumps(table, ensure_ascii=False, separators=(",", ":"))))
+            if saving > 0:
+                candidates.append((saving, key, table))
+        for _, key, table in sorted(candidates, key=lambda candidate: candidate[0], reverse=True):
+            data[key] = table
+            text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+            if len(text) <= MAX_REPORT_CHARS:
+                break
+    # An unusually large scalar cannot be compacted losslessly; let provider context checks report it instead
+    # of sending broken JSON that silently omits the report's final warnings and statistics.
+    return text
 
 
 async def code_reasons(llm: StructuredLLM, question: str, reasons: Sequence[Reason]) -> tuple[list[ReasonTheme], int, list[str]]:
