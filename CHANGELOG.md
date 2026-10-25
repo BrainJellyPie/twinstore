@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Stop refetching a deleted online store or run (and the run's replays) into
+  “not found” errors right after deleting it; only the lists refresh.
+
 - Reach online stores from the home screen: an **Online stores** button next to
   **New store** opens the most recently changed store's web shops (or the new
   store form when there is none), every store card has an **Online** link, and

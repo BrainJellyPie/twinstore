@@ -78,7 +78,15 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
     },
     onSuccess: (copy) => { refresh(); onCopied(copy.id); },
   });
-  const remove = useMutation({ mutationFn: () => deleteSite(projectId, site.id), onSuccess: () => { refresh(); onDeleted(); } });
+  const remove = useMutation({
+    mutationFn: () => deleteSite(projectId, site.id),
+    onSuccess: () => {
+      // Drop the deleted store's own query rather than refetching it into a 404; only the list changes.
+      onDeleted();
+      qc.removeQueries({ queryKey: onlineKeys.site(projectId, site.id), exact: true });
+      void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId), exact: true });
+    },
+  });
   const error = save.error ?? variant.error ?? remove.error ?? withoutAds.error;
 
   const shown = useMemo(() => {
