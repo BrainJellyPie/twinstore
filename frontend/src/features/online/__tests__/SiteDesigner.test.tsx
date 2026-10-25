@@ -72,3 +72,55 @@ it("keeps the draft visible when creating the variant fails", async () => {
   expect(copied).not.toHaveBeenCalled();
   expect(online.saveSite).not.toHaveBeenCalled();
 });
+
+it.each(["", "wrong", "-1", "9,99", "1e2", "9007199254740992"])("blocks both saves for invalid price %j until corrected", async (text) => {
+  mount();
+  const price = await screen.findByRole("textbox", { name: "Shirt: Price" });
+  fireEvent.change(price, { target: { value: text } });
+  expect(price.getAttribute("aria-invalid")).toBe("true");
+  const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+  const variant = screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement;
+  expect(save.disabled).toBe(true);
+  expect(variant.disabled).toBe(true);
+  fireEvent.click(save);
+  fireEvent.click(variant);
+  expect(online.saveSite).not.toHaveBeenCalled();
+  expect(online.copySite).not.toHaveBeenCalled();
+  fireEvent.change(price, { target: { value: "0" } });
+  expect(price.getAttribute("aria-invalid")).toBeNull();
+  expect(save.disabled).toBe(false);
+  expect(variant.disabled).toBe(false);
+});
+
+it.each(["Delivery fee", "Free delivery from", "Service fee at the last step", "Shirt: Was (struck through)"])("blocks invalid %s amounts too", async (label) => {
+  mount();
+  fireEvent.change(await screen.findByRole("textbox", { name: label }), { target: { value: "invalid" } });
+  expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("retains an invalid price when a filter temporarily hides the product", async () => {
+  mount();
+  fireEvent.change(await screen.findByRole("textbox", { name: "Shirt: Price" }), { target: { value: "invalid" } });
+  const filter = screen.getByRole("textbox", { name: "Find a product" });
+  fireEvent.change(filter, { target: { value: "nothing matches" } });
+  expect(screen.queryByRole("textbox", { name: "Shirt: Price" })).toBeNull();
+  expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(filter, { target: { value: "" } });
+  const price = screen.getByRole("textbox", { name: "Shirt: Price" }) as HTMLInputElement;
+  expect(price.value).toBe("invalid");
+  fireEvent.change(price, { target: { value: "7.25" } });
+  expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("keeps saving blocked until every invalid amount has been corrected", async () => {
+  mount();
+  const price = await screen.findByRole("textbox", { name: "Shirt: Price" });
+  const delivery = screen.getByRole("textbox", { name: "Delivery fee" });
+  fireEvent.change(price, { target: { value: "wrong" } });
+  fireEvent.change(delivery, { target: { value: "wrong" } });
+  fireEvent.change(price, { target: { value: "7" } });
+  expect((screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(delivery, { target: { value: "0" } });
+  expect((screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement).disabled).toBe(false);
+});

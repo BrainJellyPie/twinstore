@@ -36,6 +36,8 @@
   visible in mobile screenshots; reuse the store's listing size and navigation.
 - Save an online variant's edited products and design together. Reject invalid
   product drafts before creating a copy, preserving the original store.
+- Block online store and variant saves while any entered amount is invalid.
+  Keep unfinished price text and its validation when a product filter hides a row.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 

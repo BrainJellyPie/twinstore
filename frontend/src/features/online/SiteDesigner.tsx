@@ -39,8 +39,11 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
   const [note, setNote] = useState(site.note);
   const [options, setOptions] = useState<SiteOptions>(site.options);
   const [products, setProducts] = useState<OnlineProduct[]>(site.products);
+  const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const invalidAmounts = Object.values(amountDrafts).some((text) => toMinor(text, minorUnitDivisor(site.currency)) === null);
+  const editAmount = (field: string, text: string) => setAmountDrafts((drafts) => ({ ...drafts, [field]: text }));
   const set = <K extends keyof SiteOptions>(key: K, value: SiteOptions[K]) => setOptions((o) => ({ ...o, [key]: value }));
   const draft: OnlineSite = { ...site, name: name.trim() || site.name, note, options, products };
   const refresh = () => {
@@ -76,10 +79,10 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
           <Input aria-label={t("onVariantNote")} value={note} maxLength={400} onChange={(e) => setNote(e.target.value)} />
         </Field>
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || invalidAmounts}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />} {t("onSave")}
           </Button>
-          <Button variant="outline" onClick={() => variant.mutate()} disabled={variant.isPending} title={t("onSaveVariantHint")}>
+          <Button variant="outline" onClick={() => variant.mutate()} disabled={variant.isPending || invalidAmounts} title={t("onSaveVariantHint")}>
             {variant.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Copy className="size-4" aria-hidden />} {t("onSaveVariant")}
           </Button>
           {confirmDelete ? (
@@ -160,9 +163,11 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
       </Card>
 
       <Card title={t("onDesignCheckout")}>
-        <Field label={t("onOptShipping")}><Money label={t("onOptShipping")} value={options.shipping_fee} currency={site.currency} onChange={(v) => set("shipping_fee", v)} /></Field>
+        <Field label={t("onOptShipping")}><Money label={t("onOptShipping")} value={options.shipping_fee} currency={site.currency}
+          text={amountDrafts.shipping_fee} onTextChange={(text) => editAmount("shipping_fee", text)} onChange={(v) => set("shipping_fee", v)} /></Field>
         <Field label={t("onOptFreeOver")} hint={t("onOptFreeOverHint")}>
-          <Money label={t("onOptFreeOver")} value={options.free_shipping_threshold} currency={site.currency} onChange={(v) => set("free_shipping_threshold", v)} />
+          <Money label={t("onOptFreeOver")} value={options.free_shipping_threshold} currency={site.currency}
+            text={amountDrafts.free_shipping_threshold} onTextChange={(text) => editAmount("free_shipping_threshold", text)} onChange={(v) => set("free_shipping_threshold", v)} />
         </Field>
         <Field label={t("onOptCouponCode")}><Input aria-label={t("onOptCouponCode")} value={options.coupon_code} maxLength={20} onChange={(e) => set("coupon_code", e.target.value.toUpperCase())} /></Field>
         <Field label={t("onOptCouponPercent")}><NumberInput label={t("onOptCouponPercent")} value={options.coupon_percent} min={0} max={90} onChange={(v) => set("coupon_percent", v)} /></Field>
@@ -185,7 +190,8 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
         </Field>
         {toggle("one_click_buy", "onOptOneClick")}
         <Field label={t("onOptServiceFee")} hint={t("onOptServiceFeeHint")}>
-          <Money label={t("onOptServiceFee")} value={options.service_fee} currency={site.currency} onChange={(v) => set("service_fee", v)} />
+          <Money label={t("onOptServiceFee")} value={options.service_fee} currency={site.currency}
+            text={amountDrafts.service_fee} onTextChange={(text) => editAmount("service_fee", text)} onChange={(v) => set("service_fee", v)} />
         </Field>
         <Field label={t("onOptAddon")} hint={t("onOptAddonHint")}>
           <NumberInput label={t("onOptAddon")} value={options.preselected_addon_percent} min={0} max={50} onChange={(v) => set("preselected_addon_percent", v)} />
@@ -215,8 +221,10 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
                 <tr key={p.id} className="border-t">
                   <td className="py-1 pr-2"><Input className="h-8" value={p.name} maxLength={120} onChange={(e) => updateProduct(p.id, { name: e.target.value })} aria-label={t("onColProduct")} /></td>
                   <td className="py-1 pr-2 text-muted-foreground">{site.categories.find((c) => c.id === p.category_id)?.name ?? p.category_id}</td>
-                  <td className="py-1 pr-2"><Money label={`${p.name}: ${t("onColPrice")}`} value={p.price} currency={site.currency} onChange={(v) => updateProduct(p.id, { price: v })} /></td>
-                  <td className="py-1 pr-2"><Money label={`${p.name}: ${t("onColListPrice")}`} value={p.list_price} currency={site.currency} onChange={(v) => updateProduct(p.id, { list_price: v })} /></td>
+                  <td className="py-1 pr-2"><Money label={`${p.name}: ${t("onColPrice")}`} value={p.price} currency={site.currency}
+                    text={amountDrafts[`price:${p.id}`]} onTextChange={(text) => editAmount(`price:${p.id}`, text)} onChange={(v) => updateProduct(p.id, { price: v })} /></td>
+                  <td className="py-1 pr-2"><Money label={`${p.name}: ${t("onColListPrice")}`} value={p.list_price} currency={site.currency}
+                    text={amountDrafts[`list_price:${p.id}`]} onTextChange={(text) => editAmount(`list_price:${p.id}`, text)} onChange={(v) => updateProduct(p.id, { list_price: v })} /></td>
                   <td className="py-1 pr-2">
                     <Input className="h-8 w-20" inputMode="numeric" value={p.stock ?? ""} placeholder={t("onStockPlenty")} aria-label={t("onColStock")}
                       onChange={(e) => {
@@ -292,17 +300,19 @@ function NumberInput({ label, value, min, max, onChange }: { label: string; valu
 }
 
 /** A price typed in the currency's major unit, stored in its minor unit. */
-function Money({ label, value, currency, onChange }: { label: string; value: number; currency: string; onChange: (v: number) => void }) {
-  const [text, setText] = useState(majorUnitText(value, currency));
-  const [invalid, setInvalid] = useState(false);
+function Money({ label, value, currency, text, onTextChange, onChange }: {
+  label: string; value: number; currency: string; text: string | undefined;
+  onTextChange: (text: string) => void; onChange: (v: number) => void;
+}) {
+  const displayed = text ?? majorUnitText(value, currency);
+  const invalid = toMinor(displayed, minorUnitDivisor(currency)) === null;
   const { t } = useI18n();
   return (
     <div className="flex items-center gap-1">
-      <Input className="h-8 w-24" inputMode="decimal" value={text} aria-label={label} aria-invalid={invalid || undefined}
+      <Input className="h-8 w-24" inputMode="decimal" value={displayed} aria-label={label} aria-invalid={invalid || undefined}
         onChange={(e) => {
-          setText(e.target.value);
+          onTextChange(e.target.value);
           const minor = toMinor(e.target.value, minorUnitDivisor(currency));
-          setInvalid(minor === null);
           if (minor !== null) onChange(minor);
         }} />
       <span className="text-[0.7rem] text-muted-foreground">{currency}</span>
