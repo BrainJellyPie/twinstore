@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Both analysts know both channels: a store run's analyst now also reads how
+  the same customers bought online (from the newest finished online run of
+  the store's customers), as the online analyst already reads the store run,
+  so "who buys here but not online?" has an answer on the floor too.
 - Browsing an online store on a phone starts on the store's mobile page; the
   desktop page shrank too small to read. **Desktop** is still one tap away.
 - A store's name is required and at most 200 characters both when it is

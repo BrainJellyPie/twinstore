@@ -12,7 +12,7 @@ from store_emulator.engine.prompting import display_price
 
 from .errors import AppError
 from .interview import _load  # pyright: ignore[reportPrivateUsage]
-from .online import get_run
+from .online import get_run, list_runs
 from .storage.io import DATA_DIR, read_json
 
 
@@ -134,3 +134,18 @@ def channel_lines(mix: ChannelMix) -> list[str]:
     if len(mix.by_gender) > 1:
         lines.append(f"Store and online by gender: {split(mix.by_gender)}.")
     return lines
+
+
+def store_channel_lines(pid: str, store_run_id: str) -> list[str]:
+    """For a store run, the same customers in the newest finished online run of the project's customers, as fact lines
+    for the store run's analyst; none when no such online run shares customers with it."""
+    for run in list_runs(pid)[:5]:  # newest first; older runs only matter when the newer ones share nobody
+        if run.status != "completed" or run.request.source != "project":
+            continue
+        try:
+            mix = channel_mix(pid, run.run_id, store_run_id)
+        except AppError:  # an unreadable run is skipped, as the online side does
+            continue
+        if mix:
+            return channel_lines(mix)
+    return []
