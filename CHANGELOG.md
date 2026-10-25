@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep distinct shelf categories separate when importing a physical store online,
+  including emoji, punctuation and long multilingual labels. Repeated signs
+  still share one category.
+
 - Preserve each online shopper’s eyesight transform in journey screenshots,
   including large-text adjustments, before highlighting the selected control.
 
