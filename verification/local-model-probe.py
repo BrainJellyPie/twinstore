@@ -1,4 +1,4 @@
-"""Run production starter selection or package reading against a real loopback model; retain wire replies.
+"""Run production starter selection, package reading or design chat against a real loopback model; retain wire replies.
 
 From the repository root:
   PYTHONPATH=backend/src backend/.venv/bin/python verification/local-model-probe.py --case compact
@@ -22,16 +22,25 @@ from pydantic import SecretStr
 from store_emulator.application import template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.layout_options import TemplateLayoutRequest
+from store_emulator.domain.online import DesignMessage
 from store_emulator.engine.layout_gen import generate_store
 from store_emulator.engine.llm_client import LiteLLMClient
+from store_emulator.engine.online.catalog import build_site
+from store_emulator.engine.online.design_chat import apply_design, chat_design
 from store_emulator.engine.package_reader import read_pack
 from store_emulator.engine.perception.product_images import bundled_product_image
 from store_emulator.engine.perception.shelf_render import load_font
 from store_emulator.engine.validation import validate
 
 
+design_requests = {
+    "design-color-ko": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
+    "design-free-popup": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
+    "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
+    "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
+}
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank"], default="compact")
+parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank", *design_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
@@ -53,7 +62,9 @@ elif args.case == "book":
         products_per_category=2, requirements="Books and stationery for local residents; no food or drinks.")
     description = "Petite librairie de quartier, livres et papeterie."
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
-    temperature=0, seed=0, max_tokens=400 if args.case.startswith("pack-") else 5000, timeout_sec=180, max_parallel=1,
+    temperature=.2 if args.case in design_requests else 0, seed=0,
+    max_tokens=900 if args.case in design_requests else 400 if args.case.startswith("pack-") else 5000,
+    timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output="json_schema", structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
 send = httpx.AsyncClient.send
@@ -83,7 +94,29 @@ async def traced_send(self, request, *positional, **keywords):
 started = time.perf_counter()
 result = {"case": args.case, "model": args.model, "endpoint": args.endpoint}
 try:
-    if args.case.startswith("pack-"):
+    if args.case in design_requests:
+        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case == "design-color-ko" else "USD")
+        site.options.welcome_popup = "coupon"
+        site.options.coupon_percent = 15
+        site.options.shipping_fee = 499
+        before = site.options.model_dump(mode="json")
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            reply = asyncio.run(chat_design(client, site, site.options,
+                [DesignMessage(role="owner", text=design_requests[args.case])]))
+        edited, changed = apply_design(site.options, reply.changes, site.currency)
+        after = edited.model_dump(mode="json")
+        expected = {
+            "design-color-ko": {"theme_color": "#00AA33"},
+            "design-free-popup": {"shipping_fee": 0, "welcome_popup": "none"},
+            "design-neon": {"page_style": "neon"},
+            "design-calm": {"urgency": False, "social_proof": False, "welcome_popup": "none"},
+        }[args.case]
+        allowed = set(expected) | ({"page_style", "theme_color"} if args.case == "design-calm" else set())
+        issues = [f"Expected {key}={value!r}, received {after[key]!r}" for key, value in expected.items() if after[key] != value]
+        issues += [f"Unrequested change: {key}" for key in changed if key not in allowed]
+        result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
+            reply=reply.model_dump(mode="json"), changed=changed, issues=issues)
+    elif args.case.startswith("pack-"):
         products = ["Strawberry Jam 340g", "Apricot Jam 340g", "Marmalade 340g"]
         picture = Image.new("RGB", (600, 800), "white")
         if args.case == "pack-jam":

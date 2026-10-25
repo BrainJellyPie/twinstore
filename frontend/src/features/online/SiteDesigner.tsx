@@ -51,6 +51,7 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [asking, setAsking] = useState(false);
   const invalidAmounts = Object.values(amountDrafts).some((text) => toMinor(text, minorUnitDivisor(site.currency)) === null);
   const editAmount = (field: string, text: string) => setAmountDrafts((drafts) => ({ ...drafts, [field]: text }));
   // A removed ad takes its unfinished cost text with it.
@@ -60,6 +61,16 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
       ([field]) => !field.startsWith("ad_cost:") || next.some((ad) => field === `ad_cost:${ad.id}`))));
   };
   const set = <K extends keyof SiteOptions>(key: K, value: SiteOptions[K]) => setOptions((o) => ({ ...o, [key]: value }));
+  const applyOptions = (next: SiteOptions) => {
+    setOptions(next);
+    setAmountDrafts((drafts) => {
+      const remaining = { ...drafts };
+      for (const key of ["shipping_fee", "free_shipping_threshold", "service_fee"] as const) {
+        if (next[key] !== options[key]) delete remaining[key];
+      }
+      return remaining;
+    });
+  };
   const draft: OnlineSite = { ...site, name: name.trim() || site.name, note, options, products, ads };
   const refresh = () => Promise.all([
     qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId), exact: true }),
@@ -102,7 +113,7 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
     onSuccess: async (copy) => { await refresh(); onTest(copy.id); },
   });
   const error = save.error ?? variant.error ?? remove.error ?? withoutAds.error;
-  const writing = save.isPending || variant.isPending || remove.isPending || withoutAds.isPending || test.isPending;
+  const writing = asking || save.isPending || variant.isPending || remove.isPending || withoutAds.isPending || test.isPending;
 
   const shown = useMemo(() => {
     const words = searchText(filter);
@@ -117,8 +128,8 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
   return (
     <fieldset disabled={writing} className="grid min-w-0 gap-3 xl:grid-cols-2">
       <Card title={t("onAiTitle")} hint={t("onAiHint")} className="ring-aurora xl:col-span-2">
-        <DesignChat projectId={projectId} site={site} options={options} onOptions={setOptions} turns={turns} onTurns={onTurns}
-          onTest={(asked) => test.mutate(asked)} testing={test.isPending} testError={test.error?.message ?? ""} />
+        <DesignChat projectId={projectId} site={site} options={options} onOptions={applyOptions} turns={turns} onTurns={onTurns}
+          onWorking={setAsking} onTest={(asked) => test.mutate(asked)} testing={test.isPending} testError={test.error?.message ?? ""} />
       </Card>
 
       <Card title={t("onDesignStore")}>

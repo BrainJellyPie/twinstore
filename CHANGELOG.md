@@ -9,6 +9,12 @@
   used; figures not in the report are dropped. Follow-up suggestions that
   repeat the answer or an earlier question are dropped too, here and in the
   store's run analyst.
+- Harden AI design edits for small local models with typed, sparse option updates;
+  reject duplicate, unknown, null and invalid changes. Keep the editor locked while
+  a model reply is pending, refresh changed money inputs on apply/undo without losing
+  unrelated unfinished edits, and round model-proposed amounts consistently with the
+  designer. Add reproducible CPU probes, including a broad request that still exposes
+  the 0.8B model's instruction-following limits.
 - Try a tested package online: a concept test whose package image is linked to
   a store product can turn it into a variant of an online store with that
   product's picture replaced, ready to compare with the store.
