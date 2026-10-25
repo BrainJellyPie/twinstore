@@ -25,7 +25,7 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import stable_seed
 from store_emulator.engine.capture.detect import image_data_url
 from store_emulator.engine.perception.shelf_render import load_font
-from store_emulator.engine.prompting import display_price
+from store_emulator.engine.prompting import canonical_identifier, display_price
 
 LETTERS = "ABCD"
 _MAX_PRICE_MINOR = 9_007_199_254_740_991
@@ -88,6 +88,11 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per
     open_only = _only_open_question(questions, stimuli)
 
     class SurveyResponse(StudyResponse):
+        @field_validator("preferred", mode="before", check_fields=False)
+        @classmethod
+        def canonical_choice(cls, value: object) -> object:
+            return canonical_identifier(value, tuple(LETTERS[:stimuli])) if isinstance(value, str) else value
+
         @field_validator("why", check_fields=False)
         @classmethod
         def open_answer(cls, value: str) -> str:

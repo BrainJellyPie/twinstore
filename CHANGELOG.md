@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Accept unique case and surrounding-whitespace variants of the offered survey
+  preference letters. A lowercase selection no longer discards valid ratings
+  from the same respondent; missing, multiple and unoffered choices remain invalid.
+
 - Require a nonblank, unique product name before auto-linking a package image.
   An unknown or empty model match can no longer select a SKU with an empty name.
   Trimmed catalog-name matching now links padded names correctly and treats
