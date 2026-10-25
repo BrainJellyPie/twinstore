@@ -113,9 +113,9 @@ def _words(text: str) -> set[str]:
 
 
 def resolve_listed[T](asked: str, listed: dict[str, T], *, max_name_length: int | None = None) -> T | None:
-    """Resolve an exact or uniquely longest complete name, allowing a copied description after it.
+    """Resolve an exact name or a copied description referring to only one target.
 
-    `listed` is keyed by casefolded name. Equal-length matches must refer to the same value.
+    `listed` is keyed by casefolded name. Separate mentions must refer to the same value.
     At a model field's limit, a known long-name prefix takes precedence over shorter word matches.
     """
     key = asked.strip().strip('"').strip().casefold()
@@ -127,9 +127,14 @@ def resolve_listed[T](asked: str, listed: dict[str, T], *, max_name_length: int 
             return matches[0] if all(value == matches[0] for value in matches) else None
     if key in listed:
         return listed[key]
-    found = [n for n in listed if n and re.search(rf"(?<!\w){re.escape(n)}(?!\w)", key)]
+    hits = [(m.start(), m.end(), name) for name in listed if name
+            for m in re.finditer(rf"(?<!\w){re.escape(name)}(?!\w)", key)]
+    # A shorter name inside a full longer name is not a second target. Its
+    # separate occurrence elsewhere still counts, as do overlapping names.
+    found = {name for start, end, name in hits if not any(
+        other_start <= start and end <= other_end and (start, end) != (other_start, other_end)
+        for other_start, other_end, _ in hits)}
     if not found:
         return None
-    longest = max(map(len, found))
-    matches = [listed[n] for n in found if len(n) == longest]
+    matches = [listed[n] for n in found]
     return matches[0] if all(value == matches[0] for value in matches) else None

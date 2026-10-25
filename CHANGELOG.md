@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject ambiguous names in automatic shelf tests and setup drafts. A reply
+  naming different products, formats or categories no longer selects the
+  longest name; complete longer names and aliases for one target still work.
+
 - Validate rival-product matches within the current recovery batch. Repeated
   rows for earlier or unrequested products no longer invalidate otherwise
   correct comparisons; conflicting answers for requested products still fail.

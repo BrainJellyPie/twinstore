@@ -80,6 +80,6 @@ def test_repeated_alias_for_the_same_format_still_resolves() -> None:
 @pytest.mark.parametrize("asked", ["Tea", "Steak", "Unknown", "Tea and Steak"])
 def test_format_names_use_whole_names_and_reject_equally_plausible_matches(asked: str) -> None:
     result = to_setup(_Setup(format=asked), [("tea", "Tea", "convenience"), ("steak", "Steak", "grocery")])
-    # The longest whole name is used; an unrelated substring must not match Tea.
-    expected = {"Tea": "tea", "Steak": "steak", "Unknown": "", "Tea and Steak": "steak"}[asked]
+    # A complete name is retained; two distinct format names cannot choose one by length.
+    expected = {"Tea": "tea", "Steak": "steak", "Unknown": "", "Tea and Steak": ""}[asked]
     assert result.template_id == expected
