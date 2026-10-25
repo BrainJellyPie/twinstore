@@ -75,8 +75,11 @@ Write in English: short plain paragraphs, no headings, no markdown."""
 
 
 def compact_report(report: BaseModel, exclude: set[str]) -> str:
-    """The report as compact JSON without respondent-level lists, cut to a size a model reads well."""
+    """The bounded report without respondent rows; drop duplicate quotations before cutting aggregates or caveats."""
     text = json.dumps(report.model_dump(mode="json", exclude=exclude), ensure_ascii=False, separators=(",", ":"))
+    if len(text) > MAX_REPORT_CHARS:
+        # Long reports already send these reasons separately to theme coding. Small reports keep their quotations.
+        text = json.dumps(report.model_dump(mode="json", exclude=exclude | {"verbatims"}), ensure_ascii=False, separators=(",", ":"))
     return text if len(text) <= MAX_REPORT_CHARS else text[:MAX_REPORT_CHARS] + "…(truncated)"
 
 

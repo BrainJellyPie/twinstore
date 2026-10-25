@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Remove duplicate respondent quotations before large study reports reach the
+  commentary size cap, preserving aggregates and interpretation caveats.
+  Responses still feed theme coding; smaller reports retain their quotations.
+
 - Include specifically requested products from beyond the first 200 catalog
   entries in automatic shopper searches. The context stays bounded and uses
   the full catalog to prioritize the question's products.
