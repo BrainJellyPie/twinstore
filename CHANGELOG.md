@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep run-analysis locks outside project folders so a pending model response
+  does not leave an open lock handle that blocks project deletion on Windows.
+
 - Serialize report commentary generation, replacement and removal per study,
   preventing late model replies from restoring cleared or overwritten content.
 

@@ -26,7 +26,7 @@ from store_emulator.engine.run_analyst import (
 from .errors import AppError, model_failure
 from .interview import _load, _run_dir  # pyright: ignore[reportPrivateUsage]
 from .providers import answered_by, assistive_client, assistive_model
-from .setups import setup_tree_transaction
+from .setups import setup_lock_path, setup_tree_transaction
 from .storage.io import now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,12 @@ def _path(pid: str, run_id: str) -> Path:
     return _run_dir(pid, run_id) / "analyst.json"
 
 
+def _lock_path(pid: str, run_id: str) -> Path:
+    _run_dir(pid, run_id)  # validate the run before constructing its lock path
+    # A slow model must not keep an open Windows lock handle inside a deletable project.
+    return setup_lock_path(pid, "analyst").with_name(f"analyst_{run_id}.lock")
+
+
 def get_thread(pid: str, run_id: str) -> AnalystThread:
     path = _path(pid, run_id)
     return AnalystThread.model_validate(read_json(path)) if path.exists() else AnalystThread(run_id=run_id)
@@ -43,7 +49,7 @@ def get_thread(pid: str, run_id: str) -> AnalystThread:
 
 def clear_thread(pid: str, run_id: str) -> None:
     path = _path(pid, run_id)
-    lock = FileLock(path.with_suffix(".lock"), timeout=0)
+    lock = FileLock(_lock_path(pid, run_id), timeout=0)
     try:
         with setup_tree_transaction(pid):
             _path(pid, run_id)
@@ -59,8 +65,7 @@ def facts(pid: str, run_id: str) -> str:
 
 
 def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> AnalystThread:
-    path = _path(pid, run_id)
-    lock = FileLock(path.with_suffix(".lock"), timeout=0)
+    lock = FileLock(_lock_path(pid, run_id), timeout=0)
     try:
         with setup_tree_transaction(pid):
             _path(pid, run_id)

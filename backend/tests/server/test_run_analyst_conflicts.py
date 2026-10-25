@@ -40,8 +40,7 @@ def test_clear_rejects_an_active_answer_then_can_be_retried(client, monkeypatch,
 
 @pytest.mark.parametrize('method', ['post', 'delete'])
 def test_answer_and_clear_share_the_same_lock(client, method):
-    path = run_analyst._path(PID, RUN)
-    with FileLock(path.with_suffix('.lock'), timeout=0):
+    with FileLock(run_analyst._lock_path(PID, RUN), timeout=0):
         response = client.post(URL, json={'question': 'What happened?'}) if method == 'post' else client.delete(URL)
         assert response.status_code == 409
         assert client.get(URL).status_code == 200
