@@ -7,7 +7,7 @@ from typing import Protocol
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, create_model
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, ValidationInfo, create_model, field_validator
 
 from store_emulator.domain.starter_fill import RackFill, StarterRack
 from store_emulator.domain.store import Store
@@ -51,6 +51,17 @@ class ProductSelection(BaseModel):
 class CatalogChoices(BaseModel):
     model_config = ConfigDict(extra="forbid")
     choices: list[str]
+
+
+def _canonical_id(value: str, allowed: set[str]) -> str:
+    """Keep exact identifiers; recover only one known whitespace/case variant."""
+    if value in allowed:
+        return value
+    stripped = value.strip()
+    if stripped in allowed:
+        return stripped
+    matches = [key for key in allowed if key.casefold() == stripped.casefold()]
+    return matches[0] if len(matches) == 1 else value
 
 
 CATEGORY_PROMPT = """Choose a varied starter assortment for this store's category and requirements.
@@ -143,10 +154,13 @@ async def _small_choices(
     identifiers: list[JsonValue] = [key for key in sorted(allowed)]
     item_schema: dict[str, JsonValue] = {"type": "string", "enum": identifiers}
     constraints: dict[str, JsonValue] = {"items": item_schema}
-    schema = create_model("BoundedCatalogChoices", __base__=CatalogChoices, choices=(list[str], Field(
-        min_length=minimum, max_length=maximum,
-        json_schema_extra=constraints,
-    )))
+    class BoundedCatalogChoices(CatalogChoices):
+        choices: list[str] = Field(min_length=minimum, max_length=maximum, json_schema_extra=constraints)
+
+        @field_validator("choices")
+        @classmethod
+        def canonical_choices(cls, values: list[str]) -> list[str]:
+            return [_canonical_id(value, allowed) for value in values]
 
     def validate(selected: CatalogChoices) -> None:
         unknown = set(selected.choices) - allowed
@@ -157,7 +171,7 @@ async def _small_choices(
         if previous_categories is not None and len(previous_categories | set(selected.choices)) > 16:
             raise ValueError("Use at most 16 distinct categories across all racks, including already_selected_categories.")
 
-    return (await _validated_selection(llm, schema, prompt, context, validate)).choices
+    return (await _validated_selection(llm, BoundedCatalogChoices, prompt, context, validate)).choices
 
 
 async def _small_categories(llm: SelectionClient, context: dict[str, object], racks: list[StarterRack],
@@ -206,6 +220,16 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
     class BoundedCategoryGroup(CategoryGroup):
         category: str = Field(min_length=1, max_length=80, json_schema_extra=category_constraint)
         rack_ids: list[str] = Field(min_length=1, max_length=100, json_schema_extra=rack_constraint)
+
+        @field_validator("category")
+        @classmethod
+        def canonical_category(cls, value: str) -> str:
+            return _canonical_id(value, allowed)
+
+        @field_validator("rack_ids")
+        @classmethod
+        def canonical_racks(cls, values: list[str]) -> list[str]:
+            return [_canonical_id(value, expected_ids) for value in values]
 
     category_schema = create_model("CategorySelection", __base__=CategorySelection,
         groups=(list[BoundedCategoryGroup], Field(min_length=1, max_length=16)))
@@ -275,8 +299,22 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
     product_constraint: dict[str, JsonValue] = {
         "minItems": len(keys), "maxItems": len(keys), "items": {"anyOf": product_shapes},
     }
+
+    class BoundedProductGroup(ProductGroup):
+        @field_validator("category")
+        @classmethod
+        def canonical_category(cls, value: str) -> str:
+            return _canonical_id(value, set(keys))
+
+        @field_validator("skus")
+        @classmethod
+        def canonical_skus(cls, values: list[str], info: ValidationInfo) -> list[str]:
+            category = info.data.get("category")
+            allowed_skus = {p.sku for p in candidates.get(category, [])} if isinstance(category, str) else set[str]()
+            return [_canonical_id(value, allowed_skus) for value in values]
+
     product_schema = create_model("ProductSelection", __base__=ProductSelection,
-        groups=(list[ProductGroup], Field(min_length=1, max_length=16, json_schema_extra=product_constraint)))
+        groups=(list[BoundedProductGroup], Field(min_length=1, max_length=16, json_schema_extra=product_constraint)))
     try:
         chosen = await _validated_selection(llm, product_schema, PRODUCT_PROMPT, {
             **context, "currency": store.currency, "maximum_products_per_category": limits, "categories": catalog,

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover unique case and surrounding-whitespace variants of supplied category,
+  rack and SKU IDs during automatic starter selection, including its smaller
+  recovery tasks. Exact IDs remain authoritative; ambiguous IDs, duplicate
+  selections and products outside the selected category still use validation.
+
 - Require an explicit `products` list in shelf-grounding model replies. Missing
   or misnamed lists now get the existing correction attempt before classic
   detection is used; a deliberate empty list remains valid. Old schema cache
