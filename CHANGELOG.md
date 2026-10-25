@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Test a marketing A/B variant online: each variant in an A/B report can
+  become a variant of an online store in the same currency, its price,
+  discount, category-price and package changes applied to the products with
+  the same SKU (a store put online from a layout keeps them). Shelf signs and
+  moves, which have no web counterpart, are listed as not carried over, and
+  **Compare online** opens the online store's run form already comparing the
+  two. Online store links can now open a store and a comparison directly.
+
 ## 0.6.0 — Online stores you can see, style and design by asking
 
 - Design an online store by talking to a model: **Design with AI** at the top

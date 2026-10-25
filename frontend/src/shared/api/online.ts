@@ -3,6 +3,7 @@
 // currency's minor unit.
 
 import { BASE, type EnsembleConfig } from "./client";
+import type { VariantChange } from "./marketing";
 import type { InterviewMessage } from "./interview";
 import { apiErrorMessage } from "./errors";
 
@@ -311,6 +312,15 @@ export function copySite(pid: string, siteId: string, body: {
 
 export function deleteSite(pid: string, siteId: string): Promise<{ status: string }> {
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}`, { method: "DELETE" });
+}
+
+/** A variant of an online store made from a marketing A/B variant's changes (matched to products by SKU). */
+export interface StoreChangesResult { site: OnlineSite; applied: string[]; skipped: string[] }
+
+export function variantFromTest(pid: string, siteId: string, body: {
+  name?: string; note?: string; currency: string; changes: VariantChange[];
+}): Promise<StoreChangesResult> {
+  return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/from-test`, { method: "POST", ...json(body) });
 }
 
 /** One turn of a conversation about a store's design (see backend engine/online/design_chat.py). */

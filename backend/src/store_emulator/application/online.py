@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.interview import InterviewMessage, InterviewQuestion
+from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.online import (
     FUNNEL_STAGES,
     ActionKind,
@@ -58,7 +59,9 @@ from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
+from store_emulator.engine.layout_edit import ZERO_DECIMAL
 from store_emulator.engine.online.design_chat import apply_design, chat_design
+from store_emulator.engine.online.store_changes import apply_store_changes
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
 from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
@@ -73,6 +76,7 @@ from .product_images import project_image_loader, snapshot_image_loader, snapsho
 from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
 from .setups import setup_lock_path, setup_tree_transaction
 from .simulation import with_engine_model, with_vision_default
+from .shelf_lab import package_path
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
 from .storage.setups import read_setup, read_state
@@ -320,6 +324,41 @@ def copy_site(pid: str, site_id: str, request: CopySiteRequest) -> OnlineSite:
         _check(copy)
         write_json(_site_path(pid, copy.id), copy.model_dump(mode="json"))
     return copy
+
+
+class StoreChangesRequest(BaseModel):
+    """A marketing A/B variant's changes, to make a variant of an online store with."""
+    name: str = Field(default="", max_length=60)
+    note: str = Field(default="", max_length=400)
+    currency: str = Field(min_length=3, max_length=3, description="the currency of the test's prices")
+    changes: list[VariantChange] = Field(min_length=1, max_length=20)
+
+
+class StoreChangesResult(BaseModel):
+    site: OnlineSite  # the new variant
+    applied: list[str]
+    skipped: list[str]
+
+
+def variant_from_changes(pid: str, site_id: str, req: StoreChangesRequest) -> StoreChangesResult:
+    """A variant of this online store with a marketing test's changes, matched by SKU (see engine/online/store_changes)."""
+    site = get_site(pid, site_id)
+    if site.currency.upper() != req.currency.upper():
+        raise AppError(f"This store's prices are in {site.currency.upper()} and the test's in {req.currency.upper()}; "
+                       "pick a store in the same currency", 400)
+    uris: dict[str, str] = {}
+    for change in req.changes:
+        if change.kind == "package" and change.asset_id:
+            try:
+                uris[change.asset_id] = "file://" + str(package_path(pid, change.asset_id).resolve())
+            except AppError:
+                continue  # reported as skipped below
+    minor = 1 if site.currency.upper() in ZERO_DECIMAL else 100
+    products, applied, skipped = apply_store_changes(site, req.changes, minor_per_major=minor, package_uris=uris)
+    if not applied:
+        raise AppError("None of these changes fits this store: " + "; ".join(skipped[:3]), 400)
+    copy = copy_site(pid, site_id, CopySiteRequest(name=req.name or f"{site.name} B"[:60], note=req.note, products=products))
+    return StoreChangesResult(site=copy, applied=applied, skipped=skipped)
 
 
 def delete_site(pid: str, site_id: str) -> None:

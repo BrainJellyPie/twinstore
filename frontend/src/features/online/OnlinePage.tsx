@@ -30,14 +30,18 @@ const TABS: { id: Tab; label: MessageKey; icon: typeof Globe2 }[] = [
 
 const busy = (run: OnlineRunStatus) => run.status === "pending" || run.status === "running";
 
-export function OnlinePage({ projectId }: { projectId: string }) {
+export function OnlinePage({ projectId, initialSite, initialCompare }: {
+  projectId: string;
+  /** A store to open, and a variant of it to start a comparison with (links from the marketing studio). */
+  initialSite?: string; initialCompare?: string;
+}) {
   const { t, locale } = useI18n();
-  const [siteId, setSiteId] = useState<string | null>(null);
+  const [siteId, setSiteId] = useState<string | null>(initialSite ?? null);
   const [runId, setRunId] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("browse");
+  const [tab, setTab] = useState<Tab>(initialSite && initialCompare ? "simulate" : "browse");
   const [gallery, setGallery] = useState(false);
   const [wide, setWide] = useState(false);
-  const [compare, setCompare] = useState<string | null>(null);
+  const [compare, setCompare] = useState<string | null>(initialCompare ?? null);
 
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });

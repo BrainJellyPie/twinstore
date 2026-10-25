@@ -99,6 +99,14 @@ async def site_preview(pid: str, site_id: str, device: Literal["desktop", "mobil
     return Response(png, media_type="image/png", headers=_PNG_CACHE)
 
 
+@router.post("/projects/{pid}/online/sites/{site_id}/from-test", summary="Make a variant from a marketing test's changes",
+             response_model=online_service.StoreChangesResult)
+async def variant_from_test(pid: str, site_id: str, req: online_service.StoreChangesRequest) -> online_service.StoreChangesResult:
+    """A variant of this store with a marketing A/B variant's changes: prices, discounts, category prices and package
+    pictures, matched to products by SKU. Shelf signs and moves have no web counterpart and come back in `skipped`."""
+    return await run_in_threadpool(_call, lambda: online_service.variant_from_changes(pid, site_id, req))
+
+
 @router.post("/projects/{pid}/online/sites/{site_id}/preview.png", summary="Home page of a store with an unsaved design")
 async def draft_preview(pid: str, site_id: str, req: online_service.DraftPreviewRequest) -> Response:
     png = await run_in_threadpool(_call, lambda: online_service.draft_preview(pid, site_id, req.options, req.device))
