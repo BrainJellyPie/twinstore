@@ -41,6 +41,10 @@ def _reader(reading: dict[str, object], seen: list[str]):
         ) -> T:
             assert image_url.startswith("data:image/jpeg;base64,")
             seen.append(user_prompt)
+            return response_model.model_validate({"printed_text": "Leafy Green Tea 500 ml " + str(reading.get("shelf_product") or ""), **reading})
+
+        async def generate_structured_async(self, response_model, system_prompt, user_prompt, **kwargs):
+            seen.append(user_prompt)
             return response_model.model_validate(reading)
     return _VLM
 
@@ -60,7 +64,7 @@ def test_reading_a_pack_names_it_and_links_the_layout_product(client, monkeypatc
     body = r.json()
     assert body["asset"]["name"] == "Green Tea 500 ml" and body["asset"]["brand"] == "Leafy"
     assert body["linked"] and body["asset"]["sku"] == item["sku"] and body["reading"]["shelf_product"] == item["name"]
-    assert item["name"] in seen[0]
+    assert item["name"] not in seen[0] and item["name"] in seen[1]
     listed = client.get(f"/api/projects/{PID}/lab/packages").json()
     assert next(a for a in listed if a["asset_id"] == asset["asset_id"])["name"] == "Green Tea 500 ml"
 
@@ -73,7 +77,7 @@ def test_an_unknown_product_is_not_linked_and_failures_change_nothing(client, mo
     asset = _upload(client, "Mystery")
     body = client.post(f"/api/projects/{PID}/lab/packages/{asset['asset_id']}/read", json={}).json()
     assert body["asset"]["name"] == "Mystery Soda" and not body["linked"] and body["asset"]["sku"] == ""
-    assert "Store products: none given" in seen[0]
+    assert seen == ["Transcribe only the package in this image."]
 
     class _Broken:
         def __init__(self, config: object) -> None:

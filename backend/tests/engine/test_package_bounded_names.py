@@ -35,7 +35,7 @@ def test_bounded_pack_names_preserve_unique_identity_through_http_and_cache(monk
         asked, expected = "Unknown product", ""
     elif case == "duplicate":
         products.append(full)
-    payload = {"name": "Tea 500 ml", "brand": "Leafy", "shelf_product": asked, "confidence": .9}
+    payload = {"printed_text": "Leafy Tea 500 ml " + full, "name": "Tea 500 ml", "brand": "Leafy", "shelf_product": asked, "confidence": .9}
     original, calls = llm_client.litellm.acompletion, []
 
     def respond(request):
@@ -60,9 +60,9 @@ def test_bounded_pack_names_preserve_unique_identity_through_http_and_cache(monk
                 assert result.shelf_product == expected
                 assert result.name == "Tea 500 ml" and result.brand == "Leafy" and result.confidence == .9
                 assert (await read_pack(client, photo, products)).model_dump() == result.model_dump()
-            assert len(calls) == 1 and client.get_usage().cached_requests == 1
+            assert len(calls) == 2 and client.get_usage().cached_requests == 2
             if mode == "json_schema":
-                schema = calls[0]["response_format"]["json_schema"]["schema"]
+                schema = calls[1]["response_format"]["json_schema"]["schema"]
                 assert schema["properties"]["shelf_product"]["maxLength"] == 120
 
     asyncio.run(exercise())

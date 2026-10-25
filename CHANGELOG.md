@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Read package labels before showing the model any catalog candidates. Small local
+  vision models no longer copy candidate names into their image observations;
+  unsupported brand/size guesses and product links are discarded. Match only names
+  supported by the transcribed label, preserve ambiguous-prefix protection, and
+  guide confidence output as a 0–1 fraction. Add real CPU vision probe cases for
+  readable labels, unlabelled packages, blank images and wrong product variants.
+
 - Ask local models for one category per rack key and one product list per category
   key. Fixed-key JSON schemas avoid duplicate groups and reordered positional
   recovery in automatic starter filling; existing validation and cache records
