@@ -9,6 +9,7 @@ is a valid answer. Written in English like the browsing prompt; the "Language" b
 from collections.abc import Sequence
 from typing import Protocol
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from store_emulator.domain.interview import InterviewMessage
@@ -23,7 +24,7 @@ from .prompt import EYESIGHT, age_words
 class StructuredLLM(Protocol):
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -94,9 +95,18 @@ async def ask_shopper(
     convo = "\n".join(f"{'Researcher' if m.role == 'interviewer' else 'You'}: {m.text}" for m in history[-12:])
     user = (f"{visit_text(site, shopper, session)}\n\n{('Conversation so far:\n' + convo + '\n\n') if convo else ''}"
             f"Researcher: {question}")
-    reply = await llm.generate_structured_async(  # a second retry: models now and then put the answer outside the JSON
-        InterviewReply, INTERVIEW_PROMPT, user, max_retries=2,
-        seed=stable_seed("online-interview", run_id, site.id, shopper.id, len(history)),
-    )
+    seed = stable_seed("online-interview", run_id, site.id, shopper.id, len(history))
+    try:
+        reply = await llm.generate_structured_async(
+            InterviewReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=700,
+        )
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if not isinstance(cause, IncompleteOutputException):
+            raise
+        reply = await llm.generate_structured_async(
+            InterviewReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=1400,
+        )
     valid = range(1, len(session.steps) + 1)
     return reply.model_copy(update={"answer": reply.answer.strip(), "steps": [s for s in reply.steps if s in valid]})

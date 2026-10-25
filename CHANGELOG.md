@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recover a terminal output cutoff in online shopper interviews once with a
+  larger answer budget, keeping ordinary errors within the original retry limit.
+
 - Prevent late online interview answers and lock acquisition from recreating
   deleted projects or runs. Serialize the final save with deletion while keeping
   model inference outside the project lock.
