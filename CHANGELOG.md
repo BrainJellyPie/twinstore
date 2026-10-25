@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Keep browsing customers' available budget in both live online decisions and
+  post-visit interviews, separately from their lack of a purchase plan. An actual
+  CPU VLM checkout probe exposed the missing amount; save the screenshot and raw
+  responses with `verification/local-shopper-probe.py`.
+
+
 - Keep channel comparisons and online analyst facts available while another
   store run is being saved. Choose a completed, readable run; skip incomplete
   or damaged candidates and give an explicit error for a requested unreadable
