@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate small automatic-assortment choices before caching them. Unknown
+  categories/products and duplicate SKUs no longer poison later retries;
+  invalid entries from older caches are ignored so the model can answer again.
+
 - Keep receipt purchases whose names could not be read, including their
   quantities and paid amounts. These rows require product selection or explicit
   exclusion during review instead of silently disappearing from sales exports.

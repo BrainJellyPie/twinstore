@@ -3,11 +3,11 @@ import json
 import logging
 from collections import Counter
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, Self
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, ValidationInfo, create_model, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, ValidationInfo, create_model, field_validator, model_validator
 
 from store_emulator.domain.starter_fill import RackFill, StarterRack
 from store_emulator.domain.store import Store
@@ -151,6 +151,12 @@ async def _small_choices(
         @classmethod
         def canonical_choices(cls, values: list[str]) -> list[str]:
             return [canonical_identifier(value, allowed) for value in values]
+
+        @model_validator(mode="after")
+        def valid_choices(self) -> Self:
+            # Enforce semantic constraints before a response is cached, including reads of older cache files.
+            validate(self)
+            return self
 
     def validate(selected: CatalogChoices) -> None:
         unknown = set(selected.choices) - allowed
