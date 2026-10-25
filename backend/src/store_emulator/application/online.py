@@ -6,6 +6,7 @@ request snapshot of the sites and shoppers, sessions-<variant>.json, result.json
 """
 
 import asyncio
+import hashlib
 import io
 import json
 import logging
@@ -62,7 +63,7 @@ from .currencies import project_currency
 from .errors import AppError, job_failure, model_failure
 from .product_images import project_image_loader
 from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
-from .setups import setup_tree_transaction
+from .setups import setup_lock_path, setup_tree_transaction
 from .simulation import with_engine_model, with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
@@ -600,9 +601,10 @@ def _interview_path(pid: str, run_id: str, variant: int, shopper_id: str) -> Pat
 
 @contextmanager
 def _interview_lock(pid: str, run_id: str, variant: int, shopper_id: str) -> Iterator[None]:
-    path = _interview_path(pid, run_id, variant, shopper_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lock = FileLock(path.with_suffix(".lock"), timeout=0)
+    digest = hashlib.sha256(json.dumps([run_id, variant, shopper_id]).encode()).hexdigest()
+    # Lock files outlive runs; acquiring a lock must not recreate a deleted run folder.
+    path = setup_lock_path(pid, "online-interview").with_name(f"online-interview_{digest}.lock")
+    lock = FileLock(path, timeout=0)
     try:
         lock.acquire()
     except Timeout as e:
@@ -624,10 +626,11 @@ def get_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> Onlin
 def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, q: InterviewQuestion,
                 config: SimulationConfig) -> OnlineInterview:
     """The researcher's question and the shopper's answer, added to their conversation about this visit."""
-    view = get_session(pid, run_id, variant, shopper_id)
-    sites, _ = _snapshot(pid, run_id)
     with _interview_lock(pid, run_id, variant, shopper_id):
-        transcript = get_interview(pid, run_id, variant, shopper_id)
+        with _write_transaction(pid):
+            view = get_session(pid, run_id, variant, shopper_id)
+            sites, _ = _snapshot(pid, run_id)
+            transcript = get_interview(pid, run_id, variant, shopper_id)
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
         try:
             model = assistive_model(q.model, llm_config)
@@ -646,13 +649,16 @@ def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, q: Intervi
             InterviewMessage(role="interviewer", text=question, created_at=now_iso()),
             InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
         ]
-        write_json(_interview_path(pid, run_id, variant, shopper_id), transcript.model_dump(mode="json"))
+        with _write_transaction(pid):
+            if not (_run_dir(pid, run_id) / "status.json").is_file():
+                raise AppError(f"online run not found: {run_id}", 404)
+            write_json(_interview_path(pid, run_id, variant, shopper_id), transcript.model_dump(mode="json"))
         return transcript
 
 
 def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> None:
-    get_session(pid, run_id, variant, shopper_id)
-    with _interview_lock(pid, run_id, variant, shopper_id):
+    with _interview_lock(pid, run_id, variant, shopper_id), _write_transaction(pid):
+        get_session(pid, run_id, variant, shopper_id)
         _interview_path(pid, run_id, variant, shopper_id).unlink(missing_ok=True)
 
 

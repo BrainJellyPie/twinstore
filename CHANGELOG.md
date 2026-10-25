@@ -14,6 +14,11 @@
   is), and say under every unclear paired difference about how many shoppers per
   store would confirm a difference of that size, or that it needs more than a
   run allows.
+- Recover a terminal output cutoff in online shopper interviews once with a
+  larger answer budget, keeping ordinary errors within the original retry limit.
+- Prevent late online interview answers and lock acquisition from recreating
+  deleted projects or runs. Serialize the final save with deletion while keeping
+  model inference outside the project lock.
 - Ask an online shopper about their visit. In a replay, a model answers a
   researcher's questions in the shopper's voice from who they are and what they
   saw and did on the site only (pages, clicks, thoughts, outcome, exit survey),
@@ -36,10 +41,13 @@
 - Reuse confirmed quick-experiment variants after a copy or run-start failure.
   Keep them visible and selected for retry, and lock comparison choices while
   creation is pending.
+
 - Keep a better coupon available after a cart-reminder discount, and avoid
   repeatedly offering an already applied coupon whose rounded discount is zero.
+
 - Keep impressions, clicks and costs attached to the selected ad campaign when
   multiple sponsored tiles promote the same product.
+
 - Recover an online exit survey once when a local model explicitly cuts its
   answer off at the output limit. Keep invalid answers and ordinary service
   errors within their original attempt budget, and exclude unanswered surveys.
