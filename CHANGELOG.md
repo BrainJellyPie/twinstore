@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A store whose brand colour is near black (Threadline's navy) keeps a
+  visible colour dot in dark mode: the dots' outline is stronger there.
 - Know when a run is done: if an online run or a store simulation of the
   store finishes or fails while you are on another page, a notice in the
   corner names it and opens its report or results (on the right layout); the

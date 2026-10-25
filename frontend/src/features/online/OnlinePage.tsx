@@ -270,7 +270,7 @@ function SiteButton({ site, active, onOpen, compact = false }: {
       className={cn("w-full rounded-xl border text-left transition-colors", compact ? "px-2.5 py-1.5" : "px-3 py-2",
         active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
       <span className={cn("flex items-center gap-2 font-medium", compact && "text-[0.8rem]")}>
-        <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: site.theme_color }} aria-hidden />
+        <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25 dark:ring-foreground/55" style={{ background: site.theme_color }} aria-hidden />
         <span className="truncate">{site.name}</span>
       </span>
       {!compact && <span className="mt-0.5 block text-xs text-muted-foreground">{t("onStoreStats", { products: site.products, categories: site.categories })}</span>}

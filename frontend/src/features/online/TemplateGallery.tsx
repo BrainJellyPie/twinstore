@@ -87,7 +87,7 @@ export function TemplateGallery({
                 <img src={templatePreviewUrl(tpl.id, currency)} alt="" loading="lazy" className="w-full object-cover object-top" />
               </span>
               <span className="flex items-center gap-2 font-semibold">
-                <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: tpl.theme_color }} aria-hidden />{tpl.name}
+                <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25 dark:ring-foreground/55" style={{ background: tpl.theme_color }} aria-hidden />{tpl.name}
               </span>
               <span className="text-xs text-muted-foreground">{describe(tpl)}</span>
               <span className="text-xs text-muted-foreground">{t("onTplStats", { products: tpl.products, photos: tpl.photos, categories: tpl.categories })}</span>
