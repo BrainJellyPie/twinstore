@@ -1,7 +1,8 @@
 """Choice-based conjoint answered by synthetic respondents.
 
 Each respondent gets their own random choice tasks (levels balanced per respondent, as little overlap inside a task as
-the levels allow) and answers all of them in one model call. A multinomial logit over every choice gives the
+the levels allow) and normally answers them in one model call. A context rejection splits the same tasks into smaller
+requests, retaining their numbers and designs. A multinomial logit over every choice gives the
 part-worth of each level; price enters as one linear slope, which turns utility differences into willingness to pay.
 Intervals come from resampling respondents, so they respect that one person's choices go together.
 """
@@ -14,6 +15,8 @@ from typing import Any, Literal, Protocol
 
 import numpy as np
 import numpy.typing as npt
+from instructor.core.exceptions import InstructorRetryException
+from litellm.exceptions import BadRequestError
 from pydantic import BaseModel, Field, ValidationInfo, create_model, field_validator
 
 from store_emulator.domain.marketing import (
@@ -27,6 +30,7 @@ from store_emulator.domain.marketing import (
 )
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import stable_seed
+from store_emulator.engine.llm_client import is_context_overflow
 from store_emulator.engine.prompting import canonical_identifier, display_price
 
 from .survey import LETTERS, StudyResponse, persona_text
@@ -90,7 +94,7 @@ does not. Answer every task. Write any text in English.
 Use an empty string, not null, when no explanation is given."""
 
 
-def choice_model(tasks: int, options: int, none_option: bool) -> type[BaseModel]:
+def choice_model(tasks: int, options: int, none_option: bool, *, start_task: int = 0) -> type[BaseModel]:
     choices = [*LETTERS[:options], *(["none"] if none_option else [])]
     allowed = tuple(choices)
 
@@ -102,7 +106,7 @@ def choice_model(tasks: int, options: int, none_option: bool) -> type[BaseModel]
                 return canonical_identifier(value, choices)
             return value
 
-    fields: dict[str, Any] = {f"task_{t + 1}": (Literal[allowed], ...) for t in range(tasks)}
+    fields: dict[str, Any] = {f"task_{start_task + t + 1}": (Literal[allowed], ...) for t in range(tasks)}
     fields["why"] = (str, Field(default="", max_length=240, description="in one sentence, what mattered most in your choices"))
     return create_model("ConjointChoices", __base__=ConjointChoices, **fields)
 
@@ -115,10 +119,10 @@ def profile_text(attributes: Sequence[ConjointAttribute], prices: Sequence[int],
 
 
 def tasks_text(attributes: Sequence[ConjointAttribute], prices: Sequence[int], currency: str,
-               tasks: Sequence[Sequence[Sequence[int]]], none_option: bool) -> str:
+               tasks: Sequence[Sequence[Sequence[int]]], none_option: bool, *, start_task: int = 0) -> str:
     blocks: list[str] = []
     for t, profiles in enumerate(tasks):
-        lines = [f"Task {t + 1}:"]
+        lines = [f"Task {start_task + t + 1}:"]
         lines += [f"  {LETTERS[o]}: {profile_text(attributes, prices, currency, p)}" for o, p in enumerate(profiles)]
         if none_option:
             lines.append("  none: buy none of these")
@@ -160,16 +164,35 @@ async def conjoint_panel(
         base = ConjointRespondent(respondent=p.id, age_group=str(p.age_group), gender=str(p.gender),
                                   tasks=[ConjointTask(profiles=profiles) for profiles in plan])
         about = f"\nAbout the product: {context}" if context else ""
-        user = (f"{persona_text(p, currency)}\n\nYou are choosing {product}.{about}\n\n"
-                f"{tasks_text(attributes, prices, currency, plan, none_option)}")
-        try:
-            async with sem:
-                r = await llm.generate_structured_async(model, system, user, max_retries=1,
-                                                        seed=stable_seed("conjoint", seed, p.id))
+        header = f"{persona_text(p, currency)}\n\nYou are choosing {product}.{about}\n\n"
+
+        async def ask_tasks(batch: list[list[list[int]]], start: int) -> tuple[list[ConjointTask], list[str]]:
+            full = start == 0 and len(batch) == tasks
+            schema = model if full else choice_model(len(batch), options, none_option, start_task=start)
+            user = header + tasks_text(attributes, prices, currency, batch, none_option, start_task=start)
+            request_seed = (stable_seed("conjoint", seed, p.id) if full
+                            else stable_seed("conjoint-split", seed, p.id, start, len(batch)))
+            try:
+                async with sem:
+                    r = await llm.generate_structured_async(schema, system, user, max_retries=1, seed=request_seed)
+            except (BadRequestError, InstructorRetryException) as error:
+                cause = (error.failed_attempts[-1].exception
+                         if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+                if len(batch) < 2 or not is_context_overflow(cause):
+                    raise
+                middle = len(batch) // 2
+                first, first_reasons = await ask_tasks(batch[:middle], start)
+                second, second_reasons = await ask_tasks(batch[middle:], start + middle)
+                return first + second, first_reasons + second_reasons
             data = r.model_dump()
-            answered = [ConjointTask(profiles=profiles, choice=None if data[f"task_{t + 1}"] == "none" else LETTERS.index(data[f"task_{t + 1}"]))
-                        for t, profiles in enumerate(plan)]
-            return base.model_copy(update={"tasks": answered, "why": str(data.get("why", "")).strip()})
+            answered = [ConjointTask(profiles=profiles, choice=None if data[f"task_{start + t + 1}"] == "none"
+                                    else LETTERS.index(data[f"task_{start + t + 1}"])) for t, profiles in enumerate(batch)]
+            reason = str(data.get("why", "")).strip()
+            return answered, [reason] if reason else []
+
+        try:
+            answered, reasons = await ask_tasks(plan, 0)
+            return base.model_copy(update={"tasks": answered, "why": " ".join(dict.fromkeys(reasons))})
         except Exception as e:  # noqa: BLE001 — one respondent failing must not sink the panel
             return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
 

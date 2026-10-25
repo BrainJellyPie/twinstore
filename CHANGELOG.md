@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover conjoint studies that exceed a model's input context by splitting
+  the same choice tasks into smaller requests. Original designs, task numbers,
+  choices and respondent counts are preserved. Irreducible or unrelated
+  failures still exclude the whole respondent instead of publishing a partial
+  result; studies that fit continue to use one request per respondent.
+
 - Recover unique case and surrounding-whitespace variants of offered conjoint
   choices. A lowercase product letter or differently cased `none` no longer
   discards all of a respondent's tasks. Missing, multiple and unoffered choices
