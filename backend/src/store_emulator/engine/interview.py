@@ -7,12 +7,15 @@ citing the steps it refers to — so "why didn't you buy the green tea?" is answ
 shopper actually saw and did, and "I didn't notice it" is a valid answer.
 """
 
+import json
 import unicodedata
 from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
+from instructor.core.exceptions import InstructorRetryException
+from litellm.exceptions import BadRequestError
 from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 
 from store_emulator.domain.customer import CustomerResult
@@ -25,6 +28,7 @@ from store_emulator.domain.interview import (
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, stable_seed
+from store_emulator.engine.llm_client import is_context_overflow
 from store_emulator.engine.prompting import display_price
 
 MAX_SHELF_ITEMS = 16
@@ -284,6 +288,12 @@ do not omit answers or return only one representative per theme. Write in Englis
 
 MAX_THEMES = 6
 
+MERGE_THEMES_PROMPT = """You reconcile themes from smaller batches of shopper interview answers to the same question.
+Each entry is a theme label and the number of answers it represents. Merge labels that express the same reason;
+keep genuinely different reasons distinct. Return two to six short English theme labels and an assignments list
+with exactly one theme index per supplied entry, in its original order, starting at 0. Do not omit entries.
+Counts describe respondents, not additional entries. Do not invent reasons absent from the supplied labels."""
+
 
 class ThemeCoding(BaseModel):
     # Models sometimes return a seventh theme; accept it and fold the smallest ones into "Other" below.
@@ -291,16 +301,14 @@ class ThemeCoding(BaseModel):
     assignments: list[int]
 
 
-async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str]) -> tuple[list[str], list[int]]:
-    """Theme labels and one theme index per answer; answers the model leaves out or misnumbers go to "Other"."""
-    listed = "\n".join(f"{i}. {a}" for i, a in enumerate(answers))
-    schema = create_model("ThemeCoding", __base__=ThemeCoding, assignments=(list[int], Field(
-        description=f"Exactly {len(answers)} theme indices, one per answer in its original order",
-        json_schema_extra={"minItems": len(answers), "maxItems": len(answers)},
+def _theme_schema(count: int) -> type[ThemeCoding]:
+    return create_model("ThemeCoding", __base__=ThemeCoding, assignments=(list[int], Field(
+        description=f"Exactly {count} theme indices, one per answer in its original order",
+        json_schema_extra={"minItems": count, "maxItems": count},
     )))
-    coding = await llm.generate_structured_async(
-        schema, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=2, seed=0,
-    )
+
+
+def _theme_assignments(coding: ThemeCoding, count: int) -> tuple[list[str], list[int]]:
     themes: list[str] = []
     indices: dict[int, int] = {}
     for original, label in enumerate(coding.themes):
@@ -313,7 +321,7 @@ async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str])
         themes = ["Other"]
     out: list[int] = []
     other = themes.index("Other") if "Other" in themes else -1
-    for i in range(len(answers)):
+    for i in range(count):
         original = coding.assignments[i] if i < len(coding.assignments) else -1
         k = indices.get(original, -1)
         if k < 0:
@@ -322,6 +330,48 @@ async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str])
                 other = len(themes) - 1
             k = other
         out.append(k)
+    return themes, out
+
+
+async def _code_theme_batches(llm: StructuredLLM, question: str, answers: Sequence[str]) -> tuple[list[str], list[int]]:
+    listed = "\n".join(f"{i}. {a}" for i, a in enumerate(answers))
+    try:
+        coding = await llm.generate_structured_async(
+            _theme_schema(len(answers)), THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=2, seed=0,
+        )
+    except (BadRequestError, InstructorRetryException) as exc:
+        error = exc.failed_attempts[-1].exception if isinstance(exc, InstructorRetryException) and exc.failed_attempts else exc
+        if len(answers) < 2 or not is_context_overflow(error):
+            raise
+        middle = len(answers) // 2
+        batches = [await _code_theme_batches(llm, question, answers[:middle]),
+                   await _code_theme_batches(llm, question, answers[middle:])]
+        # Retain every respondent in order, including duplicates. Fold small
+        # themes only after recovery, using global respondent counts.
+        labels = [themes[k] for themes, codes in batches for k in codes]
+        counts = Counter(labels)
+        named = list(dict.fromkeys(label for label in labels if label != "Other"))
+        if len(named) > 1:
+            entries = [{"label": label, "count": counts[label]} for label in named]
+            merged = await llm.generate_structured_async(
+                _theme_schema(len(named)), MERGE_THEMES_PROMPT,
+                f"Question: {question}\n\nBatch themes:\n{json.dumps(entries, ensure_ascii=False)}", max_retries=2, seed=0,
+            )
+            themes, mapped = _theme_assignments(merged, len(named))
+        else:
+            themes, mapped = named.copy(), list(range(len(named)))
+        lookup = dict(zip(named, mapped, strict=True))
+        if "Other" in counts:
+            if "Other" not in themes:
+                themes.append("Other")
+            lookup["Other"] = themes.index("Other")
+        return themes, [lookup[label] for label in labels]
+    return _theme_assignments(coding, len(answers))
+
+
+async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str]) -> tuple[list[str], list[int]]:
+    """Code every answer, splitting only on context rejection; missing or invalid indices become Other."""
+    themes, out = await _code_theme_batches(llm, question, answers)
     if len(themes) > MAX_THEMES:  # keep the largest themes, in their original order; the rest become "Other"
         counts = Counter(out)
         named = [k for k in range(len(themes)) if themes[k] != "Other"]

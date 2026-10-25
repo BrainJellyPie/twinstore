@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover oversized interview and study-theme requests by splitting answers
+  after a model context rejection, then reconciling the resulting themes.
+  Every selected respondent, repeated answer and group count is preserved;
+  unclassified answers stay Other and the final theme limit uses total counts.
+
 - Use the loaded managed model's family for shelf-grounding coordinates even
   when its API name is `local-model`. Managed Qwen3.5 now uses the same 0–1000
   prompt and decoder as a named Qwen model, preventing misplaced product boxes.
