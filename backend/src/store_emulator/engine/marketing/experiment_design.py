@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_va
 from store_emulator.domain.marketing import ExperimentEngine, Variant, VariantChange
 from store_emulator.domain.store import Store
 from store_emulator.engine.marketing.variants import apply_changes
-from store_emulator.engine.prompting import display_price, relevant_first
+from store_emulator.engine.prompting import canonical_identifier, display_price, relevant_first
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 150
@@ -36,6 +36,11 @@ _USED_CHANGE_TEXT: dict[str, set[str]] = {
 
 
 class _ChangeTextDefaults(BaseModel):
+    @field_validator("kind", mode="before", check_fields=False)
+    @classmethod
+    def _canonical_kind(cls, value: object) -> object:
+        return canonical_identifier(value, _USED_CHANGE_TEXT) if isinstance(value, str) else value
+
     @field_validator("product", "promo", "shelf", "package", "category", mode="before", check_fields=False)
     @classmethod
     def _unused_text(cls, value: object, info: ValidationInfo) -> object:
@@ -68,6 +73,11 @@ class _Draft(BaseModel):
     focus_products: list[str] = Field(default_factory=list[str], max_length=8)
     engine: Literal["rule", "vlm"] = "rule"
     rationale: str = Field(default="", max_length=500)
+
+    @field_validator("engine", mode="before")
+    @classmethod
+    def _canonical_engine(cls, value: object) -> object:
+        return canonical_identifier(value, ("rule", "vlm")) if isinstance(value, str) else value
 
     @field_validator("rationale", mode="before")
     @classmethod
@@ -104,6 +114,7 @@ rationale. Return at least one change that can be applied to a listed product or
 negative percent. Prices must be finite and positive after currency rounding.
 Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
+Use the exact lowercase operation kinds above, including the underscore in category_price.
 Use "" for an absent rationale and [] for unspecified focus_products, not null.
 If a listed product, shelf or image name exceeds its field's character limit, copy its prefix up to that limit.
 The prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.

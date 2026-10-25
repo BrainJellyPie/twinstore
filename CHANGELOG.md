@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover known operation-kind spellings in model-written layout edits and
+  A/B variants, plus `Rule`/`VLM` engine choices. Case or surrounding whitespace
+  no longer discards an applicable draft. Required targets and values remain
+  required, and package changes remain limited to experiments.
+
 - Accept unique case and surrounding-whitespace variants of known choices in
   model-written scenarios, including nested event and promotion kinds.
   Weather, calendar, crowding, music and lighting keep their existing effects;

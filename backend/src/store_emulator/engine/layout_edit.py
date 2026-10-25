@@ -77,6 +77,7 @@ requires a negative percent. Prices must be finite and positive after currency r
 Return at least one applicable operation; correct unavailable moves or empty categories when validation reports them.
 An everyday price replaces the previous regular price. Use discount for a reduction against a regular price.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
+Use the exact lowercase operation kinds above, including the underscore in category_price.
 Name the edited layout in a few words and summarize the edits. Use "" instead of null for an absent summary.
 If a listed product or shelf name exceeds its field's character limit, copy its prefix up to that limit.
 The prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.

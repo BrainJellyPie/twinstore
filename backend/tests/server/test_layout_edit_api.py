@@ -56,9 +56,9 @@ def test_instructions_become_checked_edits_and_a_new_layout(client, monkeypatch)
     from store_emulator.application import layout_edit
     (a_name, a_sku, _), (b_name, b_sku, b_rack), store = _two_products()
     fake = _Editor({"name": "Promo week", "summary": "A sign and a lower price.", "changes": [
-        {"kind": "promo", "product": a_name, "promo": "SALE"},
-        {"kind": "price", "product": b_name, "price": 0.99},
-        {"kind": "move", "product": "Imaginary soda", "shelf": b_rack, "level": 3},
+        {"kind": " PrOmO ", "product": a_name, "promo": "SALE"},
+        {"kind": " PRICE ", "product": b_name, "price": 0.99},
+        {"kind": " MOVE ", "product": "Imaginary soda", "shelf": b_rack, "level": 3},
     ]})
     monkeypatch.setattr(layout_edit, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit/draft", json={"text": "SALE sign on one, 99 cents for the other"})
