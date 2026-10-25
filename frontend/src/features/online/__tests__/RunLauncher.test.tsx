@@ -135,3 +135,20 @@ it("sends where visitors come from, and needs at least one source", async () => 
     arrivals: { direct: 1, search_engine: 0.5, social: 0, email: 0 },
   })));
 });
+
+it("offers other stores in the same currency as the rival shop and sends the choice", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  clients.push(client);
+  const sites = [site, { ...site, id: "s2", name: "Neighbour" }, { ...site, id: "s3", name: "Seoul shop", currency: "KRW" }];
+  render(<QueryClientProvider client={client}><RunLauncher projectId="p1" sites={sites} firstSiteId="s1"
+    hasCustomers onStarted={vi.fn()} /></QueryClientProvider>);
+  const picker = screen.getByRole("combobox", { name: /Rival shop/ }) as HTMLSelectElement;
+  expect([...picker.options].map((o) => o.text)).toEqual(["None", "Neighbour"]);
+  fireEvent.change(picker, { target: { value: "s2" } });
+  fireEvent.click(start());
+  await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({ site_ids: ["s1"], rival_site_id: "s2" })));
+  // Comparing the rival itself drops it as the rival.
+  fireEvent.click(screen.getByRole("checkbox", { name: /Neighbour/ }));
+  expect([...picker.options].map((o) => o.text)).toEqual(["None"]);
+  expect(picker.value).toBe("");
+});

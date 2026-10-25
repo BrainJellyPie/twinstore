@@ -26,6 +26,7 @@ from store_emulator.domain.online import (
     PairedDelta,
     ProductRow,
     RecoveryRow,
+    RivalRow,
     SearchTermRow,
     SegmentDelta,
     SegmentDimension,
@@ -54,7 +55,9 @@ def _steps(session: SessionResult) -> int:
     return sum(1 for step in session.steps if step.choice is not None)
 
 
-def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: list[SessionResult]) -> VariantSummary:
+def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: list[SessionResult], *,
+              with_rival: bool = False) -> VariantSummary:
+    """`with_rival`: the run sent shoppers who left without buying on to a rival shop."""
     n = len(sessions)
     bought = [s for s in sessions if s.outcome == "purchased"]
     revenue = sum(s.order_total for s in bought)
@@ -134,8 +137,16 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
         exits=[ExitRow(page=PageKind(page), sessions=count) for page, count in exits.most_common()],
         segments=segments, products=products, searches=searches, clicks=clicks,
         frictions=frictions(site, sessions), survey=survey_summary(sessions), ads=ad_rows(site, sessions),
-        recovery=recovery(site, sessions),
+        recovery=recovery(site, sessions), rival=rival(sessions) if with_rival else None,
     )
+
+
+def rival(sessions: list[SessionResult]) -> RivalRow:
+    """What a rival shop made from the shoppers this store lost."""
+    went = [s for s in sessions if s.rival is not None]
+    bought = [s for s in went if s.rival is not None and s.rival.outcome == "purchased"]
+    return RivalRow(left=sum(s.outcome != "purchased" for s in sessions), went=len(went), bought=len(bought),
+                    revenue=sum(s.rival.order_total for s in bought if s.rival is not None))
 
 
 def recovery(site: OnlineSite, sessions: list[SessionResult]) -> RecoveryRow | None:
@@ -241,18 +252,22 @@ def _metric(session: SessionResult, metric: str) -> float:
         return float(session.survey.satisfaction) if session.survey else float("nan")
     if metric == "recommend":
         return float(session.survey.recommend) if session.survey else float("nan")
+    if metric == "rival_revenue_per_session":
+        return float(session.rival.order_total) if session.rival else 0.0
     return session.seconds
 
 
-def paired_deltas(control: list[SessionResult], variant: list[SessionResult], *, seed: int = 0) -> list[PairedDelta]:
-    """Variant minus control per shopper, for each measure, with a 95 % bootstrap interval of the mean difference."""
+def paired_deltas(control: list[SessionResult], variant: list[SessionResult], *, seed: int = 0,
+                  with_rival: bool = False) -> list[PairedDelta]:
+    """Variant minus control per shopper, for each measure, with a 95 % bootstrap interval of the mean difference.
+    `with_rival`: also what the run's rival shop took per visit from the shoppers each store lost."""
     a = {s.shopper_id: s for s in control}
     b = {s.shopper_id: s for s in variant}
     ids = sorted(set(a) & set(b))
     rng = np.random.default_rng(abs(seed))
     out: list[PairedDelta] = []
     metrics: tuple[str, ...] = ("conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds",
-                                "satisfaction", "recommend")
+                                "satisfaction", "recommend") + (("rival_revenue_per_session",) if with_rival else ())
     for metric in metrics:
         xa = np.array([_metric(a[i], metric) for i in ids], dtype=float)
         xb = np.array([_metric(b[i], metric) for i in ids], dtype=float)

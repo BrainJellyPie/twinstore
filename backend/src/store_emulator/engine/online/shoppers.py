@@ -215,3 +215,25 @@ def landing(site: OnlineSite, shopper: OnlineShopper) -> PageRef:
     if shopper.arrival == "email" and any(p.discount_percent for p in site.products):
         return PageRef(page=PageKind.DEALS)
     return PageRef()
+
+
+def at_rival(rival: OnlineSite, shopper: OnlineShopper) -> OnlineShopper | None:
+    """The same shopper looking for the same thing at a rival shop after leaving without buying, or None when the rival
+    has nothing that fits (a search engine would not send them there). They arrive from a search engine on the rival's
+    best match. A product the rival does not sell becomes its best search match for the same words; a category it does
+    not have, its category of the same name or else that of the best match. Bargain hunters, who want nothing in
+    particular, always fit."""
+    moved = shopper.model_copy(update={"arrival": "search_engine"})
+    matches = search_products(rival, " ".join(shopper.target_terms), mode="smart") if shopper.target_terms else []
+    if shopper.target_product:
+        found = rival.product(shopper.target_product) or (matches[0] if matches else None)
+        if found is None:
+            return None
+        return moved.model_copy(update={"target_product": found.id, "target_category": found.category_id})
+    if not shopper.target_category or rival.category(shopper.target_category) is not None:
+        return moved
+    terms = {t.casefold() for t in shopper.target_terms}
+    named = next((c.id for c in rival.categories if c.name.casefold() in terms), None)
+    if named is None and not matches:
+        return None
+    return moved.model_copy(update={"target_category": named or matches[0].category_id})

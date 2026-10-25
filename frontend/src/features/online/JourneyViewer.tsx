@@ -3,9 +3,9 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Mail, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, Mail, MessageCircle } from "lucide-react";
 
-import { getSession, onlineKeys, stepScreenshotUrl, type SessionView } from "@/shared/api/online";
+import { getSession, journeyGifUrl, onlineKeys, stepScreenshotUrl, type SessionView } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { cn } from "@/shared/utils/cn";
@@ -16,8 +16,9 @@ import { personaLabel } from "@/shared/i18n/personaLabels";
 import { ShopperChat } from "./ShopperChat";
 import { ACTION_LABELS, ARRIVAL_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
 
-export function JourneyViewer({ projectId, runId, variant, shopperId, variants, currency, onVariant, onClose }: {
-  projectId: string; runId: string; variant: number; shopperId: string; variants: string[]; currency: string;
+/** `rival`: the run's rival shop ("" without one); its visits are the store index after the variants. */
+export function JourneyViewer({ projectId, runId, variant, shopperId, variants, rival = "", currency, onVariant, onClose }: {
+  projectId: string; runId: string; variant: number; shopperId: string; variants: string[]; rival?: string; currency: string;
   onVariant: (variant: number) => void; onClose: () => void;
 }) {
   const { t } = useI18n();
@@ -32,9 +33,10 @@ export function JourneyViewer({ projectId, runId, variant, shopperId, variants, 
           <DialogTitle>{t("onJourneyTitle")}</DialogTitle>
           <DialogDescription>{t("onJourneyHint")}</DialogDescription>
         </DialogHeader>
-        {variants.length > 1 && (
+        {(variants.length > 1 || variant >= variants.length) && (
           <div className="inline-flex flex-wrap rounded-md border p-0.5 text-xs" role="group" aria-label={t("onRunStores")}>
-            {variants.map((name, i) => (
+            {/* The rival tab shows only while its visit is open: not every shopper went there. */}
+            {[...variants, ...(variant >= variants.length ? [t("onRivalTab", { rival })] : [])].map((name, i) => (
               <button key={i} type="button" aria-pressed={variant === i} onClick={() => onVariant(i)}
                 className={cn("rounded px-2 py-0.5", variant === i ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{name}</button>
             ))}
@@ -42,13 +44,18 @@ export function JourneyViewer({ projectId, runId, variant, shopperId, variants, 
         )}
         {session.isPending && <p className="text-sm text-muted-foreground">{t("studioLoading")}</p>}
         {session.isError && <p role="alert" className="text-sm text-destructive">{session.error.message}</p>}
-        {session.data && <Journey key={`${variant}:${shopperId}`} projectId={projectId} runId={runId} view={session.data} currency={currency} />}
+        {session.data && (
+          <Journey key={`${variant}:${shopperId}`} projectId={projectId} runId={runId} view={session.data} currency={currency}
+            rival={rival} onRival={() => onVariant(variants.length)} />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function Journey({ projectId, runId, view, currency }: { projectId: string; runId: string; view: SessionView; currency: string }) {
+function Journey({ projectId, runId, view, currency, rival, onRival }: {
+  projectId: string; runId: string; view: SessionView; currency: string; rival: string; onRival: () => void;
+}) {
   const { t } = useI18n();
   const { shopper, session } = view;
   const [index, setIndex] = useState(0);
@@ -90,6 +97,15 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
             <ul className="mt-2 list-disc pl-4">{session.order.map((line) => <li key={line.product_id}>{line.name} ×{line.quantity}</li>)}</ul>
           )}
           {session.exit_thought && <p className="mt-2 italic">“{session.exit_thought}”</p>}
+          {session.rival && rival && (
+            <div className="mt-2 rounded-md bg-amber-500/10 px-2 py-1">
+              <div className="font-medium">
+                {t("onRivalThen", { rival, outcome: t(OUTCOME_LABELS[session.rival.outcome]) })}
+                {session.rival.order_total ? ` · ${money(session.rival.order_total)}` : ""}
+              </div>
+              <button type="button" onClick={onRival} className="text-primary underline-offset-2 hover:underline">{t("onRivalReplay")}</button>
+            </div>
+          )}
         </div>
         {session.survey && (
           <div className="rounded-xl border p-3 text-xs">
@@ -137,7 +153,11 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
           <Button variant="outline" size="icon-sm" disabled={index === 0} onClick={() => setIndex(index - 1)} aria-label={t("onPrevStep")}><ChevronLeft aria-hidden /></Button>
           <span className="text-xs tabular-nums">{t("onStepOf", { step: index + 1, total: session.steps.length })}</span>
           <Button variant="outline" size="icon-sm" disabled={index >= session.steps.length - 1} onClick={() => setIndex(index + 1)} aria-label={t("onNextStep")}><ChevronRight aria-hidden /></Button>
-          <span className="truncate font-mono text-[0.7rem] text-muted-foreground" title={step.url}>{step.url}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[0.7rem] text-muted-foreground" title={step.url}>{step.url}</span>
+          <a className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[0.7rem] border px-2 text-xs hover:bg-muted"
+            href={journeyGifUrl(projectId, runId, view.variant, shopper.id)} download title={t("onReplayGifHint")}>
+            <Film className="size-3.5" aria-hidden /> {t("onReplayGif")}
+          </a>
         </div>
         {choice && (
           <div className="rounded-xl border bg-muted/40 p-2 text-xs">

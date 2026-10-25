@@ -39,7 +39,9 @@ from store_emulator.domain.online import (
     PageOption,
     Vision,
     PageView,
+    RivalVisit,
     SessionResult,
+    SessionStep,
     SiteOptions,
     VariantComparison,
 )
@@ -52,10 +54,10 @@ from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
-from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy
-from store_emulator.engine.online.render import ProductPicture, render_page, see_as
+from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
+from store_emulator.engine.online.render import ProductPicture, animate, render_page, see_as
 from store_emulator.engine.online.session import run_session
-from store_emulator.engine.online.shoppers import sample_shoppers
+from store_emulator.engine.online.shoppers import at_rival, sample_shoppers
 from store_emulator.engine.perception.product_images import bundled_product_image
 
 from .async_executor import executor, submit_background
@@ -421,12 +423,17 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
         raise AppError("Give at least one shopping mission a share above zero", 400)
     if not any(w > 0 for w in request.arrivals.values()):
         raise AppError("Give at least one traffic source a share above zero", 400)
+    if request.rival_site_id is not None and request.rival_site_id in request.site_ids:
+        raise AppError("Pick a rival shop that is not one of the stores being compared", 400)
     policy, model = _policy(request, config)
     run_id = f"orun_{uuid.uuid4().hex[:12]}"
     with _write_transaction(pid):
         sites = [get_site(pid, site_id) for site_id in request.site_ids]
         if len({site.currency for site in sites}) != 1:
             raise AppError("Compare online stores using the same currency so shopper budgets and order totals are comparable", 400)
+        rival = get_site(pid, request.rival_site_id) if request.rival_site_id is not None else None
+        if rival is not None and rival.currency != sites[0].currency:
+            raise AppError("Pick a rival shop in the same currency as the stores being compared", 400)
         personas = read_personas(pid) if request.source == "project" else None
         if request.source == "project" and not personas:
             raise AppError("This project has no customers yet: generate them, or use the built-in panel", 400)
@@ -435,20 +442,23 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
                                    accessibility=request.accessibility, arrivals=request.arrivals)
         status = OnlineRunStatus(
             run_id=run_id, name=request.name or " vs ".join(s.name for s in sites)[:80], site_ids=[s.id for s in sites],
-            site_names=[s.name for s in sites], status="pending", total=len(shoppers) * len(sites), request=request,
+            site_names=[s.name for s in sites], status="pending",
+            total=len(shoppers) * (len(sites) + (rival is not None)), request=request,
             created_at=now_iso(),
         )
         folder = _run_dir(pid, run_id)
         folder.mkdir(parents=True, exist_ok=False)
         try:
             write_json(folder / "sites.json", _SITES.dump_python(sites, mode="json"))
+            if rival is not None:
+                write_json(folder / "rival.json", rival.model_dump(mode="json"))
             write_json(folder / "shoppers.json", _SHOPPERS.dump_python(shoppers, mode="json"))
             _write_status(pid, status)
         except Exception:
             remove_tree(folder)
             raise
     try:
-        submit_background(executor, _run_job, pid, status, sites, shoppers, policy, model, _picture(pid))
+        submit_background(executor, _run_job, pid, status, sites, rival, shoppers, policy, model, _picture(pid))
     except RuntimeError as exc:
         status.status, status.finished_at = "failed", now_iso()
         status.error = "Could not start the online run. Please retry when the worker is available."
@@ -457,8 +467,8 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
     return status
 
 
-def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shoppers: list[OnlineShopper],
-             policy: ShopperPolicy, model: str, picture: ProductPicture) -> None:
+def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], rival: OnlineSite | None,
+             shoppers: list[OnlineShopper], policy: ShopperPolicy, model: str, picture: ProductPicture) -> None:
     started = time.monotonic()
     status.status = "running"
     last = 0.0
@@ -476,22 +486,25 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
     try:
         _write_status(pid, status)
         request = status.request
-        variants = asyncio.run(_simulate(sites, shoppers, policy, request, picture, progress))
-        for index, sessions in enumerate(variants):
+        variants, at_rival_shop = asyncio.run(_simulate(sites, rival, shoppers, policy, request, picture, progress))
+        for index, sessions in enumerate([*variants, at_rival_shop] if rival is not None else variants):
             write_json(_run_dir(pid, status.run_id) / f"sessions-{index}.json", _SESSIONS.dump_python(sessions, mode="json"))
         by_id = {s.id: s for s in shoppers}
-        summaries = [summarize(site, by_id, sessions) for site, sessions in zip(sites, variants, strict=True)]
+        with_rival = rival is not None
+        summaries = [summarize(site, by_id, sessions, with_rival=with_rival)
+                     for site, sessions in zip(sites, variants, strict=True)]
         comparisons: list[VariantComparison] = []
         for site, sessions, summary in zip(sites[1:], variants[1:], summaries[1:], strict=True):
             won, lost, changed, switched = switches(variants[0], sessions)
             comparisons.append(VariantComparison(
-                site_id=site.id, site_name=site.name, deltas=paired_deltas(variants[0], sessions, seed=request.seed),
+                site_id=site.id, site_name=site.name,
+                deltas=paired_deltas(variants[0], sessions, seed=request.seed, with_rival=with_rival),
                 ad_lifts=ad_lifts(sites[0], variants[0], summaries[0].ads, site, sessions, summary.ads),
                 segments=segment_deltas(variants[0], sessions, by_id, seed=request.seed), won=won, lost=lost,
                 changed=changed, switches=switched,
             ))
-        requests = sum(s.model_requests for sessions in variants for s in sessions)
-        fallbacks = sum(s.fallbacks for sessions in variants for s in sessions)
+        requests = sum(s.model_requests for sessions in [*variants, at_rival_shop] for s in sessions)
+        fallbacks = sum(s.fallbacks for sessions in [*variants, at_rival_shop] for s in sessions)
         notes = ["Virtual shoppers, not real traffic: use the differences between variants, measured on the same "
                  "shoppers, rather than the absolute rates."]
         if request.policy == "rule":
@@ -503,6 +516,7 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
             run_id=status.run_id, name=status.name, policy=request.policy, model=model, currency=sites[0].currency,
             variants=summaries, comparisons=comparisons, shoppers=shoppers, model_requests=requests,
             fallbacks=fallbacks, seconds=round(time.monotonic() - started, 1), notes=notes,
+            rival_name=rival.name if rival is not None else "",
         )
         write_json(_run_dir(pid, status.run_id) / "result.json", json.loads(result.model_dump_json()))
         status.status, status.phase, status.finished_at = "completed", "done", now_iso()
@@ -515,26 +529,41 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
         _write_status(pid, status)
 
 
-async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], policy: ShopperPolicy,
-                    request: OnlineRunRequest, picture: ProductPicture,
-                    progress: Callable[[str], None]) -> list[list[SessionResult]]:
+async def _simulate(sites: list[OnlineSite], rival: OnlineSite | None, shoppers: list[OnlineShopper],
+                    policy: ShopperPolicy, request: OnlineRunRequest, picture: ProductPicture,
+                    progress: Callable[[str], None]) -> tuple[list[list[SessionResult]], list[SessionResult]]:
+    """Every shopper's visit to each variant, then, with a rival shop, the visits of those who left a variant without
+    buying and try the rival. A rival visit is the same whichever variant the shopper left, so it runs once and is
+    attached to each of their visits that ended without an order."""
     render = request.policy == "vlm"
     surveyor = policy.survey if isinstance(policy, ModelPolicy) and request.exit_survey else None
     slots = asyncio.Semaphore(_MODEL_CONCURRENCY if request.policy != "rule" else 1)
     out: list[list[SessionResult]] = []
+
+    async def one(site: OnlineSite, shopper: OnlineShopper, phase: str, surveyor: Surveyor | None) -> SessionResult:
+        async with slots:
+            result = await run_session(site, shopper, policy, seed=request.seed, max_steps=request.max_steps,
+                                       render=render, shuffle_marks=request.shuffle_marks,
+                                       image_width=request.image_width, picture=picture, surveyor=surveyor)
+        progress(phase)
+        return result
+
     for index, site in enumerate(sites):
         phase = f"variant {index + 1} of {len(sites)}"
-
-        async def one(shopper: OnlineShopper, site: OnlineSite = site, phase: str = phase) -> SessionResult:
-            async with slots:
-                result = await run_session(site, shopper, policy, seed=request.seed, max_steps=request.max_steps,
-                                           render=render, shuffle_marks=request.shuffle_marks,
-                                           image_width=request.image_width, picture=picture, surveyor=surveyor)
-            progress(phase)
-            return result
-
-        out.append(list(await asyncio.gather(*(one(s) for s in shoppers))))
-    return out
+        out.append(list(await asyncio.gather(*(one(site, s, phase, surveyor) for s in shoppers))))
+    if rival is None:
+        return out, []
+    lost = [there for i, s in enumerate(shoppers)
+            if any(v[i].outcome != "purchased" for v in out) and tries_rival(s, request.seed)
+            and (there := at_rival(rival, s)) is not None]
+    for _ in range(len(shoppers) - len(lost)):
+        progress("rival shop")
+    # No exit survey at the rival: the survey is about the stores being compared.
+    visits = list(await asyncio.gather(*(one(rival, s, "rival shop", None) for s in lost)))
+    went = {v.shopper_id: RivalVisit(outcome=v.outcome, order_total=v.order_total, exit_thought=v.exit_thought,
+                                     steps=sum(1 for step in v.steps if step.choice is not None)) for v in visits}
+    return [[s.model_copy(update={"rival": went[s.shopper_id]}) if s.outcome != "purchased" and s.shopper_id in went
+             else s for s in sessions] for sessions in out], visits
 
 
 def list_runs(pid: str) -> list[OnlineRunStatus]:
@@ -583,15 +612,26 @@ def _sessions(pid: str, run_id: str, variant: int) -> list[SessionResult]:
     return _SESSIONS.validate_python(read_json(path))
 
 
+def _stores(pid: str, run_id: str) -> list[OnlineSite]:
+    """The run's copies of its stores: the variants, then the rival shop if the run has one."""
+    sites, _ = _snapshot(pid, run_id)
+    path = _run_dir(pid, run_id) / "rival.json"
+    return [*sites, OnlineSite.model_validate(read_json(path))] if path.exists() else sites
+
+
 def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> SessionView:
+    """One shopper's visit to one store of the run; the index after the variants is their visit to the rival shop."""
     sites, shoppers = _snapshot(pid, run_id)
-    if not 0 <= variant < len(sites):
+    stores = _stores(pid, run_id)
+    if not 0 <= variant < len(stores):
         raise AppError("No such store in this run", 404)
     session = next((s for s in _sessions(pid, run_id, variant) if s.shopper_id == shopper_id), None)
     shopper = next((s for s in shoppers if s.id == shopper_id), None)
     if session is None or shopper is None:
         raise AppError(f"shopper not found in this run: {shopper_id}", 404)
-    return SessionView(variant=variant, site_id=sites[variant].id, site_name=sites[variant].name, shopper=shopper,
+    if variant == len(sites):
+        shopper = at_rival(stores[variant], shopper) or shopper
+    return SessionView(variant=variant, site_id=stores[variant].id, site_name=stores[variant].name, shopper=shopper,
                        session=session)
 
 
@@ -629,7 +669,7 @@ def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, q: Intervi
     with _interview_lock(pid, run_id, variant, shopper_id):
         with _write_transaction(pid):
             view = get_session(pid, run_id, variant, shopper_id)
-            sites, _ = _snapshot(pid, run_id)
+            sites = _stores(pid, run_id)
             transcript = get_interview(pid, run_id, variant, shopper_id)
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
         try:
@@ -665,14 +705,30 @@ def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> Non
 def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int) -> bytes:
     """The page as this shopper saw it at this step (drawn again from the run's own copy of the site)."""
     view = get_session(pid, run_id, variant, shopper_id)
-    sites, _ = _snapshot(pid, run_id)
     found = next((s for s in view.session.steps if s.index == step), None)
     if found is None:
         raise AppError("No such step in this session", 404)
-    site = sites[variant]
+    return _seen(_stores(pid, run_id)[variant], view.shopper, found, _picture(pid))
+
+
+def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> bytes:
+    """The whole visit as an animated GIF to share: every page as the shopper saw it with their click circled, what
+    they did and what they thought."""
+    view = get_session(pid, run_id, variant, shopper_id)
+    site, picture, steps = _stores(pid, run_id)[variant], _picture(pid), view.session.steps
+    frames: list[tuple[bytes, str, str]] = []
+    for n, step in enumerate(steps, start=1):
+        page = step.page.value.replace("_", " ")
+        did = (f'searched "{step.search_text}"' if step.choice is not None and step.search_text
+               else step.choice.label if step.choice is not None else view.session.outcome.replace("_", " "))
+        frames.append((_seen(site, view.shopper, step, picture), f"{n}/{len(steps)} · {page} → {did}", step.thought))
+    return animate(frames)
+
+
+def _seen(site: OnlineSite, shopper: OnlineShopper, found: SessionStep, picture: ProductPicture) -> bytes:
     page = build_page(site, found.state)
     numbers = numbering(page, found.mark_seed)
-    shot = see_as(render_page(page, site, numbers, _picture(pid)), view.shopper.vision, large_text=page.large_text)
+    shot = see_as(render_page(page, site, numbers, picture), shopper.vision, large_text=page.large_text)
     chosen = next((i for i, n in numbers.items() if found.choice is not None and n == found.choice.number), None)
     box = shot.boxes.get(chosen) if chosen is not None else None
     if box is None:
@@ -690,5 +746,6 @@ def export_clickstream(pid: str, run_id: str) -> str:
     view = get_run(pid, run_id)
     if view.status.status != "completed":
         raise AppError("The run has not finished yet", 409)
-    sites, shoppers = _snapshot(pid, run_id)
-    return clickstream_csv([(site, _sessions(pid, run_id, i)) for i, site in enumerate(sites)], {s.id: s for s in shoppers})
+    _, shoppers = _snapshot(pid, run_id)
+    stores = _stores(pid, run_id)
+    return clickstream_csv([(site, _sessions(pid, run_id, i)) for i, site in enumerate(stores)], {s.id: s for s in shoppers})

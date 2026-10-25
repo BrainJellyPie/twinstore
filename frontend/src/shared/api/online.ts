@@ -151,10 +151,14 @@ export interface SessionResult {
   searches: { query: string; results: number; step: number }[]; exit_page: PageKind; exit_thought: string;
   model_requests: number; fallbacks: number; survey: ExitSurvey | null; addon_paid: number; discount: number;
   reminded: boolean; returned_at: number | null;
+  /** Left without buying and tried the run's rival shop next (the same visit whichever store they left). */
+  rival?: RivalVisit | null;
 }
 
+export interface RivalVisit { outcome: SessionOutcome; order_total: number; steps: number; exit_thought: string }
+
 export interface OnlineRunRequest {
-  site_ids: string[]; name?: string; shoppers: number; policy: ShopperPolicyKind; model?: string | null;
+  site_ids: string[]; rival_site_id?: string | null; name?: string; shoppers: number; policy: ShopperPolicyKind; model?: string | null;
   ensemble?: EnsembleConfig | null; seed: number; max_steps: number; missions: Record<ShopperMission, number>;
   arrivals?: Partial<Record<Arrival, number>>;
   mobile_share: number; source: "panel" | "project"; image_width: number; shuffle_marks: boolean;
@@ -187,6 +191,8 @@ export interface SurveySummary {
 }
 
 export interface RecoveryRow { emails: number; returned: number; recovered: number; revenue: number; discount: number }
+/** Where a store's lost shoppers went: visits without an order, of those who tried the rival, bought there, and what it took. */
+export interface RivalRow { left: number; went: number; bought: number; revenue: number }
 
 export interface VariantSummary {
   site_id: string; site_name: string; sessions: number; purchases: number; conversion: number; revenue: number;
@@ -196,9 +202,12 @@ export interface VariantSummary {
   funnel: FunnelRow[]; exits: { page: PageKind; sessions: number }[]; segments: SegmentRow[]; products: ProductRow[];
   searches: SearchTermRow[]; clicks: ClickPoint[]; frictions: FrictionRow[]; survey: SurveySummary | null; ads: AdRow[];
   recovery: RecoveryRow | null;
+  rival?: RivalRow | null;
 }
 
-export type DeltaMetric = "conversion" | "revenue_per_session" | "add_to_cart_rate" | "steps" | "seconds" | "satisfaction" | "recommend";
+export type DeltaMetric =
+  | "conversion" | "revenue_per_session" | "add_to_cart_rate" | "steps" | "seconds" | "satisfaction" | "recommend"
+  | "rival_revenue_per_session";
 export interface PairedDelta {
   metric: DeltaMetric; control: number; variant: number; diff: number; ci_low: number | null; ci_high: number | null; n: number;
 }
@@ -222,6 +231,8 @@ export interface OnlineRunResult {
     lost: number; changed: number; switches: SwitchRow[];
   }[];
   shoppers: OnlineShopper[]; model_requests: number; fallbacks: number; seconds: number; notes: string[];
+  /** The run's rival shop ("" without one); replays of its visits use the store index after the variants. */
+  rival_name?: string;
 }
 
 export interface OnlineRunStatus {
@@ -334,6 +345,11 @@ export function clearShopperInterview(pid: string, runId: string, variant: numbe
 
 export function stepScreenshotUrl(pid: string, runId: string, variant: number, shopperId: string, step: number): string {
   return `${BASE}/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/steps/${step}.png`;
+}
+
+/** One shopper's whole visit as an animated GIF to download and share. */
+export function journeyGifUrl(pid: string, runId: string, variant: number, shopperId: string): string {
+  return `${BASE}/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/replay.gif`;
 }
 
 export function clickstreamUrl(pid: string, runId: string): string {

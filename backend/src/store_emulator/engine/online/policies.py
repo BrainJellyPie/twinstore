@@ -192,6 +192,19 @@ _REMINDER_RETURN: dict[ShopperMission, float] = {"purchase": 0.16, "replenish": 
                                                  "deal_hunt": 0.1, "browse": 0.05}
 
 
+# Share of shoppers who, leaving a shop without buying, try a rival shop next: people who came to buy something keep
+# looking; window shoppers mostly stop.
+_RIVAL: dict[ShopperMission, float] = {"purchase": 0.5, "replenish": 0.45, "compare": 0.55, "gift": 0.45,
+                                       "deal_hunt": 0.4, "browse": 0.1}
+
+
+def tries_rival(shopper: OnlineShopper, seed: int) -> bool:
+    """Whether this shopper, having left a shop without buying, tries the rival shop next. One draw per shopper,
+    whichever variant they left, so keeping them is the only way a change keeps them from the rival. Rule and model
+    shoppers alike: the decision is made off the site."""
+    return random.Random(stable_seed(seed, "online-rival", shopper.id)).random() < _RIVAL[shopper.mission]
+
+
 def comes_back(shopper: OnlineShopper, percent: int) -> float:
     """Chance that the cart reminder email brings this shopper back; a discount pulls price-sensitive shoppers most.
     Rule and model shoppers alike: the email is not a page they see."""

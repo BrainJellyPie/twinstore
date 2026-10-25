@@ -142,12 +142,14 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
               <div className="text-xs font-medium">{t("onCompareVs", { variant: c.site_name, control: v[0]?.site_name ?? "" })}</div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {c.deltas.map((d) => {
-                  const isMoney = d.metric === "revenue_per_session";
+                  const isMoney = d.metric === "revenue_per_session" || d.metric === "rival_revenue_per_session";
                   const isRate = d.metric === "conversion" || d.metric === "add_to_cart_rate";
                   const show = (x: number) => (isMoney ? money(x) : isRate ? `${(x * 100).toFixed(1)}` : x.toFixed(1));
                   const signed = (x: number) => `${x >= 0 ? "+" : "−"}${show(Math.abs(x))}${isRate ? t("onPointsSuffix") : ""}`;
                   const clear = d.ci_low !== null && d.ci_high !== null && (d.ci_low > 0 || d.ci_high < 0);
-                  const good = d.metric === "seconds" || d.metric === "steps" ? null : d.diff > 0;
+                  // Less taken by the rival is good for the store.
+                  const good = d.metric === "seconds" || d.metric === "steps" ? null
+                    : d.metric === "rival_revenue_per_session" ? d.diff < 0 : d.diff > 0;
                   return (
                     <div key={d.metric} className={cn("rounded-xl border p-2 text-xs", clear && good === true && "tone-good", clear && good === false && "tone-bad")}>
                       <div className="text-muted-foreground">{t(DELTA_LABELS[d.metric])}</div>
@@ -205,6 +207,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
 
       <Ads result={result} money={money} pct={pct} />
       <Recovery variants={v} money={money} pct={pct} />
+      <Rival result={result} money={money} pct={pct} />
       <Frictions variants={v} money={money} pct={pct} />
       <Surveys variants={v} pct={pct} />
       <Segments result={result} money={money} pct={pct} />
@@ -282,7 +285,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
       </Section>
       {journey && (
         <JourneyViewer projectId={projectId} runId={result.run_id} variant={journey.variant} shopperId={journey.shopper}
-          variants={v.map((s) => s.site_name)} currency={result.currency}
+          variants={v.map((s) => s.site_name)} rival={result.rival_name ?? ""} currency={result.currency}
           onVariant={(variant) => setJourney({ ...journey, variant })} onClose={() => setJourney(null)} />
       )}
     </>
@@ -401,6 +404,35 @@ function Recovery({ variants, money, pct }: { variants: VariantSummary[]; money:
                     <td className="tabular-nums">{money(s.recovery.emails ? Math.round(s.recovery.revenue / s.recovery.emails) : 0)}</td>
                   </>
                 ) : <td colSpan={6} className="text-muted-foreground">{t("onRecoveryOff")}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  );
+}
+
+function Rival({ result, money, pct }: { result: OnlineRunResult; money: (x: number) => string; pct: (x: number) => string }) {
+  const { t } = useI18n();
+  if (!result.rival_name) return null;
+  return (
+    <Section title={t("onRival", { rival: result.rival_name })} hint={t("onRivalHint")}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-xs">
+          <thead><tr className="text-left text-muted-foreground">
+            <th className="font-medium">{t("onRecoveryStore")}</th><th className="font-medium">{t("onRivalLeft")}</th>
+            <th className="font-medium">{t("onRivalWent")}</th><th className="font-medium">{t("onRivalBought")}</th>
+            <th className="font-medium">{t("onRivalRevenue")}</th>
+          </tr></thead>
+          <tbody>
+            {result.variants.map((s) => s.rival && (
+              <tr key={s.site_id} className="border-t">
+                <td className="py-1 pr-2 font-medium">{s.site_name}</td>
+                <td className="tabular-nums">{s.rival.left} · {pct(s.sessions ? s.rival.left / s.sessions : 0)}</td>
+                <td className="tabular-nums">{s.rival.went} · {pct(s.rival.left ? s.rival.went / s.rival.left : 0)}</td>
+                <td className="tabular-nums">{s.rival.bought} · {pct(s.rival.went ? s.rival.bought / s.rival.went : 0)}</td>
+                <td className="tabular-nums">{money(s.rival.revenue)}</td>
               </tr>
             ))}
           </tbody>

@@ -150,6 +150,14 @@ def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> dic
     return {"status": "deleted"}
 
 
+@router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/replay.gif",
+            summary="One shopper's visit as an animated GIF")
+async def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> Response:
+    gif = await run_in_threadpool(_call, lambda: online_service.journey_gif(pid, run_id, variant, shopper_id))
+    return Response(gif, media_type="image/gif",
+                    headers={"Content-Disposition": f'attachment; filename="{run_id}-{variant}-{shopper_id}.gif"'})
+
+
 @router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/steps/{step}.png",
             summary="The page a shopper saw at one step")
 async def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int) -> Response:

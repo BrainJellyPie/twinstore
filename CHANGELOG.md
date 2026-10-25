@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Download any online shopper's visit as an animated GIF from its replay: every
+  page as the shopper saw it (through their eyesight) with the click circled, a
+  caption of what they did and their thought, ready to share.
+- Add a rival shop to online runs. Pick another store in the same currency;
+  shoppers who leave without buying may look for the same thing there (more
+  often when they came to buy, rarely when window-shopping) if it sells
+  something that fits, arriving from a search engine on its best match. Each
+  shopper decides once and their rival
+  visit is the same whichever store they left, so reports show, per store, the
+  visits lost, how many tried the rival, bought there and what it took, plus the
+  paired difference in the rival's revenue per visit. Replays show where a lost
+  shopper went and open that visit; rival visits are in the clickstream CSV and
+  can be interviewed, and they ask no exit survey.
+
 ## 0.5.0 — Online stores shopped by vision shoppers
 
 - Preserve each online shopper’s eyesight transform in journey screenshots,
