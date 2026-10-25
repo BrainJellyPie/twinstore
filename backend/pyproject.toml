@@ -16,7 +16,7 @@ dependencies = [
     "fastapi[standard]>=0.135.3",
     "filelock>=3.25.2",
     "instructor>=1.15.1",
-    "litellm>=1.83.4",
+    "litellm>=1.84.0",
     "openpyxl>=3.1,<4",
     "numpy>=2.5.4",
     "pandas>=3.0.3",
@@ -32,7 +32,6 @@ dependencies = [
 # Shelf capture with the Grounding DINO detector. Install with: uv sync --extra capture
 capture = [
     "torch>=2.14.1",
-    # <5.16: later releases need tokenizers>=0.23.1, but litellm pins tokenizers==0.22.2.
     "transformers>=5.15.1,<5.16",
 ]
 

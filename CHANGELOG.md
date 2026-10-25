@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve Ollama's output-limit finish reason through the SDK. Truncated
+  structured replies now reach bounded recovery instead of being accepted or
+  retried as ordinary JSON errors; older native-response caches are excluded.
+
 - Preserve complete Unicode characters when copying experiment and survey
   names. An emoji at the 80-character boundary no longer becomes an invalid
   string that prevents the copied study from starting.

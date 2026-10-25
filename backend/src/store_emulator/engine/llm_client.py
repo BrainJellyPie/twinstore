@@ -437,6 +437,9 @@ class LiteLLMClient:
         if self.cache_dir is None:
             return None
         extra: dict[str, str] = {"reasoning": "none"} if self._openai_hosted() else {}
+        if self.model.startswith("ollama_chat/"):
+            # Older SDKs accepted native length cutoffs as successful replies.
+            extra["ollama_finish_reason"] = "native-v1"
         if self._chat_template_thinking is not None:
             extra["chat_template_thinking"] = str(self._chat_template_thinking)
         if self.seed is None and seed is not None:
