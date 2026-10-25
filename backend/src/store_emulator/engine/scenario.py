@@ -310,8 +310,8 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
     folded_skus: dict[str, set[str]] = {}
     for sku in catalog_skus:
         folded_skus.setdefault(sku.lower(), set()).add(sku)
-    catalog_names = {item.name.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
-    rack_labels = {label.lower() for rack in store.racks for label in (rack.rack_name, rack.rack_desc)}
+    catalog_names = {item.name.strip().lower() for rack in store.racks for slot in rack.slots for item in slot.items}
+    rack_labels = {label.strip().lower() for rack in store.racks for label in (rack.rack_name, rack.rack_desc)}
 
     def matches(target: str, rack: Rack, item: SlotItem) -> bool:
         exact = target.strip()
@@ -325,7 +325,7 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
             # lookup is safe only when it identifies one distinct product.
             return len(candidates) == 1 and item.sku in candidates
         if t in catalog_names or t in rack_labels:
-            return t == item.name.lower() or t in (rack.rack_name.lower(), rack.rack_desc.lower())
+            return t == item.name.strip().lower() or t in (rack.rack_name.strip().lower(), rack.rack_desc.strip().lower())
         if t in item.name.lower() or t in rack.rack_name.lower():
             return True
         return bool(_tokens(t) & _tokens(f"{rack.rack_name} {rack.rack_desc} {item.name}")) and len(t) >= 3

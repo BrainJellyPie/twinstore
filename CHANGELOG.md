@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Strip surrounding whitespace from catalog labels during exact scenario-target
+  matching. A correctly named promotion or stock-out no longer expands to other
+  products merely because the stored product, shelf or category label is padded.
+  Stored names and SKU identities remain unchanged.
+
 - Restore unique product or shelf names when a generated promotion target reaches
   its 80-character limit. A clipped name no longer falls through to broad keyword
   matching and discounts unrelated products. Ambiguous prefixes are omitted with

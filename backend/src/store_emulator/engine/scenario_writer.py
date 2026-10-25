@@ -148,8 +148,8 @@ def to_scenario(draft: ScenarioDraft, description: str, store: Store | None) -> 
     names: set[str] = set()
     sku_keys: set[str] = set()
     if store is not None:
-        names = {rack.rack_name for rack in store.racks if rack.rack_name}
-        names.update(item.name for rack in store.racks for slot in rack.slots for item in slot.items if item.name)
+        names = {rack.rack_name.strip() for rack in store.racks if rack.rack_name.strip()}
+        names.update(item.name.strip() for rack in store.racks for slot in rack.slots for item in slot.items if item.name.strip())
         sku_keys = {item.sku.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
     promotions: list[Promotion] = []
     for p in draft.promotions:
