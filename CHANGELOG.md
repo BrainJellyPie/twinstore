@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject output-limited free-text summaries before using them as customer
+  evidence. CSV/XLSX analysis now omits a cutoff summary through its existing
+  failure path, while retaining usage accounting and complete summaries.
+
 - Preserve complete inputs on native Ollama requests. Explicit context-limit
   rejections can now reach bounded starter/customer recovery even when the SDK
   wraps HTTP 400 as a connection error; unrelated failures remain terminal.

@@ -777,5 +777,8 @@ class LiteLLMClient:
         if not choices:
             return ""
         first: object = choices[0]
+        if getattr(first, "finish_reason", None) == "length":
+            # Free-text summaries are evidence too; a cutoff is not a final answer.
+            raise IncompleteOutputException(last_completion=raw)
         msg: object = getattr(first, "message", None)
         return str(getattr(msg, "content", "") or "")
