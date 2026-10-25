@@ -4,7 +4,7 @@
 
 import { BASE, type EnsembleConfig } from "./client";
 import type { VariantChange } from "./marketing";
-import type { InterviewMessage } from "./interview";
+import type { AnalystThread, InterviewMessage } from "./interview";
 import { apiErrorMessage } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -279,6 +279,7 @@ export const onlineKeys = {
     ["projects", pid, "online", "sites", siteId, "draft-preview", device, JSON.stringify(options)] as const,
   interview: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId, "interview"] as const,
+  analyst: (pid: string, runId: string) => ["projects", pid, "online", "runs", runId, "analyst"] as const,
 };
 
 export function listTemplates(signal?: AbortSignal): Promise<OnlineTemplate[]> {
@@ -409,6 +410,19 @@ export function askOnlineShopper(pid: string, runId: string, variant: number, sh
 
 export function clearShopperInterview(pid: string, runId: string, variant: number, shopperId: string): Promise<void> {
   return fetchJson(interviewUrl(pid, runId, variant, shopperId), { method: "DELETE" });
+}
+
+// Questions about an online run, answered from its report; each answer lists the report lines it used.
+export function getOnlineAnalyst(pid: string, runId: string, signal?: AbortSignal): Promise<AnalystThread> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { signal });
+}
+
+export function askOnlineAnalyst(pid: string, runId: string, question: string, model = ""): Promise<AnalystThread> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { method: "POST", ...json({ question, model }) });
+}
+
+export function clearOnlineAnalyst(pid: string, runId: string): Promise<void> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { method: "DELETE" });
 }
 
 /** `highlight: false` leaves out the circle around what the shopper clicked (the animated playback draws it). */

@@ -147,6 +147,7 @@ def run_facts(customers: Sequence[CustomerResult], personas: Mapping[str, Person
 
 async def answer_run_question(
     llm: StructuredLLM, facts: str, question: str, history: Sequence[AnalystMessage], seed: int = 0,
+    prompt: str = ANALYST_PROMPT,
 ) -> RunAnswer:
     convo = "\n".join(f"{'Manager' if m.role == 'user' else 'Analyst'}: {m.text}" for m in history[-8:])
     user = f"Fact sheet:\n{facts}\n\n{'Conversation so far:' + chr(10) + convo + chr(10) + chr(10) if convo else ''}Manager: {question.strip()}"
@@ -163,7 +164,7 @@ async def answer_run_question(
             return value
 
     try:
-        answer = await llm.generate_structured_async(AnalystAnswer, ANALYST_PROMPT, user, max_retries=2, seed=seed)
+        answer = await llm.generate_structured_async(AnalystAnswer, prompt, user, max_retries=2, seed=seed)
     except Exception as error:
         cause = (error.failed_attempts[-1].exception
                  if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
@@ -172,7 +173,15 @@ async def answer_run_question(
         raise
     sheet = facts.casefold()
     figures = [f.strip() for f in answer.figures if f.strip() and f.strip().casefold() in sheet]
-    return answer.model_copy(update={"figures": figures[:8], "follow_ups": [q.strip() for q in answer.follow_ups if q.strip()][:3]})
+    # Small models repeat the answer or a question as every follow-up; keep only new questions, once each.
+    seen = {*asked, "".join(c for c in normalize("NFKC", answer.answer).casefold() if c.isalnum()), ""}
+    follow_ups: list[str] = []
+    for q in answer.follow_ups:
+        folded = "".join(c for c in normalize("NFKC", q).casefold() if c.isalnum())
+        if folded not in seen:
+            seen.add(folded)
+            follow_ups.append(q.strip())
+    return answer.model_copy(update={"figures": figures[:8], "follow_ups": follow_ups[:3]})
 
 
 class _Starters(BaseModel):

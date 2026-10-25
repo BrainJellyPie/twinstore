@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Ask about an online run: the report has an **Ask about this run** section
+  (also on the floating dock) where a model answers questions from the run's
+  report — each store's funnel, money, friction, survey, ads, segments and the
+  paired differences with their intervals — and lists the report lines it
+  used; figures not in the report are dropped. Follow-up suggestions that
+  repeat the answer or an earlier question are dropped too, here and in the
+  store's run analyst.
 - Try a tested package online: a concept test whose package image is linked to
   a store product can turn it into a variant of an online store with that
   product's picture replaced, ready to compare with the store.
