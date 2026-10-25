@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep AI design conversations usable after twenty replies. Send recent complete
+  exchanges within the API limit and bound older model context by UTF-8 bytes,
+  retaining the complete latest request and current design. Add a real CPU probe
+  for long Korean conversations that previously exceeded the local context window.
+
 - Harden AI design edits for small local models with typed, sparse option updates;
   reject duplicate, unknown, null and invalid changes. Keep the editor locked while
   a model reply is pending, refresh changed money inputs on apply/undo without losing

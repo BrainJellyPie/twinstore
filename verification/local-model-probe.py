@@ -35,6 +35,7 @@ from store_emulator.engine.validation import validate
 
 design_requests = {
     "design-color-ko": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
+    "design-long-history": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
     "design-free-popup": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
     "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
     "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
@@ -95,18 +96,22 @@ started = time.perf_counter()
 result = {"case": args.case, "model": args.model, "endpoint": args.endpoint}
 try:
     if args.case in design_requests:
-        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case == "design-color-ko" else "USD")
+        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history"} else "USD")
         site.options.welcome_popup = "coupon"
         site.options.coupon_percent = 15
         site.options.shipping_fee = 499
         before = site.options.model_dump(mode="json")
+        messages = [DesignMessage(role="owner", text=design_requests[args.case])]
+        if args.case == "design-long-history":
+            old = ("동네 주민이 편안하게 쇼핑할 수 있는 온라인 매장을 만들고 싶습니다. 기존 배송비와 할인율은 그대로 유지해주세요. 상품 색상과 크기는 다양합니다. " * 18)[:1200]
+            messages = [DesignMessage(role="owner" if i % 2 == 0 else "designer", text=old) for i in range(38)] + messages
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            reply = asyncio.run(chat_design(client, site, site.options,
-                [DesignMessage(role="owner", text=design_requests[args.case])]))
+            reply = asyncio.run(chat_design(client, site, site.options, messages))
         edited, changed = apply_design(site.options, reply.changes, site.currency)
         after = edited.model_dump(mode="json")
         expected = {
             "design-color-ko": {"theme_color": "#00AA33"},
+            "design-long-history": {"theme_color": "#00AA33"},
             "design-free-popup": {"shipping_fee": 0, "welcome_popup": "none"},
             "design-neon": {"page_style": "neon"},
             "design-calm": {"urgency": False, "social_proof": False, "welcome_popup": "none"},
@@ -115,7 +120,8 @@ try:
         issues = [f"Expected {key}={value!r}, received {after[key]!r}" for key, value in expected.items() if after[key] != value]
         issues += [f"Unrequested change: {key}" for key in changed if key not in allowed]
         result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
-            reply=reply.model_dump(mode="json"), changed=changed, issues=issues)
+            reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
+            characters=sum(len(message.text) for message in messages))
     elif args.case.startswith("pack-"):
         products = ["Strawberry Jam 340g", "Apricot Jam 340g", "Marmalade 340g"]
         picture = Image.new("RGB", (600, 800), "white")

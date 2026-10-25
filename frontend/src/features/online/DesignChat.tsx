@@ -48,7 +48,8 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
   const edited = JSON.stringify(options) !== JSON.stringify(site.options);
   const ask = useMutation({
     mutationFn: (owner: string) => designChat(projectId, site.id, {
-      messages: [...turns.map(({ role, text: said, changed }) => ({ role, text: said, changed })), { role: "owner", text: owner }],
+      // Keep complete recent exchanges within the API's 40-message limit; the visible conversation stays intact.
+      messages: [...turns.slice(-38).map(({ role, text: said, changed }) => ({ role, text: said, changed })), { role: "owner", text: owner }],
       options, model: model || undefined,
     }),
     onMutate: () => { setText(""); onWorking(true); },
