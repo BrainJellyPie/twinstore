@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Require product and badge fields in the local vision shopper's output grammar,
+  preventing positive interest scores with no target from discarding whole shelf
+  decisions. Preserve legacy name-only/number-only parsing and explicit no-choice
+  answers. A real CPU probe now saves shelf images, model outputs and purchases.
+
+
 - Keep browsing customers' available budget in both live online decisions and
   post-visit interviews, separately from their lack of a purchase plan. An actual
   CPU VLM checkout probe exposed the missing amount; save the screenshot and raw
