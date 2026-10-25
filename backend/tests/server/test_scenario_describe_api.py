@@ -1,6 +1,8 @@
 """A situation described in words becomes a custom scenario; promotions and stock-outs are checked against the
 layout's products (fake model, no network)."""
 
+import copy
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
@@ -99,3 +101,22 @@ def test_optional_null_annotations_preserve_the_scenario_and_effects(client, mon
     assert scenario["notes"] == scenario["events"][0]["note"] == scenario["promotions"][0]["label"] == ""
     assert scenario["promotions"][0]["target"] == "Pepsi" and scenario["promotions"][0]["kind"] == "1+1"
     assert scenario["stockouts"] == ["Snickers"] and body["effects"]["traffic"] < 1
+
+
+@pytest.mark.parametrize("spelling", ["upper", "title", "padded"])
+def test_known_choice_spellings_return_the_same_scenario_and_effects(client, monkeypatch, spelling):
+    from store_emulator.application import scenarios
+    draft = {**copy.deepcopy(DRAFT), "season": "summer", "music": "calm", "lighting": "bright"}
+    text = "Rainy Friday, the game, 1+1 on Pepsi, out of Snickers"
+    request = {"text": text, "project_id": PID, "setup_id": SETUP}
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Writer(draft))
+    expected = client.post("/api/scenarios/describe", json=request)
+    assert expected.status_code == 200
+    for container, field in [*((draft, f) for f in ("weather", "season", "day_type", "crowding", "music", "lighting")),
+                             *((event, "kind") for event in draft["events"]),
+                             *((promo, "kind") for promo in draft["promotions"])]:
+        value = container[field]
+        container[field] = value.upper() if spelling == "upper" else value.title() if spelling == "title" else f"\u3000{value}\t"
+    actual = client.post("/api/scenarios/describe", json=request)
+    assert actual.status_code == 200, actual.text
+    assert actual.json() == expected.json()

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Accept unique case and surrounding-whitespace variants of known choices in
+  model-written scenarios, including nested event and promotion kinds.
+  Weather, calendar, crowding, music and lighting keep their existing effects;
+  unknown values, invalid types and operational nulls remain errors.
+
 - Keep visible shelf products readable when deskewing moves their price-tag
   crop beyond a photo edge. Empty tag regions stay blank; entirely invisible
   packages are not sent to the model. Applying reviewed captures also skips

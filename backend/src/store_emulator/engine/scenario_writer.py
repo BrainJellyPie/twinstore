@@ -10,7 +10,7 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Annotated, Literal, Protocol
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from store_emulator.domain.scenario import (
     Crowding,
@@ -24,7 +24,7 @@ from store_emulator.domain.scenario import (
     Weather,
 )
 from store_emulator.domain.store import Store
-from store_emulator.engine.prompting import relevant_first
+from store_emulator.engine.prompting import canonical_identifier, relevant_first
 from store_emulator.engine.scenario import apply_to_store
 
 MAX_LISTED_PRODUCTS = 150
@@ -45,6 +45,11 @@ class _Event(BaseModel):
     end_hour: int = Field(default=24, ge=1, le=24)
     note: str = Field(default="", max_length=120)
 
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _canonical_kind(cls, value: object) -> object:
+        return canonical_identifier(value, tuple(kind.value for kind in EventKind)) if isinstance(value, str) else value
+
     @field_validator("note", mode="before")
     @classmethod
     def _optional_note(cls, value: object) -> object:
@@ -57,6 +62,11 @@ class _Promotion(BaseModel):
     kind: PromotionKind = PromotionKind.DISCOUNT
     discount_pct: float = Field(default=20.0, ge=0.0, le=90.0)
     label: str = Field(default="", max_length=24, description="shelf tag text, e.g. '1+1' or '20% OFF'")
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _canonical_kind(cls, value: object) -> object:
+        return canonical_identifier(value, tuple(kind.value for kind in PromotionKind)) if isinstance(value, str) else value
 
     @field_validator("label", mode="before")
     @classmethod
@@ -85,6 +95,16 @@ class ScenarioDraft(BaseModel):
     notes: str = Field(default="", max_length=400, description=(
         "what the description says that the fields cannot express, as one or two sentences of context for shoppers"))
 
+    @field_validator("weather", "season", "day_type", "crowding", "music", "lighting", mode="before")
+    @classmethod
+    def _canonical_choice(cls, value: object, info: ValidationInfo) -> object:
+        choices = {
+            "weather": tuple(choice.value for choice in Weather), "season": tuple(choice.value for choice in Season),
+            "day_type": tuple(choice.value for choice in DayType), "crowding": tuple(choice.value for choice in Crowding),
+            "music": ("none", "calm", "upbeat"), "lighting": ("dim", "normal", "bright"),
+        }
+        return canonical_identifier(value, choices[info.field_name or ""]) if isinstance(value, str) else value
+
     @field_validator("notes", mode="before")
     @classmethod
     def _optional_notes(cls, value: object) -> object:
@@ -111,6 +131,7 @@ stock-outs the description does not mention.
   listed product or shelf. Omit an ambiguous promotion instead of guessing. Short keywords intentionally target all matches.
 - Put anything else that matters to shoppers (a nearby office lunch rush, a heat advisory) into notes.
 Use empty strings, not null, for unspecified notes, event notes and promotion labels.
+Copy operational choices exactly from the schema, including their lowercase spelling and underscores.
 Write in English."""
 
 
