@@ -69,11 +69,14 @@ class _Setup:
         return response_model.model_validate(self.reply)
 
 
-def test_the_create_store_form_is_filled_from_a_description(client, monkeypatch):
+@pytest.mark.parametrize("spelling", ["exact", "mixed"])
+def test_the_create_store_form_is_filled_from_a_description(client, monkeypatch, spelling):
     from store_emulator.application import setup_assist
     fake = _Setup({"name": "중앙 캠퍼스 마트", "description": "학생들이 주로 찾는 캠퍼스 편의점입니다.", "address": "Chung-Ang University, Seoul",
                    "format": "University campus store (convenience)", "open_days": "weekday", "open_hour": 7, "close_hour": 23,
                    "currency": "KRW", "rationale": "A campus store open on weekdays."})
+    if spelling == "mixed":
+        fake.reply.update(open_days=" Weekday ", currency=" krw ")
     monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: fake)
     r = client.post("/api/assist/store-setup", json={"text": "중앙대 캠퍼스 편의점, 평일 7시-23시, 학생 위주", "locale": "ko"})
     assert r.status_code == 200, r.text

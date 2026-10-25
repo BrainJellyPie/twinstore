@@ -33,6 +33,16 @@ class _Setup(BaseModel):
     currency: Literal["USD", "KRW", "JPY"] | None = Field(default=None, description="from the place, when it is clear")
     rationale: str = Field(default="", max_length=400)
 
+    @field_validator("open_days", mode="before")
+    @classmethod
+    def _day_spelling(cls, value: object) -> object:
+        return value.strip().casefold() if isinstance(value, str) else value
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def _currency_spelling(cls, value: object) -> object:
+        return value.strip().upper() if isinstance(value, str) else value
+
     @field_validator("name", "description", "address", "format", "rationale", mode="before")
     @classmethod
     def _optional_text(cls, value: object) -> object:
@@ -58,8 +68,9 @@ the description says or clearly implies: a short name (theirs if given, otherwis
 "Campus Corner Store"), one or two sentences describing the store
 from what the owner said (add no products, prices or facts they did not give), the address only when a place is
 given (never invent a street), which listed store format fits best, the opening days
-(every day, weekdays or weekends, null when unspecified) and hours (an all-night store is 0 to 24), and the currency when the place makes it
-clear (USD, KRW or JPY only). Use empty strings for unspecified text; reserve null for unspecified days, hours and currency.
+(copy "7" for every day, "weekday" for weekdays, "weekend" for weekends, null when unspecified) and hours
+(an all-night store is 0 to 24), and the currency when the place makes it clear (USD, KRW or JPY only, in uppercase).
+Use empty strings for unspecified text; reserve null for unspecified days, hours and currency.
 Write the name and description in {language}; give a short rationale in English."""
 
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep store-creation drafts usable when local models return known opening-day
+  or currency codes with different case or surrounding whitespace. The prompt
+  now spells out `7`, `weekday` and `weekend`; unknown codes still fail and
+  unspecified settings remain unset.
+
 - Preserve a model's chosen shopper behavior when a known pattern ID differs
   only in case or surrounding whitespace. Window shoppers and single-item
   shoppers no longer silently inherit the first pattern's larger purchase
