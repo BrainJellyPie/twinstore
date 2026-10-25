@@ -133,14 +133,14 @@ def save(pid: str, sid: str, req: PhotoSave) -> PhotoSaved:
             result = PhotoSaved(setup_id=path.stem, changed_placements=report.changed_placements)
             draft = new_setup_data("Library product photos", sid, store.model_dump(mode="json"),
                                    "Reviewed existing photos applied to products. Original preserved; no model calls or stock/price inference.")
-            source = read_setup(pid, sid)
-            if source.get("operations") is not None:
-                draft["operations"] = source["operations"]
-            building = source.get("building")
-            if building is not None:
-                draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft.update(id=path.stem, library_photos_request=req.model_dump(mode="json"), library_photos_result=result.model_dump(mode="json"))
-            with setup_tree_transaction(pid, [sid]):
+            with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
+                source = read_setup(pid, sid)
+                if source.get("operations") is not None:
+                    draft["operations"] = source["operations"]
+                building = source.get("building")
+                if building is not None:
+                    draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
                 write_json(receipt, {"source_id": sid})
                 write_json(path, draft)
             return result

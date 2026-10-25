@@ -101,19 +101,19 @@ def apply_edit(pid: str, sid: str, req: LayoutEditApply) -> dict[str, object]:
                 raise AppError("None of these edits applies to this layout" + (f": {problems[0]}" if problems else "."), 422)
             if any(max(item.price, item.regular_price) > MAX_PRICE for rack in edited.racks for slot in rack.slots for item in slot.items):
                 raise AppError("The resulting price exceeds the safe integer limit. Choose a smaller change", 422)
-            source = read_setup(pid, sid)
-            source_name = str(source.get("name") or "layout")
-            name = req.name or f"{source_name} (edited)"
-            new_setup = new_setup_data(name[:80], sid, edited.model_dump(mode="json"), "; ".join(applied[:12])[:1000])
-            if source.get("operations") is not None:
-                new_setup["operations"] = source["operations"]
-            if source.get("building") is not None:
-                new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
-            new_setup["id"] = path.stem
-            result: dict[str, object] = {**setup_summary(pid, new_setup), "applied": applied, "warnings": problems}
-            new_setup["layout_edit_request"] = req.model_dump(mode="json")
-            new_setup["layout_edit_result"] = result
-            with setup_tree_transaction(pid, [sid]):
+            with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
+                source = read_setup(pid, sid)
+                source_name = str(source.get("name") or "layout")
+                name = req.name or f"{source_name} (edited)"
+                new_setup = new_setup_data(name[:80], sid, edited.model_dump(mode="json"), "; ".join(applied[:12])[:1000])
+                if source.get("operations") is not None:
+                    new_setup["operations"] = source["operations"]
+                if source.get("building") is not None:
+                    new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
+                new_setup["id"] = path.stem
+                result: dict[str, object] = {**setup_summary(pid, new_setup), "applied": applied, "warnings": problems}
+                new_setup["layout_edit_request"] = req.model_dump(mode="json")
+                new_setup["layout_edit_result"] = result
                 write_json(receipt, {"source_id": sid})
                 write_json(path, new_setup)
                 set_active_setup(pid, path.stem)

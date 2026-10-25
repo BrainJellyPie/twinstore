@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Serialize operating-setting inheritance for reviewed shelf-copy, photo and
+  text-edit branches with source edits, preserving their reviewed product snapshot.
+
 - Prevent reviewed shelf-copy, library-photo, text-edit and capture-batch saves
   from recreating deleted projects. Protect photo preview snapshots against
   project deletion as well.
