@@ -64,13 +64,12 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
     adds: Counter[str] = Counter()
     clicks: list[ClickPoint] = []
     for session in sessions:
+        views.update(session.viewed_products)
         for step in session.steps:
             choice = step.choice
             if choice is None:
                 continue
             actions[choice.kind.value] += 1
-            if choice.kind == ActionKind.OPEN_PRODUCT:
-                views[choice.target] += 1
             if choice.kind in (ActionKind.ADD_TO_CART, ActionKind.BUY_NOW):
                 adds[choice.target] += 1
             if choice.box is not None and step.screen is not None and len(clicks) < _MAX_CLICKS:

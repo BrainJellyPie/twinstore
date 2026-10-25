@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Include direct product landings from search engines and social media in
+  product-view reports, using recorded views without double-counting clicks.
+
 - Keep distinct shelf categories separate when importing a physical store online,
   including emoji, punctuation and long multilingual labels. Repeated signs
   still share one category.
