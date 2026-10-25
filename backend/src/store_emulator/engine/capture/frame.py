@@ -52,7 +52,8 @@ class WorkFrame:
         pw, ph = self.photo_size
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
-        return Box(x1=max(0.0, min(xs)), y1=max(0.0, min(ys)), x2=min(float(pw), max(xs)), y2=min(float(ph), max(ys)))
+        return Box(x1=min(float(pw), max(0.0, min(xs))), y1=min(float(ph), max(0.0, min(ys))),
+                   x2=max(0.0, min(float(pw), max(xs))), y2=max(0.0, min(float(ph), max(ys))))
 
     def to_work_points(self, points: list[tuple[float, float]]) -> list[tuple[float, float]]:
         """Photo pixel coordinates → work frame (inverse of `to_image_points`)."""

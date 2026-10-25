@@ -572,7 +572,11 @@ def _save_sku_images(pid: str, cid: str, result: CaptureResult) -> None:
         if photo is None:
             photo = Image.open(_dir(pid, cid) / "image.jpg").convert("RGB")
         b = item.boxes[len(item.boxes) // 2]
-        crop = photo.crop((round(b.x1), round(b.y1), round(b.x2), round(b.y2)))
+        left, top = max(0, round(b.x1)), max(0, round(b.y1))
+        right, bottom = min(photo.width, round(b.x2)), min(photo.height, round(b.y2))
+        if right <= left or bottom <= top:
+            continue  # A missing thumbnail must not prevent applying reviewed products.
+        crop = photo.crop((left, top, right, bottom))
         crop.thumbnail((384, 384), Image.Resampling.LANCZOS)
         buf = io.BytesIO()
         crop.save(buf, format="JPEG", quality=88)

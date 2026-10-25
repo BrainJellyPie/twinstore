@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep visible shelf products readable when deskewing moves their price-tag
+  crop beyond a photo edge. Empty tag regions stay blank; entirely invisible
+  packages are not sent to the model. Applying reviewed captures also skips
+  empty thumbnails and clips partial crops instead of failing the layout save.
+
 - Recover truncated entry plans and shelf glances from individual voting-model
   members with one larger output budget, matching single-model behavior.
   Successful members are reused; unrelated failures and persistent truncation

@@ -116,6 +116,8 @@ def label_image(photo: Image.Image, frame: WorkFrame, band: Band, group: FacingG
     pad = 0.04 * rep.width
     pkg = frame.to_image_box(rep.x1 - pad, rep.y1 - pad, rep.x2 + pad, rep.y2)
     product = photo.crop((round(pkg.x1), round(pkg.y1), round(pkg.x2), round(pkg.y2)))
+    if not product.width or not product.height:
+        raise ValueError("No visible product remains inside the photo.")
     # The tag sits on the shelf edge under the run of facings — centred under a facing or at the
     # run's left end — so the strip under the first facing (a little wider) covers both habits.
     first = group.facings[0]
@@ -129,8 +131,12 @@ def label_image(photo: Image.Image, frame: WorkFrame, band: Band, group: FacingG
     prod_h = min(prod_h, 384)
     product = product.resize((max(1, round(product.width * prod_h / max(1, product.height))), prod_h),
                              Image.Resampling.LANCZOS)
-    strip_h = max(1, round(strip.height * width / max(1, strip.width)))
-    strip = strip.resize((width, min(strip_h, 160)), Image.Resampling.LANCZOS)
+    if strip.width and strip.height:
+        strip_h = max(1, round(strip.height * width / strip.width))
+        strip = strip.resize((width, min(strip_h, 160)), Image.Resampling.LANCZOS)
+    else:
+        # A visible package may have its price tag beyond the photo's edge.
+        strip = Image.new("RGB", (width, 1), (255, 255, 255))
     canvas = Image.new("RGB", (width, product.height + 8 + strip.height), (255, 255, 255))
     canvas.paste(product, ((width - product.width) // 2, 0))
     canvas.paste(strip, (0, product.height + 8))
