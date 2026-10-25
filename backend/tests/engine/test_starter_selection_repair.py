@@ -62,7 +62,11 @@ class RepairModel:
                 ids = groups[0]["rack_ids"]
                 if len(ids) > 1: ids[-1] = ids[0]
                 else: ids.append(ids[0])
-            else: groups.append(groups[0].copy())
+            else:
+                # One requested category allows only one product group, so a product of another category stands in
+                # for the repeat and the answer still fails only the semantic check.
+                key = next(key for key in CATALOG if key != groups[0]["category"])
+                groups[0]["skus"] = [catalog_slot_item(CATALOG[key][0], "USD").sku]
         elif fault == "unknown_category": groups[0]["category"] = "not_in_catalog"
         elif fault == "missing_products": groups[0]["category"] = "not_requested"
         elif fault == "unknown_sku": groups[0]["skus"] = ["invented_sku"]

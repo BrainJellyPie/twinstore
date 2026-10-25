@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.7.0 — The same customers in both twins, and answers that become tests
+
+- Nothing is cut off on a 360 px phone: the tab row fits in English and
+  Korean and scrolls sideways in longer languages with the current tab kept
+  in view (the last tab used to fall off the screen), and the local model's
+  download buttons wrap instead of running past their card.
 - Recover customer batches when a small model's output limit also cuts off a
   previously split batch. Output tasks can shrink to one customer; visit times,
   unique IDs and all-or-nothing batch results are preserved.
@@ -11,13 +17,6 @@
 - Automatic products on large generated stores can keep every department instead
   of rejecting valid model answers and collapsing the assortment to 16 categories.
   Smaller fallback tasks use the same limit; manual shelf refill retains its cap.
-
-## 0.7.0 — The same customers in both twins, and answers that become tests
-
-- Nothing is cut off on a 360 px phone: the tab row fits in English and
-  Korean and scrolls sideways in longer languages with the current tab kept
-  in view (the last tab used to fall off the screen), and the local model's
-  download buttons wrap instead of running past their card.
 - Require product and badge fields in the local vision shopper's output grammar,
   preventing positive interest scores with no target from discarding whole shelf
   decisions. Preserve legacy name-only/number-only parsing and explicit no-choice
@@ -41,6 +40,10 @@
 - Easier to read: no label in the app is smaller than about 11 px any more
   (badges, chart axes, the shopper stream, the phone tab labels), and the
   dark report header's secondary lines are brighter.
+- The command palette (Ctrl K) offers a store's pages from the home and
+  settings pages too, for the store opened last (named in the list); before,
+  "capture" or "area" found nothing off a store. Typing also finds the
+  store's online stores and runs by name and opens them.
 - Back to work in one click: once there is a store, the home page opens with
   a **Continue where you left off** card for the store used last (or the
   latest changed), plus a **Your stores: N** link down to the list, so a
@@ -52,7 +55,9 @@
   Previously the tabs ran over the logo at 1024 px.
 - A long online report is easier to find your way around: its section strip
   highlights the section you are reading, scrolls along with you, and fades
-  at an edge where more sections are hidden.
+  at an edge where more sections are hidden, and every section now carries an
+  icon and the same title style, so they are easy to tell apart while
+  scrolling.
 - The marketing studio on a phone: its eleven tabs are one scrolling row
   instead of a block that pushed the work below the fold, and an A/B result
   notice puts its CSV button under the text. The neighborhood's area

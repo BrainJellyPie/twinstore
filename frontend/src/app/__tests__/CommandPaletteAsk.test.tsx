@@ -21,7 +21,7 @@ vi.mock("@/shared/queries/useProjects", () => ({ useProjects: () => ({ data: sta
 vi.mock("../theme", () => ({ useTheme: () => ({ theme: "dark", setTheme: vi.fn() }) }));
 vi.mock("../launcher", () => ({ useLauncher: () => false, quitLauncher: vi.fn() }));
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), routeAssist: vi.fn() }));
-vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof import("@/shared/api/online")>(), listRuns: vi.fn() }));
+vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof import("@/shared/api/online")>(), listRuns: vi.fn(), listSites: vi.fn(async () => []) }));
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 
 const queryClient = new QueryClient();
@@ -128,7 +128,7 @@ it("keeps the palette open with a note when no layout has a finished run", async
 });
 
 const onlineRun = (run_id: string, status: online.OnlineRunStatus["status"], created_at: string) =>
-  ({ run_id, status, created_at }) as online.OnlineRunStatus;
+  ({ run_id, status, created_at, name: "", site_names: [] }) as unknown as online.OnlineRunStatus;
 
 it("opens the latest finished online run before handing over a question about the web shop", async () => {
   vi.mocked(api.routeAssist).mockResolvedValue({ destination: "online_question", reason: "" });

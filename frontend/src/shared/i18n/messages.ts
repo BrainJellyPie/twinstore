@@ -69,6 +69,7 @@ export const messages = {
   commandMove: ["move", "이동", "移动", "移動", "mover", "déplacer"],
   commandOpen: ["open", "열기", "打开", "開く", "abrir", "ouvrir"],
   commandThisStore: ["This store", "현재 매장", "当前门店", "この店舗", "Esta tienda", "Ce magasin"],
+  commandOnlineRuns: ["Online runs", "온라인 실행", "线上运行", "オンライン実行", "Simulaciones online", "Simulations en ligne"],
   commandGoTo: ["Go to", "화면 이동", "前往", "移動先", "Ir a", "Aller à"],
   commandAppearance: ["Appearance", "화면 모양", "外观", "表示", "Apariencia", "Apparence"],
   commandApp: ["App", "앱", "应用", "アプリ", "Aplicación", "Application"],

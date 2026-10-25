@@ -4,7 +4,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, Columns2, Filter, GitCompareArrows, MessageSquareText, Play, Route, ShoppingBag, Store, Users, Waves } from "lucide-react";
+import {
+  BarChart3, ChartPie, ClipboardList, Columns2, Filter, GitCompareArrows, Grid3x3, MailCheck, Megaphone, MessageSquareText,
+  MousePointerClick, Play, Route, Search, ShoppingBag, Store, Swords, TriangleAlert, Users, Waves,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import {
@@ -293,7 +296,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
           {v.length > 1 && <StoreKey names={names} />}
           <FunnelChart variants={v} />
         </Section>
-        <Section title={t("onOutcomes")}>
+        <Section icon={ChartPie} title={t("onOutcomes")}>
           <OutcomeBars variants={v} />
           <div className="space-y-0.5 text-xs text-muted-foreground">
             {v.map((s, i) => (
@@ -320,7 +323,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
       <div id="online-segments" className="scroll-mt-16 empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
 
       <div id="online-products" className="grid scroll-mt-16 gap-3 xl:grid-cols-2">
-        <Section title={t("onSearches")} hint={t("onSearchesHint")}>
+        <Section icon={Search} title={t("onSearches")} hint={t("onSearchesHint")}>
           {v.map((s, si) => (
             <div key={s.site_id}>
               {v.length > 1 && <div className="flex items-center gap-1.5 text-xs font-medium"><Swatch index={si} />{s.site_name}</div>}
@@ -372,7 +375,7 @@ function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: numbe
   if (variants.every((s) => s.ads.length === 0)) return null;
   const signedMoney = (x: number) => `${x >= 0 ? "+" : "−"}${money(Math.abs(x))}`;
   return (
-    <Section title={t("onAds")} hint={t("onAdsHint")}>
+    <Section icon={Megaphone} title={t("onAds")} hint={t("onAdsHint")}>
       {variants.map((s) => s.ads.length > 0 && (
         <div key={s.site_id} className="space-y-1">
           {variants.length > 1 && <div className="text-xs font-medium">{s.site_name}</div>}
@@ -455,7 +458,7 @@ function Recovery({ variants, money, pct }: { variants: VariantSummary[]; money:
   const { t } = useI18n();
   if (variants.every((s) => !s.recovery)) return null;
   return (
-    <Section title={t("onRecovery")} hint={t("onRecoveryHint")}>
+    <Section icon={MailCheck} title={t("onRecovery")} hint={t("onRecoveryHint")}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-xs">
           <thead><tr className="text-left text-muted-foreground">
@@ -491,7 +494,7 @@ function Rival({ result, money, pct }: { result: OnlineRunResult; money: (x: num
   const { t } = useI18n();
   if (!result.rival_name) return null;
   return (
-    <Section title={t("onRival", { rival: result.rival_name })} hint={t("onRivalHint")}>
+    <Section icon={Swords} title={t("onRival", { rival: result.rival_name })} hint={t("onRivalHint")}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-xs">
           <thead><tr className="text-left text-muted-foreground">
@@ -520,7 +523,7 @@ function Frictions({ variants, money, pct }: { variants: VariantSummary[]; money
   const { t } = useI18n();
   const codes = [...new Set(variants.flatMap((s) => s.frictions.map((f) => f.code)))];
   return (
-    <Section title={t("onFrictions")} hint={t("onFrictionsHint")}>
+    <Section icon={TriangleAlert} title={t("onFrictions")} hint={t("onFrictionsHint")}>
       {codes.length === 0 ? <p className="text-xs text-muted-foreground">{t("onFrictionsNone")}</p> : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-xs">
@@ -554,7 +557,7 @@ function Surveys({ variants, pct }: { variants: VariantSummary[]; pct: (x: numbe
   const { t } = useI18n();
   if (variants.every((s) => !s.survey)) return null;
   return (
-    <Section title={t("onSurveys")} hint={t("onSurveysHint")}>
+    <Section icon={ClipboardList} title={t("onSurveys")} hint={t("onSurveysHint")}>
       <div className="grid gap-3 lg:grid-cols-2">
         {variants.map((s) => s.survey && (
           <div key={s.site_id} className="space-y-2 rounded-xl border p-3 text-xs">
@@ -604,7 +607,7 @@ function Segments({ result, money, pct }: { result: OnlineRunResult; money: (x: 
     } : { value: null, label: "—", sub: "", title: "" };
   }));
   return (
-    <Section title={t("onSegments")} hint={t("onSegmentsHint")}>
+    <Section icon={Grid3x3} title={t("onSegments")} hint={t("onSegmentsHint")}>
       <div className="inline-flex flex-wrap rounded-md border p-0.5 text-xs" role="group" aria-label={t("onSegments")}>
         {DIMENSIONS.map((d) => (
           <button key={d.id} type="button" aria-pressed={dimension === d.id} onClick={() => setDimension(d.id)}
@@ -626,10 +629,10 @@ function Heatmap({ variants }: { variants: VariantSummary[] }) {
   const current = page && pages.includes(page) ? page : pages[0] ?? null;
   const shown: ClickPoint[] = clicks.filter((c) => c.device === device && c.page === current);
   if (variants.every((s) => s.clicks.length === 0)) {
-    return <Section title={t("onHeatmap")}><p className="text-xs text-muted-foreground">{t("onHeatmapNone")}</p></Section>;
+    return <Section icon={MousePointerClick} title={t("onHeatmap")}><p className="text-xs text-muted-foreground">{t("onHeatmapNone")}</p></Section>;
   }
   return (
-    <Section title={t("onHeatmap")} hint={t("onHeatmapHint")}>
+    <Section icon={MousePointerClick} title={t("onHeatmap")} hint={t("onHeatmapHint")}>
       <div className="flex flex-wrap gap-2 text-xs">
         {variants.length > 1 && (
           <select className="h-8 rounded-md border bg-background px-2" value={index} onChange={(e) => setIndex(Number(e.target.value))} aria-label={t("onRunStores")}>
