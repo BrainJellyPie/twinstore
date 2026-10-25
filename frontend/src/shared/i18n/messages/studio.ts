@@ -732,6 +732,8 @@ export const studioMessages = {
   mkKeepReview: ["Review on the layout", "배치에서 검토하기", "在布局上检查", "レイアウトで確認する", "Revisar en el plano", "Vérifier sur le plan"],
   mkKeepSaved: ["Saved as a new layout: {name}", "새 배치로 저장됨: {name}", "已另存为新布局：{name}", "新しいレイアウトとして保存しました：{name}", "Guardado como plano nuevo: {name}", "Enregistré comme nouveau plan : {name}"],
   mkBestPriceVariant: ["Best price {price}", "최적 가격 {price}", "最佳价格 {price}", "最適価格 {price}", "Mejor precio {price}", "Meilleur prix {price}"],
+  mkPackagePick: ["Package to put online", "온라인에 올릴 패키지", "要放到线上的包装", "オンラインに載せるパッケージ", "Envase para llevar online", "Emballage à mettre en ligne"],
+  mkPackageVariant: ["{name} package", "{name} 패키지", "{name} 包装", "{name} パッケージ", "Envase {name}", "Emballage {name}"],
   mkChanged: ["{name} changed", "{name} 변경 내용", "{name} 的更改", "{name} の変更点", "Cambios de {name}", "Modifications de {name}"],
   mkFooterControl: ["Control: {name} · ", "대조군: {name} · ", "对照组：{name} · ", "対照群：{name} · ", "Control: {name} · ", "Témoin : {name} · "],
   mkFooterVision: ["Vision shoppers", "비전 AI 고객", "视觉顾客", "ビジョン買い物客", "Compradores con visión", "Clients avec vision"],

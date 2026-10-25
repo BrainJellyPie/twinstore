@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Try a tested package online: a concept test whose package image is linked to
+  a store product can turn it into a variant of an online store with that
+  product's picture replaced, ready to compare with the store.
 - On narrow screens, opening an online store or run from the list scrolls to
   it, the report's floating replay dock waits until its header has scrolled
   past, and a variant's difference chip no longer splits its figure.
