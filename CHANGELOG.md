@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Easier to get around: the Floor, Area, Capture, Market and Online tabs no
+  longer go dead on the home and settings pages — they open the store used
+  last (or the only store); on a phone the top bar labels each icon; and the
+  online page folds its store and run lists behind one button that names what
+  is open, so the store or report comes first.
 - The same customers in the store and online: an online run whose shoppers
   are the store's customers has a **Store and online** section that reads
   each customer next to the newest store run of them — bought in both, only

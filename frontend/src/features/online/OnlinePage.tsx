@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, ChevronRight, Globe2, Loader2, MousePointerClick, Plus, Search, Settings2, Sparkles } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronDown, ChevronRight, Globe2, Loader2, MousePointerClick, Plus, Search, Settings2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus, type SiteSummary } from "@/shared/api/online";
@@ -74,6 +74,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
     if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
   const [picks, setPicks] = useState<string[]>([]);
+  const [listOpen, setListOpen] = useState(false);
   // Variants sit under the store they were first copied from (copies of copies included), collapsed unless open.
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const rootOf = (site: SiteSummary): string => {
@@ -98,7 +99,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   }
   const roots = list.filter((s) => rootOf(s) === s.id && (found(s.name, s.note) || family.has(s.id)));
   const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
-  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); reveal(); };
+  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); setListOpen(false); reveal(); };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -112,6 +113,16 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         </div>
         <Button onClick={() => { setGallery(true); setRunId(null); }}><Plus className="size-4" aria-hidden /> {t("onNewStore")}</Button>
 
+        {/* On a phone the lists fold behind one button that says what is open, so the work area comes first. */}
+        <button type="button" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen}
+          className="flex items-center justify-between gap-2 rounded-xl border bg-card/60 px-3 py-2 text-left text-sm lg:hidden">
+          <span className="min-w-0">
+            <span className="block text-[0.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{t("onListToggle", { stores: list.length, runs: runs.data?.length ?? 0 })}</span>
+            <span className="block truncate font-medium">{runId ? (runs.data?.find((r) => r.run_id === runId)?.name ?? "") : selected?.name ?? ""}</span>
+          </span>
+          <ChevronDown className={cn("size-4 shrink-0 transition-transform", listOpen && "rotate-180")} aria-hidden />
+        </button>
+        <div className={cn("flex flex-col gap-4", !listOpen && "hidden lg:flex")}>
         {(list.length > 6 || (runs.data?.length ?? 0) > 6) && (
           <label className="relative block">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -159,7 +170,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ul className="space-y-1.5">
             {shownRuns.map((r) => (
               <li key={r.run_id}>
-                <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); reveal(); }}
+                <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); setListOpen(false); reveal(); }}
                   aria-current={runId === r.run_id ? "true" : undefined}
                   className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", runId === r.run_id ? "border-primary bg-primary/8" : "hover:bg-muted")}>
                   <span className="flex items-center gap-2 font-medium">
@@ -176,6 +187,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
             ))}
           </ul>
         </section>
+        </div>
       </aside>
 
       <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto">

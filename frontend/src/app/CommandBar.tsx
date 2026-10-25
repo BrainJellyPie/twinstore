@@ -2,12 +2,14 @@
 // control in the middle, and search (⌘K), backend status, the day/night switch and, under the launcher,
 // Quit on the right.
 
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Camera, Globe2, KeyRound, LayoutGrid, Map, Megaphone, Moon, Search, Store, Sun } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
+import { useProjects } from "@/shared/queries/useProjects";
 import { cn } from "@/shared/utils/cn";
 
 import { useI18n } from "@/shared/i18n/i18n";
@@ -19,6 +21,8 @@ import { MOD_KEY, useCommandPalette } from "./commandPalette";
 import { projectIdFromPath } from "./paths";
 import { QuitButton } from "./QuitTwinStore";
 import { useTheme } from "./theme";
+
+const LAST_STORE = "twinstore.lastStore";
 
 const PAGE_TITLES: Record<string, MessageKey> = {
   "/projects/new": "newStore",
@@ -42,14 +46,14 @@ function NavSegment({ items }: { items: NavItem[] }) {
         disabled ? (
           <span
             key={label}
-            className="flex h-9 cursor-not-allowed items-center gap-2 rounded-xl px-3 text-sm text-muted-foreground/35"
+            className="flex h-11 cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl px-2 text-sm text-muted-foreground/45 sm:h-9 sm:flex-row sm:gap-2 sm:px-3"
             role="link"
             aria-label={label}
             aria-disabled="true"
             title={t("openStoreFirst")}
           >
             <Icon className="size-[1.05rem]" aria-hidden />
-            <span className="hidden lg:inline">{label}</span>
+            <span className="text-[0.6rem] leading-none sm:hidden lg:inline lg:text-sm lg:leading-normal">{label}</span>
           </span>
         ) : (
           <Link
@@ -60,14 +64,14 @@ function NavSegment({ items }: { items: NavItem[] }) {
             title={label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow] duration-200",
+              "relative flex h-11 flex-col items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium transition-[color,background-color,box-shadow] duration-200 sm:h-9 sm:flex-row sm:gap-2 sm:px-3",
               active
                 ? "bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_8px_22px_-10px_var(--primary)]"
                 : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
             )}
           >
             <Icon className="size-[1.05rem]" aria-hidden />
-            <span className="hidden lg:inline">{label}</span>
+            <span className="text-[0.6rem] leading-none sm:hidden lg:inline lg:text-sm lg:leading-normal">{label}</span>
           </Link>
         ),
       )}
@@ -133,6 +137,18 @@ export function CommandBar() {
   const { pathname } = useLocation();
   const pid = projectIdFromPath(pathname);
   const openPalette = useCommandPalette((s) => s.setOpen);
+  // Off a store's pages (home, settings), the store tabs open the store used last, or the only one.
+  const { data: projects } = useProjects();
+  const [remembered, setRemembered] = useState<string | null>(() => {
+    try { return localStorage.getItem(LAST_STORE); } catch { return null; }  // storage unavailable: nothing remembered
+  });
+  useEffect(() => {
+    if (!pid) return;
+    setRemembered(pid);
+    try { localStorage.setItem(LAST_STORE, pid); } catch { /* storage unavailable: kept for this visit only */ }
+  }, [pid]);
+  const storeId = pid ?? (projects?.some((p) => p.project_id === remembered) ? remembered
+    : projects?.length === 1 ? projects[0]!.project_id : null);
 
   const { data: project } = useQuery({
     queryKey: pid ? queryKeys.project(pid) : ["project", "disabled"],
@@ -146,11 +162,11 @@ export function CommandBar() {
 
   const items: NavItem[] = [
     { to: "/", label: t("stores"), icon: LayoutGrid, active: pathname === "/" || pathname === "/projects/new" },
-    { to: "/projects/$pid", params: { pid: pid ?? "" }, label: t("floor"), icon: Store, active: pathname.startsWith("/projects/") && !!pid, disabled: !pid },
-    { to: "/town/$pid", params: { pid: pid ?? "" }, label: t("area"), icon: Map, active: pathname.startsWith("/town/"), disabled: !pid },
-    { to: "/capture/$pid", params: { pid: pid ?? "" }, label: t("capture"), icon: Camera, active: pathname.startsWith("/capture/"), disabled: !pid },
-    { to: "/marketing/$pid", params: { pid: pid ?? "" }, label: t("market"), icon: Megaphone, active: pathname.startsWith("/marketing/"), disabled: !pid },
-    { to: "/online/$pid", params: { pid: pid ?? "" }, label: t("online"), icon: Globe2, active: pathname.startsWith("/online/"), disabled: !pid },
+    { to: "/projects/$pid", params: { pid: storeId ?? "" }, label: t("floor"), icon: Store, active: pathname.startsWith("/projects/") && !!pid, disabled: !storeId },
+    { to: "/town/$pid", params: { pid: storeId ?? "" }, label: t("area"), icon: Map, active: pathname.startsWith("/town/"), disabled: !storeId },
+    { to: "/capture/$pid", params: { pid: storeId ?? "" }, label: t("capture"), icon: Camera, active: pathname.startsWith("/capture/"), disabled: !storeId },
+    { to: "/marketing/$pid", params: { pid: storeId ?? "" }, label: t("market"), icon: Megaphone, active: pathname.startsWith("/marketing/"), disabled: !storeId },
+    { to: "/online/$pid", params: { pid: storeId ?? "" }, label: t("online"), icon: Globe2, active: pathname.startsWith("/online/"), disabled: !storeId },
     { to: "/settings", label: t("models"), icon: KeyRound, active: pathname === "/settings" },
   ];
 
