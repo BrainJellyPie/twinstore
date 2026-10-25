@@ -38,7 +38,9 @@ def test_shoppers_who_leave_try_the_rival_once_and_each_store_sees_what_it_lost(
     worse = _site(client, "pet_store", service_fee=900, guest_checkout=False)
     rival = _site(client, "pet_store")
     runs = f"/api/projects/{PID}/online/runs"
-    body = {"site_ids": [control["id"], worse["id"]], "shoppers": 40, "seed": 3, "max_steps": 30}
+    # Shoppers who came to buy, so that a worse store has orders to lose (the default mix is nearly all window shoppers).
+    missions = {"purchase": 0.25, "browse": 0.35, "compare": 0.15, "deal_hunt": 0.1, "gift": 0.07, "replenish": 0.08}
+    body = {"site_ids": [control["id"], worse["id"]], "shoppers": 40, "seed": 3, "max_steps": 30, "missions": missions}
     assert client.post(runs, json={**body, "rival_site_id": control["id"]}).status_code == 400
     status = client.post(runs, json={**body, "rival_site_id": rival["id"]}).json()
     assert status["total"] == 40 * 3

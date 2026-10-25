@@ -124,7 +124,7 @@ it.each([
   if (!survey) fireEvent.click(screen.getByRole("checkbox", { name: "Exit survey" }));
   const estimate = screen.getByText(/^Model (calls|decisions)/).textContent;
   const responses = survey ? 1 : 0;
-  expect(estimate).toContain(`about ${(30 * (Math.min(11, steps) + responses)).toLocaleString("en")},`);
+  expect(estimate).toContain(`about ${(30 * (Math.min(4, steps) + responses)).toLocaleString("en")},`);
   expect(estimate).toContain(`at most ${(30 * (steps * (reminder ? 2 : 1) + responses)).toLocaleString("en")}.`);
 });
 

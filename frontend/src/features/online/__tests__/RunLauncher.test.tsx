@@ -124,7 +124,9 @@ it("allows an explicitly chosen server default while the catalog is unavailable"
 
 it("sends where visitors come from, and needs at least one source", async () => {
   mount();
-  fireEvent.change(screen.getByRole("slider", { name: "Direct" }), { target: { value: "0" } });
+  for (const name of ["Direct", "Search engine", "Social media", "Email"]) {
+    fireEvent.change(screen.getByRole("slider", { name }), { target: { value: "0" } });
+  }
   expect(start().disabled).toBe(true);
   expect(screen.getByText("Give at least one traffic source a share above zero.")).toBeTruthy();
   fireEvent.change(screen.getByRole("slider", { name: "Direct" }), { target: { value: "100" } });

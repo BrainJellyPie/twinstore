@@ -18,6 +18,7 @@ from store_emulator.domain.online import (
     OnlineSite,
     PageKind,
     PageRef,
+    ShopperMission,
 )
 from store_emulator.domain.types import TokenUsage
 from store_emulator.engine.online.analysis import clickstream_csv, frictions, paired_deltas, summarize, survey_summary
@@ -228,9 +229,14 @@ def test_outline_reads_the_page_as_text() -> None:
     assert text[0].startswith("Page: ") and any(line.startswith("Section: ") for line in text)
 
 
+# Every mission well represented (the default mix is nearly all window shoppers, as real traffic is).
+_MIX: dict[ShopperMission, float] = {"purchase": 0.25, "browse": 0.35, "compare": 0.15, "deal_hunt": 0.1, "gift": 0.07,
+                                     "replenish": 0.08}
+
+
 def _shoppers(site: OnlineSite, n: int = 30, seed: int = 1) -> list[OnlineShopper]:
     request = OnlineRunRequest(site_ids=["s1"])
-    return sample_shoppers(site, n, seed=seed, missions=request.missions, mobile_share=request.mobile_share)
+    return sample_shoppers(site, n, seed=seed, missions=_MIX, mobile_share=request.mobile_share)
 
 
 def test_shopper_panel_is_reproducible_and_mission_driven() -> None:
