@@ -1,6 +1,7 @@
 """A saved text summary does not prove the uploaded visit-time evidence was committed."""
 
 import io
+import json
 from unittest.mock import Mock
 
 import pytest
@@ -77,7 +78,9 @@ def test_retry_keeps_traffic_after_failure_between_summary_and_profile(layout, m
     second = generation.start_persona_generation(SimulationConfig(), PID, SID)
     assert read_status(PID, second)["status"] == "completed"
     assert generated[0]["traffic"] == expected
-    assert generated[0]["supplemental_summary"] == "Uploaded evidence"
+    evidence, store_details = generated[0]["supplemental_summary"].split("\nStore details (owner-provided): ", 1)
+    assert evidence == "Uploaded evidence"
+    assert json.loads(store_details) == {"name": meta["name"]}
     assert read_json(metadata_path(PID))["traffic_profile"] == expected.model_dump(mode="json")
     assert len(summary_calls) == (0 if stored_summary else 1)
 
@@ -85,4 +88,6 @@ def test_retry_keeps_traffic_after_failure_between_summary_and_profile(layout, m
     third = generation.start_persona_generation(SimulationConfig(), PID, SID)
     assert read_status(PID, third)["status"] == "completed"
     assert generated[1]["traffic"] == expected
+    assert generated[1]["supplemental_summary"] == generated[0]["supplemental_summary"]
+    assert read_json(metadata_path(PID))["supplemental_summary"] == "Uploaded evidence"
     assert len(summary_calls) == (0 if stored_summary else 1)

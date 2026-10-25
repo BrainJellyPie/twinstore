@@ -7,6 +7,7 @@ from dataclasses import replace
 import httpx
 import pytest
 from openai import AsyncOpenAI
+from pydantic import ValidationError
 
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.engine import llm_client
@@ -66,14 +67,26 @@ def test_http_glance_uses_the_current_badges_and_caches_valid_choices(monkeypatc
     asyncio.run(exercise())
 
 
-@pytest.mark.parametrize("numbered", [False, True])
-@pytest.mark.parametrize("product,number,expected", [("Apple", 999, "A"), ("Apple", 2, "A"), ("", 2, "B"),
-                                                    ("", 0, ""), ("Invented product", 999, "")])
-def test_non_enforcing_providers_keep_existing_name_and_badge_resolution(shelf, numbered, product, number, expected):
+@pytest.mark.parametrize("numbered,product,number,interest,expected", [
+    (False, "Apple", 999, 7, "A"), (True, "Apple", 999, 7, "A"),
+    (False, "Apple", 2, 7, "A"), (True, "Apple", 2, 7, "A"),
+    (False, "", 2, 7, None), (True, "", 2, 7, "B"),
+    (False, "", 0, 7, None), (True, "", 0, 7, None),
+    (False, "Invented product", 999, 7, None), (True, "Invented product", 999, 7, None),
+    (False, "", 0, 0, ""), (True, "", 0, 0, ""),
+])
+def test_non_enforcing_providers_resolve_valid_targets_and_reject_invalid_choices(
+    shelf, numbered, product, number, interest, expected,
+):
     _, view = shelf
     schema = shelf_glance_model(view, numbered=numbered)
     assert schema.model_json_schema()["properties"]["number"]["enum"] == ([0, 1, 2] if numbered else [0])
-    glance = schema.model_validate_json(json.dumps({"product": product, "number": number, "interest": 7}), strict=True)
+    payload = json.dumps({"product": product, "number": number, "interest": interest})
+    if expected is None:
+        with pytest.raises(ValidationError):
+            schema.model_validate_json(payload, strict=True)
+        return
+    glance = schema.model_validate_json(payload, strict=True)
     selected, _ = resolve(view, glance)
     assert (selected.item.sku if selected else "") == expected
 
