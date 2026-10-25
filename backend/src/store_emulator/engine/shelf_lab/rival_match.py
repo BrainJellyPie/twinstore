@@ -4,8 +4,11 @@ rival's tag, "Coke 500 ml" in our layout). Only the same product counts: same br
 from collections.abc import Collection, Sequence
 from typing import Protocol, Self
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
+from litellm.exceptions import BadRequestError
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from store_emulator.engine.llm_client import is_context_overflow
 from store_emulator.engine.prompting import canonical_identifier
 
 MAX_OURS = 300
@@ -79,7 +82,23 @@ async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_nam
             return self
 
     listed = "\n".join(f"- {n}" for n in list(our_names)[:MAX_OURS])
-    asked = "\n".join(f"- {n}" for n in rival_names[:80])
-    out = await llm.generate_structured_async(MatchedPairs, MATCH_PROMPT, f"Our products:\n{listed}\n\nRival products:\n{asked}",
-                                              max_retries=2, seed=0)
-    return resolved_pairs(out.pairs)
+    requested = list(rival_names[:80])
+    pairs: list[_Pair] = []
+    start, batch_limit = 0, len(requested)
+    while start < len(requested):
+        batch = requested[start:start + batch_limit]
+        asked = "\n".join(f"- {name}" for name in batch)
+        try:
+            out = await llm.generate_structured_async(
+                MatchedPairs, MATCH_PROMPT, f"Our products:\n{listed}\n\nRival products:\n{asked}", max_retries=2, seed=0)
+        except (BadRequestError, IncompleteOutputException, InstructorRetryException) as error:
+            cause = (error.failed_attempts[-1].exception
+                     if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+            if len(batch) < 2 or not (isinstance(cause, IncompleteOutputException) or is_context_overflow(cause)):
+                raise
+            # Retry these same names; later rows keep the smaller working size.
+            batch_limit = max(1, len(batch) // 2)
+            continue
+        pairs.extend(pair for pair in out.pairs if _listed_name(pair.rival, rivals) in batch)
+        start += len(batch)
+    return resolved_pairs(pairs)

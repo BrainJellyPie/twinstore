@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retry rival matching in smaller batches after a confirmed context overflow or
+  truncated output. Successful rows are retained, later rows use the smaller
+  size, and replies about products outside the current batch are excluded.
+
 - Allow enough output for a rival shelf's full product-match list. The previous
   1,500-token narration cap could truncate otherwise valid multi-product replies
   and discard every model-confirmed match before price comparison.
