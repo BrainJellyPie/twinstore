@@ -24,8 +24,8 @@ from tests.engine.test_llm_impulse_exposure import fixture
 @pytest.mark.parametrize("ordering", ["planned", "nearest"])
 @pytest.mark.parametrize("exposure", ["adjacency", "visibility"])
 @pytest.mark.parametrize("sku", ["opaque_0123456789abcdef0123456789abcdef", "@P1"])
-@pytest.mark.parametrize("canonical", [False, True])
-def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeypatch, tmp_path, mode, ordering, exposure, sku, canonical):
+@pytest.mark.parametrize("spelling", ["exact", "canonical", "lowercase", "padded"])
+def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeypatch, tmp_path, mode, ordering, exposure, sku, spelling):
     store, intent = fixture()
     store.racks[0].slots[0].items[0].sku = sku
     store.racks[0].slots[0].items[0].name = "Visible tea"
@@ -46,12 +46,14 @@ def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeyp
             found = re.search(r"(@+P\d+): Visible tea ", user)
             assert found is not None
             code = found.group(1)
+            said = (sku if spelling == "canonical" else code if spelling == "exact" else code.lower()
+                    if spelling == "lowercase" else f"\u3000{code.lower()}\t")
             assert code != sku and f"({sku})" not in user and "unseen" not in user
             if mode == "json_schema":
                 schema = body["response_format"]["json_schema"]["schema"]
                 action = schema["$defs"][schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]]
                 assert action["properties"]["product_sku"]["enum"] == ["", code]
-            answer = {"actions": [{"action": "buy", "nav": "path", "product_sku": sku if canonical else code, "quantity": 2,
+            answer = {"actions": [{"action": "buy", "nav": "path", "product_sku": said, "quantity": 2,
                 "target": [2, 2], "face": "S"}]}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",

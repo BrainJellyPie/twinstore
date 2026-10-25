@@ -94,7 +94,8 @@ def build_system_prompt(
 
     system = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule(currency))
     if product_codes:
-        system = system.replace('목록의 sku 중 하나만 사용', '목록의 상품 코드 중 하나만 사용 (상품명이나 임의 코드 금지)')
+        system = system.replace('목록의 sku 중 하나만 사용',
+                                '목록의 상품 코드 중 하나만 사용 (대소문자와 @ 개수를 그대로 복사; 상품명이나 임의 코드 금지)')
     return system + extra
 
 

@@ -145,7 +145,7 @@ def build_catalog_selection_prompt(store: Store, records: dict[str, SlotItem], m
 def catalog_records(store: Store) -> dict[str, SlotItem]:
     """One short reference per visible offer; identical repeated placements share the record."""
     offers: dict[tuple[str, str, int, str], SlotItem] = {}
-    skus = {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
+    skus = {item.sku.strip().casefold() for rack in store.racks for slot in rack.slots for item in slot.items}
     for rack in store.racks:
         if rack.type in {RackType.ENTRANCE, RackType.EXIT}:
             continue
@@ -153,7 +153,7 @@ def catalog_records(store: Store) -> dict[str, SlotItem]:
             for item in slot.items:
                 offers.setdefault((item.sku, item.name, item.price, item.promo), item)
     prefix = "@P"
-    while any(f"{prefix}{index}" in skus for index in range(1, len(offers) + 1)):
+    while any(f"{prefix}{index}".casefold() in skus for index in range(1, len(offers) + 1)):
         prefix = "@" + prefix
     return {f"{prefix}{index}": item for index, item in enumerate(offers.values(), 1)}
 
@@ -189,6 +189,9 @@ def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentRe
                if exposed is not None else None)
     start = entrance_position(store)
     reachable: dict[Position, bool] = {}
+    # Real SKUs participate in ambiguity checks, but only supplied offer codes
+    # are decoded. Legacy SKU spelling is never rewritten.
+    identifiers = records.keys() | {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
 
     def accessible(rack: Rack, slot: Slot) -> bool:
         tile = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)
@@ -202,7 +205,7 @@ def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentRe
         return reachable[tile]
 
     for action in result.actions:
-        item = records.get(action.product_sku)
+        item = records.get(canonical_identifier(action.product_sku, identifiers))
         if item is None and allowed is not None:
             # The exposure stage presents one anchor offer per SKU. A provider
             # ignoring the code grammar must still buy that observed offer.
@@ -258,7 +261,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - pay는 카운터에서 딱 1회만 발생합니다 (구매 물건이 없거나 매장에 카운터가 없으면 생략)
 - 시퀀스 순서는 enter → 이동/browse/buy → pay → exit
 - 반드시 {{"nav": "leave"}} 으로 종료
-- **buy 의 product_sku 는 아래 상품 목록의 짧은 상품 코드 중 하나만 사용**
+- **buy 의 product_sku 는 아래 상품 목록의 짧은 상품 코드 중 하나만 사용하고 대소문자와 @ 개수를 그대로 복사**
 - **browse / buy 의 description 은 아래 진열대 목록의 상품만 묘사**
 - **buy 는 아래 진열대 목록에 적합한 상품이 있을 때만 추가**
 - 고객의 예산을 크게 넘는 구매는 하지 않습니다

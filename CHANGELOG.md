@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover unique case and surrounding-whitespace variants of model-written
+  purchase offer codes before route and checkout processing. Planned and
+  impulse purchases retain the chosen placement and price. Generated codes
+  also avoid case/space collisions with real SKUs, whose identifiers stay
+  unchanged.
+
 - Keep natural-language layout briefs usable when local models change a known
   design choice's case or surrounding whitespace. The same valid option patch
   is applied while null choices keep current settings; unknown choices and

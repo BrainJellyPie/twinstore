@@ -46,10 +46,12 @@ def offers(placement, reverse=False):
 @pytest.mark.parametrize("ordering", ["planned", "nearest"])
 @pytest.mark.parametrize("placement", ["level", "block", "rack"])
 @pytest.mark.parametrize("reverse", [False, True])
-def test_selected_offer_survives_http_cache_route_and_checkout(monkeypatch, tmp_path, mode, ordering, placement, reverse):
+@pytest.mark.parametrize("spelling", ["exact", "lowercase", "padded"])
+def test_selected_offer_survives_http_cache_route_and_checkout(monkeypatch, tmp_path, mode, ordering, placement, reverse, spelling):
     store = offers(placement, reverse)
     before = store.model_dump()
     code = next(code for code, item in stage2_intent.catalog_records(store).items() if item.price == 700)
+    said = code if spelling == "exact" else code.lower() if spelling == "lowercase" else f"\u3000{code.lower()}\t"
     calls = []
     original = llm_client.litellm.acompletion
 
@@ -60,7 +62,7 @@ def test_selected_offer_survives_http_cache_route_and_checkout(monkeypatch, tmp_
             answer = {"pattern_id": "exploratory"}
         elif len(calls) == 2:
             answer = {"actions": [
-                {"action": "buy", "nav": "path", "product_sku": code, "quantity": 2,
+                {"action": "buy", "nav": "path", "product_sku": said, "quantity": 2,
                  "target": [3, 1], "face": "N", "product_block": 0, "product_level": 1},
                 {"action": "pay", "nav": "path"}, {"action": "exit", "nav": "leave"}]}
         else:
