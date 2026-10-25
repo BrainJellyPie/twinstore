@@ -36,13 +36,14 @@ class StructuredLLM(Protocol):
 class _Draft(BaseModel):
     name: str = Field(max_length=80, description="a short test name")
     product: str = Field(max_length=160, description="the listed product the test is about, exactly as listed")
+    shelf: str = Field(default="", max_length=160, description="the requested shelf name or ID, or empty when unspecified")
     package: str = Field(default="", max_length=160, description="a listed product image shown instead of its pack, or empty")
     price: float | None = Field(default=None, ge=0, description="a new shelf price in major units, or null to keep it")
     promo: str = Field(default="", max_length=12, description="a sign such as NEW, SALE, 1+1 or -20%, or empty")
     age_groups: list[AgeGroup] = Field(default_factory=list[AgeGroup], max_length=6)
     rationale: str = Field(default="", max_length=500)
 
-    @field_validator("package", "promo", "rationale", mode="before")
+    @field_validator("shelf", "package", "promo", "rationale", mode="before")
     @classmethod
     def _optional_text(cls, value: object) -> object:
         return "" if value is None else value
@@ -68,24 +69,26 @@ with a change to one product, and each time pick what they would take and say wh
 manager's question, draft one test:
 - product: the listed product the question is about, exactly as listed (without its price or shelf);
   use a uniquely identifying listed name; never invent a product or guess between different products with the same name;
+- shelf: when the question specifies a shelf, copy its listed name or ID. The product must be sold on that shelf.
+  The same product may appear on several shelves; use an empty string only when no shelf is specified;
 - the change on the test shelf, only what the question asks about: package (a listed product image, exactly as
   listed, shown instead of the product's pack), price (a new shelf price in major units of {currency}), promo (a short
   sign such as NEW, SALE, 1+1 or -20%); at least one of them;
 - age_groups only when the question names an age group; otherwise leave it empty (everyone);
 - a short name and rationale.
-If a listed product or image name exceeds 160 characters, copy its first 160 characters.
+If a listed product, shelf or image name exceeds 160 characters, copy its first 160 characters.
 That prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
-Use "" for unspecified package, promo and rationale, and [] for unspecified age_groups; do not use null for these fields.
+Use "" for unspecified shelf, package, promo and rationale, and [] for unspecified age_groups; do not use null for these fields.
 Write in English."""
 
 
 def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str) -> str:
-    items: dict[str, tuple[str, str, str]] = {}
+    items: dict[tuple[str, str, int], tuple[str, str, str]] = {}
     for rack in store.product_racks:
         for slot in rack.slots:
             for item in slot.items:
-                items.setdefault(item.name, (rack.rack_name, item.name,
-                                             f"{item.name} ({display_price(item.price, currency)}, {rack.rack_name or 'a shelf'})"))
+                items.setdefault((item.name, rack.id, item.price), (f"{rack.rack_name} {rack.id}", item.name,
+                    f"{item.name} ({display_price(item.price, currency)}, {rack.rack_name or rack.id}, ID {rack.id})"))
     shown = relevant_first(list(items.values()), question, MAX_LISTED)
     lines = [f"Products: {'; '.join(shown)}"]
     lines.append(f"Product images: {', '.join(name for name, _ in packages)}" if packages else "Product images: none")
@@ -96,11 +99,17 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
     """The product resolved to its SKU and the shelf it stands on, the pack to a library id, the price to minor units."""
     skus_by_name: dict[str, set[str]] = {}
     first_rack: dict[str, str] = {}
+    racks_by_sku: dict[str, set[str]] = {}
+    shelves: dict[str, set[str]] = {}
     for rack in store.product_racks:
+        for name in (rack.id, rack.rack_name):
+            if name.strip():
+                shelves.setdefault(name.strip().casefold(), set()).add(rack.id)
         for slot in rack.slots:
             for item in slot.items:
                 skus_by_name.setdefault(item.name.strip().casefold(), set()).add(item.sku)
                 first_rack.setdefault(item.sku, rack.id)
+                racks_by_sku.setdefault(item.sku, set()).add(rack.id)
     hit = resolve_listed(draft.product, skus_by_name, max_name_length=160)
     if hit is None:
         raise ValueError(f'the model chose "{draft.product}", which is not a product of this layout')
@@ -108,6 +117,11 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
         raise ValueError(f'several products of this layout are called "{draft.product}"; choose the product below')
     sku = next(iter(hit))
     rack_id = first_rack[sku]
+    if draft.shelf.strip():
+        matches = (resolve_listed(draft.shelf, shelves, max_name_length=160) or set()) & racks_by_sku[sku]
+        if len(matches) != 1:
+            raise ValueError(f'the requested shelf "{draft.shelf}" does not uniquely identify a shelf selling "{draft.product}"')
+        rack_id = next(iter(matches))
     warnings: list[str] = []
     changes: list[VariantChange] = []
     if draft.package.strip():

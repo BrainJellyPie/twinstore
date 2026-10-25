@@ -70,6 +70,21 @@ def test_unknown_names_are_reported_or_refused(client, monkeypatch):
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
 
 
+def test_repeated_sku_uses_the_requested_shelf_in_public_draft(client, monkeypatch):
+    from store_emulator.application import shelf_lab, study_design
+    from tests.engine.test_scenario_target_matching import target_store
+    store = target_store()
+    store.racks[1].slots[0].items.append(store.racks[0].slots[0].items[0].model_copy())
+    monkeypatch.setattr(study_design, "_store_for", lambda *args: store)
+    monkeypatch.setattr(shelf_lab, "list_packages", lambda pid: [])
+    monkeypatch.setattr(study_design, "assistive_client", lambda *args: _Designer(
+        {"name": "Shelf test", "product": "Cola 500ml", "shelf": "Drinks 10", "promo": "SALE"}))
+    response = client.post(f"/api/projects/{PID}/shelf-tests/design",
+                           json={"question": "Test SALE on Cola at Drinks 10", "setup_id": SETUP})
+    assert response.status_code == 200, response.text
+    assert response.json()["rack_id"] == "r10" and response.json()["target_sku"] == "s-cola"
+
+
 def test_an_ambiguous_product_name_is_not_guessed(client):
     from store_emulator.application.scenarios import (
         _store_for,  # pyright: ignore[reportPrivateUsage]

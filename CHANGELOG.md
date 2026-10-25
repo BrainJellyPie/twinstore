@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Honor a model-selected shelf when drafting tests for products sold in
+  several locations. Prompts retain shelf names/IDs and distinct placements;
+  unknown, ambiguous or non-selling shelves are corrected before caching.
+
 - Preserve different shelf prices, regular prices, names and promotions for
   the same SKU in shopper interviews. Changed offers now reach interview and
   follow-up prompts instead of being hidden behind the first placement.
