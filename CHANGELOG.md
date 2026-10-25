@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep receipt purchases whose names could not be read, including their
+  quantities and paid amounts. These rows require product selection or explicit
+  exclusion during review instead of silently disappearing from sales exports.
+
 - Aggregate analyst product facts by exact SKU so identical display names do
   not combine different products' sales, and renamed records of one SKU stay
   together. Ambiguous names include IDs in the model's facts and citations.

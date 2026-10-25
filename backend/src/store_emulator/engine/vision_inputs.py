@@ -139,6 +139,8 @@ class _ReceiptVLM(BaseModel):
 RECEIPT_PROMPT = """You transcribe shop receipts. List every purchased product line with its name as printed, quantity,
 unit price and line total (numbers as printed, no currency symbols). Skip subtotals, tax, payment and change lines.
 Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed.
+Keep every purchased line even when its name is unreadable: use an empty name and retain its readable quantity and amounts
+so the product can be chosen during review. Never omit a purchased line just because its name is unreadable.
 For unreadable store, date, time or currency text use an empty string, not null. Do not invent missing text.
 Use finite numbers only, never true or false. For unreadable or missing amounts use null, never NaN or Infinity.
 Copy only the printed amount; do not repeat digits. Amounts must fit within 9007199254740991 minor units
@@ -179,7 +181,7 @@ async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, defa
     currency = (r.currency.strip() or default_currency.strip()).upper()
     lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity, unit_price=_minor(line.unit_price, currency),
                          line_total=_minor(line.line_total, currency))
-             for line in r.lines if line.name.strip()]
+             for line in r.lines]
     stamp = f"{r.date} {r.time}".strip() if r.date else ""
     return ReceiptReading(receipt_id=receipt_id, store=r.store.strip(), timestamp=stamp, currency=currency, lines=lines,
                           total=_minor(r.total, currency))

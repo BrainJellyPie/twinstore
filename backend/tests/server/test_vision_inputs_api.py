@@ -86,6 +86,8 @@ def test_receipt_review_uses_saved_run_currency(client, tmp_path):
 
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("products,printed,expected", [
+    ({"a": "Tea 500ml"}, "", ""),
+    ({"a": "Tea 500ml"}, " \t\u3000", ""),
     ({"a": "Tea 500ml", "b": "TEA 500ML"}, "Tea 500ml", ""),
     ({"a": "Tea 500ml", "b": "Tea-500ml"}, "TEA 500ML", ""),
     ({"a": "Tea 500ml", "b": "Ｔｅａ ５００ｍｌ"}, "Tea 500ml", ""),
