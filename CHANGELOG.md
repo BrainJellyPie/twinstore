@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reduce GIF export memory by decoding and releasing each full-color screenshot
+  in turn, preserving frame sizes, captions and playback timing.
+
 - Match rival-shop targets against the original catalog's product/SKU and
   category identity before using search alternatives; shared local IDs cannot
   turn a lost shopper's goal into an unrelated product or category.

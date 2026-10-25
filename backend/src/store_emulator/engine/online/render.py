@@ -875,26 +875,28 @@ def animate(frames: list[tuple[bytes, str, str]], *, width: int = 640, seconds: 
     """A visit as an animated GIF: each screenshot (PNG) scaled down to at most `width` and padded to the tallest,
     with a band below giving its caption and the shopper's thought; the last frame stays three times as long. Loops
     forever."""
-    originals: list[Image.Image] = []
+    sizes: list[tuple[int, int]] = []
     for png, _, _ in frames:
         with Image.open(io.BytesIO(png)) as source:
-            originals.append(source.convert("RGB"))
-    width = min(width, max(o.width for o in originals))  # a phone screen is not blown up
-    pictures = [o.resize((width, max(1, round(o.height * width / o.width))), Image.Resampling.LANCZOS) for o in originals]
-    height = max(p.height for p in pictures) + _GIF_BAND
+            sizes.append(source.size)
+    width = min(width, max(w for w, _ in sizes))  # a phone screen is not blown up
+    height = max(max(1, round(h * width / w)) for w, h in sizes) + _GIF_BAND
     bold, plain = load_font(15, True), load_font(13, False)
     out_frames: list[Image.Image] = []
-    for picture, (_, caption, thought) in zip(pictures, frames, strict=True):
-        canvas = Image.new("RGB", (width, height), SOFT)
-        canvas.paste(picture, (0, 0))
-        d = ImageDraw.Draw(canvas)
-        d.rectangle((0, height - _GIF_BAND, width, height), fill=INK)
-        lines = wrap_text(d, caption, bold, width - 24, 1)
-        d.text((12, height - _GIF_BAND + 9), lines[0] if lines else "", font=bold, fill=PAPER)
-        if thought:
-            said = wrap_text(d, f"“{thought}”", plain, width - 24, 1)
-            d.text((12, height - _GIF_BAND + 33), said[0] if said else "", font=plain, fill=RULE)
-        out_frames.append(canvas.quantize(colors=255, method=Image.Quantize.MEDIANCUT))
+    for png, caption, thought in frames:
+        # Decode one page at a time; retaining every full-height RGB page can exhaust a local app's memory.
+        with Image.open(io.BytesIO(png)) as source, source.convert("RGB") as original:
+            picture = original.resize((width, max(1, round(original.height * width / original.width))), Image.Resampling.LANCZOS)
+        with picture, Image.new("RGB", (width, height), SOFT) as canvas:
+            canvas.paste(picture, (0, 0))
+            d = ImageDraw.Draw(canvas)
+            d.rectangle((0, height - _GIF_BAND, width, height), fill=INK)
+            lines = wrap_text(d, caption, bold, width - 24, 1)
+            d.text((12, height - _GIF_BAND + 9), lines[0] if lines else "", font=bold, fill=PAPER)
+            if thought:
+                said = wrap_text(d, f"“{thought}”", plain, width - 24, 1)
+                d.text((12, height - _GIF_BAND + 33), said[0] if said else "", font=plain, fill=RULE)
+            out_frames.append(canvas.quantize(colors=255, method=Image.Quantize.MEDIANCUT))
     durations = [round(seconds * 1000)] * len(out_frames)
     durations[-1] *= 3
     out = io.BytesIO()
