@@ -9,15 +9,15 @@ run's own records, so every shopper listed really fits it.
 from collections.abc import Callable, Mapping, Sequence
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import re
-from typing import Literal, Protocol, Self
+from typing import Literal, Protocol, Self, cast
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.persona import AgeGroup, Gender, Persona
+from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action
-from store_emulator.engine.prompting import display_price, resolve_listed
+from store_emulator.engine.prompting import canonical_identifier, display_price, resolve_listed
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 type ShopperSort = Literal["spent", "nothing", "impulse", "longest"]
@@ -83,6 +83,7 @@ trading day. Set only what the description asks for and leave the rest empty:
   use valid 24-hour clocks, from 00:00 through 23:59 (24:00 means the end of the day); leave unspecified times empty;
 - sort: spent (biggest spenders first), nothing (longest browsing without buying), impulse, or longest (visit);
 - a short label for the group.
+Copy the age and gender labels exactly. Use lowercase bought, bought_there and sort choices exactly as listed.
 Write in English."""
 
 
@@ -239,6 +240,20 @@ async def find_shoppers(
     store: Store, currency: str,
 ) -> ShopperMatch:
     class TimedFilter(_Filter):
+        @field_validator("bought", "bought_there", "sort", mode="before")
+        @classmethod
+        def known_choice(cls, value: object) -> object:
+            return value.strip().casefold() if isinstance(value, str) else value
+
+        @field_validator("age_groups", "genders", mode="before")
+        @classmethod
+        def known_groups(cls, value: object, info: ValidationInfo) -> object:
+            choices = AGE_GROUPS if info.field_name == "age_groups" else GENDERS
+            if isinstance(value, list):
+                return [canonical_identifier(item, choices) if isinstance(item, str) else item
+                        for item in cast(list[object], value)]
+            return value
+
         @model_validator(mode="after")
         def ordered_ranges(self) -> Self:
             for field, low, high in (("spent", self.min_spent, self.max_spent),

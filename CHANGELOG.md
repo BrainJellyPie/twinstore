@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve requested shopper groups and sorting when model replies vary the
+  case or surrounding spaces of known age, gender and purchase choices.
+  Unknown or null conditions still fail instead of widening the search.
+
 - Recover known tool destinations, optimizer objectives/scopes and suggested
   test kinds from model replies with case or surrounding-space variations.
   Tool availability checks, optimization direction, locked shelves and change

@@ -44,12 +44,14 @@ def _find(client, monkeypatch, f: dict[str, object], text: str = "some shoppers"
     return r.json(), fake
 
 
-def test_every_listed_shopper_fits_the_filter(client, monkeypatch):
+@pytest.mark.parametrize("mixed", [False, True])
+def test_every_listed_shopper_fits_the_filter(client, monkeypatch, mixed):
     customers, personas, store, _ = _run()
     rack = next(r for r in store.product_racks if r.rack_name)
     d, fake = _find(client, monkeypatch, {
-        "label": "Afternoon browsers", "genders": ["Female"], "bought": "no", "stopped_at": [rack.rack_name, "Moon shelf"],
-        "arrived_after": "12:00", "sort": "nothing",
+        "label": "Afternoon browsers", "genders": [" female " if mixed else "Female"],
+        "bought": " NO " if mixed else "no", "stopped_at": [rack.rack_name, "Moon shelf"],
+        "arrived_after": "12:00", "sort": " Nothing " if mixed else "nothing",
     }, "women who stopped but bought nothing after noon")
     assert d["total"] == len(customers) and any("Moon shelf" in w for w in d["warnings"])
     assert d["criteria"] == ["Gender: Female", "Bought nothing", f"Stopped at {rack.rack_name}", "Arrived at or after 12:00"]
