@@ -66,6 +66,12 @@ class _Brief(BaseModel):
                                        description="parts of the brief none of these options can express, in a few words")
     rationale: str = Field(default="", max_length=500)
 
+    @field_validator("style", "density", "shelf_direction", "entrance", "gate_wall", "checkout_placement",
+                     "checkout_wall", "design_theme", "seating_zone", mode="before")
+    @classmethod
+    def _choice_spelling(cls, value: object) -> object:
+        return value.strip().casefold() if isinstance(value, str) else value
+
     @field_validator("excluded_categories", "not_expressible", mode="before")
     @classmethod
     def _absent_lists(cls, value: object) -> object:
@@ -104,7 +110,8 @@ requests such as adding one more till:
   products_per_category for a narrower or wider range.
 Put anything the options cannot express (lighting, music, signage text, a specific fixture) in not_expressible, in a
 few words each, and give a short rationale. For absent list fields use [], and for an absent rationale use "",
-not null. Leave optional scalar options null to keep the current setting. Write in English."""
+not null. Leave optional scalar options null to keep the current setting. Copy choice values exactly in lowercase,
+including underscores (for example free_flow and near_entrance). Write in English."""
 
 _LABELS = {
     "style": "Style", "density": "Density", "width": "Width", "height": "Depth", "aisle_width": "Aisle width",

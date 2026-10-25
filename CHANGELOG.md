@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep natural-language layout briefs usable when local models change a known
+  design choice's case or surrounding whitespace. The same valid option patch
+  is applied while null choices keep current settings; unknown choices and
+  malformed values still fail validation.
+
 - Recover known operation-kind spellings in model-written layout edits and
   A/B variants, plus `Rule`/`VLM` engine choices. Case or surrounding whitespace
   no longer discards an applicable draft. Required targets and values remain

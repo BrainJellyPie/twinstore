@@ -31,7 +31,8 @@ def _categories(client) -> list[dict[str, str]]:
     return info["categories"]
 
 
-def test_a_brief_becomes_checked_layout_options(client, monkeypatch):
+@pytest.mark.parametrize("spelling", ["exact", "title", "padded_upper"])
+def test_a_brief_becomes_checked_layout_options(client, monkeypatch, spelling):
     from store_emulator.application import layout_brief
     cats = _categories(client)
     fake = _Reader({
@@ -41,6 +42,12 @@ def test_a_brief_becomes_checked_layout_options(client, monkeypatch):
         "excluded_categories": [cats[0]["label"], "Moon rocks"], "not_expressible": ["warm task lighting"],
         "rationale": "A calm loop with two tills by the door.",
     })
+    for key in ("style", "density", "gate_wall", "entrance", "checkout_placement", "design_theme"):
+        value = fake.reading[key]
+        if spelling == "title":
+            fake.reading[key] = value.title()
+        elif spelling == "padded_upper":
+            fake.reading[key] = f"\u3000{value.upper()}\t"
     monkeypatch.setattr(layout_brief, "assistive_client", lambda *a, **k: fake)
     r = client.post("/api/store-templates/urban_cvs/brief", json={
         "brief": "A calm loop, 18 by 12 cells, two tills by the door, botanical, sage walls, no first category, warm lights",
