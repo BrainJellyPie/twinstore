@@ -261,7 +261,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-lg bg-foreground/[0.035] px-1.5 py-1">
-      <div className="text-[0.62rem] text-muted-foreground">{label}</div>
+      <div className="text-[0.68rem] text-muted-foreground">{label}</div>
       <div className="num truncate text-[0.72rem] font-medium" title={value}>{value}</div>
     </div>
   );

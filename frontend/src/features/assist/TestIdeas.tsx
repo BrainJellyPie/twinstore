@@ -56,7 +56,7 @@ export function TestIdeas({ projectId, runId, source, groupId }: {
               <button type="button" onClick={() => pick(idea)}
                 className="w-full rounded-xl border px-2.5 py-1.5 text-left transition-colors hover:border-primary/60">
                 <span className="block text-[0.74rem]">{idea.question}</span>
-                <span className="block text-[0.66rem] text-muted-foreground">{t(KIND_LABEL[idea.kind])}{idea.why ? ` · ${idea.why}` : ""} · {t("testOpensDraft")}</span>
+                <span className="block text-[0.7rem] text-muted-foreground">{t(KIND_LABEL[idea.kind])}{idea.why ? ` · ${idea.why}` : ""} · {t("testOpensDraft")}</span>
               </button>
             </li>
           ))}

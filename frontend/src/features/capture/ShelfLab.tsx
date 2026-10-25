@@ -360,7 +360,7 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
           <button key={e.edit_id} type="button" onClick={() => onSelect(e.edit_id)}
             className={cn("relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border-2", e.edit_id === editId ? "border-primary" : "border-transparent hover:border-foreground/20")}>
             <img src={api.editFileUrl(projectId, captureId, e.edit_id, "image")} alt="" className="h-full w-full object-cover" />
-            <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[0.62rem] text-white">{t(e.edits.length > 1 ? "capLabEditsCount" : "capLabEditCount", { count: e.edits.length })}</span>
+            <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[0.68rem] text-white">{t(e.edits.length > 1 ? "capLabEditsCount" : "capLabEditCount", { count: e.edits.length })}</span>
           </button>
         ))}
       </div>

@@ -38,9 +38,9 @@ export function StylePicker({ projectId, siteId, storeName, version, saved, valu
               <div className="flex items-center gap-1.5 text-sm font-semibold">
                 {t(STYLE_LABELS[style])}
                 {style === saved ? (
-                  <span className="rounded-full bg-muted px-1.5 text-[0.6rem] font-medium text-muted-foreground">{t("onStyleCurrent")}</span>
+                  <span className="rounded-full bg-muted px-1.5 text-[0.68rem] font-medium text-muted-foreground">{t("onStyleCurrent")}</span>
                 ) : picked && (
-                  <span className="rounded-full bg-primary/10 px-1.5 text-[0.6rem] font-medium text-primary">{t("onStyleUnsaved")}</span>
+                  <span className="rounded-full bg-primary/10 px-1.5 text-[0.68rem] font-medium text-primary">{t("onStyleUnsaved")}</span>
                 )}
               </div>
               <p className="line-clamp-2 text-[0.7rem] text-muted-foreground">{t(STYLE_HINTS[style])}</p>

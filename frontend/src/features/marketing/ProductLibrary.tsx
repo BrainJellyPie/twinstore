@@ -158,7 +158,7 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
       <div className="relative flex h-40 items-center justify-center bg-[conic-gradient(var(--muted)_25%,transparent_0_50%,var(--muted)_0_75%,transparent_0)] bg-[length:16px_16px] p-3">
         <img src={api.packageUrl(projectId, asset.asset_id)} alt={asset.name} className="max-h-full max-w-full object-contain drop-shadow-[0_8px_14px_rgb(0_0_0/0.22)]" />
         {asset.cut_out && (
-          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.65rem] text-white">
+          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.7rem] text-white">
             <Scissors className="size-3" /> {t("mkCutOut")}
           </span>
         )}

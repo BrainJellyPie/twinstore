@@ -124,7 +124,7 @@ export function LikertBar({ counts }: { counts: number[] }) {
             onPointerLeave={() => setHover(null)}
             onFocus={() => setHover(i)}
             onBlur={() => setHover(null)}
-            className={cn("relative grid place-items-center text-[0.65rem] font-semibold outline-none first:rounded-l-[4px] last:rounded-r-[4px]",
+            className={cn("relative grid place-items-center text-[0.7rem] font-semibold outline-none first:rounded-l-[4px] last:rounded-r-[4px]",
               hover === i && "brightness-110")}
             style={{ flexGrow: share, flexBasis: 0, background: LIKERT[i], color: LIKERT_INK[i] }}
           >

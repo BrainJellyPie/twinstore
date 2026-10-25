@@ -84,7 +84,7 @@ export function ShopperRiver({ result, money, onWatch }: {
       </div>
 
       <div className="overflow-hidden rounded-3xl border bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_oklab,var(--heat-1)_8%,transparent),transparent_60%),radial-gradient(100%_80%_at_100%_100%,color-mix(in_oklab,var(--heat-3)_7%,transparent),transparent_60%)] p-3 sm:p-4">
-        <div className="grid grid-cols-6 pb-2 text-center text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase" aria-hidden>
+        <div className="grid grid-cols-6 pb-2 text-center text-[0.7rem] font-semibold tracking-wide text-muted-foreground uppercase" aria-hidden>
           {STAGES.map((stage) => <span key={stage} className="truncate px-0.5">{t(FUNNEL_LABELS[stage])}</span>)}
         </div>
         <div key={round} className="space-y-4">
@@ -124,7 +124,7 @@ export function ShopperRiver({ result, money, onWatch }: {
                     );
                   })}
                   {lane.counts.map((count, k) => count > 0 && (
-                    <span key={k} className="absolute bottom-0 -translate-x-1/2 text-[0.65rem] font-semibold tabular-nums text-muted-foreground"
+                    <span key={k} className="absolute bottom-0 -translate-x-1/2 text-[0.7rem] font-semibold tabular-nums text-muted-foreground"
                       style={{ left: `${(k + 0.5) * (100 / 6)}%` }}>{count}</span>
                   ))}
                   {hover?.lane === i && (
@@ -137,7 +137,7 @@ export function ShopperRiver({ result, money, onWatch }: {
                         {t(OUTCOME_LABELS[hover.dot.brief.outcome])}{hover.dot.brief.order_total > 0 && ` · ${money(hover.dot.brief.order_total)}`}
                         <span className="ml-auto text-muted-foreground">{t(FUNNEL_LABELS[STAGES[hover.dot.stage]!])}</span>
                       </div>
-                      <div className="mt-1 text-[0.65rem] text-primary">{t("onRiverWatch")}</div>
+                      <div className="mt-1 text-[0.7rem] text-primary">{t("onRiverWatch")}</div>
                     </div>
                   )}
                 </div>

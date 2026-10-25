@@ -225,7 +225,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
             <table className="w-full min-w-[520px] text-sm">
               <thead><tr className="text-left text-xs text-muted-foreground">
                 <th className="py-1 pr-3 font-medium" />
-                {v.map((s, i) => <th key={s.site_id} className="py-1 pr-3 font-medium">{s.site_name}{v.length > 1 && <span className="ml-1 rounded bg-muted px-1 text-[0.65rem]">{i === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + i) })}</span>}</th>)}
+                {v.map((s, i) => <th key={s.site_id} className="py-1 pr-3 font-medium">{s.site_name}{v.length > 1 && <span className="ml-1 rounded bg-muted px-1 text-[0.7rem]">{i === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + i) })}</span>}</th>)}
               </tr></thead>
               <tbody>
                 {rows.map((row) => (

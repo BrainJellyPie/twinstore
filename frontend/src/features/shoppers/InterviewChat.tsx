@@ -92,7 +92,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
               {m.text}
               {m.steps.length > 0 && (
                 <span className="mt-1 flex flex-wrap gap-1">
-                  {m.steps.map((s) => <span key={s} className="num rounded-full bg-foreground/[0.07] px-1.5 text-[0.65rem] text-muted-foreground">{t("interviewStep", { step: s })}</span>)}
+                  {m.steps.map((s) => <span key={s} className="num rounded-full bg-foreground/[0.07] px-1.5 text-[0.7rem] text-muted-foreground">{t("interviewStep", { step: s })}</span>)}
                 </span>
               )}
             </div>

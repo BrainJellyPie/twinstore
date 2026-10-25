@@ -51,7 +51,7 @@ function NavSegment({ items }: { items: NavItem[] }) {
             title={t("openStoreFirst")}
           >
             <Icon className="size-[1.05rem]" aria-hidden />
-            <span className="text-[0.6rem] leading-none whitespace-nowrap sm:hidden sm:text-sm sm:leading-normal min-[52rem]:inline lg:hidden xl:inline">{label}</span>
+            <span className="text-[0.68rem] leading-none whitespace-nowrap sm:hidden sm:text-sm sm:leading-normal min-[52rem]:inline lg:hidden xl:inline">{label}</span>
           </span>
         ) : (
           <Link
@@ -70,7 +70,7 @@ function NavSegment({ items }: { items: NavItem[] }) {
           >
             <Icon className="size-[1.05rem]" aria-hidden />
             {/* Where the tabs share the top row with the store name (lg) only the current tab is named. */}
-            <span className={cn("text-[0.6rem] leading-none whitespace-nowrap sm:text-sm sm:leading-normal", !active && "sm:hidden min-[52rem]:inline lg:hidden xl:inline")}>{label}</span>
+            <span className={cn("text-[0.68rem] leading-none whitespace-nowrap sm:text-sm sm:leading-normal", !active && "sm:hidden min-[52rem]:inline lg:hidden xl:inline")}>{label}</span>
           </Link>
         ),
       )}

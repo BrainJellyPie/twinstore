@@ -98,7 +98,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
               className={cn("block w-full rounded-xl border px-2.5 py-1.5 text-left text-[0.74rem] transition-colors hover:border-primary/60",
                 question === q.question && "border-primary bg-primary/[0.05]")}>
               <span className="block">{q.question}</span>
-              <span className="block text-[0.66rem] text-muted-foreground">{segmentLabel(q.segment, t)}{q.why ? ` · ${q.why}` : ""}</span>
+              <span className="block text-[0.7rem] text-muted-foreground">{segmentLabel(q.segment, t)}{q.why ? ` · ${q.why}` : ""}</span>
             </button>
           ))}
           {ideas.error && <p role="alert" className="text-[0.72rem] text-destructive">{ideas.error.message}</p>}
@@ -180,7 +180,7 @@ function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
           <li key={a.persona_id}>
             <button type="button" onClick={() => onOpen(a.persona_id)} className="w-full rounded-xl bg-foreground/[0.035] px-3 py-2 text-left transition-colors hover:bg-primary/[0.07]">
               <span className="block text-[0.78rem] leading-snug">{a.answer}</span>
-              <span className="num mt-0.5 block text-[0.66rem] text-muted-foreground">
+              <span className="num mt-0.5 block text-[0.7rem] text-muted-foreground">
                 {a.identity} · {personaLabel(a.age_group, t)} · {a.units ? t(a.units === 1 ? "groupSpentOne" : "groupSpentMany", { amount: formatMoney(a.spent, currency), count: a.units }) : t("groupBoughtNothing")}
                 {a.theme >= 0 && g.themes[a.theme] ? ` · ${g.themes[a.theme]!.label}` : ""}
               </span>

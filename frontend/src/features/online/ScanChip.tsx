@@ -17,7 +17,7 @@ export function ScanChip({ row, currency }: { row: ScanRow | undefined; currency
   const points = conversion ? `${conversion.diff >= 0 ? "+" : "−"}${Math.abs(conversion.diff * 100).toFixed(1)}${t("onPointsSuffix")}` : "–";
   return (
     <span title={t("onScanChipTitle", { revenue: money, conversion: points, won: row.won, lost: row.lost })}
-      className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums",
+      className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium tabular-nums",
         up ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : down ? "bg-rose-500/15 text-rose-700 dark:text-rose-300"
           : "bg-foreground/[0.06] text-muted-foreground")}>
       {money} · {t(up ? "onScanChipBetter" : down ? "onScanChipWorse" : "onScanChipUnclear")}
