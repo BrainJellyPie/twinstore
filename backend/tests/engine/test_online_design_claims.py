@@ -1,4 +1,4 @@
-"""A designer reply may not claim changes its updates do not hold: those mentions are named as not applied."""
+"""A designer reply may not pass for changes its updates do not hold: the options it mentions without setting are named."""
 
 import pytest
 
@@ -17,7 +17,7 @@ NARRATED = ("I've updated the theme color to #00AA33 to give the store a more pr
 
 def test_a_reply_narrating_unset_changes_names_each_of_them_once():
     assert unapplied_mentions(NARRATED, ["theme_color", "home_sections"]) == [
-        "welcome popup", "chat widget", "delivery fees", "coupon", "guest checkout", "page speed"]
+        "welcome_popup", "chat_widget", "shipping_fee", "coupon_code", "guest_checkout", "page_load_ms"]
 
 
 @pytest.mark.parametrize("reply,set_options", [
@@ -46,5 +46,5 @@ def test_the_designer_reply_says_which_mentioned_changes_were_not_applied(monkey
     result = online.design_chat("p", site.id, DesignChatRequest(messages=[DesignMessage(role="owner", text="Make it premium")]),
                                 SimulationConfig())
     assert result.changed == ["theme_color", "home_sections"]
-    assert result.reply.startswith(NARRATED)
-    assert result.reply.endswith("(Not applied: welcome popup, chat widget, delivery fees, coupon, guest checkout, page speed.)")
+    assert result.reply == NARRATED
+    assert result.unapplied == ["welcome_popup", "chat_widget", "shipping_fee", "coupon_code", "guest_checkout", "page_load_ms"]

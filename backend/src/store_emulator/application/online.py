@@ -531,10 +531,9 @@ def design_chat(pid: str, site_id: str, req: DesignChatRequest, config: Simulati
     except Exception as e:  # provider errors and unusable proposals reach the owner as a message, not a 500
         logger.warning(f"[online design chat] {pid}/{site_id}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The design could not be changed"), 502) from e
-    # A reply must not claim changes its updates do not hold: say which mentioned ones were not applied.
+    # A reply must not pass for changes its updates do not hold: name the mentioned ones that were not applied.
     unset = unapplied_mentions(reply.reply, [*changed, *reply.changes.model_dump(exclude_none=True)])
-    text = f"{reply.reply} (Not applied: {', '.join(unset)}.)" if unset else reply.reply
-    return DesignChatReply(reply=text, options=edited, changed=changed, model=answered_by(llm, model))
+    return DesignChatReply(reply=reply.reply, options=edited, changed=changed, unapplied=unset, model=answered_by(llm, model))
 
 
 class DraftPreviewRequest(BaseModel):

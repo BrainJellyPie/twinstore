@@ -274,6 +274,7 @@ it("changes the design by asking, undoes a turn and tests the result against the
   vi.mocked(online.designChat).mockResolvedValueOnce({
     reply: "Switched to a luxury look and removed the urgency notes.", model: "fake",
     options: { ...source.options, page_style: "luxury", urgency: false, quick_add: true }, changed: ["page_style", "quick_add"],
+    unapplied: ["coupon_code"],
   });
   const tested = vi.fn();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -291,6 +292,9 @@ it("changes the design by asking, undoes a turn and tests the result against the
   expect(screen.getByText("Unsaved changes")).toBeTruthy();
   await waitFor(() => expect(screen.getByRole("img", { name: "Home page of Control with the changes" }).getAttribute("src")).toBe("data:image/png;base64,AAAA"));
   expect(screen.getByText("Page style", { selector: "span" })).toBeTruthy();
+  // What the reply mentions without changing it is set apart from what changed.
+  expect(screen.getByText("Mentioned but not changed:")).toBeTruthy();
+  expect(screen.getByText("Coupon code", { selector: "span" })).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: "Undo" }));
   expect(screen.getByRole("radio", { name: /Classic/ }).getAttribute("aria-checked")).toBe("true");

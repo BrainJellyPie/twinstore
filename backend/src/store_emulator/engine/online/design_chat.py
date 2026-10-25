@@ -187,12 +187,12 @@ _MENTIONS = [(name, re.compile(pattern, re.IGNORECASE), options) for name, patte
 
 
 def unapplied_mentions(reply: str, set_options: Sequence[str]) -> list[str]:
-    """The kinds of change `reply` talks about although none of their options was set, in a fixed order. A question
-    (the designer asking what the owner wants) changes nothing and claims nothing."""
+    """The kinds of change `reply` talks about although none of their options was set, each as its first option's
+    name, in a fixed order. A question (the designer asking what the owner wants) changes nothing and claims nothing."""
     if reply.rstrip().endswith("?"):
         return []
     done = set(set_options)
-    return [name for name, pattern, options in _MENTIONS if pattern.search(reply) and not done.intersection(options)]
+    return [options[0] for _name, pattern, options in _MENTIONS if pattern.search(reply) and not done.intersection(options)]
 
 
 def _describe(site: OnlineSite, options: SiteOptions) -> str:
