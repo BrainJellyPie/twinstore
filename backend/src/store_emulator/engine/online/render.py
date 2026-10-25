@@ -866,3 +866,38 @@ def see_as(shot: Screenshot, vision: Vision, *, large_text: bool = False) -> Scr
     out = io.BytesIO()
     image.save(out, format="PNG")
     return Screenshot(out.getvalue(), shot.width, shot.height, shot.boxes)
+
+
+_GIF_BAND = 58
+
+
+def animate(frames: list[tuple[bytes, str, str]], *, width: int = 640, seconds: float = 1.6) -> bytes:
+    """A visit as an animated GIF: each screenshot (PNG) scaled down to at most `width` and padded to the tallest,
+    with a band below giving its caption and the shopper's thought; the last frame stays three times as long. Loops
+    forever."""
+    originals: list[Image.Image] = []
+    for png, _, _ in frames:
+        with Image.open(io.BytesIO(png)) as source:
+            originals.append(source.convert("RGB"))
+    width = min(width, max(o.width for o in originals))  # a phone screen is not blown up
+    pictures = [o.resize((width, max(1, round(o.height * width / o.width))), Image.Resampling.LANCZOS) for o in originals]
+    height = max(p.height for p in pictures) + _GIF_BAND
+    bold, plain = load_font(15, True), load_font(13, False)
+    out_frames: list[Image.Image] = []
+    for picture, (_, caption, thought) in zip(pictures, frames, strict=True):
+        canvas = Image.new("RGB", (width, height), SOFT)
+        canvas.paste(picture, (0, 0))
+        d = ImageDraw.Draw(canvas)
+        d.rectangle((0, height - _GIF_BAND, width, height), fill=INK)
+        lines = wrap_text(d, caption, bold, width - 24, 1)
+        d.text((12, height - _GIF_BAND + 9), lines[0] if lines else "", font=bold, fill=PAPER)
+        if thought:
+            said = wrap_text(d, f"“{thought}”", plain, width - 24, 1)
+            d.text((12, height - _GIF_BAND + 33), said[0] if said else "", font=plain, fill=RULE)
+        out_frames.append(canvas.quantize(colors=255, method=Image.Quantize.MEDIANCUT))
+    durations = [round(seconds * 1000)] * len(out_frames)
+    durations[-1] *= 3
+    out = io.BytesIO()
+    out_frames[0].save(out, format="GIF", save_all=True, append_images=out_frames[1:], duration=durations, loop=0,
+                       optimize=True)
+    return out.getvalue()

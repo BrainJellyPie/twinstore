@@ -16,6 +16,7 @@ from store_emulator.application.online import (
     CreateSiteRequest,
     OnlineInterview,
     OnlineRunView,
+    PlaybackFrame,
     SessionView,
     SiteSummary,
 )
@@ -150,11 +151,27 @@ def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> dic
     return {"status": "deleted"}
 
 
+@router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/replay.gif",
+            summary="One shopper's visit as an animated GIF")
+async def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> Response:
+    gif = await run_in_threadpool(_call, lambda: online_service.journey_gif(pid, run_id, variant, shopper_id))
+    return Response(gif, media_type="image/gif",
+                    headers={"Content-Disposition": f'attachment; filename="{run_id}-{variant}-{shopper_id}.gif"'})
+
+
 @router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/steps/{step}.png",
             summary="The page a shopper saw at one step")
-async def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int) -> Response:
-    png = await run_in_threadpool(_call, lambda: online_service.step_screenshot(pid, run_id, variant, shopper_id, step))
+async def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int, highlight: bool = True) -> Response:
+    """`highlight=false`: without the circle around what the shopper clicked."""
+    png = await run_in_threadpool(_call, lambda: online_service.step_screenshot(pid, run_id, variant, shopper_id, step,
+                                                                                highlight=highlight))
     return Response(png, media_type="image/png", headers=_PNG_CACHE)
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/playback",
+            summary="Where each click of a visit landed, for an animated playback", response_model=list[PlaybackFrame])
+async def playback(pid: str, run_id: str, variant: int, shopper_id: str) -> list[PlaybackFrame]:
+    return await run_in_threadpool(_call, lambda: online_service.playback(pid, run_id, variant, shopper_id))
 
 
 @router.get("/projects/{pid}/online/runs/{run_id}/clickstream.csv", summary="Every click of the run, as CSV")

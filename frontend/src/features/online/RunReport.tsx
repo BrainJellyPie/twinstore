@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Trash2 } from "lucide-react";
+import { Download, Play, Trash2 } from "lucide-react";
 
 import {
   clickstreamUrl, deleteRun, getRun, onlineKeys,
@@ -89,7 +89,7 @@ export function RunReport({ projectId, runId, onDeleted }: { projectId: string; 
 
 function Report({ projectId, result }: { projectId: string; result: OnlineRunResult }) {
   const { t } = useI18n();
-  const [journey, setJourney] = useState<{ variant: number; shopper: string } | null>(null);
+  const [journey, setJourney] = useState<{ variant: number; shopper: string; play?: boolean; compare?: boolean } | null>(null);
   const code = currencyCode(result.currency);
   const money = (x: number) => formatMoney(Math.round(x), code);
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
@@ -142,12 +142,14 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
               <div className="text-xs font-medium">{t("onCompareVs", { variant: c.site_name, control: v[0]?.site_name ?? "" })}</div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {c.deltas.map((d) => {
-                  const isMoney = d.metric === "revenue_per_session";
+                  const isMoney = d.metric === "revenue_per_session" || d.metric === "rival_revenue_per_session";
                   const isRate = d.metric === "conversion" || d.metric === "add_to_cart_rate";
                   const show = (x: number) => (isMoney ? money(x) : isRate ? `${(x * 100).toFixed(1)}` : x.toFixed(1));
                   const signed = (x: number) => `${x >= 0 ? "+" : "−"}${show(Math.abs(x))}${isRate ? t("onPointsSuffix") : ""}`;
                   const clear = d.ci_low !== null && d.ci_high !== null && (d.ci_low > 0 || d.ci_high < 0);
-                  const good = d.metric === "seconds" || d.metric === "steps" ? null : d.diff > 0;
+                  // Less taken by the rival is good for the store.
+                  const good = d.metric === "seconds" || d.metric === "steps" ? null
+                    : d.metric === "rival_revenue_per_session" ? d.diff < 0 : d.diff > 0;
                   return (
                     <div key={d.metric} className={cn("rounded-xl border p-2 text-xs", clear && good === true && "tone-good", clear && good === false && "tone-bad")}>
                       <div className="text-muted-foreground">{t(DELTA_LABELS[d.metric])}</div>
@@ -166,7 +168,8 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
         </Section>
       )}
 
-      <WhoChanged result={result} money={money} onReplay={(variant, shopper) => setJourney({ variant, shopper })} />
+      <WhoChanged result={result} money={money} onReplay={(variant, shopper) => setJourney({ variant, shopper })}
+        onCompare={(variant, shopper) => setJourney({ variant, shopper, compare: true })} />
 
       <div className="grid gap-3 xl:grid-cols-2">
         <Section title={t("onFunnel")}>
@@ -205,6 +208,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
 
       <Ads result={result} money={money} pct={pct} />
       <Recovery variants={v} money={money} pct={pct} />
+      <Rival result={result} money={money} pct={pct} />
       <Frictions variants={v} money={money} pct={pct} />
       <Surveys variants={v} pct={pct} />
       <Segments result={result} money={money} pct={pct} />
@@ -251,6 +255,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
       <Heatmap variants={v} />
 
       <Section title={t("onSessions")} hint={t("onSessionsHint")}>
+        <Watch result={result} onPlay={(variant, shopper) => setJourney({ variant, shopper, play: true })} />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-xs">
             <thead><tr className="text-left text-muted-foreground">
@@ -268,9 +273,15 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
                   <td className="py-1 pr-2">{t(DEVICE_LABELS[sh.device])}</td>
                   {v.map((s, i) => (
                     <td key={s.site_id} className="py-1 pr-2">
-                      <button type="button" className="rounded-md border px-2 py-0.5 hover:bg-muted" onClick={() => setJourney({ variant: i, shopper: sh.id })}>
-                        {t("onOpenJourney")}
-                      </button>
+                      <span className="inline-flex gap-1">
+                        <button type="button" className="rounded-md border px-2 py-0.5 hover:bg-muted" onClick={() => setJourney({ variant: i, shopper: sh.id })}>
+                          {t("onOpenJourney")}
+                        </button>
+                        <button type="button" className="rounded-md border px-1.5 py-0.5 hover:bg-muted" title={t("onPlayVisit")}
+                          aria-label={t("onPlayRow", { shopper: sh.identity, store: s.site_name })} onClick={() => setJourney({ variant: i, shopper: sh.id, play: true })}>
+                          <Play className="size-3" aria-hidden />
+                        </button>
+                      </span>
                     </td>
                   ))}
                 </tr>
@@ -282,7 +293,8 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
       </Section>
       {journey && (
         <JourneyViewer projectId={projectId} runId={result.run_id} variant={journey.variant} shopperId={journey.shopper}
-          variants={v.map((s) => s.site_name)} currency={result.currency}
+          variants={v.map((s) => s.site_name)} rival={result.rival_name ?? ""} currency={result.currency} play={journey.play}
+          compare={journey.compare}
           onVariant={(variant) => setJourney({ ...journey, variant })} onClose={() => setJourney(null)} />
       )}
     </>
@@ -401,6 +413,67 @@ function Recovery({ variants, money, pct }: { variants: VariantSummary[]; money:
                     <td className="tabular-nums">{money(s.recovery.emails ? Math.round(s.recovery.revenue / s.recovery.emails) : 0)}</td>
                   </>
                 ) : <td colSpan={6} className="text-muted-foreground">{t("onRecoveryOff")}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  );
+}
+
+/** Pick any shopper of the run and a store, and watch that visit play back. */
+function Watch({ result, onPlay }: { result: OnlineRunResult; onPlay: (variant: number, shopperId: string) => void }) {
+  const { t } = useI18n();
+  const [shopper, setShopper] = useState(result.shoppers[0]?.id ?? "");
+  const [variant, setVariant] = useState(0);
+  if (!result.shoppers.length) return null;
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-xl border border-dashed p-2 text-xs">
+      <span className="flex items-center gap-1 self-center font-medium"><Play className="size-3.5 text-primary" aria-hidden /> {t("onWatchTitle")}</span>
+      <label className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-muted-foreground">{t("onWatchShopper")}</span>
+        <select className="h-8 max-w-[22rem] rounded-md border bg-background px-2" value={shopper} onChange={(e) => setShopper(e.target.value)}>
+          {result.shoppers.map((sh) => (
+            <option key={sh.id} value={sh.id}>
+              {sh.identity} · {personaLabel(sh.age_group, t)} · {personaLabel(sh.gender, t)} · {t(MISSION_LABELS[sh.mission])} · {t(DEVICE_LABELS[sh.device])}
+            </option>
+          ))}
+        </select>
+      </label>
+      {result.variants.length > 1 && (
+        <label className="flex flex-col gap-0.5">
+          <span className="text-muted-foreground">{t("onWatchStore")}</span>
+          <select className="h-8 rounded-md border bg-background px-2" value={variant} onChange={(e) => setVariant(Number(e.target.value))}>
+            {result.variants.map((s, i) => <option key={s.site_id} value={i}>{s.site_name}</option>)}
+          </select>
+        </label>
+      )}
+      <Button size="sm" onClick={() => onPlay(variant, shopper)}><Play aria-hidden /> {t("onPlayVisit")}</Button>
+    </div>
+  );
+}
+
+function Rival({ result, money, pct }: { result: OnlineRunResult; money: (x: number) => string; pct: (x: number) => string }) {
+  const { t } = useI18n();
+  if (!result.rival_name) return null;
+  return (
+    <Section title={t("onRival", { rival: result.rival_name })} hint={t("onRivalHint")}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-xs">
+          <thead><tr className="text-left text-muted-foreground">
+            <th className="font-medium">{t("onRecoveryStore")}</th><th className="font-medium">{t("onRivalLeft")}</th>
+            <th className="font-medium">{t("onRivalWent")}</th><th className="font-medium">{t("onRivalBought")}</th>
+            <th className="font-medium">{t("onRivalRevenue")}</th>
+          </tr></thead>
+          <tbody>
+            {result.variants.map((s) => s.rival && (
+              <tr key={s.site_id} className="border-t">
+                <td className="py-1 pr-2 font-medium">{s.site_name}</td>
+                <td className="tabular-nums">{s.rival.left} · {pct(s.sessions ? s.rival.left / s.sessions : 0)}</td>
+                <td className="tabular-nums">{s.rival.went} · {pct(s.rival.left ? s.rival.went / s.rival.left : 0)}</td>
+                <td className="tabular-nums">{s.rival.bought} · {pct(s.rival.went ? s.rival.bought / s.rival.went : 0)}</td>
+                <td className="tabular-nums">{money(s.rival.revenue)}</td>
               </tr>
             ))}
           </tbody>

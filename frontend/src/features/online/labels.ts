@@ -84,6 +84,7 @@ export const SECTION_LABELS: Record<HomeSection, MessageKey> = {
 export const DELTA_LABELS: Record<DeltaMetric, MessageKey> = {
   conversion: "onKpiConversion", revenue_per_session: "onKpiRevenuePerSession", add_to_cart_rate: "onKpiAddToCart",
   steps: "onKpiSteps", seconds: "onKpiSeconds", satisfaction: "onSurveySatisfaction", recommend: "onSurveyRecommend",
+  rival_revenue_per_session: "onKpiRivalRevenue",
 };
 
 export const VISION_LABELS: Record<Vision, MessageKey> = {

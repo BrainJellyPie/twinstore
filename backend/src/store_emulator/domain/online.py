@@ -389,6 +389,15 @@ class ExitSurvey(BaseModel):
     improvement: str = Field(default="", max_length=200)
 
 
+class RivalVisit(BaseModel):
+    """The shopper's visit to the rival shop after leaving without buying (the same visit whichever variant they left;
+    its replay is the run's last store)."""
+    outcome: SessionOutcome
+    order_total: int = 0
+    steps: int = 0
+    exit_thought: str = ""
+
+
 class SessionResult(BaseModel):
     shopper_id: str
     site_id: str
@@ -410,12 +419,14 @@ class SessionResult(BaseModel):
     discount: int = 0  # coupon or reminder discount on the order
     reminded: bool = False  # left a cart and got the reminder email
     returned_at: int | None = None  # first step of the visit the reminder brought them back for
+    rival: RivalVisit | None = None  # left without buying and tried the rival shop
 
 
 class OnlineRunRequest(BaseModel):
     model_config = ConfigDict(allow_inf_nan=False)
 
     site_ids: list[ResourceId] = Field(min_length=1, max_length=4)  # the first is the control
+    rival_site_id: ResourceId | None = None  # a rival shop that shoppers who leave without buying may try next
     name: str = Field(default="", max_length=80)
     shoppers: int = Field(default=30, ge=1, le=500)
     policy: ShopperPolicyKind = "rule"
@@ -529,6 +540,14 @@ class RecoveryRow(BaseModel):
     discount: int  # discount given on the recovered orders
 
 
+class RivalRow(BaseModel):
+    """Where this store's lost shoppers went: the rival shop's take."""
+    left: int  # visits that ended without an order
+    went: int  # of those, shoppers who tried the rival
+    bought: int  # and ordered there
+    revenue: int  # what the rival took from them
+
+
 class FrictionRow(BaseModel):
     """How often one known friction point (or dark pattern) came up, and how many sessions ended right there."""
     code: FrictionCode
@@ -575,10 +594,12 @@ class VariantSummary(BaseModel):
     survey: SurveySummary | None = None
     ads: list[AdRow] = []
     recovery: RecoveryRow | None = None  # stores that send the cart reminder
+    rival: RivalRow | None = None  # runs with a rival shop
 
 
 class PairedDelta(BaseModel):
-    metric: Literal["conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds", "satisfaction", "recommend"]
+    metric: Literal["conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds", "satisfaction", "recommend",
+                    "rival_revenue_per_session"]
     control: float
     variant: float
     diff: float
@@ -638,6 +659,7 @@ class OnlineRunResult(BaseModel):
     fallbacks: int = 0
     seconds: float = 0.0
     notes: list[str] = []
+    rival_name: str = ""  # the rival shop of the run, if any; its sessions are the store after the variants
 
 
 class OnlineRunStatus(BaseModel):

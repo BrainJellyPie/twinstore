@@ -30,7 +30,7 @@ it("omits new comparison claims for saved reports without the segment analysis",
   const previous = { ...result, comparisons: result.comparisons.map((c) => ({
     ...c, segments: [], switches: [], won: 0, lost: 0, changed: 0,
   })) };
-  const view = render(<WhoChanged result={previous} money={String} onReplay={vi.fn()} />);
+  const view = render(<WhoChanged result={previous} money={String} onReplay={vi.fn()} onCompare={vi.fn()} />);
   expect(view.container.textContent).toBe("");
 });
 
@@ -38,14 +38,15 @@ it("still shows measured zero changes when the segment analysis is present", () 
   const measured = { ...result, comparisons: result.comparisons.map((c) => ({
     ...c, switches: [], won: 0, lost: 0, changed: 0,
   })) };
-  render(<WhoChanged result={measured} money={String} onReplay={vi.fn()} />);
+  render(<WhoChanged result={measured} money={String} onReplay={vi.fn()} onCompare={vi.fn()} />);
   expect(screen.getByText("Orders won: 0")).toBeTruthy();
   expect(screen.getByText("Orders lost: 0")).toBeTruthy();
 });
 
 it("shows orders won and lost, the groups a change helps, and why each changed visit ended", () => {
   const replay = vi.fn();
-  render(<WhoChanged result={result} money={(x) => `$${(x / 100).toFixed(2)}`} onReplay={replay} />);
+  const compare = vi.fn();
+  render(<WhoChanged result={result} money={(x) => `$${(x / 100).toFixed(2)}`} onReplay={replay} onCompare={compare} />);
   expect(screen.getByText("Orders won: 3")).toBeTruthy();
   expect(screen.getByText("Orders lost: 1")).toBeTruthy();
   const buying = screen.getByText("Buy something").closest("tr")!;
@@ -63,4 +64,6 @@ it("shows orders won and lost, the groups a change helps, and why each changed v
   expect(replay).toHaveBeenCalledWith(1, "os0001");
   fireEvent.click(screen.getByRole("button", { name: "Replay in Control store" }));
   expect(replay).toHaveBeenLastCalledWith(0, "os0001");
+  fireEvent.click(screen.getByRole("button", { name: "Side by side" }));
+  expect(compare).toHaveBeenCalledWith(1, "os0001");
 });

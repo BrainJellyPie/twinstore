@@ -46,7 +46,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color" | "cart_reminder">[]>([]);
+  const [rival, setRival] = useState("");
+  const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color" | "cart_reminder" | "currency">[]>([]);
   const listedSites = [...sites, ...createdSites.filter((copy) => !sites.some((site) => site.id === copy.id))];
   const controlId = chosen[0] ?? "";
   const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
@@ -56,11 +57,18 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
   const arrivalTotal = Object.values(arrivals).reduce((a, b) => a + b, 0);
+  const currency = listedSites.find((site) => site.id === controlId)?.currency;
+  const rivals = listedSites.filter((site) => !chosen.includes(site.id) && site.currency === currency);
+  // A rival that became one of the compared stores (or another currency) simply drops out.
+  const rivalId = rivals.some((site) => site.id === rival) ? rival : "";
+  // Rival visits: at most one per shopper, roughly every other shopper in a typical run.
+  const rivalVisits = rivalId ? Math.round(shoppers / 2) : 0;
   const sessions = shoppers * (chosen.length + experiments.length);
   // Unknown summaries reserve a possible return visit until refreshed by a current server.
   const maxVisits = chosen.reduce((sum, id) => sum + (listedSites.find((site) => site.id === id)?.cart_reminder === false ? 1 : 2), 0)
     + experiments.reduce((sum, experiment) => sum + (experiment.options.cart_reminder ? 2 : 1), 0);
-  const maxResponses = shoppers * maxVisits * maxSteps + (survey ? sessions : 0);
+  const rivalMaxVisits = rivalId ? (listedSites.find((site) => site.id === rivalId)?.cart_reminder === false ? 1 : 2) : 0;
+  const maxResponses = shoppers * (maxVisits + rivalMaxVisits) * maxSteps + (survey ? sessions : 0);
   const models = useAvailableModels(policy !== "rule");
   const availableModels = models.data?.filter((m) => policy !== "vlm" || m.vision);
   let modelError: string | null = null;
@@ -91,13 +99,14 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
         // Keep confirmed copies selected if a later copy or the run start fails.
         setCreatedSites((previous) => [...previous, {
           id: copy.id, name: copy.name, theme_color: copy.options.theme_color, cart_reminder: copy.options.cart_reminder,
+          currency: copy.currency,
         }]);
         setChosen((previous) => [...previous, copy.id]);
         setPicked((previous) => previous.filter((id) => id !== x.id));
         qc.setQueryData(onlineKeys.site(projectId, copy.id), copy);
       }
       return startRun(projectId, {
-        site_ids: [...chosen, ...created], name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
+        site_ids: [...chosen, ...created], rival_site_id: rivalId || null, name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
         missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
         arrivals: Object.fromEntries(ARRIVALS.map((a) => [a, arrivals[a] / 100])),
         mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle, accessibility,
@@ -164,6 +173,15 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
             <p className="text-[0.7rem] text-muted-foreground">{t("onXpRoom", { count: Math.max(0, room - experiments.length) })}</p>
           </fieldset>
         )}
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="font-medium">{t("onRunRival")}</span>
+          <select className="h-8 rounded-md border bg-background px-2" value={rivalId} disabled={start.isPending}
+            onChange={(e) => setRival(e.target.value)}>
+            <option value="">{t("onRunRivalNone")}</option>
+            {rivals.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
+          </select>
+          <span className="text-[0.7rem] text-muted-foreground">{t("onRunRivalHint")}</span>
+        </label>
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">{t("onRunName")}</span>
           <Input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
@@ -255,7 +273,10 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              {t("onRunCalls", { calls: sessions * (Math.min(TYPICAL_STEPS, maxSteps) + (survey ? 1 : 0)), max: maxResponses })}
+              {t("onRunCalls", {
+                calls: sessions * (Math.min(TYPICAL_STEPS, maxSteps) + (survey ? 1 : 0)) + rivalVisits * Math.min(TYPICAL_STEPS, maxSteps),
+                max: maxResponses,
+              })}
             </p>
           </>
         )}
