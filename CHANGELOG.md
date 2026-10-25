@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recover customer batches when a small model's output limit also cuts off a
+  previously split batch. Output tasks can shrink to one customer; visit times,
+  unique IDs and all-or-nothing batch results are preserved.
 - Constrain local VLM shelf answers to product names visible in that shelf chart,
   preventing unrelated names from being attached to a valid shelf badge. Keep raw
   photo label reading and legacy name/number fallback compatible.

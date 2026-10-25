@@ -1,4 +1,4 @@
-"""A truncated customer batch can recover once without shifting visit times."""
+"""Truncated customer batches shrink to a usable size without shifting visit times."""
 
 import asyncio
 import re
@@ -79,7 +79,7 @@ def test_short_nonempty_recovered_batches_keep_their_original_visit_hours():
     assert [p.id for p in people] == ["F7001", "F7002"]
 
 
-@pytest.mark.parametrize("count,maximum", [(1, 0), (5, 0), (5, 2)])
+@pytest.mark.parametrize("count,maximum", [(1, 0), (5, 0)])
 def test_repeated_truncation_is_bounded_and_does_not_return_partial_customers(count, maximum):
     model = LimitedModel(maximum, wrap=True)
     tally, progress = gen.BatchTally(), []
@@ -87,7 +87,35 @@ def test_repeated_truncation_is_bounded_and_does_not_return_partial_customers(co
         batch_size=count, max_concurrent=1, tally=tally, on_written=progress.append))
     assert people == [] and tally.requested == tally.failed == 1
     assert progress == [count]
-    assert [len(hours) for hours, _ in model.calls] == ([1] if count == 1 else [5, 2] if maximum == 0 else [5, 2, 3])
+    assert [len(hours) for hours, _ in model.calls] == ([1] if count == 1 else [5, 2, 1])
+
+
+@pytest.mark.parametrize("count,maximum", [(3, 1), (5, 2), (12, 2), (12, 1)])
+@pytest.mark.parametrize("wrap", [False, True])
+def test_repeated_output_truncation_recovers_all_customers_in_bounded_smaller_tasks(count, maximum, wrap):
+    model = LimitedModel(maximum, wrap=wrap)
+    tally, progress = gen.BatchTally(), []
+    people = asyncio.run(gen.generate_personas_for_day(model, "offline", profile(), Weekday.MON, hourly(count),
+        batch_size=count, max_concurrent=1, seed=42, tally=tally, on_written=progress.append))
+    assert [p.arrival_hour for p in people] == list(range(9, 9 + count))
+    assert [p.id for p in people] == [f"F1{i:03d}" for i in range(1, count + 1)]
+    assert all(p.description == f"Arrived at {p.arrival_hour}" and not p.twin_of for p in people)
+    assert len(model.calls) <= 2 * count - 1 and model.peak == 1
+    assert tally.requested == 1 and tally.failed == 0 and progress == [count]
+
+
+def test_unrecoverable_single_customer_keeps_the_original_batch_atomic():
+    class LastCustomerFails(LimitedModel):
+        async def generate_structured_async(self, schema, system, prompt, **kwargs):
+            self.failure = IncompleteOutputException() if "13시" in prompt else None
+            return await super().generate_structured_async(schema, system, prompt, **kwargs)
+
+    model = LastCustomerFails(2, wrap=True)
+    tally, progress = gen.BatchTally(), []
+    people = asyncio.run(gen.generate_personas_for_day(model, "offline", profile(), Weekday.MON, hourly(5),
+        batch_size=5, max_concurrent=1, tally=tally, on_written=progress.append))
+    assert people == [] and tally.requested == tally.failed == 1 and progress == [5]
+    assert len(model.calls) <= 9 and model.calls[-1][0] == [13]
 
 
 @pytest.mark.parametrize("error", [TimeoutError("offline"), ValueError("max_tokens length limit in user data")])
@@ -98,8 +126,9 @@ def test_unrelated_failures_do_not_decompose_customer_requests(error, wrap):
     assert people == [] and len(model.calls) == 1
 
 
-def test_recovered_probe_can_proceed_to_the_existing_write_choice_and_full_population():
-    model, plans = LimitedModel(3, wrap=True), []
+@pytest.mark.parametrize("maximum", [1, 2, 3])
+def test_recovered_probe_can_proceed_to_the_existing_write_choice_and_full_population(maximum):
+    model, plans = LimitedModel(maximum, wrap=True), []
 
     async def decide(plan):
         plans.append(plan)

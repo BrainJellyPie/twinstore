@@ -70,7 +70,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
-    "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
@@ -324,17 +324,22 @@ try:
         if args.case == "persona-cafe":
             address, currency, categories, budget = "Tokyo, Japan", "JPY", ["coffee", "bakery"], (500, 1500)
             profile = "近所の住民がパンとコーヒーを買いに訪れる小さなカフェです。一人の予算は500〜1500円です。"
-        schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=9, close_hour=10) for day in Weekday]
+        expected_hour, customer_count = 9, 2
+        if args.case == "persona-nightmarket":
+            expected_hour, customer_count = 23, 12
+            categories = ["drinks", "snacks"]
+            profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
+        schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=expected_hour, close_hour=expected_hour + 1) for day in Weekday]
         estimates = {}
         with patch.object(httpx.AsyncClient, "send", traced_send):
             people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
-                batch_size=2, max_concurrent=1, categories=categories, currency=currency,
-                pace=lambda usual: Pace(daily_cap=2, batch_size=2, sample_cap=2), estimates=estimates))
+                batch_size=customer_count, max_concurrent=1, categories=categories, currency=currency,
+                pace=lambda usual: Pace(daily_cap=customer_count, batch_size=customer_count, sample_cap=customer_count), estimates=estimates))
         written = [person for person in people if not person.twin_of]
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if any(person.day != Weekday.MON or person.arrival_hour != 9 for person in people):
+        if any(person.day != Weekday.MON or person.arrival_hour != expected_hour for person in people):
             issues.append("Arrival outside the open hour")
         if categories and any(category not in categories for person in people for category in person.preferred_categories):
             issues.append("Preference outside the supplied category list")
