@@ -6,6 +6,7 @@ panel depends only on the request and the control site's catalog, so every varia
 same people.
 """
 
+import math
 import random
 import re
 from statistics import median
@@ -40,9 +41,11 @@ _IDENTITIES: dict[AgeGroup, tuple[str, ...]] = {
     "60s+": ("Retiree", "Grandparent", "Semi-retired consultant"),
 }
 _PATIENCE: dict[ShopperMission, tuple[int, int]] = {
-    "purchase": (360, 720), "browse": (240, 900), "compare": (480, 1080), "deal_hunt": (300, 720), "gift": (360, 840),
+    "purchase": (360, 720), "browse": (30, 240), "compare": (480, 1080), "deal_hunt": (300, 720), "gift": (360, 840),
     "replenish": (180, 360),
 }
+# Window shoppers who only glance around rather than browse at length.
+_GLANCING = 0.8
 _SENSITIVITY: dict[ShopperMission, float] = {
     "purchase": 0.45, "browse": 0.5, "compare": 0.6, "deal_hunt": 0.9, "gift": 0.35, "replenish": 0.3,
 }
@@ -108,9 +111,13 @@ def _mission_details(
     if mission == "deal_hunt":
         budget = round(typical * rng.uniform(2.0, 4.0))
         return ("Look for real bargains; buy only something that is clearly discounted", "", [], "", budget)
-    budget = round(typical * rng.uniform(1.0, 3.0))
-    return (f"Window-shop {category.name.lower()} for ideas, with no plan to buy anything in particular",
-            category.id, [category.name.lower()], "", budget)
+    budget = round(typical * rng.uniform(0.4, 1.2))
+    if rng.random() < _GLANCING:
+        goal = (f"Look around {category.name.lower()} out of mild curiosity, with no plan to buy; you move on as soon as "
+                "nothing catches your eye")
+    else:
+        goal = f"Window-shop {category.name.lower()} for ideas, with no plan to buy anything in particular"
+    return goal, category.id, [category.name.lower()], "", budget
 
 
 def _shopper(
@@ -133,7 +140,8 @@ def _shopper(
     device = "mobile" if rng.random() < mobile_weight / (1 - mobile_share + mobile_weight) else "desktop"
     sensitivity = min(1.0, max(0.0, rng.gauss(_SENSITIVITY[mission], 0.12)))
     low, high = _PATIENCE[mission]
-    patience = round(rng.uniform(low, high) * (0.8 + 0.4 * (1 - savvy)))
+    # Log-uniform: most visits are short and a few run long, as real session times are right-skewed.
+    patience = round(math.exp(rng.uniform(math.log(low), math.log(high))) * (0.8 + 0.4 * (1 - savvy)))
     has_account = rng.random() < (0.9 if mission == "replenish" else 0.3)
     if not description:
         description = (f"{identity} in their {age.removesuffix('+')}{' or older' if age == '60s+' else ''}, shopping on "

@@ -424,7 +424,7 @@ decide the same way whatever the style.
 | **Verdict and shopper stream** | Each report opens with the run's verdict and every store's conversion; every shopper streams through each store as a dot that stops at the funnel stage where the visit ended — hover to find them in the other stores, click to watch. |
 | **Page flow** | The first six pages of every visit as a flow chart, step by step, with how each visit ended and the most common route. |
 | **Variants on the same shoppers** | Up to four stores per run; conversion, revenue per visit, add-to-cart, clicks and time as paired differences with bootstrap 95 % intervals, and about how many shoppers would confirm an unclear one. |
-| **Quick experiments** | Tick up to three one-click changes (a fee dropped, guest checkout, faster pages, free delivery, a welcome coupon, prices 10 % lower or higher…); each becomes a variant run on the same shoppers. |
+| **Quick experiments** | Tick up to three one-click changes (a fee dropped, guest checkout, faster pages, free delivery, a welcome coupon, prices 10 % lower or higher…); each becomes a variant run on the same shoppers. A scan screens all of them on rule shoppers in about ten seconds, best first, and the run analyst offers the ones its answer points at. |
 | **Who a change won and lost** | Paired differences by mission, device, age, gender, eyesight and traffic source, orders won and lost, and each shopper whose visit ended differently, with why. |
 | **Rival shop** | Shoppers who leave without buying may try a rival store that sells what they want; each store sees how many went there, bought and what the rival took. |
 | **Funnel and exits** | Visit → product → cart → checkout → payment → order, and the pages people left from. |

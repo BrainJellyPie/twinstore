@@ -18,6 +18,8 @@ from store_emulator.application.online import (
     OnlineRunView,
     PlaybackFrame,
     RunStoreChanges,
+    ScanRequest,
+    ScanResult,
     SessionView,
     SiteSummary,
 )
@@ -84,6 +86,14 @@ def put_site(pid: str, site_id: str, site: OnlineSite) -> OnlineSite:
              response_model=OnlineSite)
 def copy_site(pid: str, site_id: str, req: CopySiteRequest) -> OnlineSite:
     return _call(lambda: online_service.copy_site(pid, site_id, req))
+
+
+@router.post("/projects/{pid}/online/sites/{site_id}/scan", summary="Screen changes to an online store on rule shoppers",
+             response_model=ScanResult)
+async def scan_site(pid: str, site_id: str, req: ScanRequest) -> ScanResult:
+    """Rule shoppers visit the store and each changed copy (nothing is saved); each change comes back as paired
+    differences on the same shoppers. Instant and free: a screen for which changes to run as variants."""
+    return await run_in_threadpool(_call, lambda: online_service.scan_site(pid, site_id, req))
 
 
 @router.delete("/projects/{pid}/online/sites/{site_id}", summary="Delete an online store")

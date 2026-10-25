@@ -8,7 +8,7 @@ import { SiteDesigner } from "../SiteDesigner";
 
 vi.mock("@/shared/api/online", async (original) => ({
   ...await original<typeof online>(), getSite: vi.fn(), copySite: vi.fn(), saveSite: vi.fn(), deleteSite: vi.fn(),
-  designChat: vi.fn(), draftPreview: vi.fn(),
+  designChat: vi.fn(), draftPreview: vi.fn(), scanSite: vi.fn(),
 }));
 
 const source: online.OnlineSite = {
@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,preview");
   vi.mocked(online.copySite).mockImplementation(async () => ({ ...source, id: "variant", variant_of: source.id }));
   vi.mocked(online.saveSite).mockRejectedValue(new Error("The second write failed"));
+  vi.mocked(online.scanSite).mockImplementation(() => new Promise(() => {}));
 });
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
@@ -446,4 +447,22 @@ it("keeps chatting past twenty replies within the API history limit while retain
   expect(screen.getByText("Design request 0.")).toBeTruthy();
   expect(screen.getByText("Design answer 0.")).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("reads a design draft against the saved store on rule shoppers", async () => {
+  vi.mocked(online.designChat).mockResolvedValueOnce({
+    reply: "Added add-to-cart buttons.", model: "fake", options: { ...source.options, quick_add: true }, changed: ["quick_add"],
+  });
+  vi.mocked(online.scanSite).mockResolvedValue({ shoppers: 150, conversion: 0.3, revenue_per_session: 500, seconds: 1, rows: [{
+    id: "draft", won: 5, lost: 1,
+    deltas: [{ metric: "revenue_per_session", control: 500, variant: 542, diff: 42, ci_low: 8, ci_high: 75, n: 150 }],
+  }] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <SiteDesigner projectId="p1" siteId="s1" onCopied={vi.fn()} onDeleted={vi.fn()} onTest={vi.fn()} />
+  </QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: /Make it feel premium/ }));
+  expect(await screen.findByText("+$0.42 · clearly better")).toBeTruthy();
+  expect(online.scanSite).toHaveBeenCalledWith("p1", "s1", { candidates: [{ id: "draft", options: { ...source.options, quick_add: true } }] },
+    expect.anything());
 });

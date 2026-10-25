@@ -10,7 +10,9 @@ Every run gets a fresh cache; the trace contains built-in sample prompts, not he
 import argparse
 import asyncio
 import json
+import re
 import time
+from collections import Counter
 from pathlib import Path
 from urllib.parse import urlsplit
 from unittest.mock import patch
@@ -23,7 +25,7 @@ from store_emulator.application import online, template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.interview import AnalystMessage
 from store_emulator.domain.layout_options import TemplateLayoutRequest
-from store_emulator.domain.online import DesignMessage, OnlineRunResult, VariantComparison
+from store_emulator.domain.online import DesignMessage, OnlineRunRequest, OnlineRunResult, VariantComparison
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
@@ -49,6 +51,7 @@ design_requests = {
     "design-color-ko": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
     "design-long-history": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
     "design-free-popup": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
+    "design-free-popup-scan": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
     "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
     "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
 }
@@ -139,12 +142,34 @@ try:
             "design-color-ko": {"theme_color": "#00AA33"},
             "design-long-history": {"theme_color": "#00AA33"},
             "design-free-popup": {"shipping_fee": 0, "welcome_popup": "none"},
+            "design-free-popup-scan": {"shipping_fee": 0, "welcome_popup": "none"},
             "design-neon": {"page_style": "neon"},
             "design-calm": {"urgency": False, "social_proof": False, "welcome_popup": "none"},
         }[args.case]
         allowed = set(expected) | ({"page_style", "theme_color"} if args.case == "design-calm" else set())
         issues = [f"Expected {key}={value!r}, received {after[key]!r}" for key, value in expected.items() if after[key] != value]
         issues += [f"Unrequested change: {key}" for key in changed if key not in allowed]
+        if args.case == "design-free-popup-scan":
+            captured = []
+
+            def record_panel(*positional, **keywords):
+                people = sample_shoppers(*positional, **keywords)
+                captured.extend(people)
+                return people
+
+            with patch.object(online, "get_site", return_value=site), patch.object(online, "sample_shoppers", record_panel):
+                scan = online.scan_site("proj_cpu", site.id, online.ScanRequest(candidates=[
+                    online.ScanCandidate(id="same", options=site.options), online.ScanCandidate(id="draft", options=edited)]))
+            defaults = OnlineRunRequest(site_ids=[site.id])
+            expected_panel = sample_shoppers(site, scan.shoppers, seed=0, missions=defaults.missions,
+                mobile_share=defaults.mobile_share, arrivals=defaults.arrivals)
+            if captured != expected_panel:
+                issues.append("Quick scan did not use the ordinary run's default customer conditions")
+            if scan.rows[0].won or scan.rows[0].lost or any(delta.diff != 0 for delta in scan.rows[0].deltas):
+                issues.append("Unchanged store did not produce an identical paired result")
+            result.update(scan=scan.model_dump(mode="json"), arrivals=dict(Counter(p.arrival for p in captured)),
+                expected_arrivals=dict(Counter(p.arrival for p in expected_panel)))
+            (output / "scan-shoppers.json").write_text(json.dumps([p.model_dump(mode="json") for p in captured], ensure_ascii=False))
         result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
             reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
             characters=sum(len(message.text) for message in messages))
@@ -278,8 +303,10 @@ try:
             if any(word in reply.answer.casefold() for word in ["major driver", "differs significantly", "significant improvement"]):
                 issues.append("Unsupported causal or significance claim in this inconclusive fixture")
         else:
-            if not reply.figures or "25" not in reply.answer or "12.5" not in reply.answer:
-                issues.append("Expected cited overall conversion rates of 25% and 12.5%")
+            expected_rates = {round(summary.conversion * 100, 1) for summary in report.variants}
+            quoted_rates = {float(value) for value in re.findall(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%|percent\b)", reply.answer, re.I)}
+            if not reply.figures or not expected_rates <= quoted_rates:
+                issues.append(f"Expected cited overall conversion rates of {sorted(expected_rates)} percent")
             if not any(word in reply.answer.casefold() for word in ["not clear", "includes zero", "includes 0", "not statistically significant"]):
                 issues.append("Expected the interval including zero to be recognized as inconclusive")
             if any(word in reply.answer.casefold() for word in ["is statistically significant", "is significant", "significant increase", "significant improvement"]):

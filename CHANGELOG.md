@@ -2,18 +2,52 @@
 
 ## Unreleased
 
+- Use the same configured arrival mix for quick design scans and ordinary runs.
+  Search, social and email visitors no longer silently become direct visitors
+  during the scan. A real CPU-model design probe now checks the generated draft
+  and the full customer conditions used for its paired comparison.
+
 - Accept 100% discounts as free offers while retaining reference prices. Resolve
   a local model's copied product-and-price label only when it identifies one
   product in the actual store. Extend real CPU probes to free offers, discounted
   products, compound edits and Korean instructions; retain remaining semantic
   failures as failed probes.
 
+- Find a store or run: once the online page lists more than six stores or
+  runs, a box above them filters both by name (and a store's note); a
+  variant that matches opens its group.
+- A quick read while designing: as soon as the designer's draft differs from
+  the saved store, 150 rule shoppers visit both (about a second, nothing
+  saved) and the preview shows the draft's paired difference in revenue per
+  visit — clearly better, clearly worse or unclear — before you test it
+  properly. Rule shoppers do not see a page's look, which the hint says.
+- A tidier online store list: variants sit under the store they were first
+  copied from (copies of copies too), behind a **Variants: N** toggle that
+  opens by itself when it holds the open store; a copy whose original was
+  deleted stays at the top level.
+- From an answer to a test: when the online analyst's answer (or the report
+  lines it cites) points at something a quick experiment can change — a
+  popup, fees, a forced sign-in, empty searches, slow pages, delivery costs,
+  abandoned carts, prices — **Test it** chips offer those experiments that
+  apply to the run's first store; one click opens its run form with the
+  change already ticked.
+- Screen every quick change at once: **Scan these changes** in an online
+  store's run form sends rule shoppers (150 of them) through the store and
+  through a copy for each applicable quick experiment, in memory and in about
+  ten seconds, and marks each change with its paired difference in revenue
+  per visit (clearly better, clearly worse or unclear), best first. **Tick the
+  clear winners** selects them for a proper comparison, ideally with model
+  shoppers (`POST …/online/sites/{id}/scan`).
+- Jump from an analyst's answer to the chart: each report line an online
+  analyst answer cites is a link to the report section that draws it (the
+  paired differences, funnel, ads, friction, survey, segments…), which
+  scrolls into view and lights up once. Sections that show nothing for a run
+  no longer leave an empty gap in the report.
 - Bound analyst conversation context by UTF-8 bytes and retain complete recent
   exchanges, while preserving the entire report and current question. Four-store
   reports with long Korean conversations no longer crowd out the tested local
   model's reply. Keep the remaining unsupported-forecast failure visible in the
   real CPU harness instead of treating complete JSON as a correct analysis.
-
 - Preserve every price change when bringing an online variant back to a store.
   Review and save up to 500 changes; reject larger transfers explicitly instead
   of repeatedly returning only the first 20. Show transfer errors with a retry

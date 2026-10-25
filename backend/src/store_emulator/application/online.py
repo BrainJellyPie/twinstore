@@ -50,6 +50,7 @@ from store_emulator.domain.online import (
     PageStyle,
     Vision,
     PageView,
+    PairedDelta,
     RivalVisit,
     SessionOutcome,
     SessionResult,
@@ -314,6 +315,69 @@ def save_site(pid: str, site_id: str, site: OnlineSite) -> OnlineSite:
                                         "currency": current.currency, "updated_at": now_iso()})
         write_json(_site_path(pid, site_id), saved.model_dump(mode="json"))
     return saved
+
+
+class ScanCandidate(BaseModel):
+    """One change to try: the store's options and, for a price change, its products (same products, new prices)."""
+    id: str = Field(min_length=1, max_length=40)
+    options: SiteOptions
+    products: list[OnlineProduct] | None = Field(default=None, min_length=1)
+
+
+class ScanRequest(BaseModel):
+    candidates: list[ScanCandidate] = Field(min_length=1, max_length=24)
+    shoppers: int = Field(default=150, ge=20, le=300)
+    seed: int = 0
+
+
+class ScanRow(BaseModel):
+    id: str
+    deltas: list[PairedDelta]  # candidate minus the store, same shoppers, 95 % intervals
+    won: int  # shoppers who ordered only with the change
+    lost: int  # shoppers who ordered only without it
+
+
+class ScanResult(BaseModel):
+    shoppers: int
+    conversion: float  # the store as it is
+    revenue_per_session: float
+    rows: list[ScanRow]
+    seconds: float
+
+
+def scan_site(pid: str, site_id: str, req: ScanRequest) -> ScanResult:
+    """A quick screen of changes: rule shoppers visit the store and each changed copy of it (kept in memory, nothing
+    saved), and each change is read as paired differences on the same shoppers. Rule shoppers follow illustrative
+    probabilities, so a change worth keeping is then run as a variant, ideally with model shoppers."""
+    started = time.time()
+    site = get_site(pid, site_id)
+    ids = {p.id for p in site.products}
+    variants: list[tuple[str, OnlineSite]] = []
+    for c in req.candidates:
+        if c.products is not None and {p.id for p in c.products} != ids:
+            raise AppError(f"{c.id}: a price change must keep the store's products", 400)
+        variants.append((c.id, site.model_copy(update={"options": c.options, "products": c.products or site.products})))
+    defaults = OnlineRunRequest(site_ids=[site.id])
+    shoppers = sample_shoppers(site, req.shoppers, seed=req.seed, missions=defaults.missions,
+                               mobile_share=defaults.mobile_share, arrivals=defaults.arrivals)
+    policy = RulePolicy()
+
+    async def visits(store: OnlineSite) -> list[SessionResult]:
+        return [await run_session(store, s, policy, seed=req.seed, max_steps=defaults.max_steps, render=False)
+                for s in shoppers]
+
+    control = asyncio.run(visits(site))
+    bought = {s.shopper_id for s in control if s.outcome == "purchased"}
+    rows: list[ScanRow] = []
+    for candidate_id, store in variants:
+        sessions = asyncio.run(visits(store))
+        buyers = {s.shopper_id for s in sessions if s.outcome == "purchased"}
+        rows.append(ScanRow(id=candidate_id, deltas=paired_deltas(control, sessions, seed=req.seed),
+                            won=len(buyers - bought), lost=len(bought - buyers)))
+    n = max(1, len(control))
+    return ScanResult(shoppers=len(shoppers), conversion=len(bought) / n,
+                      revenue_per_session=sum(s.order_total for s in control) / n, rows=rows,
+                      seconds=round(time.time() - started, 2))
 
 
 def copy_site(pid: str, site_id: str, request: CopySiteRequest) -> OnlineSite:

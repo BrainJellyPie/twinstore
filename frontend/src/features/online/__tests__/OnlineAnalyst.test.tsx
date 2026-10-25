@@ -12,7 +12,7 @@ import { OnlineAnalyst } from "../OnlineAnalyst";
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof api>(), getModels: vi.fn() }));
 vi.mock("@/shared/api/online", async (original) => ({
   ...await original<typeof online>(), getOnlineAnalyst: vi.fn(), askOnlineAnalyst: vi.fn(), clearOnlineAnalyst: vi.fn(),
-  suggestOnlineAnalystQuestions: vi.fn(),
+  suggestOnlineAnalystQuestions: vi.fn(), getSite: vi.fn(),
 }));
 
 const empty: AnalystThread = { run_id: "r", model: "", messages: [] };
@@ -89,4 +89,39 @@ it("replaces the built-in starters with questions read off this run", async () =
   expect(screen.queryByRole("button", { name: winner })).toBeNull();
   await waitFor(() => expect(online.askOnlineAnalyst).toHaveBeenCalledWith("p1", "r", "Why do phone shoppers leave at the cart?", ""));
   expect(online.suggestOnlineAnalystQuestions).toHaveBeenCalledWith("p1", "r", "");
+});
+
+it("shows the report section a cited line comes from", async () => {
+  vi.mocked(online.getOnlineAnalyst).mockResolvedValue(answered);
+  const section = document.createElement("section");
+  section.id = "online-compare";
+  const scroll = vi.fn();
+  section.scrollIntoView = scroll;
+  document.body.appendChild(section);
+  mount(true);
+  fireEvent.click(await screen.findByRole("button", { name: /minus control/ }));
+  expect(scroll).toHaveBeenCalled();
+  expect(section.classList.contains("figure-flash")).toBe(true);
+  section.remove();
+});
+
+it("offers the quick experiment that tests what the answer points at", async () => {
+  const popup: AnalystThread = { run_id: "r", model: "m", messages: [
+    { role: "user", text: "Why do shoppers leave?", figures: [], follow_ups: [], created_at: "" },
+    { role: "analyst", text: "The welcome popup made a fifth of the visits end on the home page.", figures: [], follow_ups: [], created_at: "" },
+  ] };
+  vi.mocked(online.getOnlineAnalyst).mockResolvedValue(popup);
+  vi.mocked(online.getSite).mockResolvedValue({ id: "s1", currency: "USD", products: [], options: {
+    welcome_popup: "newsletter", service_fee: 0, guest_checkout: true, preselected_addon_percent: 0, page_style: "classic",
+    page_load_ms: 600, shipping_fee: 0, free_shipping_threshold: 0, search: "smart", checkout_flow: "one_page", urgency: false,
+    social_proof: false, cookie_banner: false, sponsored_slots: 0, payment_methods: ["card"], cart_reminder: false,
+    cart_reminder_percent: 0, return_policy: "free_30", large_text: false, quick_add: false, coupon_percent: 0, coupon_code: "",
+  } } as unknown as online.OnlineSite);
+  const onTry = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <OnlineAnalyst projectId="p1" runId="r" compared={false} controlSiteId="s1" onTry={onTry} />
+  </QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Remove the welcome popup" }));
+  expect(onTry).toHaveBeenCalledWith("s1", ["no_popup"]);
 });

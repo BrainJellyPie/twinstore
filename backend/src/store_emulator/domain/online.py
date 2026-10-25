@@ -467,10 +467,12 @@ class OnlineRunRequest(BaseModel):
     max_steps: int = Field(default=24, ge=3, le=80,
                            description="Maximum decisions per visit; a cart reminder can add one return visit")
     missions: dict[ShopperMission, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {
-        "purchase": 0.25, "browse": 0.35, "compare": 0.15, "deal_hunt": 0.1, "gift": 0.07, "replenish": 0.08,
+        "purchase": 0.01, "browse": 0.98, "compare": 0.01, "deal_hunt": 0.0, "gift": 0.0, "replenish": 0.0,
     })
-    arrivals: dict[Arrival, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {"direct": 1.0})
-    mobile_share: float = Field(default=0.55, ge=0, le=1)
+    arrivals: dict[Arrival, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {
+        "direct": 0.3, "search_engine": 0.45, "social": 0.15, "email": 0.1,
+    })
+    mobile_share: float = Field(default=0.68, ge=0, le=1)
     source: ShopperSource = "panel"
     image_width: int = Field(default=896, ge=480, le=1600)
     shuffle_marks: bool = True  # number badges drawn at random, so a model's liking for low numbers is noise

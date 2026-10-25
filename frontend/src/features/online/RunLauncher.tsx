@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FlaskConical, Loader2, Play } from "lucide-react";
+import { FlaskConical, Loader2, Play, Radar, Sparkles } from "lucide-react";
 
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
 import { useAvailableModels } from "@/features/runs/hooks";
 import {
-  ACCESSIBILITY, ARRIVALS, copySite, getSite, MISSIONS, onlineKeys, startRun, type Accessibility, type Arrival, type ShopperMission,
+  ACCESSIBILITY, ARRIVALS, copySite, getSite, MISSIONS, onlineKeys, scanSite, startRun, type Accessibility, type Arrival, type ShopperMission,
+  type ScanRow,
   type ShopperPolicyKind,
   type SiteSummary,
 } from "@/shared/api/online";
@@ -17,18 +18,21 @@ import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { experimentsFor } from "./experiments";
+import { ScanChip } from "./ScanChip";
 import { ACCESSIBILITY_LABELS, ARRIVAL_HINTS, ARRIVAL_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
-const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 100, search_engine: 0, social: 0, email: 0 };
-const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, compare: 15, deal_hunt: 10, gift: 7, replenish: 8 };
+const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 30, search_engine: 45, social: 15, email: 10 };
+const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 1, browse: 98, compare: 1, deal_hunt: 0, gift: 0, replenish: 0 };
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
-const TYPICAL_STEPS = 11;
+const TYPICAL_STEPS = 4;
 
-export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCustomers, onStarted }: {
+export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initialPicked, hasCustomers, onStarted }: {
   projectId: string; sites: SiteSummary[]; firstSiteId: string;
   /** A variant to compare with the first store from the start (made by the design chat). */
   compareWith?: string;
+  /** Quick experiments ticked from the start (suggested by the run analyst). */
+  initialPicked?: string[];
   hasCustomers: boolean; onStarted: (runId: string) => void;
 }) {
   const { t } = useI18n();
@@ -40,7 +44,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCus
   const [seed, setSeed] = useState(1);
   const [maxSteps, setMaxSteps] = useState(24);
   const [mix, setMix] = useState(DEFAULT_MIX);
-  const [mobile, setMobile] = useState(55);
+  const [mobile, setMobile] = useState(68);
   const [arrivals, setArrivals] = useState<Record<Arrival, number>>(DEFAULT_ARRIVALS);
   const [source, setSource] = useState<"panel" | "project">("panel");
   const [imageWidth, setImageWidth] = useState(896);
@@ -48,13 +52,25 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCus
   const [accessibility, setAccessibility] = useState<Accessibility>("typical");
   const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(initialPicked ?? []);
   const [rival, setRival] = useState("");
   const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color" | "cart_reminder" | "currency">[]>([]);
   const listedSites = [...sites, ...createdSites.filter((copy) => !sites.some((site) => site.id === copy.id))];
   const controlId = chosen[0] ?? "";
   const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
-  const available = control.data ? experimentsFor(control.data) : [];
+  // A screen of every applicable change on rule shoppers, for the store it was made for; best first once it is in.
+  const scan = useMutation({
+    mutationFn: (site: { id: string; candidates: ReturnType<typeof experimentsFor> }) => scanSite(projectId, site.id, {
+      seed, candidates: site.candidates.map((x) => ({ id: x.id, options: x.options, products: x.products })),
+    }),
+  });
+  const screened = scan.data && scan.variables?.id === controlId ? new Map(scan.data.rows.map((row) => [row.id, row])) : null;
+  const revenueGain = (row: ScanRow | undefined) => row?.deltas.find((d) => d.metric === "revenue_per_session");
+  const clearlyUp = (row: ScanRow | undefined) => (revenueGain(row)?.ci_low ?? 0) > 0;
+  const unsorted = control.data ? experimentsFor(control.data) : [];
+  const available = screened
+    ? [...unsorted].sort((a, b) => (revenueGain(screened.get(b.id))?.diff ?? 0) - (revenueGain(screened.get(a.id))?.diff ?? 0))
+    : unsorted;
   const room = MAX_VARIANTS - chosen.length;
   // Picks that no longer apply (another first store, or no room left) simply drop out.
   const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
@@ -172,15 +188,33 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCus
               <FlaskConical className="size-3.5 text-primary" aria-hidden /> {t("onXpTitle")}
             </legend>
             <p className="text-[0.7rem] text-muted-foreground">{t("onXpHint", { name: control.data.name })}</p>
+            {available.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="outline" className="h-7 gap-1.5 text-xs" disabled={scan.isPending}
+                  onClick={() => scan.mutate({ id: controlId, candidates: unsorted })}>
+                  {scan.isPending ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Radar className="size-3.5" aria-hidden />}
+                  {scan.isPending ? t("onScanRunning") : t("onScanRun")}
+                </Button>
+                {screened && (available.some((x) => clearlyUp(screened.get(x.id))) ? (
+                  <Button type="button" size="sm" variant="ghost" className="h-7 gap-1.5 text-xs text-primary"
+                    onClick={() => setPicked(available.filter((x) => clearlyUp(screened.get(x.id))).slice(0, Math.max(0, room)).map((x) => x.id))}>
+                    <Sparkles className="size-3.5" aria-hidden /> {t("onScanPickWinners")}
+                  </Button>
+                ) : <span className="text-[0.7rem] text-muted-foreground">{t("onScanNoWinner")}</span>)}
+              </div>
+            )}
+            {scan.error && <p role="alert" className="text-xs text-destructive">{scan.error.message}</p>}
+            {screened && scan.data && <p className="text-[0.7rem] text-muted-foreground">{t("onScanHint", { count: scan.data.shoppers })}</p>}
             {available.length === 0 ? <p className="text-xs text-muted-foreground">{t("onXpNone")}</p> : (
-              <div className="grid gap-1 sm:grid-cols-2">
+              <div className={cn("grid gap-1", !screened && "sm:grid-cols-2")}>
                 {available.map((x) => {
                   const on = experiments.some((e) => e.id === x.id);
                   return (
                     <label key={x.id} className={cn("flex items-center gap-2 text-xs", !on && experiments.length >= room && "opacity-50")}>
                       <input type="checkbox" checked={on} disabled={!on && experiments.length >= room}
                         onChange={() => setPicked((p) => (on ? p.filter((id) => id !== x.id) : [...p.filter((id) => experiments.some((e) => e.id === id)), x.id]))} />
-                      {t(x.label)}
+                      <span className="min-w-0 flex-1">{t(x.label)}</span>
+                      {screened && <ScanChip row={screened.get(x.id)} currency={currency ?? "USD"} />}
                     </label>
                   );
                 })}

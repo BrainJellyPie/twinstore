@@ -4,10 +4,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FlaskConical, Loader2, RotateCcw, Send, Sparkles, Undo2, Wand2 } from "lucide-react";
+import { FlaskConical, Loader2, Radar, RotateCcw, Send, Sparkles, Undo2, Wand2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { designChat, draftPreview, onlineKeys, sitePreviewUrl, type DesignMessage, type Device, type OnlineSite, type SiteOptions } from "@/shared/api/online";
+import {
+  designChat, draftPreview, onlineKeys, scanSite, sitePreviewUrl, type DesignMessage, type Device, type OnlineSite, type SiteOptions,
+} from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
@@ -15,6 +17,8 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+
+import { ScanChip } from "./ScanChip";
 
 // The designer's own field names for what the model may change.
 const OPTION_LABELS: Partial<Record<keyof SiteOptions, MessageKey>> = {
@@ -71,6 +75,13 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
     queryKey: onlineKeys.draftPreview(projectId, site.id, settled, device),
     queryFn: ({ signal }) => draftPreview(projectId, site.id, settled, device, signal),
     enabled: edited && view === "after" && JSON.stringify(settled) !== JSON.stringify(site.options),
+    staleTime: Infinity,
+  });
+  // A quick read of the draft against the saved store on rule shoppers (about a second, nothing saved).
+  const quick = useQuery({
+    queryKey: [...onlineKeys.site(projectId, site.id), "quick-read", site.updated_at, JSON.stringify(settled)],
+    queryFn: ({ signal }) => scanSite(projectId, site.id, { candidates: [{ id: "draft", options: settled }] }, signal),
+    enabled: edited && JSON.stringify(settled) !== JSON.stringify(site.options),
     staleTime: Infinity,
   });
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [turns.length, ask.isPending]);
@@ -196,6 +207,14 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
             </p>
           )}
         </div>
+        {edited && (
+          <p className="flex flex-wrap items-center gap-1.5 text-[0.72rem] text-muted-foreground" title={t("onQuickReadHint")}>
+            <Radar className="size-3.5 text-primary" aria-hidden /> {t("onQuickRead")}
+            {quick.isFetching ? <Loader2 className="size-3 animate-spin" aria-label={t("studioLoading")} />
+              : quick.data ? <ScanChip row={quick.data.rows[0]} currency={site.currency} />
+              : quick.error ? <span className="text-destructive">{quick.error.message}</span> : null}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => onTest(lastOwner)} disabled={!edited || testing} className="gap-1.5">
             {testing ? <Loader2 className="animate-spin" aria-hidden /> : <FlaskConical aria-hidden />} {t("onAiTest")}

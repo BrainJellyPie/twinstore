@@ -3,18 +3,38 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, DoorOpen, Loader2, RotateCcw, Scale, Send, Sparkles, Users } from "lucide-react";
+import { ArrowDownRight, CheckCircle2, DoorOpen, FlaskConical, Loader2, RotateCcw, Scale, Send, Sparkles, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { askOnlineAnalyst, clearOnlineAnalyst, getOnlineAnalyst, onlineKeys, suggestOnlineAnalystQuestions } from "@/shared/api/online";
+import { askOnlineAnalyst, clearOnlineAnalyst, getOnlineAnalyst, getSite, onlineKeys, suggestOnlineAnalystQuestions } from "@/shared/api/online";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 import { useAssistStore } from "@/stores/assistStore";
 import type { MessageKey } from "@/shared/i18n/messages";
 
-export function OnlineAnalyst({ projectId, runId, compared }: { projectId: string; runId: string; compared: boolean }) {
+import { experimentsForAnswer } from "./answerExperiments";
+import { experimentsFor, QUICK_EXPERIMENTS } from "./experiments";
+import { figureSection } from "./figureSections";
+
+function showSection(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  el.classList.remove("figure-flash");
+  void el.offsetWidth;  // restart the highlight when the same section is shown again
+  el.classList.add("figure-flash");
+  window.setTimeout(() => el.classList.remove("figure-flash"), 1700);
+}
+
+export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry }: {
+  projectId: string; runId: string; compared: boolean;
+  /** The run's first store, which a suggested quick experiment changes. */
+  controlSiteId?: string;
+  /** Open the run form of that store with these quick experiments ticked. */
+  onTry?: (siteId: string, experiments: string[]) => void;
+}) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const key = onlineKeys.analyst(projectId, runId);
@@ -60,6 +80,14 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
   const busy = ask.isPending || clear.isPending;
   const messages = thread.data?.messages ?? [];
   const last = [...messages].reverse().find((m) => m.role === "analyst");
+  // The quick experiments that would test what the latest answer points at, on the run's first store if it still exists.
+  const control = useQuery({
+    queryKey: onlineKeys.site(projectId, controlSiteId ?? ""), queryFn: ({ signal }) => getSite(projectId, controlSiteId ?? "", signal),
+    enabled: !!controlSiteId && !!onTry && !!last, retry: false,
+  });
+  const tries = last && control.data
+    ? experimentsForAnswer(last.text, last.figures, new Set(experimentsFor(control.data).map((x) => x.id)))
+    : [];
   const send = (q: string) => {
     const question = q.trim();
     if (Array.from(question).length >= 2 && !busy) { clear.reset(); ask.mutate(question); }
@@ -121,12 +149,28 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
                 <p className="text-[0.82rem] leading-relaxed">{m.text}</p>
                 {m.figures.length > 0 && (
                   <ul className="space-y-1" aria-label={t("figuresUsed")}>
-                    {m.figures.map((f) => (
-                      <li key={f} className="flex items-start gap-1.5 rounded-lg bg-foreground/[0.04] px-2 py-1 text-[0.68rem] leading-snug text-muted-foreground">
-                        <CheckCircle2 className="mt-px size-3 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                        <span className="num min-w-0 break-words">{f}</span>
-                      </li>
-                    ))}
+                    {m.figures.map((f) => {
+                      const section = figureSection(f);
+                      const body = (
+                        <>
+                          <CheckCircle2 className="mt-px size-3 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                          <span className="num min-w-0 break-words">{f}</span>
+                          {section && <ArrowDownRight className="mt-px ml-auto size-3 shrink-0 opacity-60" aria-hidden />}
+                        </>
+                      );
+                      return (
+                        <li key={f}>
+                          {section ? (
+                            <button type="button" onClick={() => showSection(section)} title={t("onAnalystShow")}
+                              className="flex w-full items-start gap-1.5 rounded-lg bg-foreground/[0.04] px-2 py-1 text-left text-[0.68rem] leading-snug text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground">
+                              {body}
+                            </button>
+                          ) : (
+                            <div className="flex items-start gap-1.5 rounded-lg bg-foreground/[0.04] px-2 py-1 text-[0.68rem] leading-snug text-muted-foreground">{body}</div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -144,6 +188,20 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
       )}
       {ask.error && <p role="alert" className="text-xs text-destructive">{t("onAnalystFailed")} <span className="text-muted-foreground">{ask.error.message}</span></p>}
       {clear.error && <p role="alert" className="text-xs text-destructive">{clear.error.message}</p>}
+      {tries.length > 0 && !pending && controlSiteId && onTry && (
+        <div className="flex flex-wrap items-center gap-1.5 pl-9 text-[0.72rem]">
+          <span className="inline-flex items-center gap-1 font-medium text-foreground"><FlaskConical className="size-3.5 text-primary" aria-hidden /> {t("onAnalystTry")}</span>
+          {tries.map((id) => {
+            const label = QUICK_EXPERIMENTS.find((x) => x.id === id)?.label;
+            return label && (
+              <button key={id} type="button" onClick={() => onTry(controlSiteId, [id])}
+                className="rounded-full border border-primary/40 bg-primary/[0.06] px-2.5 py-1 text-left text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
+                {t(label)}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {last && !pending && last.follow_ups.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pl-9">
           {last.follow_ups.map((q) => (
