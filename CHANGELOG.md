@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Browsing an online store on a phone starts on the store's mobile page; the
+  desktop page shrank too small to read. **Desktop** is still one tap away.
 - A store's name is required and at most 200 characters both when it is
   created and when it is renamed through the API (`PUT …/metadata` accepted
   a blank or 5,000-character name); the new-store form stops at 200.

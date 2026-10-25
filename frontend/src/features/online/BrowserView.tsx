@@ -37,7 +37,11 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
     },
   });
   const start = go.mutate;
-  useEffect(() => { start({ state: null, markSeed: 0, device: "desktop", vision: "typical" }); }, [start]);
+  // On a phone the desktop page shrinks past reading, so the first visit uses the store's mobile page.
+  useEffect(() => {
+    const phone = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 639px)").matches;
+    start({ state: null, markSeed: 0, device: phone ? "mobile" : "desktop", vision: "typical" });
+  }, [start]);
   const newVisit = (next: Device) => go.mutate({ state: null, markSeed, device: next, vision });
   const renumber = (on: boolean) => {
     const seed = on ? 1 + Math.floor(Math.random() * 1e6) : 0;
