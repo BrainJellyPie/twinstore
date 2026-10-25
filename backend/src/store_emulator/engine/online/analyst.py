@@ -20,8 +20,9 @@ numbers, compare the versions, and say what they suggest, as a hypothesis when i
 interval includes zero is not clear. If the sheet cannot answer the question, say "The run does not show that" and
 name what would (watching visits, asking a shopper, another variant or more shoppers).
 Answer the owner's latest question; do not repeat a question as your answer.
-Copy the sheet lines you used into figures, exactly as written. Use [] for absent figures or follow_ups, not null.
-Plain sentences, no markdown. Write in English."""
+The simulation cannot forecast future real-world sales. For a forecast, say "The run does not show that".
+Copy up to three supporting sheet lines into figures exactly as written. Numerical answers need supporting figures.
+Use [] for absent figures or follow_ups, not null. Plain sentences, no markdown. Write in English."""
 
 ONLINE_STARTER_PROMPT = """You help a shop owner start reading one simulated online run. From the fact sheet, write three
 short questions worth asking about what stands out: a store version, funnel step, exit page, friction point, search or
@@ -38,8 +39,10 @@ _SHARES = {"conversion", "add_to_cart_rate"}
 
 def _store_lines(s: VariantSummary, money: Callable[[float], str]) -> list[str]:
     lines = [
-        f"{s.site_name}: visits {s.sessions}, orders {s.purchases} ({s.conversion:.1%}), revenue {money(s.revenue)}, "
-        f"revenue per visit {money(s.revenue_per_session)}, average order {money(s.aov)}, added to cart "
+        f"{s.site_name} overall conversion: {s.conversion:.1%} ({s.purchases} orders / {s.sessions} visits).",
+        f"{s.site_name} revenue: {money(s.revenue)}, revenue per visit {money(s.revenue_per_session)}, "
+        f"average order {money(s.aov)}.",
+        f"{s.site_name} engagement: added to cart "
         f"{s.add_to_cart_rate:.1%}, cart abandonment {s.cart_abandonment:.1%}, bounce {s.bounce_rate:.1%}, "
         f"clicks per visit {s.avg_steps:.1f}, seconds per visit {s.avg_seconds:.0f}, used search {s.search_share:.1%}, "
         f"searches that found nothing {s.zero_result_searches}.",
@@ -72,7 +75,8 @@ def _store_lines(s: VariantSummary, money: Callable[[float], str]) -> list[str]:
                      f"bought there {r.bought}, rival revenue {money(r.revenue)}.")
     segments: dict[str, list[str]] = {}
     for g in s.segments:
-        segments.setdefault(g.dimension, []).append(f"{g.value} {g.sessions} visits {g.conversion:.0%}")
+        segments.setdefault(g.dimension, []).append(
+            f"{g.value}: visits {g.sessions}, conversion {g.conversion:.1%}")
     for dimension, rows in segments.items():
         if len(rows) > 1:
             lines.append(f"{s.site_name} conversion by {dimension}: " + "; ".join(rows) + ".")
@@ -104,11 +108,13 @@ def online_facts(result: OnlineRunResult) -> str:
             if metric in _SHARES:
                 return f"{value * 100:+.1f} pt"
             return f"{value:+.1f}"
-        rows: list[str] = []
         for d in c.deltas:
-            interval = f" [{fmt(d.metric, d.ci_low)}, {fmt(d.metric, d.ci_high)}]" if d.ci_low is not None and d.ci_high is not None else ""
-            rows.append(f"{_DELTA_NAMES.get(d.metric, d.metric)} {fmt(d.metric, d.diff)}{interval}")
-        lines.append(f"{c.site_name} minus control (same shoppers, 95 % interval): " + "; ".join(rows) + ".")
+            interval = " (interval unavailable)"
+            if d.ci_low is not None and d.ci_high is not None:
+                certainty = "not clear: interval includes zero" if d.ci_low <= 0 <= d.ci_high else "interval excludes zero"
+                interval = f" [{fmt(d.metric, d.ci_low)}, {fmt(d.metric, d.ci_high)}] ({certainty})"
+            lines.append(f"{c.site_name} minus control (same shoppers, 95 % interval): "
+                         f"{_DELTA_NAMES.get(d.metric, d.metric)} {fmt(d.metric, d.diff)}{interval}.")
         lines.append(f"{c.site_name} vs control: orders won {c.won}, lost {c.lost}, visits that ended differently {c.changed}.")
         biggest = [g for g in sorted(c.segments, key=lambda g: -abs(g.conversion_diff)) if g.conversion_diff][:4]
         if biggest:
@@ -120,7 +126,8 @@ def online_facts(result: OnlineRunResult) -> str:
 
 async def answer_online_question(llm: StructuredLLM, result: OnlineRunResult, question: str,
                                  history: Sequence[AnalystMessage], seed: int = 0) -> RunAnswer:
-    return await answer_run_question(llm, online_facts(result), question, history, seed=seed, prompt=ONLINE_ANALYST_PROMPT)
+    return await answer_run_question(llm, online_facts(result), question, history, seed=seed,
+                                     prompt=ONLINE_ANALYST_PROMPT, require_numerical_evidence=True)
 
 
 async def suggest_online_questions(llm: StructuredLLM, result: OnlineRunResult) -> list[str]:

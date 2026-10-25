@@ -38,6 +38,11 @@ class _Broken:
         raise RuntimeError("rate limited")
 
 
+class _UnsupportedNumbers:
+    async def generate_structured_async[T: BaseModel](self, response_model: type[T], *_: object, **__: object) -> T:
+        return response_model.model_validate({"answer": "Next year's revenue will be $91.97.", "figures": []})
+
+
 def _run(client: TestClient) -> str:
     site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "fashion"}).json()
     options = {**site["options"], "page_style": "minimal", "quick_add": True}
@@ -85,6 +90,11 @@ def test_questions_about_an_online_run(client: TestClient, monkeypatch: pytest.M
     failed = client.post(url, json={"question": "And the price?", "model": "openai/gpt-test"})
     assert failed.status_code == 502 and "could not be answered" in failed.json()["detail"]
     assert len(client.get(url).json()["messages"]) == 4  # a failed question is not kept
+
+    monkeypatch.setattr(online, "assistive_client", lambda *_a, **_k: _UnsupportedNumbers())
+    unsupported = client.post(url, json={"question": "Next year's revenue?", "model": "openai/gpt-test"})
+    assert unsupported.status_code == 502 and "report figures" in unsupported.json()["detail"]
+    assert len(client.get(url).json()["messages"]) == 4
 
     assert client.delete(url).status_code == 200
     assert client.get(url).json()["messages"] == []

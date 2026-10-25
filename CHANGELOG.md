@@ -4,6 +4,16 @@
 
 ## 0.6.0 — Online stores you can see, style and design by asking
 
+- Give local layout-edit models an operation-specific grammar: moves require a
+  shelf, discounts require a negative percentage, and unrelated fields are omitted.
+  Clarify combined edits and whole-shelf price changes. Real CPU probes now check
+  prices, reference prices, signs, placements and untouched products, including an
+  unrelated discounted product whose reference price previously disappeared.
+- Require report evidence before caching or storing numerical online-analyst answers.
+  Constrain citations to at most three actual report lines, bound follow-up question
+  lengths and label overall conversion and interval uncertainty explicitly. Add
+  real CPU probes for comparison questions and unsupported real-world forecasts;
+  the tiny model's remaining interpretation errors are recorded as probe failures.
 - Ask the online analyst for starter questions read off the run: **Suggest
   questions from this run** replaces the built-in starters with three about
   what stands out (a store version, step, page or shopper group).

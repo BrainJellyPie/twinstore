@@ -25,6 +25,8 @@ def store():
 
 
 INVALID = [
+    pytest.param("USD", {"kind": "move", "product": "Tea", "level": 3, "category": "Drinks"}, "no unique shelf",
+                 id="shelf-sent-as-category"),
     pytest.param("USD", {"kind": "promo", "product": "Invented tea"}, "no unique product", id="unknown-product"),
     pytest.param("USD", {"kind": "promo", "product": "Water"}, "ambiguous", id="ambiguous-product"),
     pytest.param("USD", {"kind": "move", "product": "Tea", "shelf": "Nowhere"}, "no unique shelf", id="unknown-shelf"),

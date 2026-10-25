@@ -8,7 +8,7 @@ applying them to a copy. Nothing is saved until the user keeps the result as a n
 from collections.abc import Mapping
 from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.store import Store
@@ -33,7 +33,40 @@ class StructuredLLM(Protocol):
     ) -> T: ...
 
 
+def _edit_change_schema(schema: dict[str, JsonValue]) -> None:
+    """Give the model only the target/value fields for its chosen operation."""
+    definitions = schema.pop("properties")
+    assert isinstance(definitions, dict)
+    variants: list[JsonValue] = []
+    for kind, names in {
+        "price": ("product", "price"), "discount": ("product", "percent"), "promo": ("product", "promo"),
+        "move": ("product", "shelf", "level"), "category_price": ("category", "percent"),
+    }.items():
+        fields: dict[str, JsonValue] = {"kind": {"type": "string", "const": kind}}
+        for name in names:
+            source = definitions[name]
+            assert isinstance(source, dict)
+            field = {key: value for key, value in source.items() if key not in {"default", "anyOf"}}
+            choices = source.get("anyOf")
+            if isinstance(choices, list):
+                value = next(choice for choice in choices if isinstance(choice, dict) and choice.get("type") != "null")
+                assert isinstance(value, dict)
+                field.update(value)
+            if field.get("type") == "string":
+                field["minLength"] = 1
+            if kind == "discount" and name == "percent":
+                field["exclusiveMaximum"] = 0
+            fields[name] = field
+        required: list[JsonValue] = ["kind", *(name for name in names if name != "level")]
+        variants.append({"type": "object", "properties": fields, "required": required, "additionalProperties": False})
+    schema.pop("type", None)
+    schema.pop("required", None)
+    schema["anyOf"] = variants
+
+
 class _EditChange(_ChangeTextDefaults):
+    model_config = ConfigDict(json_schema_extra=_edit_change_schema)
+
     kind: Literal["price", "discount", "promo", "move", "category_price"]
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
@@ -76,7 +109,15 @@ below, written exactly as listed. Return at least one change that fits a listed 
 requires a negative percent. Prices must be finite and positive after currency rounding.
 Return at least one applicable operation; correct unavailable moves or empty categories when validation reports them.
 An everyday price replaces the previous regular price. Use discount for a reduction against a regular price.
-For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
+Include only the fields used by the chosen operation. Each move needs product and shelf; level is optional.
+For an X% discount use kind=discount with percent=-X, preserving the regular price.
+Do not emit operations for products the manager did not ask to change.
+Cover every requested edit. A discount on one product plus a sign on another needs two changes.
+Use category_price for a percentage change to all products on a shelf; set category to that shelf's name.
+Do not calculate individual prices for percentage instructions.
+Examples of the output shape (replace the targets with names from the list):
+- "10% off A and SALE on B": {{"kind":"discount","product":"A","percent":-10}}, {{"kind":"promo","product":"B","promo":"SALE"}}
+- "10% lower prices on shelf S": {{"kind":"category_price","category":"S","percent":-10}}
 A promo operation must include its nonblank sign text; do not omit it or leave it empty.
 Use the exact lowercase operation kinds above, including the underscore in category_price.
 Name the edited layout in a few words and summarize the edits. Use "" instead of null for an absent summary.
