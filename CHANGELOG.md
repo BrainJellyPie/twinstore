@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve explicit free prices in automatically drafted shelf and A/B tests,
+  including price-only offers, while still rejecting positive prices that round to zero.
+
 - Preserve explicitly free reference prices in automatically drafted concept
   tests, keeping a zero-price offer distinct from showing no price.
 

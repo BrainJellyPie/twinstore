@@ -111,7 +111,8 @@ Use only products, shelves and images listed below, written exactly as listed. V
 question asks for combinations, never name a variant "Control", list the products whose sales the question is about
 in focus_products, choose engine "vlm" only when the test needs shoppers to see packs or signs, and give a short
 rationale. Return at least one change that can be applied to a listed product or category. A discount requires a
-negative percent. Prices must be finite and positive after currency rounding.
+negative percent. Prices must be finite and nonnegative. Use 0 for an explicitly free offer;
+a positive price must remain positive after currency rounding. Omit the price operation to keep the current price.
 Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
 A promo operation must include its nonblank sign text; do not omit it or leave it empty.
@@ -181,7 +182,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                 continue
             match c.kind:
                 case "price":
-                    if c.price is None or not isfinite(c.price) or c.price <= 0:
+                    if c.price is None or not isfinite(c.price) or c.price < 0:
                         warnings.append(f"{v.name}: no new price for {c.product}; left out.")
                         continue
                     amount = Decimal(str(c.price)) * (1 if zero else 100)
@@ -189,7 +190,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                         warnings.append(f"{v.name}: the price for {c.product} exceeds the safe integer limit; left out.")
                         continue
                     price = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                    if price == 0:
+                    if price == 0 and c.price > 0:
                         warnings.append(f"{v.name}: the price for {c.product} rounds to zero in {currency}; left out.")
                         continue
                     changes.append(VariantChange(kind="price", sku=sku, price=price,

@@ -86,6 +86,7 @@ manager's question, draft one test:
 If a listed product, shelf or image name exceeds 160 characters, copy its first 160 characters.
 That prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
 Use "" for unspecified shelf, package, promo and rationale, and [] for unspecified age_groups; do not use null for these fields.
+For price, use 0 for an explicitly free offer and null to keep the current price.
 Write in English."""
 
 
@@ -141,7 +142,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                             "the pack change was left out.")
         else:
             changes.append(VariantChange(kind="package", sku=sku, asset_id=next(iter(asset))))
-    if draft.price is not None and draft.price > 0:
+    if draft.price is not None:
         zero = currency.upper() in ZERO_DECIMAL
         if not isfinite(draft.price):
             warnings.append("The new price is not finite; the price change was left out.")
@@ -151,7 +152,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                 warnings.append("The new price exceeds the safe integer limit; the price change was left out.")
             else:
                 price = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                if price == 0:
+                if price == 0 and draft.price > 0:
                     warnings.append(f"The new price rounds to zero in {currency.upper()}; the price change was left out.")
                 else:
                     changes.append(VariantChange(kind="price", sku=sku, price=price, keep_reference=True))
