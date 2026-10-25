@@ -46,12 +46,13 @@ export function SideBySide({ projectId, runId, shopperId, stores, names, money }
       <div className="grid gap-4 lg:grid-cols-2">
         {[left, right].map((view, side) => (
           <section key={`${side}:${round}`} aria-label={names[stores[side]!]} className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-baseline gap-2 text-xs">
-              <span className="text-sm font-semibold">{names[stores[side]!]}</span>
-              <span className={cn("rounded px-1.5", view.session.outcome === "purchased" ? "tone-good" : "bg-muted")}>
+            {/* One line on both sides, so the two players stay level. */}
+            <div className="flex items-baseline gap-2 text-xs">
+              <span className="min-w-0 truncate text-sm font-semibold" title={names[stores[side]!]}>{names[stores[side]!]}</span>
+              <span className={cn("shrink-0 rounded px-1.5", view.session.outcome === "purchased" ? "tone-good" : "bg-muted")}>
                 {t(OUTCOME_LABELS[view.session.outcome])}{view.session.order_total ? ` · ${money(view.session.order_total)}` : ""}
               </span>
-              {part !== null && indices[side]! >= part && <span className="rounded bg-amber-500/15 px-1.5 font-medium">{t("onSideApart")}</span>}
+              {part !== null && indices[side]! >= part && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 font-medium">{t("onSideApart")}</span>}
             </div>
             <JourneyPlayer projectId={projectId} runId={runId} view={view} index={Math.min(indices[side]!, view.session.steps.length - 1)}
               onIndex={(i) => setIndices((prev) => (side === 0 ? [i, prev[1]] : [prev[0], i]))} money={money} rival="" onRival={() => {}} />
