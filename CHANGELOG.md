@@ -38,6 +38,8 @@
   product drafts before creating a copy, preserving the original store.
 - Block online store and variant saves while any entered amount is invalid.
   Keep unfinished price text and its validation when a product filter hides a row.
+- Keep online preview numbers and device selection aligned with the displayed
+  page when a transition fails, and prevent overlapping page transitions.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 

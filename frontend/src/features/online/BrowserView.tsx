@@ -30,14 +30,16 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
       state: step.state, option: step.option ?? null, query: step.query ?? "", mark_seed: step.markSeed,
       has_account: hasAccount, device: step.device,
     }),
-    onSuccess: (next) => { setView(next); setSearching(null); setQuery(""); },
+    onSuccess: (next, step) => {
+      setView(next); setMarkSeed(step.markSeed); setDevice(step.device); setSearching(null); setQuery("");
+      if (step.state === null) setClicks([]);
+    },
   });
   const start = go.mutate;
   useEffect(() => { start({ state: null, markSeed: 0, device: "desktop" }); }, [start]);
-  const newVisit = (next: Device) => { setDevice(next); setClicks([]); go.mutate({ state: null, markSeed, device: next }); };
+  const newVisit = (next: Device) => go.mutate({ state: null, markSeed, device: next });
   const renumber = (on: boolean) => {
     const seed = on ? 1 + Math.floor(Math.random() * 1e6) : 0;
-    setMarkSeed(seed);
     go.mutate({ state: view?.state ?? null, markSeed: seed, device });
   };
   useEffect(() => { if (searching) searchRef.current?.focus(); }, [searching]);
@@ -52,7 +54,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
     go.mutate({ state: view.state, option: option.number, markSeed, device });
   };
   const submitSearch = () => {
-    if (!view || !searching || !query.trim()) return;
+    if (!view || !searching || !query.trim() || go.isPending) return;
     setClicks((c) => [...c.slice(-30), `${t(PAGE_LABELS[view.page])} → [${searching.number}] “${query.trim()}”`]);
     go.mutate({ state: view.state, option: searching.number, query: query.trim(), markSeed, device });
   };
@@ -63,7 +65,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="inline-flex rounded-md border p-0.5" role="group" aria-label={t("onDevice")}>
             {(["desktop", "mobile"] as Device[]).map((d) => (
-              <button key={d} type="button" aria-pressed={device === d} onClick={() => newVisit(d)}
+              <button key={d} type="button" aria-pressed={device === d} onClick={() => newVisit(d)} disabled={go.isPending}
                 className={cn("flex items-center gap-1 rounded px-2 py-1", device === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
                 {d === "desktop" ? <Monitor className="size-3.5" aria-hidden /> : <Smartphone className="size-3.5" aria-hidden />}
                 {t(d === "desktop" ? "onDeviceDesktop" : "onDeviceMobile")}
@@ -75,10 +77,10 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
             <UserCheck className="size-3.5" aria-hidden /> {t("onHasAccount")}
           </label>
           <label className="flex items-center gap-1.5" title={t("onShuffleHint")}>
-            <input type="checkbox" checked={markSeed !== 0} onChange={(e) => renumber(e.target.checked)} />
+            <input type="checkbox" checked={markSeed !== 0} onChange={(e) => renumber(e.target.checked)} disabled={go.isPending} />
             <Shuffle className="size-3.5" aria-hidden /> {t("onShuffle")}
           </label>
-          <Button variant="outline" size="xs" className="ml-auto" onClick={() => newVisit(device)}>
+          <Button variant="outline" size="xs" className="ml-auto" onClick={() => newVisit(device)} disabled={go.isPending}>
             <RotateCcw aria-hidden /> {t("onNewVisit")}
           </Button>
         </div>

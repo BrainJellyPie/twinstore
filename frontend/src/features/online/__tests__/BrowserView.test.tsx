@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as online from "@/shared/api/online";
 import { useLocale } from "@/shared/i18n/i18n";
@@ -25,7 +25,7 @@ const home = view("home", [
 ]);
 
 beforeEach(() => { useLocale.getState().setLocale("en"); vi.mocked(online.browse).mockResolvedValue(home); });
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); vi.resetAllMocks(); vi.restoreAllMocks(); });
 
 function mount() {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -60,4 +60,53 @@ it("starts a mobile visit and shows server errors", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Mobile" }));
   await waitFor(() => expect(online.browse).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({ state: null, device: "mobile" })));
   expect((await screen.findByRole("alert")).textContent).toContain("That option is not on this page");
+});
+
+it.each([false, true])("keeps the displayed numbers after a failed shuffle transition from %s", async (alreadyShuffled) => {
+  vi.spyOn(Math, "random").mockReturnValue(0.5);
+  mount();
+  await screen.findByRole("button", { name: /^7\./ });
+  const shuffle = screen.getByRole("checkbox", { name: "Shuffle numbers" }) as HTMLInputElement;
+  if (alreadyShuffled) {
+    fireEvent.click(shuffle);
+    await waitFor(() => expect(online.browse).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect((screen.getByRole("button", { name: /Open a product/ }) as HTMLButtonElement).disabled).toBe(false));
+  }
+  vi.mocked(online.browse).mockRejectedValueOnce(new Error("Rendering failed"));
+  fireEvent.click(shuffle);
+  await screen.findByRole("alert");
+  fireEvent.click(screen.getByRole("button", { name: /^7\./ }));
+  await waitFor(() => expect(online.browse).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({
+    option: 7, mark_seed: alreadyShuffled ? 500001 : 0,
+  })));
+});
+
+it("keeps the current device and visit when a new-device request fails", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /^7\./ }));
+  await screen.findByText(/Home page → \[7\] Open product/);
+  await waitFor(() => expect(online.browse).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect((screen.getByRole("button", { name: /Open a product/ }) as HTMLButtonElement).disabled).toBe(false));
+  vi.mocked(online.browse).mockRejectedValueOnce(new Error("Offline"));
+  fireEvent.click(screen.getByRole("button", { name: "Mobile" }));
+  await screen.findByRole("alert");
+  expect(screen.getByRole("button", { name: "Desktop" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText(/Home page → \[7\] Open product/)).toBeTruthy();
+});
+
+it("does not start a second page transition while the first is pending", async () => {
+  let release: (page: online.PageView) => void = () => {};
+  vi.mocked(online.browse).mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
+  mount();
+  await waitFor(() => expect(online.browse).toHaveBeenCalledTimes(1));
+  const mobile = screen.getByRole("button", { name: "Mobile" }) as HTMLButtonElement;
+  const shuffle = screen.getByRole("checkbox", { name: "Shuffle numbers" }) as HTMLInputElement;
+  const restart = screen.getByRole("button", { name: "New visit" }) as HTMLButtonElement;
+  expect(mobile.disabled && shuffle.disabled && restart.disabled).toBe(true);
+  fireEvent.click(mobile);
+  fireEvent.click(shuffle);
+  fireEvent.click(restart);
+  expect(online.browse).toHaveBeenCalledTimes(1);
+  await act(async () => { release(home); });
+  expect(mobile.disabled || shuffle.disabled || restart.disabled).toBe(false);
 });
