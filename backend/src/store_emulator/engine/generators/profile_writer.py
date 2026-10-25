@@ -6,6 +6,7 @@ The profile is the free text persona generation starts from; a concrete one ("of
 
 from typing import Protocol
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from pydantic import BaseModel, ConfigDict, Field
 
 LANGUAGES = {"en": "English", "ko": "Korean", "zh": "Simplified Chinese", "ja": "Japanese", "es": "Spanish", "fr": "French"}
@@ -14,7 +15,7 @@ LANGUAGES = {"en": "English", "ko": "Korean", "zh": "Simplified Chinese", "ja": 
 class StructuredLLM(Protocol):
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -41,6 +42,13 @@ async def draft_profile(
         f"Location: {address.strip()}" if address.strip() else "",
         f"Opening hours: {hours.strip()}" if hours.strip() else "",
     ) if line) or "No details given."
-    out = await llm.generate_structured_async(
-        _Profile, PROFILE_PROMPT.format(language=LANGUAGES.get(locale, "English")), user, max_retries=2, seed=0)
+    system = PROFILE_PROMPT.format(language=LANGUAGES.get(locale, "English"))
+    try:
+        out = await llm.generate_structured_async(_Profile, system, user, max_retries=2, seed=0, max_tokens=700)
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if not isinstance(cause, IncompleteOutputException):
+            raise
+        out = await llm.generate_structured_async(_Profile, system, user, max_retries=2, seed=0, max_tokens=1400)
     return " ".join(out.profile.split())

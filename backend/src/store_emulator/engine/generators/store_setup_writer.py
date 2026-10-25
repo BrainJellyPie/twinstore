@@ -9,6 +9,7 @@ every field for the user to check.
 from collections.abc import Sequence
 from typing import Literal, Protocol
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.engine.generators.profile_writer import LANGUAGES
@@ -18,7 +19,7 @@ from store_emulator.engine.prompting import resolve_listed
 class StructuredLLM(Protocol):
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -109,8 +110,14 @@ async def draft_store_setup(
 ) -> StoreSetup:
     """formats: (id, name, store type, description) of every store format the layout can start from."""
     listing = "\n".join(f"- {name} ({store_type}): {desc}" for _, name, store_type, desc in formats)
-    draft = await llm.generate_structured_async(
-        _Setup, SETUP_PROMPT.format(language=LANGUAGES.get(locale, "English")),
-        f"Store formats:\n{listing}\n\nDescription: {text.strip()}", max_retries=2, seed=0,
-    )
+    system = SETUP_PROMPT.format(language=LANGUAGES.get(locale, "English"))
+    user = f"Store formats:\n{listing}\n\nDescription: {text.strip()}"
+    try:
+        draft = await llm.generate_structured_async(_Setup, system, user, max_retries=2, seed=0, max_tokens=900)
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if not isinstance(cause, IncompleteOutputException):
+            raise
+        draft = await llm.generate_structured_async(_Setup, system, user, max_retries=2, seed=0, max_tokens=1800)
     return to_setup(draft, [(fid, name, store_type) for fid, name, store_type, _ in formats])

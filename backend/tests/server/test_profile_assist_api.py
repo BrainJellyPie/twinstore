@@ -19,7 +19,7 @@ def test_a_profile_is_drafted_in_the_form_language(client, monkeypatch):
 
     class _Writer:
         async def generate_structured_async[T: BaseModel](
-            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
         ) -> T:
             seen.append((system_prompt, user_prompt))
             return response_model.model_validate({"profile": "Office workers   buy lunch between 12 and 1.  Students come after 4."})
@@ -47,7 +47,7 @@ def test_requests_are_routed_to_a_tool(client, monkeypatch, picked, has_run, exp
 
     class _Router:
         async def generate_structured_async[T: BaseModel](
-            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
         ) -> T:
             prompts.append(system_prompt)
             return response_model.model_validate({"destination": picked if spelling == "exact" else f" {picked.upper()} ", "reason": "because"})
@@ -64,7 +64,7 @@ class _Setup:
         self.calls: list[tuple[str, str]] = []
 
     async def generate_structured_async[T: BaseModel](
-        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T:
         self.calls.append((system_prompt, user_prompt))
         return response_model.model_validate(self.reply)

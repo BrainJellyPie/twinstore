@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recover cut-off customer-profile and store-form drafts once with a larger
+  output budget, without retrying ordinary errors as truncation.
+
 - Freeze product artwork for online runs, including variants and rival shops, so
   later photo changes cannot alter model input or historical screenshots and GIFs.
 
