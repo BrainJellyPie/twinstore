@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 — Online stores you can see, style and design by asking
+
 - Ask the online analyst for starter questions read off the run: **Suggest
   questions from this run** replaces the built-in starters with three about
   what stands out (a store version, step, page or shopper group).
@@ -11,9 +13,6 @@
   ads, cart reminders, the rival shop's take, the exit survey, conversion by
   group, products, searches and the questions asked about the run with the report lines each answer used. It reads on a
   phone and prints to PDF (`GET …/online/runs/{id}/report.html`).
-
-## 0.6.0 — Online stores you can see, style and design by asking
-
 - Ask about the web shop from the command bar: a question such as "did the
   web shop's new checkout win?" opens the latest finished online run, where
   **Ask about this run** answers it; with no finished online run the command
