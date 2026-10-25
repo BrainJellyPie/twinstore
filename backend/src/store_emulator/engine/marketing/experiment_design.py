@@ -123,16 +123,18 @@ Write in English."""
 
 def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str = "",
              sold: Mapping[str, int] | None = None) -> str:
-    items: dict[str, tuple[str, str, str]] = {}
+    items: dict[tuple[str, str, str, int, int], tuple[str, str, str]] = {}
     for rack in store.product_racks:
         for slot in rack.slots:
             for item in slot.items:
                 units = f", {sold.get(item.sku, 0)} sold in the last run" if sold else ""
-                items.setdefault(item.name, (rack.rack_name, item.name,
+                items.setdefault((item.sku, item.name, rack.id, slot.level, item.price), (rack.rack_name, item.name,
                                              f"{item.name} {display_price(item.price, currency)} ({rack.rack_name}, level {slot.level}{units})"))
     shown = relevant_first(list(items.values()), question, MAX_LISTED)
     shelves = list(dict.fromkeys(r.rack_name for r in store.product_racks if r.rack_name))
     lines = [f"Products: {'; '.join(shown)}", f"Shelves: {', '.join(shelves)}"]
+    if sold:
+        lines.append("Sales figures are totals per SKU across all shelves; repeated placements do not add sales.")
     if packages:
         lines.append(f"Product images: {', '.join(name for name, _ in packages)}")
     return "\n".join(lines)

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retain distinct product placements and prices in automatic A/B study drafts.
+  The prompt no longer collapses every offer to the first matching product name,
+  and repeated placements explicitly share the SKU's total sales figure.
+
 - Preserve distinct shelf offers when drafting a concept survey from product
   images. A repeated SKU no longer inherits only its last placement's price;
   each image lists up to four relevant offers and reports omitted ones.
