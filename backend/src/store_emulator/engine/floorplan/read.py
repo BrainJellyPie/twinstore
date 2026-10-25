@@ -220,6 +220,11 @@ class _VLMFixture(BaseModel):
                                       description="[x1, y1, x2, y2] on a 0–1000 scale of the whole image")
     label: str = Field(default="", max_length=60)
 
+    @field_validator("kind", mode="before")
+    @classmethod
+    def known_kind_spelling(cls, value: object) -> object:
+        return value.strip().casefold() if isinstance(value, str) else value
+
     @field_validator("label", mode="before")
     @classmethod
     def unknown_label(cls, value: object) -> object:
@@ -262,6 +267,7 @@ Find the store's outer walls and every fixture inside them. Kinds:
 - fridge: reach-in coolers / chillers (usually along a wall); freezer: chest or upright freezers
 - shelf: a shelf against a wall (one side shopped); gondola: a free-standing double-sided shelf in the floor
 - counter: the checkout / cash desk; entrance: the door or opening in the outer wall
+Copy these lowercase kind values exactly; do not replace them with display names or synonyms.
 Always include the fixtures list. Use [] only when the drawing has no fixtures; do not omit it.
 Give every box as [x1, y1, x2, y2] on a 0–1000 scale of the whole image (x right, y down).
 Every box and outline must contain exactly four finite numbers between 0 and 1000.

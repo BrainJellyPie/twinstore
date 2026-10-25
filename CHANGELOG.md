@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep vision-read floor-plan geometry when local models vary a known fixture
+  kind's case or surrounding whitespace. Automatic imports no longer discard
+  those usable readings for a geometry-only fallback. Existing overlap,
+  positive-area and entrance-boundary rules still apply.
+
 - Recover known question and demographic labels in automatic concept-test
   drafts despite case or surrounding whitespace. Questionnaire ordering,
   image selection, prices and the requested respondent quotas are preserved;

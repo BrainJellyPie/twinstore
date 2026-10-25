@@ -97,3 +97,34 @@ def test_image_preview_respects_exif_orientation(client):
     response = client.post(f"/api/projects/{PID}/floorplan/preview", files={"plan": ("photo.jpg", buffer.getvalue(), "image/jpeg")})
     assert response.status_code == 200, response.text
     assert response.json()["width"] == 20 and response.json()["height"] == 40
+
+
+@pytest.mark.parametrize("reader", ["auto", "vlm"])
+def test_known_kind_spelling_keeps_model_geometry_in_the_saved_layout(client, monkeypatch, reader):
+    import copy
+    from store_emulator.application import floorplan
+    from store_emulator.domain.config import LLMConfig
+    from tests.engine.test_floorplan_model_geometry import GOOD
+
+    payload = copy.deepcopy(GOOD)
+    payload.update(width_m=20, depth_m=10)
+    for fixture in payload["fixtures"]:
+        fixture["kind"] = f" {fixture['kind'].title()} "
+
+    class Model:
+        async def generate_structured_with_image_async(self, schema, *args, **kwargs):
+            return schema.model_validate(payload)
+
+    monkeypatch.setattr(floorplan, "capture_llm_config", lambda *args: LLMConfig(model="openai/floorplan-spelling"))
+    monkeypatch.setattr(floorplan, "LiteLLMClient", lambda *args: Model())
+    response = client.post(f"/api/projects/{PID}/floorplan", files={"plan": ("store.png", _png(), "image/png")},
+                           data={"reader": reader, "model": "scripted"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["reading"]["reader"] == "openai/floorplan-spelling"
+    assert (body["reading"]["width_m"], body["reading"]["depth_m"]) == (20, 10)
+    assert len(body["reading"]["fixtures"]) == 3 and body["grid_size"] == [16, 8]
+    assert not any("unavailable" in note for note in body["notes"])
+    saved = client.get(f"/api/projects/{PID}/setups/{body['setup_id']}").json()
+    assert saved["store"]["grid_size"] == [16, 8]
+    assert client.get(f"/api/projects/{PID}").json()["state"]["activeSetupId"] == body["setup_id"]
