@@ -20,6 +20,20 @@
   variants on the same shoppers with paired bootstrap intervals and report the
   funnel, cart abandonment, exits, segments, search terms with no results,
   products, click maps, step-by-step replays and a clickstream CSV.
+- Keep online cart quantities within finite stock and the 99-unit limit, hide
+  exhausted add controls, and revalidate stock before placing an order. Reject
+  comparisons between online stores using different currencies before a job starts.
+- Retry an online model shopper's explicitly truncated answer once with twice the
+  output budget before falling back to rules; keep ordinary errors and invalid
+  answers within their existing attempt budget.
+- Find online products by category and tag in smart search. Metadata matches use
+  the same required word coverage as names while name matches still rank first.
+- Preserve projects while online runs are pending or running, including a
+  simultaneous run-start/delete request. Completed runs still allow deletion.
+- Import each physical-store SKU once into an online catalog even when it appears
+  several times on the same rack, preserving its first placement's price and photo.
+- Paginate online wishlists so saved products and their numbered controls remain
+  visible in mobile screenshots; reuse the store's listing size and navigation.
 
 - Add eyesight, friction and exit-survey research to online stores. Shoppers
   can have low vision, red–green colour blindness or older eyes (all, none or a

@@ -394,6 +394,8 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
     run_id = f"orun_{uuid.uuid4().hex[:12]}"
     with _write_transaction(pid):
         sites = [get_site(pid, site_id) for site_id in request.site_ids]
+        if len({site.currency for site in sites}) != 1:
+            raise AppError("Compare online stores using the same currency so shopper budgets and order totals are comparable", 400)
         personas = read_personas(pid) if request.source == "project" else None
         if request.source == "project" and not personas:
             raise AppError("This project has no customers yet: generate them, or use the built-in panel", 400)

@@ -233,12 +233,15 @@ def search_products(site: OnlineSite, query: str) -> list[OnlineProduct]:
         name_words = set(_words(product.name))
         other_words = set(_words(" ".join([category.name if category else "", *product.tags])))
         score = 0.0
+        matched = 0
         for term in terms:
             if term in name_words or any(len(term) >= 3 and w.startswith(term) for w in name_words):
                 score += 1.0
+                matched += 1
             elif term in other_words or any(len(term) >= 3 and w.startswith(term) for w in other_words):
                 score += 0.6
-        if score >= max(1.0, len(terms) / 2):
+                matched += 1
+        if matched >= max(1, len(terms) / 2):
             scored.append((score, order, product))
     scored.sort(key=lambda s: (-s[0], s[1]))
     return [p for _, _, p in scored]
@@ -346,13 +349,19 @@ def page_url(site: OnlineSite, ref: PageRef) -> str:
 # ── page layout ────────────────────────────────────────────────────────────────
 
 
-def _cards(site: OnlineSite, products: list[OnlineProduct], ctl: _Builder, sponsored: set[str] | None = None) -> tuple[Card, ...]:
+def _can_add(state: BrowserState, product: OnlineProduct) -> bool:
+    limit = min(99, product.stock) if product.stock is not None else 99
+    return sum(line.quantity for line in state.cart if line.product_id == product.id) < limit
+
+
+def _cards(site: OnlineSite, state: BrowserState, products: list[OnlineProduct], ctl: _Builder,
+           sponsored: set[str] | None = None) -> tuple[Card, ...]:
     cards: list[Card] = []
     for p in products:
         is_ad = sponsored is not None and p.id in sponsored
         open_control = ctl(ActionKind.OPEN_PRODUCT, product_label(site, p, sponsored=is_ad), p.id)
         quick = (ctl(ActionKind.ADD_TO_CART, f"Add to cart: {p.name} ({money(p.price, site)})", p.id)
-                 if site.options.quick_add and p.stock != 0 else None)
+                 if site.options.quick_add and _can_add(state, p) else None)
         cards.append(Card(p, open_control, quick, is_ad))
     return tuple(cards)
 
@@ -363,10 +372,14 @@ def _popular(site: OnlineSite, exclude: set[str] | None = None, limit: int = _HO
     return ranked[:limit]
 
 
-def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str) -> Grid:
+def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str,
+                  products: list[OnlineProduct] | None = None) -> Grid:
     ref = state.at
-    products = listing(site, ref)
-    products, ads = _with_sponsored(site, products)
+    if products is None:
+        products, ads = _with_sponsored(site, listing(site, ref))
+    else:
+        products = sort_products(products, ref.sort or site.options.default_sort)
+        ads = set[str]()
     per = site.options.products_per_page
     pages = page_count(site, len(products))
     index = min(ref.page_index, pages - 1)
@@ -383,7 +396,7 @@ def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: s
         controls.append(ctl(ActionKind.NEXT_PAGE, f"Next page (page {index + 2} of {pages})"))
     note = (f"{len(products)} results · page {index + 1} of {pages} · sorted by {SORT_LABELS[current].lower()}"
             if products else "")
-    return Grid(title, _cards(site, shown, ctl, ads), tuple(controls), note)
+    return Grid(title, _cards(site, state, shown, ctl, ads), tuple(controls), note)
 
 
 def _home(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[tuple[str, str, Control | None] | None, list[Grid], list[Panel]]:
@@ -422,7 +435,7 @@ def _home(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[tuple[s
             title = "Recommended for you"
         if products:
             used |= {p.id for p in products}
-            grids.append(Grid(title, _cards(site, products, ctl)))
+            grids.append(Grid(title, _cards(site, state, products, ctl)))
     return banner, grids, panels
 
 
@@ -459,7 +472,8 @@ def _detail(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[Detai
         facts.append(Line(p.description))
     buttons: list[Control] = []
     if p.stock != 0:
-        buttons.append(ctl(ActionKind.ADD_TO_CART, f"Add to cart: {p.name} ({price})", p.id))
+        if _can_add(state, p):
+            buttons.append(ctl(ActionKind.ADD_TO_CART, f"Add to cart: {p.name} ({price})", p.id))
         if o.one_click_buy:
             buttons.append(ctl(ActionKind.BUY_NOW, f"Buy now: {p.name} ({price})", p.id))
     if o.wishlist and p.id not in state.wishlist:
@@ -479,7 +493,7 @@ def _detail(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[Detai
         else:
             similar, title = _popular(site, {p.id}), "Customers also bought"
         if similar:
-            grids.append(Grid(title, _cards(site, similar, ctl)))
+            grids.append(Grid(title, _cards(site, state, similar, ctl)))
     return Detail(p, crumb, tuple(facts), tuple(buttons), tuple(reviews)), grids
 
 
@@ -508,7 +522,8 @@ def _cart(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[Panel]:
         if p is None:
             continue
         lines.append(Line(f"{p.name}  ×{item.quantity}   {money(p.price * item.quantity, site)}", "strong"))
-        lines.append(Line("+ one more", "muted", ctl(ActionKind.INCREASE_QUANTITY, f"Add one more: {p.name}", p.id)))
+        if _can_add(state, p):
+            lines.append(Line("+ one more", "muted", ctl(ActionKind.INCREASE_QUANTITY, f"Add one more: {p.name}", p.id)))
         lines.append(Line("Remove", "muted", ctl(ActionKind.REMOVE_FROM_CART, f"Remove from cart: {p.name}", p.id)))
     t = cart_totals(site, state.cart, state, at_review=False)
     summary = [Line(f"Subtotal: {money(t.subtotal, site)}")]
@@ -699,7 +714,8 @@ def build_page(site: OnlineSite, state: BrowserState) -> Page:
     elif ref.page == PageKind.WISHLIST:
         title = "Wishlist"
         saved = [p for p in (site.product(pid) for pid in state.wishlist) if p is not None]
-        grids = [Grid("Your wishlist", _cards(site, saved, ctl), (), "" if saved else "Nothing saved yet.")]
+        grids = ([_listing_grid(site, state, ctl, "Your wishlist", saved)] if saved else
+                 [Grid("Your wishlist", (), (), "Nothing saved yet.")])
     else:
         title = {PageKind.ORDER_COMPLETE: "Order confirmed", PageKind.HELP: "Delivery and returns"}.get(ref.page, "Settings")
         panels = _info(site, state, ctl)
@@ -775,13 +791,15 @@ def _go(state: BrowserState, ref: PageRef) -> BrowserState:
     return state.model_copy(update={"at": ref, "history": history, "overlay": "none", "reviews_open": False})
 
 
-def _add(state: BrowserState, product_id: str) -> list[CartLine]:
+def _add(state: BrowserState, product: OnlineProduct) -> list[CartLine]:
     cart = [line.model_copy() for line in state.cart]
+    if not _can_add(state, product):
+        return cart
     for line in cart:
-        if line.product_id == product_id:
-            line.quantity = min(99, line.quantity + 1)
+        if line.product_id == product.id:
+            line.quantity += 1
             return cart
-    return [*cart, CartLine(product_id=product_id)]
+    return [*cart, CartLine(product_id=product.id)]
 
 
 def _to_checkout(site: OnlineSite, state: BrowserState) -> BrowserState:
@@ -842,15 +860,17 @@ def apply(
         return _go(state, PageRef(page=PageKind.CART))
     if kind == ActionKind.OPEN_WISHLIST:
         return _go(state, PageRef(page=PageKind.WISHLIST))
-    if kind in (ActionKind.ADD_TO_CART, ActionKind.BUY_NOW):
+    if kind in (ActionKind.ADD_TO_CART, ActionKind.BUY_NOW, ActionKind.INCREASE_QUANTITY):
         product = site.product(target)
         if product is None or product.stock == 0:
             return state.model_copy(update={"notice": "Sorry, this product is sold out"})
-        added = state.model_copy(update={"cart": _add(state, target), "overlay": "none",
+        if kind == ActionKind.BUY_NOW and any(line.product_id == target for line in state.cart):
+            return _to_checkout(site, state.model_copy(update={"overlay": "none"}))
+        if not _can_add(state, product):
+            return state.model_copy(update={"notice": "Your cart already contains the available quantity of this product"})
+        added = state.model_copy(update={"cart": _add(state, product), "overlay": "none",
                                          "notice": f"Added to cart: {product.name}"})
         if kind == ActionKind.BUY_NOW:
-            if any(line.product_id == target for line in state.cart):
-                added = added.model_copy(update={"cart": state.cart})
             return _to_checkout(site, added)
         return added
     if kind == ActionKind.ADD_TO_WISHLIST:
@@ -859,8 +879,6 @@ def apply(
         return state.model_copy(update={"wishlist": [*state.wishlist, target], "notice": "Saved to your wishlist"})
     if kind == ActionKind.READ_REVIEWS:
         return state.model_copy(update={"reviews_open": True})
-    if kind == ActionKind.INCREASE_QUANTITY:
-        return state.model_copy(update={"cart": _add(state, target)}) if site.product(target) else state
     if kind == ActionKind.REMOVE_FROM_CART:
         return state.model_copy(update={"cart": [line for line in state.cart if line.product_id != target],
                                         "notice": "Removed from your cart"})
@@ -901,6 +919,12 @@ def apply(
     if kind == ActionKind.PLACE_ORDER:
         if not (state.cart and state.address_added and state.payment_method):
             return state
+        products = [site.product(line.product_id) for line in state.cart]
+        if len({line.product_id for line in state.cart}) != len(state.cart) or any(
+            product is None or product.stock is not None and line.quantity > product.stock
+            for line, product in zip(state.cart, products, strict=True)
+        ):
+            return state.model_copy(update={"notice": "Some cart quantities are unavailable. Adjust your cart before ordering."})
         total = cart_totals(site, state.cart, state, at_review=True).total
         placed = state.model_copy(update={"order_id": order_id(site, state), "order": state.cart, "order_total": total})
         return _go(placed, PageRef(page=PageKind.ORDER_COMPLETE)).model_copy(update={"cart": []})

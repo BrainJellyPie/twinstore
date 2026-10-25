@@ -8,7 +8,7 @@ from store_emulator.application.storage.io import write_json
 JOB_PATHS = (
     "runs/run_test", "generations/gen_test", "optimizations/opt_test", "captures/cap_test",
     "captures/cap_test/lab/jobs/lab_test", "marketing/experiments/exp_test", "marketing/surveys/srv_test",
-    "synergy/syn_test",
+    "synergy/syn_test", "online/runs/orun_test",
 )
 
 

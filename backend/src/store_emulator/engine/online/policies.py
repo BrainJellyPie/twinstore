@@ -11,6 +11,8 @@ import random
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
+
 from store_emulator.domain.online import (
     PAYMENT_METHODS,
     ActionKind,
@@ -486,22 +488,29 @@ class ModelPolicy:
             cart=(view.cart_count, view.cart_subtotal, view.cart_names),
             outline=None if self.vision else view.outline,
         )
-        try:
-            if self.vision:
-                answer = await self.llm.generate_structured_with_image_async(
-                    schema, system_prompt(vision=True), prompt, view.image_url, max_retries=self.max_retries,
-                    seed=view.seed, route=shopper.id, max_tokens=self.max_tokens)
-            else:
-                answer = await self.llm.generate_structured_async(
-                    schema, system_prompt(vision=False), prompt, max_retries=self.max_retries, seed=view.seed,
-                    route=shopper.id, max_tokens=self.max_tokens)
-        except Exception as e:  # noqa: BLE001 — one failed call must not end the session; the rules decide this step
-            fallback = decide(site, shopper, view, memory, rng)
-            return Choice(fallback.control, fallback.query, fallback.thought, source="fallback",
-                          error=f"{type(e).__name__}: {e}"[:300])
-        control = by_number[answer.option]
-        query = answer.search_text.strip() if control.action.kind == ActionKind.SEARCH else ""
-        return Choice(control, query=query, thought=answer.thought.strip(), source="model")
+        error = ""
+        for attempt, budget in enumerate((self.max_tokens, 2 * self.max_tokens)):
+            try:
+                if self.vision:
+                    answer = await self.llm.generate_structured_with_image_async(
+                        schema, system_prompt(vision=True), prompt, view.image_url, max_retries=self.max_retries,
+                        seed=view.seed, route=shopper.id, max_tokens=budget)
+                else:
+                    answer = await self.llm.generate_structured_async(
+                        schema, system_prompt(vision=False), prompt, max_retries=self.max_retries, seed=view.seed,
+                        route=shopper.id, max_tokens=budget)
+            except Exception as e:  # noqa: BLE001 — one failed call must not end the session
+                error = f"{type(e).__name__}: {e}"[:300]
+                cause = (e.failed_attempts[-1].exception
+                         if isinstance(e, InstructorRetryException) and e.failed_attempts else e)
+                if attempt == 0 and isinstance(cause, IncompleteOutputException):
+                    continue
+                break
+            control = by_number[answer.option]
+            query = answer.search_text.strip() if control.action.kind == ActionKind.SEARCH else ""
+            return Choice(control, query=query, thought=answer.thought.strip(), source="model")
+        fallback = decide(site, shopper, view, memory, rng)
+        return Choice(fallback.control, fallback.query, fallback.thought, source="fallback", error=error)
 
     async def survey(self, site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: SessionOutcome,
                      seconds: float, paid: int, seed: int) -> ExitSurvey | None:

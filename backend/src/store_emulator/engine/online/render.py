@@ -828,7 +828,6 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
     return Screenshot(out.getvalue(), width, height, usable)
 
 
-
 # Red–green colour blindness (deuteranopia) in sRGB, after Viénot, Brettel & Mollon (1999); an approximation for
 # showing a model what such a shopper can tell apart, not a clinical simulation.
 _DEUTERANOPIA = (0.625, 0.375, 0.0, 0.0, 0.7, 0.3, 0.0, 0.0, 0.0, 0.3, 0.7, 0.0)
