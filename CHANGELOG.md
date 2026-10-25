@@ -72,6 +72,10 @@
   visible to vision shoppers. Keep totals and orders based on the complete cart.
 - Include open menus and welcome dialogs when sizing online screenshots, keeping
   menu actions and the close control visible above short or empty pages.
+- Let online shoppers turn off a store's default large text. Remember their
+  choice across navigation while preserving older saved visits' appearance.
+- Honor mobile-only online panels for every age group. Apply age preferences
+  to device odds so both 0% and 100% mobile settings retain their meaning.
 
 - Add eyesight, friction and exit-survey research to online stores. Shoppers
   can have low vision, red–green colour blindness or older eyes (all, none or a

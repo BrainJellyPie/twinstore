@@ -106,7 +106,8 @@ export interface BrowserState {
   at: PageRef; history: PageRef[]; overlay: "none" | "menu" | "welcome"; cart: { product_id: string; quantity: number }[];
   wishlist: string[]; viewed: string[]; reviews_open: boolean; welcome_seen: boolean; cookies_answered: boolean;
   coupon_known: boolean; coupon_applied: boolean; signed_in: boolean; guest: boolean; address_added: boolean;
-  payment_method: PaymentMethod | null; addon_removed: boolean; large_text: boolean; device: Device; notice: string;
+  payment_method: PaymentMethod | null; addon_removed: boolean; large_text: boolean; text_size_changed?: boolean;
+  device: Device; notice: string;
   order_id: string; order: { product_id: string; quantity: number }[]; order_total: number;
 }
 
