@@ -7,14 +7,16 @@ import httpx
 import pytest
 from jsonschema import Draft202012Validator
 from openai import AsyncOpenAI
+from pydantic import ValidationError
 
+from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.types import Action, Weekday
 from store_emulator.engine import llm_client
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.customer_executor import execute_decision
 from store_emulator.engine.simulation.engines.pattern_intent_impulse.engine import PatternIntentImpulseEngine
-from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage1_pattern import PatternSelectionResponse
+from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage1_pattern import PatternSelectionResponse, pattern_selection_model
 from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage3_impulse import ImpulseResponse
 from tests.engine.test_llm_engine_offline import _ScriptedLLM, _context, _intent, _persona
 
@@ -118,3 +120,76 @@ def test_concurrent_visits_keep_custom_pattern_grammars_separate(collision_store
         assert [sum(a.action == Action.BUY for a in d.actions) for d in decisions] == [0, 1, 0, 1, 0, 1]
 
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("mode", ["json", "json_schema"])
+@pytest.mark.parametrize("ordering", ["planned", "nearest"])
+@pytest.mark.parametrize("chosen", [pattern.id for pattern in BEHAVIOR_PATTERNS])
+def test_http_pattern_spelling_preserves_grammar_purchase_limit_and_cache(monkeypatch, tmp_path, collision_store,
+                                                                        mode, ordering, chosen):
+    context = _context(collision_store, _persona())
+    pattern = next(pattern for pattern in context.behavior_patterns if pattern.id == chosen)
+    before = collision_store.model_dump()
+    planned = _intent().model_dump(mode="json")
+    planned["actions"].insert(-2, {"nav": "path", "action": "buy", "product_sku": "sku-b",
+                                  "quantity": 1, "target": [1, 0], "face": "W"})
+    original, calls = llm_client.litellm.acompletion, []
+
+    def respond(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        if len(calls) == 1:
+            answer = {"pattern_id": f"\u3000{chosen.upper()}\t", "reasoning": "Keep Chosen Behavior"}
+        elif len(calls) == 2:
+            answer = planned
+        else:
+            assert len(calls) == 3
+            answer = {"actions": []}
+        return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
+            "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
+                "message": {"role": "assistant", "content": json.dumps(answer)}}]})
+
+    async def exercise():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
+            adapter = AsyncOpenAI(api_key="offline", base_url="http://127.0.0.1:8081/v1", http_client=http, max_retries=0)
+
+            async def completion(**kwargs):
+                return await original(**{**kwargs, "client": adapter, "api_key": "offline", "num_retries": 0})
+
+            monkeypatch.setattr(llm_client.litellm, "acompletion", completion)
+            client = llm_client.LiteLLMClient(LLMConfig(model="openai/pattern-spelling", api_base="http://127.0.0.1:8081/v1",
+                structured_output=mode, cache_dir=str(tmp_path)))
+            paths = AStarPathFinder()
+            engine = PatternIntentImpulseEngine(client, paths, SimulationConfig(route_ordering=ordering, budget_tolerance=None))
+            expected_count = min(2, pattern.max_products)
+            expected_spend = 0 if expected_count == 0 else 300 if expected_count == 1 else 500
+            for repeat in range(2):
+                decision = await engine.decide_actions(context)
+                result = execute_decision(collision_store, "P1", Weekday.MON, "12:00:00", decision, paths, 1)
+                assert result.total_spent == expected_spend and len(result.purchases) == expected_count
+                assert decision.trace["dropped_product_limit"] == 2 - expected_count
+                assert decision.trace["stage1"]["pattern_id"] == chosen
+                assert decision.trace["stage1"]["reasoning"] == "Keep Chosen Behavior"
+                assert result.timeline[-1].action == Action.EXIT
+                assert len(calls) == 3 and client.get_usage().cached_requests == 3 * repeat
+                assert collision_store.model_dump() == before
+            stage2_user = calls[1]["messages"][1]["content"]
+            assert pattern.grammar in stage2_user and f"최대 {pattern.max_products}개" in stage2_user
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("chosen,said", [("Custom", " Custom "), ("custom", " custom "), ("Custom", "Custom"),
+                                         ("custom", "custom"), ("CUSTOM", "CUSTOM"), ("unknown", "unknown"),
+                                         ("", ""), (" Custom ", " Custom ")])
+def test_custom_pattern_collisions_exact_ids_and_unknown_fallback_are_preserved(chosen, said):
+    ids = ["Custom", "custom"] + ([" Custom "] if chosen == " Custom " else [])
+    patterns = [BEHAVIOR_PATTERNS[0].model_copy(update={"id": key}) for key in ids]
+    schema = pattern_selection_model(patterns)
+    assert schema(pattern_id=said).pattern_id == chosen
+
+
+@pytest.mark.parametrize("value", [None, 1, True, [], {}])
+def test_wrong_pattern_id_types_still_fail(value):
+    with pytest.raises(ValidationError):
+        pattern_selection_model(BEHAVIOR_PATTERNS).model_validate_json(json.dumps({"pattern_id": value}), strict=True)

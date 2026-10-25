@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, create_model, fiel
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
-from store_emulator.engine.prompting import format_budget
+from store_emulator.engine.prompting import canonical_identifier, format_budget
 from .prompt_utils import format_cue_prompt
 
 
@@ -31,8 +31,16 @@ class PatternSelectionResponse(BaseModel):
 
 def pattern_selection_model(patterns: list[BehaviorPattern]) -> type[PatternSelectionResponse]:
     """Bind local grammars to the available IDs, retaining fallback for non-enforcing providers."""
-    constraints: dict[str, JsonValue] = {"enum": list(dict.fromkeys(pattern.id for pattern in patterns))}
-    return create_model("PatternSelectionResponse", __base__=PatternSelectionResponse,
+    identifiers = list(dict.fromkeys(pattern.id for pattern in patterns))
+    constraints: dict[str, JsonValue] = {"enum": [key for key in identifiers]}
+
+    class BoundedPatternSelection(PatternSelectionResponse):
+        @field_validator("pattern_id")
+        @classmethod
+        def _known_spelling(cls, value: str) -> str:
+            return canonical_identifier(value, identifiers)
+
+    return create_model("PatternSelectionResponse", __base__=BoundedPatternSelection,
         __config__=ConfigDict(json_schema_extra={"required": ["pattern_id"]}),
         pattern_id=(str, Field(default_factory=str, json_schema_extra=constraints)))
 
@@ -51,7 +59,7 @@ def build_system_prompt(patterns: list[BehaviorPattern]) -> str:
 {catalog_text}
 
 규칙:
-- pattern_id는 반드시 위 목록의 id 중 하나여야 합니다
+- pattern_id는 반드시 위 목록의 id 중 하나여야 하며 대소문자와 구분자를 그대로 복사하세요
 - reasoning에 선택 이유를 한 문장, 600자 이내로 간단히 적으세요
 - 고객의 현재 상태와 모순되는 패턴은 피하세요 (예: 동행=혼자인데 사교둘러보기형)
 - grammar_override: 선택한 패턴의 기본 행동 문법을 이 고객의 상황에 맞게 미세 조정하고 싶을 때만 사용하세요.

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve a model's chosen shopper behavior when a known pattern ID differs
+  only in case or surrounding whitespace. Window shoppers and single-item
+  shoppers no longer silently inherit the first pattern's larger purchase
+  limit. Exact custom IDs and ambiguous/unknown-ID fallback remain unchanged.
+
 - Recover unique case and surrounding-whitespace variants of model-written
   purchase offer codes before route and checkout processing. Planned and
   impulse purchases retain the chosen placement and price. Generated codes
