@@ -6,6 +6,7 @@ import pytest
 from PIL import Image
 
 from store_emulator.domain.capture import ShelfItemLabel
+from store_emulator.domain.product_edits import MAX_PRICE
 from store_emulator.engine.capture.catalog_match import price_minor_units, typical_price
 from store_emulator.engine.capture.detect import Detection
 from store_emulator.engine.capture.frame import make_frame
@@ -20,7 +21,7 @@ from store_emulator.engine.capture.recognize import FacingGroup, describe
 @pytest.mark.parametrize("text", ["", "1,800원", "???"])
 def test_all_accepted_numeric_price_boundaries_are_convertible_or_unreadable(value, currency, typical, text):
     result = price_minor_units(ShelfItemLabel(price=value, price_text=text), currency, typical)
-    assert result is None or isinstance(result, int) and result > 0
+    assert result is None or isinstance(result, int) and 0 < result <= MAX_PRICE
     if text:
         # A readable tag takes precedence over an invalid numeric guess.
         if text == "1,800원":

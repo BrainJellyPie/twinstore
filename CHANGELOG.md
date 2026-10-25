@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Treat model-read shelf prices beyond the safe integer range as unreadable.
+  Existing product prices remain intact, new products use marked estimates,
+  and other products from the same photo are preserved.
+
 - Validate small automatic-assortment choices before caching them. Unknown
   categories/products and duplicate SKUs no longer poison later retries;
   invalid entries from older caches are ignored so the model can answer again.

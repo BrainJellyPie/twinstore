@@ -12,6 +12,7 @@ import unicodedata
 from functools import cache, lru_cache
 
 from store_emulator.domain.capture import ShelfItemLabel
+from store_emulator.domain.product_edits import MAX_PRICE
 from store_emulator.engine.layout_gen.catalog import (
     CATALOG,
     CATEGORY_LABELS,
@@ -285,7 +286,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     if cents and (zero_decimal or major_symbol):
         return None
     scaled = value if zero_decimal or cents else value * 100
-    if not math.isfinite(scaled):
+    if not math.isfinite(scaled) or scaled > MAX_PRICE:
         return None
     literal = round(scaled)
     if cents or major_unit:
@@ -296,7 +297,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
         candidates.add(round(value))          # cents written without the decimal point
     if zero_decimal and has_decimals:
         candidates.add(round(value * 1000))   # "1.8" for ₩1,800
-    candidates = {c for c in candidates if c > 0}
+    candidates = {c for c in candidates if 0 < c <= MAX_PRICE}
     if not candidates:
         return None
     if typical is None or typical <= 0:
