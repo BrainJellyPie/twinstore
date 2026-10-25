@@ -81,6 +81,7 @@ _MODEL_FAILURES: tuple[tuple[tuple[str, ...], str], ...] = (
       "check the connection, or pick another model.")),
     (("max_tokens length limit", "output is incomplete", "finish_reason='length'"),
      "the model's reply was cut off before it finished. Try again, or pick another model."),
+    (("repeated the question",), "the model repeated the question instead of answering. Ask again, or pick a larger model."),
     (("validation error", "instructorretryexception", "jsondecodeerror"),
      "the model's reply was not in the expected form. Try again, or pick another model."),
 )

@@ -2,8 +2,10 @@
 
 import asyncio
 
+import pytest
 from pydantic import BaseModel
 
+from store_emulator.application.errors import model_failure
 from store_emulator.domain.interview import InterviewMessage
 from store_emulator.engine.online.catalog import build_site
 from store_emulator.engine.online.interview import INTERVIEW_PROMPT, ask_shopper, visit_text
@@ -54,3 +56,32 @@ def test_a_visit_brought_back_by_the_reminder_reads_as_the_next_day() -> None:
     lines = visit_text(site, shopper, returned).splitlines()
     marker = lines.index("Next day: a reminder email about your cart brought you back.")
     assert lines[marker + 1].startswith("[2] ")
+
+
+class _Echo:
+    """Gives back the researcher's earlier question the first `echoes` times, then answers."""
+
+    def __init__(self, echoes: int) -> None:
+        self.echoes = echoes
+        self.seeds: list[object] = []
+
+    async def generate_structured_async[T: BaseModel](self, response_model: type[T], system_prompt: str, user_prompt: str,
+                                                      **kwargs: object) -> T:
+        self.seeds.append(kwargs["seed"])
+        answer = "why did you leave" if len(self.seeds) <= self.echoes else "I couldn't find my size."
+        return response_model.model_validate({"answer": answer, "steps": []})
+
+
+def test_an_echoed_question_is_asked_again_and_then_refused() -> None:
+    site, shopper, session = _visit()
+    history = [InterviewMessage(role="interviewer", text="Why did you leave?"),
+               InterviewMessage(role="shopper", text="Too pricey.")]
+    once = _Echo(1)
+    reply = asyncio.run(ask_shopper(once, site, shopper, session, history, "What did you look for?", run_id="r1"))
+    assert reply.answer == "I couldn't find my size." and len(set(once.seeds)) == 2
+    always = _Echo(9)
+    with pytest.raises(ValueError, match="repeated the question"):
+        asyncio.run(ask_shopper(always, site, shopper, session, history, "What did you look for?", run_id="r1"))
+    assert len(always.seeds) == 2
+    assert model_failure(ValueError("the model repeated the question instead of answering"),
+                         "The shopper could not answer").startswith("The shopper could not answer: the model repeated")
