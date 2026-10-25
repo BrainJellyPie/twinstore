@@ -250,6 +250,8 @@ export const onlineKeys = {
   site: (pid: string, siteId: string) => ["projects", pid, "online", "sites", siteId] as const,
   runs: (pid: string) => ["projects", pid, "online", "runs"] as const,
   run: (pid: string, runId: string) => ["projects", pid, "online", "runs", runId] as const,
+  playback: (pid: string, runId: string, variant: number, shopperId: string) =>
+    ["projects", pid, "online", "runs", runId, "playback", variant, shopperId] as const,
   session: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId] as const,
   interview: (pid: string, runId: string, variant: number, shopperId: string) =>
@@ -343,8 +345,16 @@ export function clearShopperInterview(pid: string, runId: string, variant: numbe
   return fetchJson(interviewUrl(pid, runId, variant, shopperId), { method: "DELETE" });
 }
 
-export function stepScreenshotUrl(pid: string, runId: string, variant: number, shopperId: string, step: number): string {
-  return `${BASE}/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/steps/${step}.png`;
+/** `highlight: false` leaves out the circle around what the shopper clicked (the animated playback draws it). */
+export function stepScreenshotUrl(pid: string, runId: string, variant: number, shopperId: string, step: number, highlight = true): string {
+  return `${BASE}/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/steps/${step}.png${highlight ? "" : "?highlight=false"}`;
+}
+
+/** One step of a visit for the animated playback: screenshot size and the box of what the shopper clicked. */
+export interface PlaybackFrame { step: number; width: number; height: number; box: [number, number, number, number] | null }
+
+export function getPlayback(pid: string, runId: string, variant: number, shopperId: string, signal?: AbortSignal): Promise<PlaybackFrame[]> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/playback`, { signal });
 }
 
 /** One shopper's whole visit as an animated GIF to download and share. */

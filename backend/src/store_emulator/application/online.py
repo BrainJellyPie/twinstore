@@ -55,7 +55,7 @@ from store_emulator.engine.online.browser import apply, build_page, initial_stat
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
-from store_emulator.engine.online.render import ProductPicture, animate, render_page, see_as
+from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
 from store_emulator.engine.online.session import run_session
 from store_emulator.engine.online.shoppers import at_rival, sample_shoppers
 from store_emulator.engine.perception.product_images import bundled_product_image
@@ -134,6 +134,15 @@ class SessionView(BaseModel):
     site_name: str
     shopper: OnlineShopper
     session: SessionResult
+
+
+class PlaybackFrame(BaseModel):
+    """One step of a visit for an animated playback: the screenshot's size and the box of what the shopper clicked
+    (none on the page where the visit ended)."""
+    step: int
+    width: int
+    height: int
+    box: tuple[int, int, int, int] | None = None
 
 
 class OnlineInterview(BaseModel):
@@ -702,13 +711,26 @@ def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> Non
         _interview_path(pid, run_id, variant, shopper_id).unlink(missing_ok=True)
 
 
-def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int) -> bytes:
-    """The page as this shopper saw it at this step (drawn again from the run's own copy of the site)."""
+def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int, *, highlight: bool = True) -> bytes:
+    """The page as this shopper saw it at this step (drawn again from the run's own copy of the site), with what they
+    clicked circled unless `highlight` is off (an animated playback draws the click itself)."""
     view = get_session(pid, run_id, variant, shopper_id)
     found = next((s for s in view.session.steps if s.index == step), None)
     if found is None:
         raise AppError("No such step in this session", 404)
-    return _seen(_stores(pid, run_id)[variant], view.shopper, found, _picture(pid))
+    site = _stores(pid, run_id)[variant]
+    return _seen(site, view.shopper, found, _picture(pid)) if highlight else _shot(site, view.shopper, found, _picture(pid))[0].png
+
+
+def playback(pid: str, run_id: str, variant: int, shopper_id: str) -> list[PlaybackFrame]:
+    """Where each click of a visit landed on its screenshot, for an animated playback of the visit."""
+    view = get_session(pid, run_id, variant, shopper_id)
+    site, picture = _stores(pid, run_id)[variant], _picture(pid)
+    frames: list[PlaybackFrame] = []
+    for step in view.session.steps:
+        shot, box = _shot(site, view.shopper, step, picture)
+        frames.append(PlaybackFrame(step=step.index, width=shot.width, height=shot.height, box=box))
+    return frames
 
 
 def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> bytes:
@@ -725,12 +747,18 @@ def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> bytes:
     return animate(frames)
 
 
-def _seen(site: OnlineSite, shopper: OnlineShopper, found: SessionStep, picture: ProductPicture) -> bytes:
+def _shot(site: OnlineSite, shopper: OnlineShopper, found: SessionStep,
+          picture: ProductPicture) -> tuple[Screenshot, tuple[int, int, int, int] | None]:
+    """The step's screenshot through the shopper's eyes, and the box of the option they chose."""
     page = build_page(site, found.state)
     numbers = numbering(page, found.mark_seed)
     shot = see_as(render_page(page, site, numbers, picture), shopper.vision, large_text=page.large_text)
     chosen = next((i for i, n in numbers.items() if found.choice is not None and n == found.choice.number), None)
-    box = shot.boxes.get(chosen) if chosen is not None else None
+    return shot, shot.boxes.get(chosen) if chosen is not None else None
+
+
+def _seen(site: OnlineSite, shopper: OnlineShopper, found: SessionStep, picture: ProductPicture) -> bytes:
+    shot, box = _shot(site, shopper, found, picture)
     if box is None:
         return shot.png
     with Image.open(io.BytesIO(shot.png)) as source:

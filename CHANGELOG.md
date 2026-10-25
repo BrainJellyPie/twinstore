@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Play back any online shopper's visit as an animation, from arrival to the end
+  of the visit. Pick a shopper and store under "Watch a shopper's visit" (or
+  the play button on a row, or "Play the visit" in a replay): each page loads
+  as they saw it, the window scrolls to what they chose, the cursor moves there
+  and clicks, and the action and their thought appear, ending on how the visit
+  ended (and where a lost shopper went next). Pause, restart, 0.5–2× speed and
+  jumping to any step; reduced-motion settings skip the movement. The
+  `playback` endpoint gives each step's click box and screenshots can be drawn
+  without the highlight.
 - Download any online shopper's visit as an animated GIF from its replay: every
   page as the shopper saw it (through their eyesight) with the click circled, a
   caption of what they did and their thought, ready to share.
