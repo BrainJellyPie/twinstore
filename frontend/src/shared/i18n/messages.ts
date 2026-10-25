@@ -48,6 +48,8 @@ export const messages = {
   shelfCapture: ["Shelf capture", "선반 촬영", "货架识别", "棚の撮影", "Captura de estantes", "Capture des rayons"],
   marketingStudio: ["Marketing studio", "마케팅 스튜디오", "营销工作室", "マーケティングスタジオ", "Estudio de marketing", "Studio marketing"],
   onlineStores: ["Online stores", "온라인 스토어", "线上商店", "オンラインストア", "Tiendas online", "Boutiques en ligne"],
+  homeOnlineHint: ["Web shops of {store}: build one, browse it and test it with virtual shoppers", "{store}의 웹 쇼핑몰: 만들고 둘러보고 가상 고객으로 테스트하세요", "{store} 的网店：创建、浏览并用虚拟顾客测试", "{store} のネットショップ：作って、見て回り、仮想顧客でテストします", "Tiendas web de {store}: créalas, recórrelas y pruébalas con compradores virtuales", "Boutiques web de {store} : créez-les, parcourez-les et testez-les avec des acheteurs virtuels"],
+  homeOnlineNoStore: ["Online stores belong to a store: create one first", "온라인 스토어는 매장에 속합니다. 먼저 매장을 만드세요", "线上商店隶属于门店：请先创建一个门店", "オンラインストアは店舗に属します。まず店舗を作成してください", "Las tiendas online pertenecen a una tienda: crea una primero", "Les boutiques en ligne appartiennent à un magasin : créez-en d’abord un"],
   home: ["TwinStore home", "TwinStore 홈", "TwinStore 主页", "TwinStore ホーム", "Inicio de TwinStore", "Accueil TwinStore"],
   searchCommands: ["Search and jump (command palette)", "검색 및 이동 (명령 팔레트)", "搜索与跳转（命令面板）", "検索と移動（コマンドパレット）", "Buscar y navegar (paleta de comandos)", "Rechercher et naviguer (palette de commandes)"],
   commandAsk: ["Ask TwinStore", "TwinStore에 요청", "让 TwinStore 处理", "TwinStore に頼む", "Pedir a TwinStore", "Demander à TwinStore"],

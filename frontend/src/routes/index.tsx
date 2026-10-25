@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Aperture, ArrowRight, CloudSun, Eye, KeyRound, Megaphone, MessagesSquare, Sparkles, Wand2 } from "lucide-react";
+import { Aperture, ArrowRight, CloudSun, Eye, Globe2, KeyRound, Megaphone, MessagesSquare, Sparkles, Wand2 } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
 
@@ -21,6 +21,7 @@ const CAPABILITIES = [
   { icon: Eye, label: "visionShoppers" },
   { icon: CloudSun, label: "situations" },
   { icon: Megaphone, label: "marketingStudio" },
+  { icon: Globe2, label: "onlineStores" },
   { icon: MessagesSquare, label: "interviews" },
   { icon: Aperture, label: "photoMode" },
   { icon: Wand2, label: "layoutOptimizer" },
@@ -40,6 +41,9 @@ function HomePage() {
   const navigate = useNavigate();
   const { data: projects, isLoading, isFetching, error, refetch } = useProjects();
   const newStore = () => navigate({ to: "/projects/new" });
+  // Online stores belong to a store: open the most recently changed one's, or start a store first.
+  const latest = projects?.length ? projects.reduce((a, b) => (b.updated_at > a.updated_at ? b : a)) : null;
+  const openOnline = () => (latest ? navigate({ to: "/online/$pid", params: { pid: latest.project_id } }) : newStore());
   const templates = useQuery({ queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity });
   const scenarios = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios({}, signal), staleTime: Infinity });
   const counted = (label: typeof CAPABILITIES[number]["label"]) =>
@@ -52,7 +56,7 @@ function HomePage() {
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 pt-12 pb-14 lg:grid-cols-[1.1fr_1fr] lg:pt-14">
           <div className="max-w-[44rem]">
             <div className="glass inline-flex animate-rise items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium">
-              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.4</span>
+              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.5</span>
               <Sparkles className="size-3.5 text-heat-2" aria-hidden />
               {t("heroBadge")}
             </div>
@@ -69,6 +73,12 @@ function HomePage() {
               <Button size="lg" className="h-12 gap-2 rounded-2xl px-6 text-base" onClick={newStore}>
                 {t("newStore")}
                 <ArrowRight className="size-4 transition-transform group-hover/button:translate-x-0.5" aria-hidden />
+              </Button>
+              <Button size="lg" variant="outline" className="h-12 gap-2 rounded-2xl px-5 text-base" onClick={openOnline}
+                disabled={isLoading || (!latest && !!error)}
+                title={latest ? t("homeOnlineHint", { store: latest.name }) : t("homeOnlineNoStore")}>
+                <Globe2 className="size-4" aria-hidden />
+                {t("onlineStores")}
               </Button>
               <Button size="lg" variant="outline" className="h-12 gap-2 rounded-2xl px-5 text-base" onClick={() => navigate({ to: "/settings" })}>
                 <KeyRound className="size-4" aria-hidden />

@@ -5,6 +5,14 @@
 - Validate automatically drafted event hours before caching: empty or reversed
   windows now request correction instead of silently increasing traffic until midnight.
 
+- Reach online stores from the home screen: an **Online stores** button next to
+  **New store** opens the most recently changed store's web shops (or the new
+  store form when there is none), every store card has an **Online** link, and
+  online stores join the capability list. The home badge reads v0.5.
+- Export a rival shop's visits in the clickstream CSV with the traffic source
+  they actually had (a search engine) instead of the one each shopper came to
+  the compared stores from.
+
 - Preserve explicit free prices in automatically drafted shelf and A/B tests,
   including price-only offers, while still rejecting positive prices that round to zero.
 

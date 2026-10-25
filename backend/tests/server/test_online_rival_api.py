@@ -1,5 +1,7 @@
 """A run with a rival shop: the visits of shoppers who leave without buying, and what each store lost to it."""
 
+import csv
+import io
 import time
 
 import pytest
@@ -81,8 +83,9 @@ def test_shoppers_who_leave_try_the_rival_once_and_each_store_sees_what_it_lost(
     shot = client.get(f"{runs}/{status['run_id']}/sessions/2/{some}/steps/0.png")
     assert shot.status_code == 200 and shot.headers["content-type"] == "image/png"
     assert client.get(f"{runs}/{status['run_id']}/sessions/3/{some}").status_code == 404
-    csv_rows = client.get(f"{runs}/{status['run_id']}/clickstream.csv").text.splitlines()[1:]
-    assert any(row.startswith(f"2,{rival['name']},") for row in csv_rows)
+    csv_rows = list(csv.DictReader(io.StringIO(client.get(f"{runs}/{status['run_id']}/clickstream.csv").text.lstrip("\ufeff"))))
+    at_rival_rows = [row for row in csv_rows if row["variant"] == "2"]
+    assert at_rival_rows and all(row["site"] == rival["name"] and row["arrival"] == "search_engine" for row in at_rival_rows)
 
 
 def test_a_rival_must_use_the_same_currency(client: TestClient) -> None:
