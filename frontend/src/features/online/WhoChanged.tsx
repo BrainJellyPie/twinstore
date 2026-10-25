@@ -29,7 +29,8 @@ export function WhoChanged({ result, money, onReplay }: {
   const signedMoney = (x: number) => `${x >= 0 ? "+" : "−"}${money(Math.abs(x))}`;
   const ending = (outcome: SwitchRow["control_outcome"], total: number, page: SwitchRow["control_exit"]) =>
     `${t(OUTCOME_LABELS[outcome])}${total ? ` · ${money(total)}` : ""} · ${t(PAGE_LABELS[page])}`;
-  if (result.comparisons.length === 0) return null;
+  // Older saved reports have default zero counts but no measured segment analysis.
+  if (result.comparisons.every((comparison) => comparison.segments.length === 0)) return null;
   return (
     <section className="panel space-y-3 rounded-[1.4rem] p-4">
       <div>

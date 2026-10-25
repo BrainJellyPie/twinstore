@@ -13,6 +13,11 @@
   points at the steps it means and keeps the conversation per store and shopper.
   Suggested first questions follow how the visit ended; a cited step opens that
   page of the replay.
+- Count sponsored listing tiles within the first page's product limit so large
+  text and cookie controls remain visible. Continue later pages without skipping
+  or repeating organic results.
+- Omit new shopper-switch claims from older saved reports that have no segment
+  analysis, instead of presenting their compatibility defaults as measured zeros.
 - Show who an online change won and lost. Each comparison breaks the paired
   conversion difference down by mission, device, age, gender and eyesight with
   95 % intervals and revenue per visit, counts orders won and lost, and lists the
