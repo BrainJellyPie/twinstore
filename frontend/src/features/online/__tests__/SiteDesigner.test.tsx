@@ -330,3 +330,19 @@ it("sends a design request routed from the command palette once the designer ope
   expect(vi.mocked(online.designChat).mock.calls[0]![2].messages).toEqual([{ role: "owner", text: "Make the web shop playful for kids" }]);
   expect(useAssistStore.getState().pending).toBeNull();
 });
+
+it("keeps the design conversation when the store is saved", async () => {
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  vi.mocked(online.designChat).mockResolvedValue({
+    reply: "Minimal it is.", model: "fake", options: { ...source.options, page_style: "minimal" }, changed: ["page_style"],
+  });
+  const saved = { ...source, options: { ...source.options, page_style: "minimal" as const }, updated_at: "after" };
+  vi.mocked(online.saveSite).mockResolvedValue(saved);
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Make it feel premium/ }));
+  expect(await screen.findByText("Minimal it is.")).toBeTruthy();
+  vi.mocked(online.getSite).mockResolvedValue(saved);
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(screen.getByRole("radio", { name: /Minimal/ }).textContent).toContain("In use"));
+  expect(screen.getByText("Minimal it is.")).toBeTruthy();
+});

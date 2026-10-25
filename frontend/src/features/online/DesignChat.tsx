@@ -28,10 +28,12 @@ const OPTION_LABELS: Partial<Record<keyof SiteOptions, MessageKey>> = {
 };
 const IDEAS: MessageKey[] = ["onAiIdeaPremium", "onAiIdeaKids", "onAiIdeaCalm", "onAiIdeaCheckout", "onAiIdeaNeon"];
 
-interface Turn extends DesignMessage { before?: SiteOptions; undone?: boolean }
+export interface Turn extends DesignMessage { before?: SiteOptions; undone?: boolean }
 
-export function DesignChat({ projectId, site, options, onOptions, onTest, testing, testError }: {
+export function DesignChat({ projectId, site, options, onOptions, turns, onTurns, onTest, testing, testError }: {
   projectId: string; site: OnlineSite; options: SiteOptions; onOptions: (options: SiteOptions) => void;
+  /** The conversation, kept by the page so saving the store does not end it. */
+  turns: Turn[]; onTurns: (update: (turns: Turn[]) => Turn[]) => void;
   /** Save the draft as a variant and open a comparison run with the store. */
   onTest: (note: string) => void; testing: boolean; testError: string;
 }) {
@@ -39,7 +41,6 @@ export function DesignChat({ projectId, site, options, onOptions, onTest, testin
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
   const [model, setModel] = useState("");
   const [text, setText] = useState("");
-  const [turns, setTurns] = useState<Turn[]>([]);
   const [view, setView] = useState<"after" | "before">("after");
   const [device, setDevice] = useState<Device>("desktop");
   const end = useRef<HTMLDivElement>(null);
@@ -51,7 +52,7 @@ export function DesignChat({ projectId, site, options, onOptions, onTest, testin
     }),
     onMutate: () => setText(""),
     onSuccess: (reply, owner) => {
-      setTurns((all) => [...all, { role: "owner", text: owner },
+      onTurns((all) => [...all, { role: "owner", text: owner },
         { role: "designer", text: reply.reply, changed: reply.changed, before: reply.changed.length ? options : undefined }]);
       if (reply.changed.length) { onOptions(reply.options); setView("after"); }
     },
@@ -81,7 +82,7 @@ export function DesignChat({ projectId, site, options, onOptions, onTest, testin
     const turn = turns[index];
     if (!turn?.before) return;
     onOptions(turn.before);
-    setTurns((all) => all.map((x, i) => (i >= index && x.before ? { ...x, undone: true } : x)));
+    onTurns((all) => all.map((x, i) => (i >= index && x.before ? { ...x, undone: true } : x)));
   };
   const lastOwner = [...turns].reverse().find((x) => x.role === "owner")?.text ?? "";
   const src = edited && view === "after" ? preview.data : sitePreviewUrl(projectId, site.id, device, site.updated_at);
@@ -149,7 +150,7 @@ export function DesignChat({ projectId, site, options, onOptions, onTest, testin
             {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
           </select>
           {turns.length > 0 && (
-            <button type="button" onClick={() => setTurns([])} className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={() => onTurns(() => [])} className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
               <RotateCcw className="size-3" aria-hidden /> {t("onAiNewChat")}
             </button>
           )}

@@ -17,7 +17,7 @@ import { majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { searchText } from "@/shared/utils/searchText";
 
 import { AdsEditor } from "./AdsEditor";
-import { DesignChat } from "./DesignChat";
+import { DesignChat, type Turn } from "./DesignChat";
 import { PAYMENT_LABELS, SECTION_LABELS, SORT_LABELS } from "./labels";
 import { StylePicker } from "./StylePicker";
 
@@ -30,14 +30,16 @@ export function SiteDesigner({ projectId, siteId, onCopied, onDeleted, onTest }:
 }) {
   const { t } = useI18n();
   const site = useQuery({ queryKey: onlineKeys.site(projectId, siteId), queryFn: ({ signal }) => getSite(projectId, siteId, signal) });
+  const [turns, setTurns] = useState<Turn[]>([]);
   if (site.isPending) return <div className="panel rounded-[1.6rem] p-4 text-sm text-muted-foreground">{t("studioLoading")}</div>;
   if (site.isError) return <div role="alert" className="panel rounded-[1.6rem] p-4 text-sm text-destructive">{site.error.message}</div>;
   return <Designer key={site.data.updated_at} projectId={projectId} site={site.data} onCopied={onCopied} onDeleted={onDeleted}
-    onTest={onTest ?? onCopied} />;
+    onTest={onTest ?? onCopied} turns={turns} onTurns={setTurns} />;
 }
 
-function Designer({ projectId, site, onCopied, onDeleted, onTest }: {
+function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns }: {
   projectId: string; site: OnlineSite; onCopied: (siteId: string) => void; onDeleted: () => void; onTest: (variantId: string) => void;
+  turns: Turn[]; onTurns: (update: (turns: Turn[]) => Turn[]) => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -115,7 +117,7 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest }: {
   return (
     <fieldset disabled={writing} className="grid min-w-0 gap-3 xl:grid-cols-2">
       <Card title={t("onAiTitle")} hint={t("onAiHint")} className="ring-aurora xl:col-span-2">
-        <DesignChat projectId={projectId} site={site} options={options} onOptions={setOptions}
+        <DesignChat projectId={projectId} site={site} options={options} onOptions={setOptions} turns={turns} onTurns={onTurns}
           onTest={(asked) => test.mutate(asked)} testing={test.isPending} testError={test.error?.message ?? ""} />
       </Card>
 
