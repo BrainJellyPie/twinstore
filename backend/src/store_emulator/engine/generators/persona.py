@@ -483,7 +483,7 @@ async def generate_personas_for_day(
         cat_list = "\n".join(f"  - {c}" for c in categories)
         category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
 
-    async def _generate_batch(chunk: list[tuple[int, str]], start: int, *, recover: bool = True) -> list[tuple[GeneratedPersona, int]]:
+    async def _generate_batch(chunk: list[tuple[int, str]], start: int, *, recover_context: bool = True) -> list[tuple[GeneratedPersona, int]]:
         persona_input = (
             f"매장 위치: {address}\n요일: {day_label}\n\n"
             # Identical hourly specs still represent different people. Include
@@ -516,13 +516,17 @@ async def generate_personas_for_day(
         except (IncompleteOutputException, InstructorRetryException, BadRequestError) as error:
             cause = (error.failed_attempts[-1].exception
                      if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
-            if not recover or len(chunk) < 2 or not (isinstance(cause, IncompleteOutputException) or is_context_overflow(cause)):
+            if len(chunk) < 2 or not (isinstance(cause, IncompleteOutputException)
+                                     or (recover_context and is_context_overflow(cause))):
                 raise
-            logger.info("[persona] %s: splitting an oversized or truncated %s-customer request once", day_label, len(chunk))
+            logger.info("[persona] %s: splitting an oversized or truncated %s-customer request", day_label, len(chunk))
             middle = len(chunk) // 2
             # Release the shared request slot before either child acquires it.
-            first = await _generate_batch(chunk[:middle], start, recover=False)
-            second = await _generate_batch(chunk[middle:], start + middle, recover=False)
+            # Output truncation can shrink down to one customer (at most 2*n-1
+            # tasks for n <= 12). A shared oversized input prefix gets one split.
+            # Only return the original batch once every child succeeds.
+            first = await _generate_batch(chunk[:middle], start, recover_context=False)
+            second = await _generate_batch(chunk[middle:], start + middle, recover_context=False)
             return first + second
         # Preserve each child's original hours even when a small model returns fewer customers.
         return [(generated, hour) for generated, (hour, _) in zip(batch.personas, chunk)]
