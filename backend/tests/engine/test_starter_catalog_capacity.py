@@ -38,7 +38,7 @@ def test_requested_maximum_is_achievable_without_repeating_products(monkeypatch,
             values = [catalog[i % len(catalog)]["sku"] for i in range(maximum)]
             definition = schema.model_json_schema()
             if issubclass(schema, ProductSelection):
-                assert definition["properties"]["groups"]["items"]["anyOf"][0]["properties"]["skus"]["maxItems"] == maximum
+                assert definition["properties"]["selections"]["properties"][category]["maxItems"] == maximum
                 return schema(groups=[{"category": category, "skus": values}])
             assert definition["properties"]["choices"]["maxItems"] == maximum
             return schema(choices=values)

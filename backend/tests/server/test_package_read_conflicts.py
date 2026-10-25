@@ -33,7 +33,10 @@ def reader(monkeypatch, *, action=lambda: None, shelf_product=''):
     class Fake:
         async def generate_structured_with_image_async(self, response_model, *args, **kwargs):
             action()
-            return response_model.model_validate({'name': 'Read tea', 'brand': 'Read brand', 'shelf_product': shelf_product})
+            return response_model.model_validate({'printed_text': 'Read brand Read tea ' + shelf_product, 'name': 'Read tea', 'brand': 'Read brand'})
+
+        async def generate_structured_async(self, response_model, *args, **kwargs):
+            return response_model.model_validate({'shelf_product': shelf_product})
     monkeypatch.setattr(shelf_lab, 'LiteLLMClient', lambda config: Fake())
 
 
@@ -122,7 +125,7 @@ def test_an_older_read_cannot_replace_a_newer_read(pack, monkeypatch):
             if ordinal == 1:
                 started.set()
                 assert await asyncio.to_thread(release.wait, 10)
-            return response_model.model_validate({'name': 'Older reading' if ordinal == 1 else 'Newer reading'})
+            return response_model.model_validate({'printed_text': '', 'name': 'Older reading' if ordinal == 1 else 'Newer reading'})
     monkeypatch.setattr(shelf_lab, 'LiteLLMClient', lambda config: Fake())
     with ThreadPoolExecutor(max_workers=1) as pool:
         old = pool.submit(shelf_lab.read_package, pid, aid, config=config)

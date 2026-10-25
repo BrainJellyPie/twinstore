@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 — Online stores you can see, style and design by asking
+
 - Ask for a web shop change from the command bar: a request such as "make the
   web shop look premium" now opens the online store's designer, where **Design
   with AI** takes it as its first message.
@@ -22,7 +24,17 @@
   two. Online store links can now open a store and a comparison directly. A
   price test's best price can be tried online the same way.
 
-## 0.6.0 — Online stores you can see, style and design by asking
+- Read package labels before showing the model any catalog candidates. Small local
+  vision models no longer copy candidate names into their image observations;
+  unsupported brand/size guesses and product links are discarded. Match only names
+  supported by the transcribed label, preserve ambiguous-prefix protection, and
+  guide confidence output as a 0–1 fraction. Add real CPU vision probe cases for
+  readable labels, unlabelled packages, blank images and wrong product variants.
+
+- Ask local models for one category per rack key and one product list per category
+  key. Fixed-key JSON schemas avoid duplicate groups and reordered positional
+  recovery in automatic starter filling; existing validation and cache records
+  still use canonical rack IDs and catalog SKUs.
 
 - Design an online store by talking to a model: **Design with AI** at the top
   of the designer takes requests such as "make it feel premium" or "remove the

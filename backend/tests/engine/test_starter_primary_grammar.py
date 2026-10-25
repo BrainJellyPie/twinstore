@@ -35,20 +35,18 @@ def test_first_http_request_constrains_exact_ids_and_reuses_successful_cache(mon
         schema = response_schema["schema"]
         context = json.loads(body["messages"][-1]["content"])
         if response_schema["name"] == "CategorySelection":
-            group = schema["$defs"][schema["properties"]["groups"]["items"]["$ref"].rsplit("/", 1)[1]]
-            fields = group["properties"]
+            assignments = schema["properties"]["assignments"]
+            fields = assignments["properties"]
             # Assert the actual OpenAI wire contract, not just the prompt or Pydantic class.
-            assert set(fields["category"].get("enum", [])) == allowed
-            assert set(fields["rack_ids"]["items"].get("enum", [])) == set(ids)
-            assert "section_999" not in fields["rack_ids"]["items"]["enum"]
-            assert "occupied" not in fields["rack_ids"]["items"]["enum"]
-            assert schema["properties"]["groups"]["maxItems"] == min(16, len(ids), len(allowed))
+            assert all(set(field["enum"]) == allowed for field in fields.values())
+            assert set(fields) == set(assignments["required"]) == set(ids)
+            assert assignments["additionalProperties"] is False
+            assert "section_999" not in fields and "occupied" not in fields
             assert context["maximum_categories"] == min(16, len(ids), len(allowed))
-            answer = {"groups": [{"category": sorted(allowed)[0], "rack_ids": ids}]}
+            answer = {"assignments": {rid: sorted(allowed)[0] for rid in ids}}
         else:
             assert response_schema["name"] == "ProductSelection"
-            answer = {"groups": [{"category": key, "skus": [products[0]["sku"]]}
-                                  for key, products in context["categories"].items()]}
+            answer = {"selections": {key: [products[0]["sku"]] for key, products in context["categories"].items()}}
         return httpx.Response(200, request=request, json={
             "id": "offline", "object": "chat.completion", "created": 0, "model": "local",
             "choices": [{"index": 0, "finish_reason": "stop",
@@ -88,22 +86,19 @@ def test_concurrent_requests_keep_their_own_identifier_grammars():
             await asyncio.sleep(0)
             if "racks" in context:
                 contract = schema.model_json_schema()
-                group = contract["$defs"][contract["properties"]["groups"]["items"]["$ref"].rsplit("/", 1)[1]]
+                fields = contract["properties"]["assignments"]["properties"]
                 ids = context["expected_rack_ids"]
                 keys = [row["id"] for row in context["categories"]]
-                assert set(group["properties"]["category"].get("enum", [])) == set(keys)
-                assert set(group["properties"]["rack_ids"]["items"].get("enum", [])) == set(ids)
-                return schema.model_validate({"groups": [{"category": keys[0], "rack_ids": ids}]})
-            fields = schema.model_json_schema()["properties"]["groups"]
-            assert fields["minItems"] == fields["maxItems"] == len(context["categories"])
-            alternatives = fields["items"]["anyOf"]
-            assert {group["properties"]["category"]["const"] for group in alternatives} == set(context["categories"])
-            for group in alternatives:
-                key = group["properties"]["category"]["const"]
-                assert group["properties"]["skus"]["items"]["enum"] == [p["sku"] for p in context["categories"][key]]
-                assert group["properties"]["skus"]["maxItems"] == context["maximum_products_per_category"][key]
-            return schema.model_validate({"groups": [{"category": key, "skus": [products[0]["sku"]]}
-                                                     for key, products in context["categories"].items()]})
+                assert all(set(field["enum"]) == set(keys) for field in fields.values())
+                assert set(fields) == set(ids)
+                return schema.model_validate({"assignments": {rid: keys[0] for rid in ids}})
+            fields = schema.model_json_schema()["properties"]["selections"]
+            assert set(fields["required"]) == set(fields["properties"]) == set(context["categories"])
+            for key, field in fields["properties"].items():
+                assert field["items"]["enum"] == [p["sku"] for p in context["categories"][key]]
+                assert field["maxItems"] == context["maximum_products_per_category"][key]
+            return schema.model_validate({"selections": {key: [products[0]["sku"]]
+                                                        for key, products in context["categories"].items()}})
 
     async def exercise():
         return await asyncio.gather(*[

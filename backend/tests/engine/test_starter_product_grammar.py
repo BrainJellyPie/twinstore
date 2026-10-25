@@ -36,29 +36,29 @@ def test_primary_http_product_grammar_rejects_wrong_catalog_choices_before_gener
         response = body["response_format"]["json_schema"]
         payload = json.loads(body["messages"][-1]["content"])
         if response["name"] == "CategorySelection":
-            answer = {"groups": [{"category": key, "rack_ids": [rack.id]} for key, rack in zip(keys, racks)]}
+            answer = {"assignments": {rack.id: key for key, rack in zip(keys, racks)}}
         else:
             assert response["name"] == "ProductSelection"
             schema = response["schema"]
             Draft202012Validator.check_schema(schema)
             validator = Draft202012Validator(schema)
             choices = {key: [p["sku"] for p in payload["categories"][key]] for key in keys}
-            answer = {"groups": [{"category": key, "skus": choices[key][:1]} for key in keys]}
+            answer = {"selections": {key: choices[key][:1] for key in keys}}
             assert validator.is_valid(answer)
             for index, key in enumerate(keys):
                 other = keys[1 - index]
                 wrong = json.loads(json.dumps(answer))
-                wrong["groups"][index]["skus"] = [choices[other][0]]
+                wrong["selections"][key] = [choices[other][0]]
                 assert not validator.is_valid(wrong), "Cross-category SKUs must be impossible in the grammar"
-                wrong["groups"][index]["skus"] = ["invented-sku"]
+                wrong["selections"][key] = ["invented-sku"]
                 assert not validator.is_valid(wrong)
-                wrong["groups"][index] = {"category": "invented-category", "skus": choices[key][:1]}
+                wrong["selections"]["invented-category"] = wrong["selections"].pop(key)
                 assert not validator.is_valid(wrong)
                 maximum = min(16, limits[key], capacities[index])
-                wrong["groups"][index] = {"category": key, "skus": [choices[key][0]] * (maximum + 1)}
+                wrong["selections"][key] = [choices[key][0]] * (maximum + 1)
                 assert not validator.is_valid(wrong), "Respect the actual per-category shelf capacity"
-            assert not validator.is_valid({"groups": answer["groups"][:1]})
-            assert not validator.is_valid({"groups": answer["groups"] * 2})
+            assert not validator.is_valid({"selections": {keys[0]: choices[keys[0]][:1]}})
+            assert not validator.is_valid({"selections": {**answer["selections"], "extra": choices[keys[0]][:1]}})
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
                 "message": {"role": "assistant", "content": json.dumps(answer)}}]})

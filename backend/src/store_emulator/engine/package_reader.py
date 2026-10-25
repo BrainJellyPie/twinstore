@@ -1,11 +1,14 @@
 """A product image read by a vision model: the name, brand and size printed on the pack, and which product of the
 layout it shows. Replaces names guessed from file names ("IMG_2041") with what the pack actually says."""
 
+import json
+import re
+import unicodedata
 from collections.abc import Sequence
 from typing import Protocol
 
 from PIL import Image
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from store_emulator.engine.capture.detect import image_data_url
 
@@ -13,6 +16,11 @@ MAX_LISTED = 150
 
 
 class VisionLLM(Protocol):
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str,
+        *, max_retries: int = 1, seed: int | None = None,
+    ) -> T: ...
+
     async def generate_structured_with_image_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str,
         *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
@@ -33,31 +41,83 @@ class PackReading(BaseModel):
         return "" if value is None else value
 
 
-class _PackResponse(PackReading):
-    shelf_product: str = Field(default="", max_length=120, description="the listed store product, or its first 120 characters, or ''")
+class _PackResponse(BaseModel):
+    # Require complete generated observations, while retaining safe defaults for
+    # providers that omit unknown optional metadata instead of using empty text.
+    model_config = ConfigDict(json_schema_extra={"required": ["printed_text", "name", "brand", "size", "category", "confidence"]})
+    printed_text: str = Field(max_length=400, description="Only letters and numbers visibly printed on the image, or ''")
+    name: str = Field(default="", max_length=80)
+    brand: str = Field(default="", max_length=40)
+    size: str = Field(default="", max_length=30)
+    category: str = Field(default="", max_length=40)
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0,
+        description="Confidence as a fraction, never a percentage", json_schema_extra={"enum": [0, 0.25, 0.5, 0.75, 1]})
 
-PACK_PROMPT = """You read product packaging. From the image, give the product's name as a shopper would say it
-(brand-free, with flavour or variant and size), its brand, the net size as printed and a short category. If the store's
-product list below has this exact product (same brand, variant and size), copy its name into shelf_product; otherwise
-leave shelf_product empty. For any unreadable or unknown text field, use an empty string instead of null.
+    @field_validator("printed_text", "name", "brand", "size", "category", mode="before")
+    @classmethod
+    def _unknown_print(cls, value: object) -> object:
+        return "" if value is None else value
+
+PACK_PROMPT = """Read only the product image. First transcribe printed_text: letters and numbers visibly printed
+on the package. If there is no readable writing, printed_text must be "". Never invent or estimate label text.
+Then give name (brand-free product type, flavour and any visible size), brand (the printed brand, not the product
+type), size (net size as printed) and category. Do not estimate size from the package's appearance.
+If printed_text is empty, brand and size must be empty. The name can describe the visible product type.
+Include printed_text, name, brand, size, category and confidence. Unknown text must be "", not null.
+There is no store catalog in this observation step.
+Confidence is a fraction: choose 0, 0.25, 0.5, 0.75 or 1. Never use 100 or another percentage."""
+
+MATCH_PROMPT = """Match the observed package to at most one listed store product. The observation is evidence;
+the candidate list is not evidence of what was printed. Only match the same brand, variant and size when the
+observation supports them. Do not invent missing package details. Return {"shelf_product": ""} if no exact match
+is supported or multiple products remain possible. Otherwise copy the listed name into shelf_product.
 For a product name longer than 120 characters, copy its first 120 characters only when that prefix identifies one
-listed product. If several names share that prefix, leave shelf_product empty instead of guessing.
-Do not guess text you cannot read; say how sure you are in confidence."""
+listed product. If several names share that prefix, leave shelf_product empty instead of guessing."""
 
 
 async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str]) -> PackReading:
     url, _ = image_data_url(image.convert("RGB"), max_side=768, fmt="JPEG")
-    listed = "; ".join(list(dict.fromkeys(products))[:MAX_LISTED]) or "none given"
     reading = await llm.generate_structured_with_image_async(
-        _PackResponse, PACK_PROMPT, f"Store products: {listed}", url, max_retries=2, seed=0,
+        _PackResponse, PACK_PROMPT, "Transcribe only the package in this image.", url, max_retries=2, seed=0,
     )
+    # Tiny VLMs copy candidate names into their supposed OCR. Keep the catalog
+    # out of image observation entirely; require supporting transcribed words for links.
+    target = ""
+    def printed_words(value: str) -> str:
+        # Keep word boundaries, but allow capitalization, punctuation and 500ml/500 ml.
+        return " ".join(re.findall(r"[^\W\d_]+|\d+(?:[.,]\d+)?", unicodedata.normalize("NFKC", value).casefold()))
+
+    observed = printed_words(reading.printed_text)
+    brand_words, size_words = printed_words(reading.brand), printed_words(reading.size)
+    if not brand_words or f" {brand_words} " not in f" {observed} ":
+        reading.brand = ""
+    if not size_words or f" {size_words} " not in f" {observed} ":
+        reading.size = ""
+    listed = [name for name in list(dict.fromkeys(products))[:MAX_LISTED]
+              if (words := printed_words(name.strip()[:120])) and f" {words} " in f" {observed} "]
+    if listed:
+        names: list[JsonValue] = ["", *dict.fromkeys(name.strip()[:120] for name in listed)]
+
+        class PackMatch(BaseModel):
+            shelf_product: str = Field(default="", max_length=120, json_schema_extra={"enum": names})
+
+            @field_validator("shelf_product", mode="before")
+            @classmethod
+            def unknown_match(cls, value: object) -> object:
+                return "" if value is None else value
+
+        matched = await llm.generate_structured_async(PackMatch, MATCH_PROMPT,
+            json.dumps({"observation": reading.model_dump(), "store_products": listed},
+                       ensure_ascii=False), max_retries=2, seed=0)
+        target = matched.shelf_product
     known = {p.strip().casefold(): p for p in products if p.strip()}
-    key = reading.shelf_product.strip().casefold()
-    if len(reading.shelf_product) == 120:
+    supported = {p.strip().casefold() for p in listed}
+    key = target.strip().casefold()
+    if len(target) == 120:
         matches = [name for name in known if name.startswith(key)]
-        shelf = known[matches[0]] if key and len(matches) == 1 else ""
+        shelf = known[matches[0]] if key and len(matches) == 1 and matches[0] in supported else ""
     else:
-        shelf = known.get(key, "")
+        shelf = known.get(key, "") if key in supported else ""
     return PackReading.model_validate({**reading.model_dump(),
         "name": reading.name.strip(), "brand": reading.brand.strip(), "size": reading.size.strip(),
         "category": reading.category.strip(), "shelf_product": shelf,

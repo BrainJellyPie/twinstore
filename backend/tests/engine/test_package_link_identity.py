@@ -62,7 +62,8 @@ def test_package_link_requires_a_nonblank_unique_normalized_name(pack, monkeypat
     def respond(request):
         body = json.loads(request.content)
         calls.append(body)
-        payload = {"name": "Read tea", "brand": "Read brand", "confidence": .9}
+        payload = {"printed_text": "Read brand Read tea Green Tea 500 ml " + (target or ""),
+                   "name": "Read tea", "brand": "Read brand", "confidence": .9}
         if case != "omitted":
             payload["shelf_product"] = target
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
@@ -84,7 +85,7 @@ def test_package_link_requires_a_nonblank_unique_normalized_name(pack, monkeypat
     assert result.reading.confidence == .9
     repeated = shelf_lab.read_package(pid, aid, setup_id="test_setup", config=config)
     assert not repeated.linked and repeated.asset.sku == expected
-    assert len(calls) == 1
+    assert len(calls) == (1 if case == "blank_names_only" else 2)
     saved = read_json(path.with_suffix(".json"))
     assert saved.get("sku", "") == expected and saved["reading"]["name"] == "Read tea"
     assert path.read_bytes() == image_before and store.model_dump_json() == store_before

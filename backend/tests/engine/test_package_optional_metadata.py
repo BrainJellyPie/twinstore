@@ -17,7 +17,7 @@ from store_emulator.engine.package_reader import PackReading, read_pack
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("missing", ["name", "brand", "size", "category", "shelf_product", "all"])
 def test_partial_text_reads_through_http_and_reuses_the_normalized_cache(monkeypatch, tmp_path, mode, missing):
-    payload = dict(name=" Tea 500 ml ", brand=" Leafy ", size=" 500 ml ", category=" Tea ", shelf_product=" TEA 500 ML ", confidence=.8)
+    payload = dict(printed_text="Leafy Tea 500 ml", name=" Tea 500 ml ", brand=" Leafy ", size=" 500 ml ", category=" Tea ", shelf_product=" TEA 500 ML ", confidence=.8)
     fields = ["name", "brand", "size", "category", "shelf_product"] if missing == "all" else [missing]
     for field in fields:
         payload[field] = None
@@ -44,12 +44,13 @@ def test_partial_text_reads_through_http_and_reuses_the_normalized_cache(monkeyp
                 result = await read_pack(client, photo, ["Tea 500 ml"])
                 cached = await read_pack(client, photo, ["Tea 500 ml"])
                 assert cached.model_dump() == result.model_dump()
-            expected = {key: "" if value is None else value.strip() if isinstance(value, str) else value for key, value in payload.items()}
+            expected = {key: "" if value is None else value.strip() if isinstance(value, str) else value for key, value in payload.items()
+                        if key != "printed_text"}
             if "shelf_product" not in fields:
                 expected["shelf_product"] = "Tea 500 ml"
-            assert result.model_dump() == expected and len(calls) == 1
-            saved = json.loads(next(tmp_path.glob("*/*.json")).read_text())["result"]
-            assert all(saved[field] == "" for field in fields)
+            assert result.model_dump() == expected and len(calls) == 2
+            saved = [json.loads(path.read_text())["result"] for path in tmp_path.glob("*/*.json")]
+            assert all(any(record.get(field) == "" for record in saved) for field in fields)
 
     asyncio.run(exercise())
 
