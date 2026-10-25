@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover known tool destinations, optimizer objectives/scopes and suggested
+  test kinds from model replies with case or surrounding-space variations.
+  Tool availability checks, optimization direction, locked shelves and change
+  limits remain enforced; unknown choices still fail validation.
+
 - Keep vision-read floor-plan geometry when local models vary a known fixture
   kind's case or surrounding whitespace. Automatic imports no longer discard
   those usable readings for a geometry-only fallback. Existing overlap,

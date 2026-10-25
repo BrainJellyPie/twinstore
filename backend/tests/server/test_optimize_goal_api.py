@@ -29,7 +29,8 @@ class _Reader:
         return response_model.model_validate(self.reply)
 
 
-def test_a_goal_becomes_the_optimizers_settings(client, monkeypatch):
+@pytest.mark.parametrize("spelling", ["exact", "mixed"])
+def test_a_goal_becomes_the_optimizers_settings(client, monkeypatch, spelling):
     from store_emulator.application import optimize_goal
     from store_emulator.application.scenarios import (
         _store_for,  # pyright: ignore[reportPrivateUsage]
@@ -39,6 +40,8 @@ def test_a_goal_becomes_the_optimizers_settings(client, monkeypatch):
     rack = next(r for r in store.racks if r.rack_name and sum(1 for o in store.racks if o.rack_name == r.rack_name) == 1)
     fake = _Reader({"objective": "impulse_revenue", "scope": "both", "max_moves": 5, "keep_fridges_on_walls": True,
                     "locked_shelves": [rack.rack_name, "Moon shelf"], "min_improvement_percent": 2, "rationale": "Impulse, few changes."})
+    if spelling == "mixed":
+        fake.reply.update(objective=" IMPULSE_REVENUE ", scope=" Both ")
     monkeypatch.setattr(optimize_goal, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/setups/{SETUP}/optimize/goal",
                     json={"text": f"More impulse sales, keep {rack.rack_name} as it is, at most 5 changes"})

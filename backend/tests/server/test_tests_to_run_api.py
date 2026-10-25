@@ -52,10 +52,12 @@ def _group(tmp_path) -> str:
     return group.group_id
 
 
-def test_a_group_interview_becomes_test_questions(client, monkeypatch, tmp_path):
+@pytest.mark.parametrize("spelling", ["exact", "mixed"])
+def test_a_group_interview_becomes_test_questions(client, monkeypatch, tmp_path, spelling):
     from store_emulator.application import hypotheses
     gid = _group(tmp_path)
-    fake = _Writer(TESTS)
+    fake = _Writer({"tests": [{**row, "kind": f" {row['kind'].upper()} "} for row in TESTS["tests"]]}
+                   if spelling == "mixed" else TESTS)
     monkeypatch.setattr(hypotheses, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/tests-to-run", json={"source": "group", "group_id": gid})
     assert r.status_code == 200, r.text

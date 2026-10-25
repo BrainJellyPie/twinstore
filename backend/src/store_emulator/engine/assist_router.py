@@ -26,6 +26,11 @@ class AssistRoute(BaseModel):
     destination: Destination
     reason: str = Field(default="", max_length=160, description="a few words on why")
 
+    @field_validator("destination", mode="before")
+    @classmethod
+    def _known_destination_spelling(cls, value: object) -> object:
+        return value.strip().casefold() if isinstance(value, str) else value
+
     @field_validator("reason", mode="before")
     @classmethod
     def _optional_reason(cls, value: object) -> object:
@@ -49,7 +54,8 @@ ROUTER_PROMPT = """You route a store manager's request to the right tool of a st
 - optimize: let the optimizer search for a better layout towards a goal (more sales, conversion or impulse buys,
   shorter walks), possibly with limits on what may change;
 - none: anything else.
-{run_note}Pick one and give a few words on why. Use an empty string, not null, when no reason is given."""
+{run_note}Copy one lowercase destination ID exactly, including underscores, and give a few words on why.
+Use an empty string, not null, when no reason is given."""
 
 
 async def route_request(llm: StructuredLLM, text: str, *, has_run: bool) -> AssistRoute:

@@ -33,6 +33,11 @@ class _Goal(BaseModel):
     min_improvement_percent: float | None = Field(default=None, description="smallest gain worth keeping, in percent")
     rationale: str = Field(default="", max_length=400)
 
+    @field_validator("objective", "scope", mode="before")
+    @classmethod
+    def _known_choice_spelling(cls, value: object) -> object:
+        return value.strip().casefold() if isinstance(value, str) else value
+
     @field_validator("rationale", mode="before")
     @classmethod
     def _optional_rationale(cls, value: object) -> object:
@@ -60,6 +65,7 @@ GOAL_PROMPT = """You set up a store-layout optimizer from a manager's goal. Choo
   says so; locked_shelves: listed shelves the goal says must not change, exactly as listed; min_improvement_percent
   only when the goal names a smallest gain worth keeping;
 - a short rationale; use an empty string, not null, when none is given.
+Copy the lowercase objective and scope IDs exactly, including underscores.
 Write in English."""
 
 

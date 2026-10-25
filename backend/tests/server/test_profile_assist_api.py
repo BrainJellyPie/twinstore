@@ -40,7 +40,8 @@ def test_a_profile_is_drafted_in_the_form_language(client, monkeypatch):
     ("optimize", True, "optimize"), ("optimize", False, "none"), ("run_question", True, "run_question"),
     ("run_question", False, "none"),
 ])
-def test_requests_are_routed_to_a_tool(client, monkeypatch, picked, has_run, expected):
+@pytest.mark.parametrize("spelling", ["exact", "mixed"])
+def test_requests_are_routed_to_a_tool(client, monkeypatch, picked, has_run, expected, spelling):
     from store_emulator.application import setup_assist
     prompts: list[str] = []
 
@@ -49,7 +50,7 @@ def test_requests_are_routed_to_a_tool(client, monkeypatch, picked, has_run, exp
             self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
         ) -> T:
             prompts.append(system_prompt)
-            return response_model.model_validate({"destination": picked, "reason": "because"})
+            return response_model.model_validate({"destination": picked if spelling == "exact" else f" {picked.upper()} ", "reason": "because"})
 
     monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: _Router())
     r = client.post("/api/assist/route", json={"text": "Would a 1+1 on cola beat a 20 % cut?", "has_run": has_run})

@@ -30,6 +30,11 @@ class Hypothesis(BaseModel):
     kind: TestKind = "ab_test"
     why: str = Field(default="", max_length=200, description="what the shoppers or the analyst said that it checks")
 
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _known_kind_spelling(cls, value: object) -> object:
+        return value.strip().casefold() if isinstance(value, str) else value
+
     @field_validator("why", mode="before")
     @classmethod
     def _optional_reason(cls, value: object) -> object:
@@ -47,6 +52,7 @@ test can answer, each with the tool that answers it:
 - shelf_test: whether one product's new pack, price or sign stands out on its shelf;
 - concept_test: how shoppers rate product packs or ideas shown as pictures.
 Name products and shelves exactly as listed, ask one change per question, and say in a few words what each one checks.
+Copy the lowercase test-kind IDs exactly, including underscores.
 What shoppers said is a hypothesis, not a finding. Use an empty string, not null, when no why explanation is given.
 Write in English."""
 
