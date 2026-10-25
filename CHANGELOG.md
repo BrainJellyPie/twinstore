@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recover explicitly truncated physical-store interview answers once with a
+  larger output budget, while keeping ordinary errors and echoes bounded.
+
 - Reject question echoes in physical-store interviews before caching or saving
   them, and exclude failed answers from group interview themes.
 

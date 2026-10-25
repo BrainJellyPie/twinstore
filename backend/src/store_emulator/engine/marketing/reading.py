@@ -24,7 +24,7 @@ EXAMPLE_CHARS = 150
 class StructuredLLM(Protocol):
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 

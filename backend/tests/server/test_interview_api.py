@@ -25,7 +25,7 @@ class _Fake:
         self.prompts: list[str] = []
 
     async def generate_structured_async[T: BaseModel](
-        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T:
         self.prompts.append(user_prompt)
         return response_model.model_validate({"answer": " I wanted something quick, so I grabbed the nuts. ", "steps": [2, 999]})
@@ -122,7 +122,7 @@ class _Group:
         self.calls = 0
 
     async def generate_structured_async[T: BaseModel](
-        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T:
         self.calls += 1
         if "themes" in response_model.model_fields:
@@ -157,7 +157,7 @@ class _Ideas:
         self.calls: list[str] = []
 
     async def generate_structured_async[T: BaseModel](
-        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T:
         self.calls.append(user_prompt)
         if response_model.__name__ == "FollowUps":
@@ -214,7 +214,7 @@ def test_group_questions_are_read_off_the_run(client, monkeypatch):
             self.prompt = ""
 
         async def generate_structured_async[T: BaseModel](
-            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
         ) -> T:
             self.prompt = user_prompt
             return response_model.model_validate({"questions": [

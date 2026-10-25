@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
-from instructor.core.exceptions import InstructorRetryException
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model, field_validator
 from pydantic_core import PydanticCustomError
@@ -38,7 +38,7 @@ MAX_SHELF_ITEMS = 16
 class StructuredLLM(Protocol):
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -169,11 +169,24 @@ async def ask_shopper(
                                           "Answer the researcher's latest question in the shopper's first-person voice.")
             return value
 
+    seed = stable_seed("interview", journey.run_id, journey.persona.id, len(history))
+
+    async def answer() -> ShopperReply:
+        try:
+            return await llm.generate_structured_async(
+                TripReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=700,
+            )
+        except Exception as error:
+            cause = (error.failed_attempts[-1].exception
+                     if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+            if not isinstance(cause, IncompleteOutputException):
+                raise
+            return await llm.generate_structured_async(
+                TripReply, INTERVIEW_PROMPT, user, max_retries=2, seed=seed, max_tokens=1400,
+            )
+
     try:
-        reply = await llm.generate_structured_async(
-            TripReply, INTERVIEW_PROMPT, user, max_retries=2,
-            seed=stable_seed("interview", journey.run_id, journey.persona.id, len(history)),
-        )
+        reply = await answer()
     except Exception as error:
         cause = (error.failed_attempts[-1].exception
                  if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
