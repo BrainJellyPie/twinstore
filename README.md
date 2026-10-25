@@ -112,6 +112,9 @@ server messages are still in English.
 </tr>
 </table>
 
+Online stores have their own clips: building a web shop, testing a change, one shopper's visit played back, two
+variants side by side and the report — see [Online stores](#online-stores).
+
 <details>
 <summary><b>Feature demos</b> · short real recordings of single features</summary>
 
@@ -202,6 +205,12 @@ Each preview loops; click it for the full-quality MP4.
 <b>New store in two steps.</b> Store details, address, hours and one of 82 furnished starting layouts — or a floor-plan image.</td>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, quick links on every store, light and dark themes.</td>
+</tr>
+<tr>
+<td><a href="#online-stores"><img src="./.github/assets/twinstore/screens/online-browse-light.jpg" alt="An online store as a vision shopper sees it, with numbered badges"></a><br>
+<b>Online stores.</b> 42 ready-made web shops; vision shoppers see each page as a screenshot with numbered badges and pick one, text shoppers read its outline.</td>
+<td><a href="#online-stores"><img src="./.github/assets/twinstore/screens/online-side-light.jpg" alt="One shopper's visits to two web shops played side by side"></a><br>
+<b>Watch where a change wins.</b> Play any shopper's visit click by click, or the same shopper in two variants side by side, up to the step where they part ways.</td>
 </tr>
 </table>
 
@@ -384,16 +393,39 @@ the page they land on (home, a product found by search, a popular product from s
 email), a device, a budget, patience, comfort with websites and eyesight (low vision, colour blindness and older
 eyes see filtered screenshots). You can browse any store yourself by clicking the same screenshot.
 
+<table>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/online-shops.mp4"><img src="./.github/assets/twinstore/demos/online-shops.webp" alt="Build a web shop"></a><br>
+<b>Build a web shop</b> · 20 s · pick one of 42 ready-made shops, create it and browse it by clicking the numbered screenshot (<a href="./.github/assets/twinstore/demos/online-shops.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/online-run.mp4"><img src="./.github/assets/twinstore/demos/online-run.webp" alt="Test a change"></a><br>
+<b>Test a change</b> · 17 s · tick a quick experiment and a rival shop, run the shoppers and read the paired differences (<a href="./.github/assets/twinstore/demos/online-run.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/online-playback.mp4"><img src="./.github/assets/twinstore/demos/online-playback.webp" alt="Watch one shopper"></a><br>
+<b>Watch one shopper</b> · 23 s · pick a shopper and play the visit: each page loads, the cursor goes to their pick and their thought appears (<a href="./.github/assets/twinstore/demos/online-playback.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/online-side-by-side.mp4"><img src="./.github/assets/twinstore/demos/online-side-by-side.webp" alt="Side by side"></a><br>
+<b>Side by side</b> · 18 s · the same shopper in the control and the variant, played together, with the step where they part ways (<a href="./.github/assets/twinstore/demos/online-side-by-side.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/online-report.mp4"><img src="./.github/assets/twinstore/demos/online-report.webp" alt="The report"></a><br>
+<b>The report</b> · 18 s · paired differences, who the change won and lost, funnel, ads, the rival's take, friction, segments, searches and products (<a href="./.github/assets/twinstore/demos/online-report.mp4">MP4</a>)</td>
+<td width="50%"></td>
+</tr>
+</table>
+
 | Result | What it shows |
 | :-- | :-- |
-| **Variants on the same shoppers** | Up to four stores per run; conversion, revenue per visit, add-to-cart, clicks and time as paired differences with bootstrap 95 % intervals. |
+| **Variants on the same shoppers** | Up to four stores per run; conversion, revenue per visit, add-to-cart, clicks and time as paired differences with bootstrap 95 % intervals, and about how many shoppers would confirm an unclear one. |
+| **Quick experiments** | Tick up to three one-click changes (a fee dropped, guest checkout, faster pages, free delivery, a welcome coupon, prices 10 % lower or higher…); each becomes a variant run on the same shoppers. |
+| **Who a change won and lost** | Paired differences by mission, device, age, gender, eyesight and traffic source, orders won and lost, and each shopper whose visit ended differently, with why. |
+| **Rival shop** | Shoppers who leave without buying may try a rival store that sells what they want; each store sees how many went there, bought and what the rival took. |
 | **Funnel and exits** | Visit → product → cart → checkout → payment → order, and the pages people left from. |
 | **Ads** | Banners, sponsored tiles and listings, product-page and cart ads, popups: impressions, clicks, credited orders and ROAS per ad, and against the same store without it the extra units, revenue and incremental ROAS. |
 | **Cart reminders** | Emails to shoppers who left a cart, optionally with a discount: who came back, recovered orders and revenue, the discount given. |
 | **Friction audit** | Popup exits, forced sign-in, last-step fees, add-ons paid without unticking, failed coupons, empty searches, sold-out pages, slow exits. |
 | **Exit survey** | Satisfaction, ease, NPS, return intent and the biggest annoyance, from model shoppers right after the visit. |
 | **Search, products, clicks** | What people searched for (and found nothing), product views/adds/sales, a click map of the screenshots. |
-| **Replays and data** | Every visit page by page with the shopper's thoughts, and a conversation with the shopper about it; segments by mission, device, age, gender and eyesight; a clickstream CSV. |
+| **Replays and data** | Every visit page by page with the shopper's thoughts, played back as an animation or side by side across two stores, downloadable as a GIF, and a conversation with the shopper about it; segments by mission, device, age, gender, eyesight and traffic source; a clickstream CSV. |
 
 ## How it works
 
