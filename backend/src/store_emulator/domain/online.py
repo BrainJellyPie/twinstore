@@ -675,3 +675,4 @@ class OnlineRunStatus(BaseModel):
     request: OnlineRunRequest
     created_at: str = ""
     finished_at: str = ""
+    image_snapshot: bool = False  # older runs did not retain their product artwork

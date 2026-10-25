@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Freeze product artwork for online runs, including variants and rival shops, so
+  later photo changes cannot alter model input or historical screenshots and GIFs.
+
 - Let animated visits recover from failed page images or playback metadata,
   preserving the current step and paused state while retrying.
 

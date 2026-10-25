@@ -63,7 +63,7 @@ from store_emulator.engine.perception.product_images import bundled_product_imag
 from .async_executor import executor, submit_background
 from .currencies import project_currency
 from .errors import AppError, job_failure, model_failure
-from .product_images import project_image_loader
+from .product_images import project_image_loader, snapshot_image_loader, snapshot_project_images
 from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
 from .setups import setup_lock_path, setup_tree_transaction
 from .simulation import with_engine_model, with_vision_default
@@ -327,8 +327,16 @@ def delete_site(pid: str, site_id: str) -> None:
 # ── browsing ───────────────────────────────────────────────────────────────────
 
 
-def _picture(pid: str) -> ProductPicture:
-    loader = project_image_loader(pid)
+def _picture(pid: str, run_id: str | None = None) -> ProductPicture:
+    frozen = (run_id is not None and
+              OnlineRunStatus.model_validate(read_json(_run_dir(pid, run_id) / "status.json")).image_snapshot)
+    if frozen and run_id is not None:
+        try:
+            loader = snapshot_image_loader(_run_dir(pid, run_id) / "images")
+        except (OSError, ValueError) as exc:
+            raise AppError("This run's saved product images are unavailable", 404) from exc
+    else:
+        loader = project_image_loader(pid)
 
     def picture(product: OnlineProduct) -> Image.Image | None:
         if not product.image_url and not product.sku:
@@ -453,21 +461,27 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
             run_id=run_id, name=request.name or " vs ".join(s.name for s in sites)[:80], site_ids=[s.id for s in sites],
             site_names=[s.name for s in sites], status="pending",
             total=len(shoppers) * (len(sites) + (rival is not None)), request=request,
-            created_at=now_iso(),
+            created_at=now_iso(), image_snapshot=True,
         )
         folder = _run_dir(pid, run_id)
         folder.mkdir(parents=True, exist_ok=False)
         try:
+            snapshot_project_images(pid, (
+                SlotItem(sku=p.sku or p.id, name=p.name, price=p.price, image_url=p.image_url or None)
+                for site in [*sites, rival] if site is not None
+                for p in site.products if p.sku or p.image_url
+            ), folder / "images")
             write_json(folder / "sites.json", _SITES.dump_python(sites, mode="json"))
             if rival is not None:
                 write_json(folder / "rival.json", rival.model_dump(mode="json"))
             write_json(folder / "shoppers.json", _SHOPPERS.dump_python(shoppers, mode="json"))
             _write_status(pid, status)
+            picture = _picture(pid, run_id)
         except Exception:
             remove_tree(folder)
             raise
     try:
-        submit_background(executor, _run_job, pid, status, sites, shoppers, policy, model, _picture(pid), rival)
+        submit_background(executor, _run_job, pid, status, sites, shoppers, policy, model, picture, rival)
     except RuntimeError as exc:
         status.status, status.finished_at = "failed", now_iso()
         status.error = "Could not start the online run. Please retry when the worker is available."
@@ -760,13 +774,14 @@ def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: 
     if found is None:
         raise AppError("No such step in this session", 404)
     site = _stores(pid, run_id)[variant]
-    return _seen(site, view.shopper, found, _picture(pid)) if highlight else _shot(site, view.shopper, found, _picture(pid))[0].png
+    picture = _picture(pid, run_id)
+    return _seen(site, view.shopper, found, picture) if highlight else _shot(site, view.shopper, found, picture)[0].png
 
 
 def playback(pid: str, run_id: str, variant: int, shopper_id: str) -> list[PlaybackFrame]:
     """Where each click of a visit landed on its screenshot, for an animated playback of the visit."""
     view = get_session(pid, run_id, variant, shopper_id)
-    site, picture = _stores(pid, run_id)[variant], _picture(pid)
+    site, picture = _stores(pid, run_id)[variant], _picture(pid, run_id)
     frames: list[PlaybackFrame] = []
     for step in view.session.steps:
         shot, box = _shot(site, view.shopper, step, picture)
@@ -778,7 +793,7 @@ def journey_gif(pid: str, run_id: str, variant: int, shopper_id: str) -> bytes:
     """The whole visit as an animated GIF to share: every page as the shopper saw it with their click circled, what
     they did and what they thought."""
     view = get_session(pid, run_id, variant, shopper_id)
-    site, picture, steps = _stores(pid, run_id)[variant], _picture(pid), view.session.steps
+    site, picture, steps = _stores(pid, run_id)[variant], _picture(pid, run_id), view.session.steps
     frames: list[tuple[bytes, str, str]] = []
     for n, step in enumerate(steps, start=1):
         page = step.page.value.replace("_", " ")
