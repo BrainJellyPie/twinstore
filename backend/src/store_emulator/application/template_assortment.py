@@ -42,7 +42,8 @@ def select_initial_assortment(config: SimulationConfig, store: Store, layout: Te
         llm = assistive_client("", llm_config)
         chosen = asyncio.run(select_starter_products(llm, empty, grouped,
             f"Store description: {description[:2000]}\nAssortment and design requirements: {layout.requirements}",
-            allowed_categories=set(CATALOG) - set(layout.excluded_categories), product_limits=limits))
+            allowed_categories=set(CATALOG) - set(layout.excluded_categories), product_limits=limits,
+            category_limit=len(grouped)))
         assignments = [RackFill(rack_id=rid, category=row.category, skus=row.skus) for row in chosen for rid in members[row.rack_id]]
         stocked, _ = fill_empty_racks(empty, assignments, 2)
         stocked_racks = {rack.id: rack for rack in stocked.racks}

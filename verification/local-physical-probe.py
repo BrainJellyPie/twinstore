@@ -6,6 +6,8 @@ are mocked. Images, request/reply bodies (without headers), decisions, executed
 purchases and engine diagnostics are saved to a fresh output folder. Format
 success does not establish sensible product choices; inspect glance_targets
 and the saved images for name/number mismatches and implausible reasoning.
+The probe also fails if a stated product name differs from the resolved product;
+that separate check does not establish correct price reading or shopper intent.
 """
 import argparse, asyncio, base64, json, sys, time
 from pathlib import Path
@@ -93,7 +95,9 @@ metadata = engine.metadata()
 (root / 'metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
 result['format_ok'] = result['completed'] and metadata['errors'] == 0 and (metadata['planning']['plan_errors'] == 0)
 result['glance_targets'] = [{'said': r['product'], 'resolved_name': items[r['resolved_sku']].name if r['resolved_sku'] in items else '', 'number': r['number'], 'interest': r['interest'], 'error': r['outcome'] == 'error'} for r in metadata['records']]
+result['name_consistency_ok'] = all(not row['said'].strip() or row['said'].strip().casefold() == row['resolved_name'][:60].strip().casefold()
+                                    for row in result['glance_targets'])
 result.update(root=str(root), seconds=round(time.perf_counter() - started, 2), calls=calls)
 (root / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
 print(json.dumps(result, ensure_ascii=False), flush=True)
-sys.exit(0 if result['format_ok'] else 1)
+sys.exit(0 if result['format_ok'] and result['name_consistency_ok'] else 1)

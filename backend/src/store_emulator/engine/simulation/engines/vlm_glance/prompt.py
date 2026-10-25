@@ -103,12 +103,18 @@ def shelf_glance_model(view: ShelfView, *, numbered: bool = True) -> type[ShelfG
     """Constrain local grammars to printed badges; raw photos have no numbered choices."""
     numbers = sorted({0, *(marked.mark for marked in view.items)}) if numbered else [0]
     constraints: dict[str, JsonValue] = {"enum": [*numbers]}
+    # A tiny VLM can invent an off-shelf name alongside a valid badge. Bind names
+    # to this rendered view too; raw photographs retain their free-text labels.
+    names: list[JsonValue] = [name for name in sorted({"", *(marked.item.name[:_GLANCE_PRODUCT_LIMIT] for marked in view.items)})]
+    name_constraints: dict[str, JsonValue] = {"enum": names} if numbered else {}
 
     class VisibleShelfGlance(ShelfGlance):
         # Grammar-driven models otherwise omit both optional identifiers and emit
         # an unusable positive score. Keep default/legacy parsing permissive, but
         # require an explicit target (or "", 0 for no target) on the wire.
         model_config = ConfigDict(json_schema_extra={"required": ["product", "number", "interest"]})
+
+        product: str = Field(default="", max_length=_GLANCE_PRODUCT_LIMIT, json_schema_extra=name_constraints)
 
         # Keep name-based resolution for providers that do not enforce the grammar:
         # an invalid badge must not discard an otherwise identifiable printed name.

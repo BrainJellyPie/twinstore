@@ -62,3 +62,40 @@ def test_large_generated_floor_groups_hundreds_of_racks_and_honors_category_limi
     assert all(row.category != "dairy" for row in choices)
     assert all(len(row.skus) == (2 if row.category == "home_coffee_tea" else 1) for row in choices)
     assert validate(store) == []
+
+
+@pytest.mark.parametrize("small_categories", [False, True])
+@pytest.mark.parametrize("small_products", [False, True])
+def test_large_automatic_assortment_can_retain_all_template_departments(monkeypatch, small_categories, small_products):
+    class DepartmentModel:
+        async def generate_structured_async(self, schema, system, user, **kwargs):
+            payload = json.loads(user)
+            if "racks" in payload:
+                categories = [row["suggested_category"] for row in payload["racks"]]
+                if "expected_rack_ids" in payload:
+                    data = {"assignments": {row["id"]: key for row, key in zip(payload["racks"], categories, strict=True)}}
+                    if small_categories:
+                        data = {"assignments": {}}
+                else:
+                    data = {"choices": categories}
+            elif isinstance(payload["maximum_products_per_category"], dict):
+                data = {"selections": {key: [products[0]["sku"]] for key, products in payload["categories"].items()}}
+                if small_products:
+                    data = {"selections": {}}
+            else:
+                products = next(iter(payload["categories"].values()))
+                data = {"choices": [products[0]["sku"]]}
+            return schema.model_validate(data)
+
+    monkeypatch.setattr(template_assortment, "assistive_client", lambda *args: DepartmentModel())
+    req = TemplateLayoutRequest(template_id="hypermarket", width=32, height=26, currency="KRW",
+                                products_per_category=1, excluded_categories=["beer_alcohol"])
+    source = generate_store(req.template_id, options=req)
+    before = source.model_dump()
+    stocked, choices = template_assortment.select_initial_assortment(SimulationConfig(), source, req, "Family supermarket")
+    original = {rack.id: rack for rack in source.racks}
+    assert len(choices) > 100 and len({row.category for row in choices}) > 16
+    assert all(row.category == original[row.rack_id].rack_desc for row in choices)
+    assert all(len(row.skus) == 1 and row.category != "beer_alcohol" for row in choices)
+    assert len({row.rack_id for row in choices}) == len(choices)
+    assert source.model_dump() == before and validate(stocked) == []

@@ -8,13 +8,15 @@
   Korean and scrolls sideways in longer languages with the current tab kept
   in view (the last tab used to fall off the screen), and the local model's
   download buttons wrap instead of running past their card.
+- Constrain local VLM shelf answers to product names visible in that shelf chart,
+  preventing unrelated names from being attached to a valid shelf badge. Keep raw
+  photo label reading and legacy name/number fallback compatible.
+- Automatic products on large generated stores can keep every department instead
+  of rejecting valid model answers and collapsing the assortment to 16 categories.
+  Smaller fallback tasks use the same limit; manual shelf refill retains its cap.
 - The online report on a phone: the run's title takes the whole row (it was
   squeezed beside the action buttons into one word per line) and the shopper
   cards are one swipeable row, which takes about 3,000 px off the page.
-- Require product and badge fields in the local vision shopper's output grammar,
-  preventing positive interest scores with no target from discarding whole shelf
-  decisions. Preserve legacy name-only/number-only parsing and explicit no-choice
-  answers. A real CPU probe now saves shelf images, model outputs and purchases.
 - The online page remembers where you are: the address now carries the open
   store and run, so a reload or a copied link comes back to the same store or
   report (before, it fell back to the first store), and the store or run's
