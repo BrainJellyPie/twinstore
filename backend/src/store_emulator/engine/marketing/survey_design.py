@@ -163,6 +163,10 @@ def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str)
                     warnings.append(f"The reference price rounds to zero in {currency.upper()}; it was left out.")
                 else:
                     reference = rounded
+    if reference is not None and draft.images and _resolve(draft.images[0], ids) is None:
+        reference = None
+        warnings.append("The reference price belonged to the first drafted image, which could not be resolved; "
+                        "it was left out.")
     return SurveyDesign(
         name=draft.name.strip()[:80], stimuli=stimuli, stimulus_names=names, questions=questions,
         context=draft.context.strip()[:300], reference_price=reference, currency=currency.upper(),

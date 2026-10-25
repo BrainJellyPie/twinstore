@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Clear a drafted survey's reference price when its first image cannot be
+  identified, instead of assigning that price to the next remaining product.
+  The draft reports the omission and preserves the remaining questionnaire.
+
 - Treat model-read shelf prices beyond the safe integer range as unreadable.
   Existing product prices remain intact, new products use marked estimates,
   and other products from the same photo are preserved.

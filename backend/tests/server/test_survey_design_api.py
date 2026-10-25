@@ -93,6 +93,19 @@ def test_an_empty_library_and_a_failing_model_are_explained(client, monkeypatch)
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
 
 
+def test_missing_reference_image_does_not_price_the_next_product(client, monkeypatch):
+    from store_emulator.application import study_design
+    _library(monkeypatch)
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer(
+        {**DRAFT, "images": ["Missing reference", "Label Leaf"], "reference_price": 9.99}))
+    response = client.post(f"/api/projects/{PID}/surveys/design",
+                           json={"question": "Compare the reference with our leaf label"})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["stimuli"] == ["pkg_b"] and result["reference_price"] is None
+    assert any("reference price" in warning.lower() for warning in result["warnings"])
+
+
 @pytest.mark.parametrize('text,status', [('🛒' * 4, 422), ('🛒' * 5, 200),
                                         ('茶' * 500, 200), ('茶' * 501, 422), ('     ', 422)])
 def test_question_bounds_use_trimmed_unicode_characters(client, monkeypatch, text, status):
