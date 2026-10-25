@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Show who an online change won and lost. Each comparison breaks the paired
+  conversion difference down by mission, device, age, gender and eyesight with
+  95 % intervals and revenue per visit, counts orders won and lost, and lists the
+  shoppers whose visit ended differently with where each visit ended, the
+  shopper's last thought and a replay in either store.
 - Add cart reminder emails to online stores. Visits that leave items in the cart
   get a reminder, optionally with a discount (the better of it and a coupon
   applies); some shoppers, more of the price-sensitive ones when there is a

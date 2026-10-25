@@ -46,7 +46,7 @@ from store_emulator.domain.store import Store
 from store_emulator.domain.types import ResourceId
 from store_emulator.engine.files import remove_tree
 from store_emulator.engine.online.ads import ad_lifts
-from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, summarize
+from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy
@@ -466,11 +466,15 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
             write_json(_run_dir(pid, status.run_id) / f"sessions-{index}.json", _SESSIONS.dump_python(sessions, mode="json"))
         by_id = {s.id: s for s in shoppers}
         summaries = [summarize(site, by_id, sessions) for site, sessions in zip(sites, variants, strict=True)]
-        comparisons = [VariantComparison(site_id=site.id, site_name=site.name,
-                                         deltas=paired_deltas(variants[0], sessions, seed=request.seed),
-                                         ad_lifts=ad_lifts(sites[0], variants[0], summaries[0].ads, site, sessions,
-                                                           summary.ads))
-                       for site, sessions, summary in zip(sites[1:], variants[1:], summaries[1:], strict=True)]
+        comparisons: list[VariantComparison] = []
+        for site, sessions, summary in zip(sites[1:], variants[1:], summaries[1:], strict=True):
+            won, lost, changed, switched = switches(variants[0], sessions)
+            comparisons.append(VariantComparison(
+                site_id=site.id, site_name=site.name, deltas=paired_deltas(variants[0], sessions, seed=request.seed),
+                ad_lifts=ad_lifts(sites[0], variants[0], summaries[0].ads, site, sessions, summary.ads),
+                segments=segment_deltas(variants[0], sessions, by_id, seed=request.seed), won=won, lost=lost,
+                changed=changed, switches=switched,
+            ))
         requests = sum(s.model_requests for sessions in variants for s in sessions)
         fallbacks = sum(s.fallbacks for sessions in variants for s in sessions)
         notes = ["Virtual shoppers, not real traffic: use the differences between variants, measured on the same "

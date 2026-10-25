@@ -435,8 +435,11 @@ class FunnelRow(BaseModel):
     share: float  # of all sessions
 
 
+type SegmentDimension = Literal["mission", "device", "age_group", "gender", "vision"]
+
+
 class SegmentRow(BaseModel):
-    dimension: Literal["mission", "device", "age_group", "gender", "vision"]
+    dimension: SegmentDimension
     value: str
     sessions: int
     conversion: float
@@ -576,11 +579,42 @@ class PairedDelta(BaseModel):
     n: int
 
 
+class SegmentDelta(BaseModel):
+    """Conversion and revenue per visit, variant minus control, for the same shoppers within one segment."""
+    dimension: SegmentDimension
+    value: str
+    n: int
+    control_conversion: float
+    variant_conversion: float
+    conversion_diff: float
+    ci_low: float | None = None
+    ci_high: float | None = None
+    revenue_diff: float  # per visit
+
+
+class SwitchRow(BaseModel):
+    """A shopper whose visit ended differently in the two stores, and why each visit ended."""
+    shopper_id: str
+    control_outcome: SessionOutcome
+    variant_outcome: SessionOutcome
+    control_total: int
+    variant_total: int
+    control_exit: PageKind
+    variant_exit: PageKind
+    control_thought: str = ""
+    variant_thought: str = ""
+
+
 class VariantComparison(BaseModel):
     site_id: str
     site_name: str
     deltas: list[PairedDelta]
     ad_lifts: list[AdLift] = []
+    segments: list[SegmentDelta] = []
+    won: int = 0  # shoppers who ordered only in the variant
+    lost: int = 0  # shoppers who ordered only in the control
+    changed: int = 0  # shoppers whose visit ended differently
+    switches: list[SwitchRow] = []  # some of them: orders won or lost first, the largest amounts first
 
 
 class OnlineRunResult(BaseModel):

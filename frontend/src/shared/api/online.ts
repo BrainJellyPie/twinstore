@@ -156,8 +156,9 @@ export interface OnlineRunRequest {
 }
 
 export interface FunnelRow { stage: FunnelStage; sessions: number; share: number }
+export type SegmentDimension = "mission" | "device" | "age_group" | "gender" | "vision";
 export interface SegmentRow {
-  dimension: "mission" | "device" | "age_group" | "gender" | "vision"; value: string; sessions: number; conversion: number;
+  dimension: SegmentDimension; value: string; sessions: number; conversion: number;
   revenue_per_session: number; avg_steps: number;
 }
 export interface ProductRow { product_id: string; name: string; views: number; adds: number; purchases: number; units: number; revenue: number }
@@ -196,10 +197,24 @@ export interface PairedDelta {
   metric: DeltaMetric; control: number; variant: number; diff: number; ci_low: number | null; ci_high: number | null; n: number;
 }
 
+/** Variant minus control within one segment of the same shoppers. */
+export interface SegmentDelta {
+  dimension: SegmentDimension; value: string; n: number; control_conversion: number; variant_conversion: number;
+  conversion_diff: number; ci_low: number | null; ci_high: number | null; revenue_diff: number;
+}
+/** A shopper whose visit ended differently in the two stores. */
+export interface SwitchRow {
+  shopper_id: string; control_outcome: SessionOutcome; variant_outcome: SessionOutcome; control_total: number;
+  variant_total: number; control_exit: PageKind; variant_exit: PageKind; control_thought: string; variant_thought: string;
+}
+
 export interface OnlineRunResult {
   run_id: string; name: string; policy: ShopperPolicyKind; model: string; currency: string;
   variants: VariantSummary[];
-  comparisons: { site_id: string; site_name: string; deltas: PairedDelta[]; ad_lifts: AdLift[] }[];
+  comparisons: {
+    site_id: string; site_name: string; deltas: PairedDelta[]; ad_lifts: AdLift[]; segments: SegmentDelta[]; won: number;
+    lost: number; changed: number; switches: SwitchRow[];
+  }[];
   shoppers: OnlineShopper[]; model_requests: number; fallbacks: number; seconds: number; notes: string[];
 }
 

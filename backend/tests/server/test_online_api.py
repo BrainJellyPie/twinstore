@@ -107,6 +107,9 @@ def test_rule_run_compares_variants_on_the_same_shoppers(client: TestClient) -> 
     assert [v["sessions"] for v in result["variants"]] == [24, 24] and len(result["shoppers"]) == 24
     deltas = {d["metric"]: d for d in result["comparisons"][0]["deltas"]}
     assert deltas["conversion"]["n"] == 24 and deltas["conversion"]["diff"] <= 0
+    comparison = result["comparisons"][0]
+    assert comparison["lost"] - comparison["won"] == round(-deltas["conversion"]["diff"] * 24)
+    assert sum(s["n"] for s in comparison["segments"] if s["dimension"] == "device") == 24
     assert result["variants"][0]["funnel"][0]["sessions"] == 24
 
     shopper = result["shoppers"][0]["id"]

@@ -27,8 +27,11 @@ from store_emulator.domain.online import (
     ProductRow,
     RecoveryRow,
     SearchTermRow,
+    SegmentDelta,
+    SegmentDimension,
     SegmentRow,
     SessionResult,
+    SwitchRow,
     SurveySummary,
     VariantSummary,
 )
@@ -39,6 +42,8 @@ _TOP_PRODUCTS = 20
 _TOP_SEARCHES = 25
 _MAX_CLICKS = 1500
 _BOOTSTRAP = 2000
+_MAX_SWITCHES = 60
+_SEGMENT_DIMENSIONS: tuple[SegmentDimension, ...] = ("mission", "device", "age_group", "gender", "vision")
 
 
 def _share(part: int, whole: int) -> float:
@@ -98,7 +103,7 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
                 for q, (c, z, p) in sorted(terms.items(), key=lambda kv: (-kv[1][0], kv[0]))[:_TOP_SEARCHES]]
     exits = Counter(s.exit_page for s in sessions if s.outcome != "purchased")
     segments: list[SegmentRow] = []
-    for dimension in ("mission", "device", "age_group", "gender", "vision"):
+    for dimension in _SEGMENT_DIMENSIONS:
         groups: dict[str, list[SessionResult]] = defaultdict(list)
         for session in sessions:
             shopper = shoppers.get(session.shopper_id)
@@ -264,6 +269,58 @@ def paired_deltas(control: list[SessionResult], variant: list[SessionResult], *,
             "diff": round(float(d.mean()), 4), "ci_low": low, "ci_high": high, "n": len(d),
         }))
     return out
+
+
+def segment_deltas(control: list[SessionResult], variant: list[SessionResult], shoppers: dict[str, OnlineShopper], *,
+                   seed: int = 0) -> list[SegmentDelta]:
+    """Who a change helps: the paired conversion difference (with a 95 % bootstrap interval) and the revenue per visit
+    difference within each segment of the same shoppers. Small segments give wide intervals."""
+    a = {s.shopper_id: s for s in control}
+    b = {s.shopper_id: s for s in variant}
+    ids = sorted(set(a) & set(b) & set(shoppers))
+    rng = np.random.default_rng(abs(seed) + 1)
+    out: list[SegmentDelta] = []
+    for dimension in _SEGMENT_DIMENSIONS:
+        groups: dict[str, list[str]] = defaultdict(list)
+        for i in ids:
+            groups[str(getattr(shoppers[i], dimension))].append(i)
+        for value, members in sorted(groups.items()):
+            xa = np.array([a[i].outcome == "purchased" for i in members], dtype=float)
+            xb = np.array([b[i].outcome == "purchased" for i in members], dtype=float)
+            d = xb - xa
+            low = high = None
+            if len(d) > 1:
+                boot = d[rng.integers(0, len(d), size=(_BOOTSTRAP, len(d)))].mean(axis=1)
+                low, high = round(float(np.percentile(boot, 2.5)), 4), round(float(np.percentile(boot, 97.5)), 4)
+            out.append(SegmentDelta(
+                dimension=dimension, value=value, n=len(members), control_conversion=round(float(xa.mean()), 4),
+                variant_conversion=round(float(xb.mean()), 4), conversion_diff=round(float(d.mean()), 4), ci_low=low,
+                ci_high=high, revenue_diff=round(mean(b[i].order_total - a[i].order_total for i in members), 2),
+            ))
+    return out
+
+
+def switches(control: list[SessionResult], variant: list[SessionResult]) -> tuple[int, int, int, list[SwitchRow]]:
+    """(orders won, orders lost, visits that ended differently, the first of those): the individual stories behind a
+    paired difference, each with where and why both visits ended."""
+    b = {s.shopper_id: s for s in variant}
+    won = lost = 0
+    rows: list[SwitchRow] = []
+    for x in control:
+        y = b.get(x.shopper_id)
+        if y is None or x.outcome == y.outcome:
+            continue
+        bought = (x.outcome == "purchased", y.outcome == "purchased")
+        won += bought == (False, True)
+        lost += bought == (True, False)
+        rows.append(SwitchRow(
+            shopper_id=x.shopper_id, control_outcome=x.outcome, variant_outcome=y.outcome, control_total=x.order_total,
+            variant_total=y.order_total, control_exit=x.exit_page, variant_exit=y.exit_page,
+            control_thought=x.exit_thought, variant_thought=y.exit_thought,
+        ))
+    rows.sort(key=lambda r: (r.control_outcome != "purchased" and r.variant_outcome != "purchased",
+                             -abs(r.variant_total - r.control_total), r.shopper_id))
+    return won, lost, len(rows), rows[:_MAX_SWITCHES]
 
 
 CLICKSTREAM_COLUMNS = (
