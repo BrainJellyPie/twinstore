@@ -139,6 +139,7 @@ class DesignReply(DesignChanges):
 
 
 _MONEY = ("shipping_fee", "free_shipping_threshold")
+_HISTORY_BYTES = 4000  # Reserve room for the current design, system instructions and reply on small local contexts.
 
 
 def _minor(currency: str) -> int:
@@ -182,7 +183,19 @@ def _describe(site: OnlineSite, options: SiteOptions) -> str:
 async def chat_design(llm: StructuredLLM, site: OnlineSite, options: SiteOptions,
                       messages: Sequence[DesignMessage]) -> DesignReply:
     """The designer's reply to the owner's latest message, with the option changes it proposes."""
-    talk = "\n".join(f"{'Owner' if m.role == 'owner' else 'Designer'}: {m.text}" for m in messages)
+    lines = [f"{'Owner' if m.role == 'owner' else 'Designer'}: {m.text}" for m in messages]
+    start, used = len(lines), 0
+    for line in reversed(lines):
+        size = len(line.encode("utf-8")) + 1
+        if start < len(lines) and used + size > _HISTORY_BYTES:
+            break
+        start -= 1
+        used += size  # Always retain the complete latest request, even when it alone exceeds the history budget.
+    while start < len(lines) - 1 and messages[start].role == "designer":
+        start += 1  # A reply without its owner's request is misleading context.
+    talk = "\n".join(lines[start:])
+    if start:
+        talk = "[Earlier messages omitted; the current design above is authoritative.]\n" + talk
     system = DESIGN_PROMPT.format(styles=", ".join(PAGE_STYLES), currency=site.currency.upper())
     user = f"{_describe(site, options)}\n\nConversation:\n{talk}"
     reply = await llm.generate_structured_async(DesignReply, system, user, max_retries=2, seed=0)

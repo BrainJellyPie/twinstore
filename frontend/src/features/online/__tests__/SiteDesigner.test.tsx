@@ -423,3 +423,27 @@ it.each(["USD", "KRW", "JPY"])("shows the AI's changed %s delivery fee after a m
   expect(fee.value).toBe("7");
   expect(price.value).toBe("wrong");
 });
+
+it("keeps chatting past twenty replies within the API history limit while retaining the visible conversation", async () => {
+  let replies = 0;
+  vi.mocked(online.designChat).mockImplementation(async (_project, _site, body) => {
+    if (body.messages.length > 40) throw new Error("Too many conversation messages");
+    return { reply: `Design answer ${replies++}.`, model: "local", options: source.options, changed: [] };
+  });
+  mount();
+  await screen.findByRole("textbox", { name: "Shirt: Price" });
+  for (let turn = 0; turn < 21; turn++) {
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe a change… (Enter to send)" }),
+      { target: { value: `Design request ${turn}.` } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText(`Design answer ${turn}.`);
+  }
+  const calls = vi.mocked(online.designChat).mock.calls;
+  const sent = calls[calls.length - 1]![2].messages;
+  expect(sent).toHaveLength(39);
+  expect(sent[0]).toEqual({ role: "owner", text: "Design request 1." });
+  expect(sent[sent.length - 1]).toEqual({ role: "owner", text: "Design request 20." });
+  expect(screen.getByText("Design request 0.")).toBeTruthy();
+  expect(screen.getByText("Design answer 0.")).toBeTruthy();
+  expect(screen.queryByRole("alert")).toBeNull();
+});

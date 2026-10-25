@@ -103,3 +103,26 @@ def test_a_reply_that_sets_nothing_is_asked_again_once(client: TestClient, monke
     _fake(monkeypatch, {"reply": "I made it neon."}, {"reply": "I made it neon."})
     r = client.post(url, json={"messages": [{"role": "owner", "text": "Make it neon"}]}).json()
     assert r["changed"] == [] and r["options"] == site["options"]
+
+@pytest.mark.parametrize("character", ["A", "한", "🛍"])
+def test_long_history_keeps_current_design_and_the_full_latest_request(client, monkeypatch, character):
+    site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "pet_store"}).json()
+    options = {**site["options"], "theme_color": "#ABCDEF", "shipping_fee": 1234}
+    latest = "Latest request: " + character * 1100
+    messages = [{"role": "owner" if i % 2 == 0 else "designer", "text": f"Old request {i}: " + character * 1100}
+                for i in range(38)] + [{"role": "owner", "text": latest}]
+    fake = _fake(monkeypatch, {"reply": "Which design option should I change?"})
+    response = client.post(f"/api/projects/{PID}/online/sites/{site['id']}/design-chat",
+                           json={"options": options, "messages": messages})
+    assert response.status_code == 200, response.text
+    assert response.json()["options"] == options
+    prompt = fake.calls[0][1]
+    assert "theme_color: #ABCDEF" in prompt and "12.34" in prompt
+    assert "Old request 0:" not in prompt
+    assert prompt.endswith("Owner: " + latest)
+    conversation = prompt.split("\n\nConversation:\n", 1)[1]
+    notice, recent = conversation.split("\n", 1)
+    assert "Earlier messages omitted" in notice
+    assert recent.startswith("Owner:")
+    assert len(recent.encode("utf-8")) <= max(4000, len(("Owner: " + latest).encode("utf-8")))
+    assert client.get(f"/api/projects/{PID}/online/sites/{site['id']}").json()["options"] == site["options"]

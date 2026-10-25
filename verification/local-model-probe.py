@@ -1,4 +1,4 @@
-"""Run production starter selection, package reading or design chat against a real loopback model; retain wire replies.
+"""Run production starter selection, package reading, customer generation or design chat on a real loopback model.
 
 From the repository root:
   PYTHONPATH=backend/src backend/.venv/bin/python verification/local-model-probe.py --case compact
@@ -23,6 +23,9 @@ from store_emulator.application import template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.domain.online import DesignMessage
+from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.types import Weekday
+from store_emulator.engine.generators.persona import Pace, generate_batched
 from store_emulator.engine.layout_gen import generate_store
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.catalog import build_site
@@ -35,12 +38,14 @@ from store_emulator.engine.validation import validate
 
 design_requests = {
     "design-color-ko": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
+    "design-long-history": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
     "design-free-popup": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
     "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
     "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank", *design_requests], default="compact")
+parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
+    "persona-neighborhood", "persona-cafe", *design_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
@@ -63,7 +68,7 @@ elif args.case == "book":
     description = "Petite librairie de quartier, livres et papeterie."
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
     temperature=.2 if args.case in design_requests else 0, seed=0,
-    max_tokens=900 if args.case in design_requests else 400 if args.case.startswith("pack-") else 5000,
+    max_tokens=900 if args.case in design_requests else 400 if args.case.startswith("pack-") else 4096 if args.case.startswith("persona-") else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output="json_schema", structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
@@ -95,18 +100,22 @@ started = time.perf_counter()
 result = {"case": args.case, "model": args.model, "endpoint": args.endpoint}
 try:
     if args.case in design_requests:
-        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case == "design-color-ko" else "USD")
+        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history"} else "USD")
         site.options.welcome_popup = "coupon"
         site.options.coupon_percent = 15
         site.options.shipping_fee = 499
         before = site.options.model_dump(mode="json")
+        messages = [DesignMessage(role="owner", text=design_requests[args.case])]
+        if args.case == "design-long-history":
+            old = ("동네 주민이 편안하게 쇼핑할 수 있는 온라인 매장을 만들고 싶습니다. 기존 배송비와 할인율은 그대로 유지해주세요. 상품 색상과 크기는 다양합니다. " * 18)[:1200]
+            messages = [DesignMessage(role="owner" if i % 2 == 0 else "designer", text=old) for i in range(38)] + messages
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            reply = asyncio.run(chat_design(client, site, site.options,
-                [DesignMessage(role="owner", text=design_requests[args.case])]))
+            reply = asyncio.run(chat_design(client, site, site.options, messages))
         edited, changed = apply_design(site.options, reply.changes, site.currency)
         after = edited.model_dump(mode="json")
         expected = {
             "design-color-ko": {"theme_color": "#00AA33"},
+            "design-long-history": {"theme_color": "#00AA33"},
             "design-free-popup": {"shipping_fee": 0, "welcome_popup": "none"},
             "design-neon": {"page_style": "neon"},
             "design-calm": {"urgency": False, "social_proof": False, "welcome_popup": "none"},
@@ -115,7 +124,33 @@ try:
         issues = [f"Expected {key}={value!r}, received {after[key]!r}" for key, value in expected.items() if after[key] != value]
         issues += [f"Unrequested change: {key}" for key in changed if key not in allowed]
         result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
-            reply=reply.model_dump(mode="json"), changed=changed, issues=issues)
+            reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
+            characters=sum(len(message.text) for message in messages))
+    elif args.case.startswith("persona-"):
+        address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
+        profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."
+        if args.case == "persona-cafe":
+            address, currency, categories, budget = "Tokyo, Japan", "JPY", ["coffee", "bakery"], (500, 1500)
+            profile = "近所の住民がパンとコーヒーを買いに訪れる小さなカフェです。一人の予算は500〜1500円です。"
+        schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=9, close_hour=10) for day in Weekday]
+        estimates = {}
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
+                batch_size=2, max_concurrent=1, categories=categories, currency=currency,
+                pace=lambda usual: Pace(daily_cap=2, batch_size=2, sample_cap=2), estimates=estimates))
+        written = [person for person in people if not person.twin_of]
+        issues = []
+        if not written or len({person.id for person in people}) != len(people):
+            issues.append("No written customers or duplicate customer IDs")
+        if any(person.day != Weekday.MON or person.arrival_hour != 9 for person in people):
+            issues.append("Arrival outside the open hour")
+        if categories and any(category not in categories for person in people for category in person.preferred_categories):
+            issues.append("Preference outside the supplied category list")
+        if any(person.budget_min < budget[0] or person.budget_max == 0 or person.budget_max > budget[1] for person in people):
+            issues.append("Budget outside the supplied range")
+        result.update(success=not issues, address=address, currency=currency, profile=profile, categories=categories,
+            estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
+        (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("pack-"):
         products = ["Strawberry Jam 340g", "Apricot Jam 340g", "Marmalade 340g"]
         picture = Image.new("RGB", (600, 800), "white")
