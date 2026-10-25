@@ -239,10 +239,20 @@ class LocalVLMManager:
     def disabled(self) -> bool:
         return os.environ.get("TWINSTORE_LOCAL_VLM", "").lower() in ("0", "off", "false", "no")
 
-    def status(self) -> LocalVLMStatus:
+    def status(self, *, check_external: bool = False) -> LocalVLMStatus:
         with self._lock:
             if self._status.state == "ready" and self._proc is not None and self._proc.poll() is not None:
                 self._status = self._status.model_copy(update={"state": "error", "message": "the local model server stopped"})
+            checked = self._status
+        # An adopted server has no process handle to poll. Check it at explicit
+        # status refresh/start boundaries, outside the lock and off the hot path.
+        if (check_external and checked.state == "ready" and not checked.managed and checked.api_base
+                and not server_answers(checked.api_base)):
+            with self._lock:
+                if self._status is checked:
+                    self._status = checked.model_copy(update={
+                        "state": "error", "message": "the external local model server is unavailable"})
+        with self._lock:
             return self._status.model_copy()
 
     def _set(self, **changes: object) -> None:
@@ -327,6 +337,7 @@ class LocalVLMManager:
         if self.disabled:
             self._set(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
             return self.status()
+        self.status(check_external=True)
         with self._lock:
             # Stop may have arrived after auto_start read the preference or a button saved Start.
             # Only a subsequent choose(True) may supersede that explicit Stop.

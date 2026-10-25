@@ -36,7 +36,7 @@ def _warning(cloud: list[str], local: LocalVLMStatus, plan: LocalVLMPlan) -> str
 @router.get("/models", summary="Who runs the shoppers: cloud keys, local model, warning", response_model=ModelSetup)
 def model_setup() -> ModelSetup:   # sync: hardware detection may call nvidia-smi
     mgr = manager()
-    status = mgr.status()
+    status = mgr.status(check_external=True)
     hw, plan = (status.hardware, status.plan) if status.hardware and status.plan else mgr.plan()
     status = status.model_copy(update={"downloaded": status.state == "ready" or mgr.on_disk(plan)})
     cloud = cloud_providers_with_key()

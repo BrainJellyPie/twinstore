@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recheck an adopted local model server when refreshing setup or pressing Start.
+  A server that exits or becomes unavailable no longer stays permanently ready
+  and prevents starting a replacement; slow probes do not hold the manager lock.
+
 - Place bundled CUDA runtime libraries beside llama-server after extraction.
   Wrapped archive directories no longer hide them from the system loader;
   existing managed installations are repaired locally without redownloading.
