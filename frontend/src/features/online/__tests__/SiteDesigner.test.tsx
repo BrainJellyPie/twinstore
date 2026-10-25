@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as online from "@/shared/api/online";
 import { useLocale } from "@/shared/i18n/i18n";
@@ -70,6 +70,7 @@ it("keeps the draft visible when creating the variant fails", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Save as a variant" }));
   expect((await screen.findByRole("alert")).textContent).toContain("The worker is busy");
   expect((name as HTMLInputElement).value).toBe("Edited shirt");
+  expect(name.matches(":disabled")).toBe(false);
   expect(copied).not.toHaveBeenCalled();
   expect(online.saveSite).not.toHaveBeenCalled();
 });
@@ -172,4 +173,79 @@ it("does not fetch a store again after deleting it", async () => {
   await new Promise((r) => setTimeout(r, 50));
   expect(online.getSite).toHaveBeenCalledTimes(1);
   expect(client.getQueryCache().find({ queryKey: online.onlineKeys.site("p1", "s1") })).toBeUndefined();
+});
+
+it.each(["Save", "Save as a variant", "Make a version without ads"])(
+  "prevents editing or deleting a draft while %s is pending", async (action) => {
+    vi.mocked(online.getSite).mockResolvedValue({ ...source, ads: [ad] });
+    vi.mocked(online.saveSite).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(online.copySite).mockImplementation(() => new Promise(() => {}));
+    mount();
+    const name = await screen.findByRole("textbox", { name: "Store name" });
+    fireEvent.change(name, { target: { value: "Reviewed draft" } });
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    await waitFor(() => expect(action === "Save as a variant" ? online.copySite : online.saveSite).toHaveBeenCalledTimes(1));
+    // Native clicks respect a disabled fieldset, including the secondary actions.
+    await act(async () => screen.getByRole("button", { name: "Delete" }).click());
+    const confirm = screen.queryByRole("button", { name: "Delete this store" });
+    if (confirm) await act(async () => confirm.click());
+    expect(online.deleteSite).not.toHaveBeenCalled();
+    expect(name.matches(":disabled")).toBe(true);
+    expect(screen.getByRole("textbox", { name: "Shirt: Price" }).matches(":disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Save" }).matches(":disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Save as a variant" }).matches(":disabled")).toBe(true);
+  },
+);
+
+it("keeps the draft locked until the saved snapshot has refreshed", async () => {
+  const saved = { ...source, name: "Reviewed draft", updated_at: "after" };
+  let finishRefresh!: (site: online.OnlineSite) => void;
+  vi.mocked(online.getSite).mockResolvedValueOnce(source).mockImplementation(
+    () => new Promise((resolve) => { finishRefresh = resolve; }),
+  );
+  vi.mocked(online.saveSite).mockResolvedValue(saved);
+  mount();
+  fireEvent.change(await screen.findByRole("textbox", { name: "Store name" }), { target: { value: saved.name } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(vi.mocked(online.getSite).mock.calls.length).toBeGreaterThanOrEqual(2));
+  expect(screen.getByRole("textbox", { name: "Store name" }).matches(":disabled")).toBe(true);
+  await act(async () => finishRefresh(saved));
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Store name" }).matches(":disabled")).toBe(false));
+  const name = screen.getByRole("textbox", { name: "Store name" }) as HTMLInputElement;
+  expect(name.value).toBe(saved.name);
+  fireEvent.change(name, { target: { value: "Next edit" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save as a variant" }));
+  await waitFor(() => expect(online.copySite).toHaveBeenCalledWith("p1", "s1", expect.objectContaining({ name: "Next edit" })));
+});
+
+it.each(["Save", "Make a version without ads"])("unlocks the unchanged draft after %s fails", async (action) => {
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, ads: [ad] });
+  mount();
+  const price = await screen.findByRole("textbox", { name: "Shirt: Price" }) as HTMLInputElement;
+  fireEvent.change(price, { target: { value: "7.25" } });
+  fireEvent.click(screen.getByRole("button", { name: action }));
+  expect((await screen.findByRole("alert")).textContent).toContain("The second write failed");
+  expect(price.value).toBe("7.25");
+  expect(price.matches(":disabled")).toBe(false);
+  vi.mocked(online.saveSite).mockImplementation(async (_pid, site) => site);
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(online.saveSite).toHaveBeenCalledTimes(2));
+  expect(online.saveSite).toHaveBeenLastCalledWith("p1", expect.objectContaining({
+    products: [expect.objectContaining({ price: 725 })],
+  }));
+});
+
+it("does not save or copy a store while its deletion is pending", async () => {
+  vi.mocked(online.deleteSite).mockImplementation(() => new Promise(() => {}));
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete this store" }));
+  await waitFor(() => expect(online.deleteSite).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    screen.getByRole("button", { name: "Save" }).click();
+    screen.getByRole("button", { name: "Save as a variant" }).click();
+  });
+  expect(online.saveSite).not.toHaveBeenCalled();
+  expect(online.copySite).not.toHaveBeenCalled();
+  expect(screen.getByRole("textbox", { name: "Store name" }).matches(":disabled")).toBe(true);
 });

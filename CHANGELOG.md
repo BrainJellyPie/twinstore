@@ -16,8 +16,18 @@
   and a full-width button hides the store list. Runs record each visit's
   furthest funnel stage and the page flow; older runs show the rest of the report.
 
+- Keep online-store editing and conflicting writes locked until a save and its
+  refreshed snapshot finish; failed writes preserve the draft for correction or retry.
+
+- Reset online run forms and report selections when switching stores or runs,
+  preventing starts against the previous store and replays with the previous run’s shoppers.
+
+- Keep whole-trip and shelf-specific purchase conditions together in customer
+  search, so a nonbuyer search cannot silently include shoppers who bought elsewhere.
+
 - Stop refetching a deleted online store or run (and the run's replays) into
   “not found” errors right after deleting it; only the lists refresh.
+
 - Validate automatically drafted event hours before caching: empty or reversed
   windows now request correction instead of silently increasing traffic until midnight.
 

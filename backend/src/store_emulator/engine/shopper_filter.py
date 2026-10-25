@@ -37,7 +37,7 @@ class _Filter(BaseModel):
     genders: list[Gender] = Field(default_factory=list[Gender])
     persona_words: list[str] = Field(default_factory=list[str], max_length=6,
                                      description="words from who they are or why they came, e.g. 'student', 'lunch'")
-    bought: Literal["any", "yes", "no"] = "any"
+    bought: Literal["any", "yes", "no"] = Field(default="any", description="whole trip: no means no purchase at any shelf")
     impulse: bool = Field(default=False, description="only shoppers who bought something on impulse")
     stopped_at: list[str] = Field(default_factory=list[str], max_length=6,
                                   description="listed shelves, exactly as listed; a shopper fits by stopping at any of them")
@@ -76,6 +76,8 @@ trading day. Set only what the description asks for and leave the rest empty:
   skipped_products: products they did not buy (none of them), all exactly as listed; bought_there: no for shoppers
   who stopped at those shelves but bought nothing there (use it, not bought, when the description is about the
   shelves), yes for those who bought there;
+  bought and bought_there are independent conditions, combined with AND. Use bought=any for a shelf-only condition.
+  For shoppers who bought nothing at all, keep bought=no even when also selecting shelves they stopped at;
 - arrived_after and arrived_before as HH:MM; min_spent and max_spent in major units of {currency}; min_minutes and
   max_minutes for the length of the visit;
   numeric minimums must not exceed their maximums. Equal bounds select an exact value. Use null for an unspecified
@@ -147,13 +149,6 @@ def apply_filter(
     min_spent = None if f.min_spent is None else int((Decimal(str(f.min_spent)) * scale).to_integral_value(rounding=ROUND_CEILING))
     max_spent = None if f.max_spent is None else int((Decimal(str(f.max_spent)) * scale).to_integral_value(rounding=ROUND_FLOOR))
     words = [w.strip().casefold() for w in f.persona_words if w.strip()]
-    trip_nothing = f.bought == "no"
-    if trip_nothing and f.bought_there == "no" and stops:
-        # Both say "bought nothing"; tied to shelves it means nothing there (an empty basket is asked for separately).
-        trip_nothing = False
-        warnings.append('"Bought nothing" was read as nothing bought at those shelves; ask for "bought nothing at all" '
-                        "to require an empty basket.")
-
     conds: list[tuple[str, Check]] = []
 
     def persona_of(pid: str) -> Persona | None:
@@ -176,7 +171,7 @@ def apply_filter(
         conds.append((f"Persona mentions: {', '.join(words)}", mentions))
     if f.bought == "yes":
         conds.append(("Bought something", lambda _pid, c: bool(c.purchases)))
-    elif trip_nothing:
+    elif f.bought == "no":
         conds.append(("Bought nothing", lambda _pid, c: not c.purchases))
     if f.impulse:
         conds.append(("Bought on impulse", lambda _pid, c: any(e.origin == "impulse" for e in c.purchases)))
