@@ -18,7 +18,7 @@ from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.rack import Rack, RackType, Slot, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, PathFinder, Position
+from store_emulator.domain.types import Action, Face, PathFinder, Position
 from store_emulator.engine.prompting import canonical_identifier, format_budget, format_price, price_unit_rule
 from store_emulator.engine.routing.route_builder import entrance_position, face_access_tile
 from store_emulator.engine.routing.store_lookup import resolve_buy_placement
@@ -68,6 +68,8 @@ class IntentResponse(BaseModel):
         # them during validation. Only the engine may select those offer fields.
         if not isinstance(value, (list, tuple)):
             return value
+        vocabulary = {"nav": ("path", "area", "leave"), "action": tuple(a.value for a in Action),
+                      "face": tuple(f.value for f in Face)}
         cleaned: list[object] = []
         for action in cast(list[object] | tuple[object, ...], value):
             if isinstance(action, CustomerAction):
@@ -75,6 +77,11 @@ class IntentResponse(BaseModel):
             if isinstance(action, dict):
                 action = {key: item for key, item in cast(dict[str, object], action).items()
                           if key not in {"origin", "product_block", "product_level"}}
+                for key, choices in vocabulary.items():
+                    supplied = action.get(key)
+                    if isinstance(supplied, str):
+                        action[key] = canonical_identifier(supplied, choices)
+                # Recognize BUY before allowing defaults for fields unused by other actions.
                 if action.get("action") != Action.BUY:
                     for key, default in (("product_sku", ""), ("quantity", 1)):
                         if key in action and action[key] is None:

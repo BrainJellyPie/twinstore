@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover unique case and surrounding-whitespace variants of model-generated
+  action, navigation and shelf-face values. Normalize the action before applying
+  non-purchase defaults so a differently cased BUY still rejects null quantity
+  or SKU. Purchase identifiers retain their exact meaning.
+
 - Normalize unique case and surrounding-whitespace variations of generated
   customer age-group and gender labels before validation and caching. Values
   such as `female` or `60S+` no longer fail an otherwise valid customer batch;
