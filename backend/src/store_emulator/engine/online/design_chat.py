@@ -164,7 +164,7 @@ _MENTION_PATTERNS: list[tuple[str, str, tuple[str, ...]]] = [
     ("page style", r"\b(luxury|minimal|brutalist|playful|marketplace|editorial|neon|retro|organic|page style)\b", ("page_style",)),
     ("colour", r"\bcolou?rs?\b|#[0-9a-f]{6}\b", ("theme_color",)),
     ("product grid", r"\bcolumns?\b|\bper page\b", ("grid_columns", "products_per_page")),
-    ("banner", r"\bbanner\b|\bheadline\b", ("hero_banner", "hero_text")),
+    ("banner", r"(?<!cookie )\bbanner\b|\bheadline\b|\bhero\b", ("hero_banner", "hero_text")),
     ("home page sections", r"\bsections?\b", ("home_sections",)),
     ("text size", r"\b(large|larger|bigger) text\b|\b(text|font) size\b", ("large_text",)),
     ("ratings", r"\bratings?\b", ("show_ratings",)),
@@ -179,20 +179,21 @@ _MENTION_PATTERNS: list[tuple[str, str, tuple[str, ...]]] = [
     ("delivery fees", r"\bshipping\b|\bdelivery\b", ("shipping_fee", "free_shipping_threshold")),
     ("coupon", r"\bcoupons?\b|\b(discount|promo) code\b", ("coupon_code", "coupon_percent", "welcome_popup")),
     ("guest checkout", r"\bguest\b", ("guest_checkout",)),
-    ("checkout steps", r"\bone[- ]page checkout\b|\bmulti[- ]step\b|\bcheckout steps\b", ("checkout_flow",)),
+    ("checkout steps", r"\bone[- ]page checkout\b|\bmulti[- ]step\b|\bcheckout (steps|flow)\b", ("checkout_flow",)),
     ("one-click buying", r"\bone[- ]click\b|\bbuy now\b", ("one_click_buy",)),
-    ("page speed", r"\bload(ing)? time\b|\bpage speed\b|\b\d+ ?ms\b|\b(faster|slower) pages?\b", ("page_load_ms",)),
+    ("page speed", r"\bload(ing)? time\b|\bpage (speed|load)\b|\b\d+ ?ms\b|\b(faster|slower) pages?\b", ("page_load_ms",)),
 ]
 _MENTIONS = [(name, re.compile(pattern, re.IGNORECASE), options) for name, pattern, options in _MENTION_PATTERNS]
 
 
 def unapplied_mentions(reply: str, set_options: Sequence[str]) -> list[str]:
     """The kinds of change `reply` talks about although none of their options was set, each as its first option's
-    name, in a fixed order. A question (the designer asking what the owner wants) changes nothing and claims nothing."""
+    name, in a fixed order. A question (the designer asking what the owner wants) changes nothing and claims nothing.
+    Option names written as such (`shipping_fee`) read as their words."""
     if reply.rstrip().endswith("?"):
         return []
-    done = set(set_options)
-    return [options[0] for _name, pattern, options in _MENTIONS if pattern.search(reply) and not done.intersection(options)]
+    done, text = set(set_options), reply.replace("_", " ")
+    return [options[0] for _name, pattern, options in _MENTIONS if pattern.search(text) and not done.intersection(options)]
 
 
 def _describe(site: OnlineSite, options: SiteOptions) -> str:

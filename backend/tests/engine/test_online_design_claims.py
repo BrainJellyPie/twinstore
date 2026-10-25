@@ -20,7 +20,16 @@ def test_a_reply_narrating_unset_changes_names_each_of_them_once():
         "welcome_popup", "chat_widget", "shipping_fee", "coupon_code", "guest_checkout", "page_load_ms"]
 
 
+def test_option_names_in_a_reply_read_as_the_changes_they_name():
+    # Another real reply of the same model, quoting option names; only the colour was set.
+    reply = ("I've updated the page_style to 'luxury'. I've also removed the 'shipping_fee' and 'coupon_code' options, "
+             "set the guest_checkout to true and the checkout_flow to multi_step, and added a 'page_load_ms' of 600.")
+    assert unapplied_mentions(reply, ["theme_color"]) == [
+        "page_style", "shipping_fee", "coupon_code", "guest_checkout", "checkout_flow", "page_load_ms"]
+
+
 @pytest.mark.parametrize("reply,set_options", [
+    ("I added a cookie banner at the bottom.", ["cookie_banner"]),  # not the hero banner
     ("A luxury style with a deep navy colour, and no popup.", ["page_style", "theme_color", "welcome_popup"]),
     ("Free delivery over $50 and a 10% coupon in the welcome popup.", ["free_shipping_threshold", "welcome_popup"]),
     ("Pages now load in 300 ms with add-to-cart buttons on the cards.", ["page_load_ms", "quick_add"]),
