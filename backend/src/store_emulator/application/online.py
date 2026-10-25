@@ -6,6 +6,7 @@ request snapshot of the sites and shoppers, sessions-<variant>.json, result.json
 """
 
 import asyncio
+import hashlib
 import io
 import json
 import logging
@@ -22,6 +23,7 @@ from PIL import Image, ImageDraw
 from pydantic import BaseModel, Field, TypeAdapter
 
 from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.interview import InterviewMessage, InterviewQuestion
 from store_emulator.domain.online import (
     ActionKind,
     AdCampaign,
@@ -49,6 +51,7 @@ from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
+from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy
 from store_emulator.engine.online.render import ProductPicture, render_page, see_as
 from store_emulator.engine.online.session import run_session
@@ -57,10 +60,10 @@ from store_emulator.engine.perception.product_images import bundled_product_imag
 
 from .async_executor import executor, submit_background
 from .currencies import project_currency
-from .errors import AppError, job_failure
+from .errors import AppError, job_failure, model_failure
 from .product_images import project_image_loader
-from .providers import build_client, ensure_resolvable
-from .setups import setup_tree_transaction
+from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
+from .setups import setup_lock_path, setup_tree_transaction
 from .simulation import with_engine_model, with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
@@ -129,6 +132,15 @@ class SessionView(BaseModel):
     site_name: str
     shopper: OnlineShopper
     session: SessionResult
+
+
+class OnlineInterview(BaseModel):
+    """A conversation with one shopper about their visit to one store of a run."""
+    run_id: str
+    variant: int
+    shopper_id: str
+    model: str = ""
+    messages: list[InterviewMessage] = []
 
 
 # ── storage ────────────────────────────────────────────────────────────────────
@@ -579,6 +591,73 @@ def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> Session
         raise AppError(f"shopper not found in this run: {shopper_id}", 404)
     return SessionView(variant=variant, site_id=sites[variant].id, site_name=sites[variant].name, shopper=shopper,
                        session=session)
+
+
+def _interview_path(pid: str, run_id: str, variant: int, shopper_id: str) -> Path:
+    return _run_dir(pid, run_id) / "interviews" / f"{variant}-{shopper_id}.json"
+
+
+@contextmanager
+def _interview_lock(pid: str, run_id: str, variant: int, shopper_id: str) -> Iterator[None]:
+    digest = hashlib.sha256(json.dumps([run_id, variant, shopper_id]).encode()).hexdigest()
+    # Lock files outlive runs; acquiring a lock must not recreate a deleted run folder.
+    path = setup_lock_path(pid, "online-interview").with_name(f"online-interview_{digest}.lock")
+    lock = FileLock(path, timeout=0)
+    try:
+        lock.acquire()
+    except Timeout as e:
+        raise AppError("This shopper is answering a question. Try again when the answer is complete.", 409) from e
+    try:
+        yield
+    finally:
+        lock.release()
+
+
+def get_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> OnlineInterview:
+    get_session(pid, run_id, variant, shopper_id)  # an unknown shopper is not one who said nothing
+    path = _interview_path(pid, run_id, variant, shopper_id)
+    if path.exists():
+        return OnlineInterview.model_validate(read_json(path))
+    return OnlineInterview(run_id=run_id, variant=variant, shopper_id=shopper_id)
+
+
+def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, q: InterviewQuestion,
+                config: SimulationConfig) -> OnlineInterview:
+    """The researcher's question and the shopper's answer, added to their conversation about this visit."""
+    with _interview_lock(pid, run_id, variant, shopper_id):
+        with _write_transaction(pid):
+            view = get_session(pid, run_id, variant, shopper_id)
+            sites, _ = _snapshot(pid, run_id)
+            transcript = get_interview(pid, run_id, variant, shopper_id)
+        llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
+        try:
+            model = assistive_model(q.model, llm_config)
+            llm = assistive_client(model, llm_config)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+        question = q.question.strip()
+        try:
+            reply = asyncio.run(interview_shopper(llm, sites[variant], view.shopper, view.session, transcript.messages,
+                                                  question, run_id=run_id))
+        except Exception as e:  # provider errors reach the user as a message, not a 500
+            logger.warning(f"[online interview] {pid}/{run_id}/{variant}/{shopper_id}: {type(e).__name__}: {e}")
+            raise AppError(model_failure(e, "The shopper could not answer"), 502) from e
+        transcript.model = answered_by(llm, model)
+        transcript.messages += [
+            InterviewMessage(role="interviewer", text=question, created_at=now_iso()),
+            InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
+        ]
+        with _write_transaction(pid):
+            if not (_run_dir(pid, run_id) / "status.json").is_file():
+                raise AppError(f"online run not found: {run_id}", 404)
+            write_json(_interview_path(pid, run_id, variant, shopper_id), transcript.model_dump(mode="json"))
+        return transcript
+
+
+def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> None:
+    with _interview_lock(pid, run_id, variant, shopper_id), _write_transaction(pid):
+        get_session(pid, run_id, variant, shopper_id)
+        _interview_path(pid, run_id, variant, shopper_id).unlink(missing_ok=True)
 
 
 def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int) -> bytes:

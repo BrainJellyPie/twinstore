@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Prevent late online interview answers and lock acquisition from recreating
+  deleted projects or runs. Serialize the final save with deletion while keeping
+  model inference outside the project lock.
+
+- Ask an online shopper about their visit. In a replay, a model answers a
+  researcher's questions in the shopper's voice from who they are and what they
+  saw and did on the site only (pages, clicks, thoughts, outcome, exit survey),
+  points at the steps it means and keeps the conversation per store and shopper.
+  Suggested first questions follow how the visit ended; a cited step opens that
+  page of the replay.
+
 - Include possible cart-reminder visits in online model-work estimates, bound
   the typical estimate by small click limits, and distinguish decisions/surveys
   from extra retry calls. Label the click limit per visit in all six languages.

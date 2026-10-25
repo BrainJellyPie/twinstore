@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mail, MessageCircle } from "lucide-react";
 
 import { getSession, onlineKeys, stepScreenshotUrl, type SessionView } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -13,6 +13,7 @@ import { currencyCode, formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 
+import { ShopperChat } from "./ShopperChat";
 import { ACTION_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
 
 export function JourneyViewer({ projectId, runId, variant, shopperId, variants, currency, onVariant, onClose }: {
@@ -52,6 +53,7 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
   const { shopper, session } = view;
   const [index, setIndex] = useState(0);
   const [narrow, setNarrow] = useState(shopper.device === "mobile");
+  const [asking, setAsking] = useState(false);
   const step = session.steps[Math.min(index, session.steps.length - 1)];
   const code = currencyCode(currency);
   const money = (x: number) => formatMoney(x, code);
@@ -99,6 +101,18 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
             {session.survey.improvement && <p className="mt-1 text-muted-foreground">→ {session.survey.improvement}</p>}
           </div>
         )}
+        <div className="rounded-xl border p-3">
+          <button type="button" aria-expanded={asking} onClick={() => setAsking((x) => !x)}
+            className="flex w-full items-center gap-1.5 text-left text-xs font-semibold">
+            <MessageCircle className="size-3.5 text-primary" aria-hidden /> {t("onAskTitle")}
+          </button>
+          {asking && (
+            <div className="mt-2">
+              <ShopperChat projectId={projectId} runId={runId} variant={view.variant} shopper={shopper} outcome={session.outcome}
+                onStep={(i) => setIndex(Math.min(Math.max(0, i), session.steps.length - 1))} />
+            </div>
+          )}
+        </div>
         <ol className="max-h-[50vh] space-y-1 overflow-y-auto">
           {session.steps.map((s, i) => (
             <li key={s.index}>

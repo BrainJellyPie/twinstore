@@ -1,0 +1,56 @@
+"""Asking an online shopper about their visit: what the model is told, and what comes back."""
+
+import asyncio
+
+from pydantic import BaseModel
+
+from store_emulator.domain.interview import InterviewMessage
+from store_emulator.engine.online.catalog import build_site
+from store_emulator.engine.online.interview import INTERVIEW_PROMPT, ask_shopper, visit_text
+from store_emulator.engine.online.policies import RulePolicy
+from store_emulator.engine.online.session import run_session
+from store_emulator.engine.online.shoppers import sample_shoppers
+
+
+class _Shopper:
+    def __init__(self, steps: list[int]) -> None:
+        self.steps = steps
+        self.calls: list[tuple[str, str]] = []
+
+    async def generate_structured_async[T: BaseModel](self, response_model: type[T], system_prompt: str, user_prompt: str,
+                                                      **_: object) -> T:
+        self.calls.append((system_prompt, user_prompt))
+        return response_model.model_validate({"answer": "  The delivery fee put me off.  ", "steps": self.steps})
+
+
+def _visit():
+    site = build_site("pet_store", site_id="iv")
+    shopper = sample_shoppers(site, 1, seed=7, missions={"purchase": 1.0}, mobile_share=0.0)[0]
+    session = asyncio.run(run_session(site, shopper, RulePolicy(), seed=2, max_steps=20, render=False))
+    return site, shopper, session
+
+
+def test_the_shopper_answers_from_their_own_visit() -> None:
+    site, shopper, session = _visit()
+    text = visit_text(site, shopper, session)
+    assert f"Who you are: {shopper.identity}" in text and f"Why you went to {site.name}: {shopper.goal}." in text
+    assert "[1] home page:" in text and text.count("\n[") == len(session.steps)
+    assert "How it ended: you" in text
+    llm = _Shopper([1, len(session.steps), len(session.steps) + 5, 0])
+    reply = asyncio.run(ask_shopper(llm, site, shopper, session, [], "Why did you leave?", run_id="r1"))
+    assert reply.answer == "The delivery fee put me off." and reply.steps == [1, len(session.steps)]
+    system, user = llm.calls[0]
+    assert system == INTERVIEW_PROMPT and "## Language" in system
+    assert user.endswith("Researcher: Why did you leave?") and "Conversation so far" not in user
+    history = [InterviewMessage(role="interviewer", text="Why did you leave?"),
+               InterviewMessage(role="shopper", text=reply.answer)]
+    asyncio.run(ask_shopper(llm, site, shopper, session, history, "Would a coupon have helped?", run_id="r1"))
+    assert "Conversation so far:\nResearcher: Why did you leave?\nYou: The delivery fee put me off." in llm.calls[1][1]
+
+
+def test_a_visit_brought_back_by_the_reminder_reads_as_the_next_day() -> None:
+    site, shopper, session = _visit()
+    returned = session.model_copy(update={"returned_at": 1})
+    lines = visit_text(site, shopper, returned).splitlines()
+    marker = lines.index("Next day: a reminder email about your cart brought you back.")
+    assert lines[marker + 1].startswith("[2] ")

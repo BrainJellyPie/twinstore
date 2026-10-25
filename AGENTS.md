@@ -185,8 +185,9 @@ and confined to LLM-internal sites or compatibility values. The categories are:
   `AgeGroup = Literal["10대", ...]`) and the matching comparison site in
   `frontend/src/shared/utils/assetMap.ts`.
 
-The online-store shopper prompt (`engine/online/prompt.py`) is written in English like the vision shelf
-prompts and carries a `## Language` block keeping `search_text` and `thought` in English.
+The online-store shopper prompts (`engine/online/prompt.py`, and the post-visit interview in
+`engine/online/interview.py`) are written in English like the vision shelf prompts and carry a `## Language` block
+keeping `search_text`, `thought` and the interview `answer` in English.
 
 If you add a new prompt template, follow the pattern in
 `engine/generators/persona.py` (`PERSONA_PROMPT`): include a `## 언어`

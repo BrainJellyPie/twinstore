@@ -41,7 +41,7 @@ def _level(value: float) -> str:
     return "low" if value < 0.4 else "high" if value > 0.7 else "medium"
 
 
-def _age_words(age: str) -> str:
+def age_words(age: str) -> str:
     return "in their 60s or older" if age == "60s+" else f"in their {age}" if age != "10s" else "a teenager"
 
 
@@ -54,12 +54,12 @@ def user_prompt(
     money = display_price
     count, subtotal, names = cart
     lines = [
-        f"Shopper: {shopper.identity}, {_age_words(shopper.age_group)}, {shopper.gender.lower()}, on a {shopper.device}.",
+        f"Shopper: {shopper.identity}, {age_words(shopper.age_group)}, {shopper.gender.lower()}, on a {shopper.device}.",
     ]
     if shopper.description and shopper.persona_id:
         lines.append(shopper.description)
     if shopper.vision != "typical":
-        lines.append(_EYESIGHT[shopper.vision] + ("" if outline is not None else " " + _EYESIGHT_IMAGE))
+        lines.append(EYESIGHT[shopper.vision] + ("" if outline is not None else " " + _EYESIGHT_IMAGE))
     lines += [
         f"Why they are on {site.name}: {shopper.goal}.",
         f"Budget: {money(shopper.budget, site.currency)}." if shopper.budget else "Budget: no fixed limit.",
@@ -86,7 +86,7 @@ def user_prompt(
     return "\n".join(lines)
 
 
-_EYESIGHT: dict[Vision, str] = {
+EYESIGHT: dict[Vision, str] = {
     "low_vision": "The shopper has low vision: small text and thin lines are hard for them to make out. The site's "
                   "settings may offer large text.",
     "color_blind": "The shopper is red-green colour-blind: red sale tags and green stock notes do not stand out for them.",
@@ -159,11 +159,11 @@ Write frustration and improvement in English."""
 def survey_prompt(site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: str, seconds: float,
                   paid: int) -> str:
     lines = [
-        f"Shopper: {shopper.identity}, {_age_words(shopper.age_group)}, {shopper.gender.lower()}, on a {shopper.device}.",
+        f"Shopper: {shopper.identity}, {age_words(shopper.age_group)}, {shopper.gender.lower()}, on a {shopper.device}.",
         f"Why they went to {site.name}: {shopper.goal}.",
     ]
     if shopper.vision != "typical":
-        lines.append(_EYESIGHT[shopper.vision])
+        lines.append(EYESIGHT[shopper.vision])
     lines.append("What they did on the site:")
     lines += [f"{i + 1}. {text}" for i, text in enumerate(history[-20:])]
     lines.append(f"How the visit ended: {outcome}. Time on the site: {int(seconds) // 60} min {int(seconds) % 60} s.")

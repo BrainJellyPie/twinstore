@@ -14,10 +14,12 @@ from store_emulator.application.online import (
     BrowseRequest,
     CopySiteRequest,
     CreateSiteRequest,
+    OnlineInterview,
     OnlineRunView,
     SessionView,
     SiteSummary,
 )
+from store_emulator.domain.interview import InterviewQuestion
 from store_emulator.domain.online import OnlineRunRequest, OnlineRunStatus, OnlineSite, OnlineTemplate, PageView
 
 from ..deps import get_config
@@ -124,6 +126,28 @@ def delete_run(pid: str, run_id: str) -> dict[str, str]:
             summary="One shopper's visit, step by step", response_model=SessionView)
 def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> SessionView:
     return _call(lambda: online_service.get_session(pid, run_id, variant, shopper_id))
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/interview",
+            summary="The conversation with a shopper about one visit", response_model=OnlineInterview)
+def get_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> OnlineInterview:
+    return _call(lambda: online_service.get_interview(pid, run_id, variant, shopper_id))
+
+
+@router.post("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/interview",
+             summary="Ask a shopper about their visit", response_model=OnlineInterview)
+async def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, question: InterviewQuestion) -> OnlineInterview:
+    """A language model answers as the shopper, in the first person, from who they are and their visit only, citing
+    the steps it refers to. `model` picks the model ("" = the app's text model)."""
+    config = get_config()
+    return await run_in_threadpool(_call, lambda: online_service.ask_shopper(pid, run_id, variant, shopper_id, question, config))
+
+
+@router.delete("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/interview",
+               summary="Start the conversation with a shopper over")
+def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> dict[str, str]:
+    _call(lambda: online_service.clear_interview(pid, run_id, variant, shopper_id))
+    return {"status": "deleted"}
 
 
 @router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/steps/{step}.png",
