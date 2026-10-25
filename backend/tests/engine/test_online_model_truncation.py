@@ -9,7 +9,7 @@ import pytest
 from instructor.core.exceptions import FailedAttempt, IncompleteOutputException, InstructorRetryException
 
 from store_emulator.domain.config import LLMConfig
-from store_emulator.domain.online import ActionKind, BrowserState
+from store_emulator.domain.online import ActionKind, BrowserState, ExitSurvey
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.browser import build_page, numbering, outline
 from store_emulator.engine.online.policies import Memory, ModelPolicy, StepView
@@ -17,11 +17,12 @@ from tests.engine.test_online_store import _shoppers, _site
 
 
 @pytest.mark.parametrize("provider", ["openai", "ollama"])
+@pytest.mark.parametrize("operation", ["choice", "survey"])
 @pytest.mark.parametrize("vision", [False, True])
 @pytest.mark.parametrize("structured", ["json", "json_schema"])
 @pytest.mark.parametrize("kind", ["truncated_once", "always_truncated", "generated_phrase", "valid",
                                  "bad_request", "forbidden", "rate_limit"])
-def test_actual_sdk_recovers_only_a_typed_cutoff(monkeypatch, tmp_path, provider, vision, structured, kind):
+def test_actual_sdk_recovers_only_a_typed_cutoff(monkeypatch, tmp_path, provider, operation, vision, structured, kind):
     site = _site(welcome_popup="none")
     shopper = _shoppers(site, 1)[0]
     state = BrowserState()
@@ -31,6 +32,9 @@ def test_actual_sdk_recovers_only_a_typed_cutoff(monkeypatch, tmp_path, provider
     search = page.header.search
     assert search is not None
     answer = {"option": numbers[search.index], "search_text": "green tea", "thought": "Find my usual tea."}
+    if operation == "survey":
+        answer = {"satisfaction": 2, "ease": 3, "recommend": 1, "would_return": False,
+                  "frustration": "I could not find what I wanted.", "improvement": "Improve the search results."}
     calls = []
 
     def response(request):
@@ -43,9 +47,9 @@ def test_actual_sdk_recovers_only_a_typed_cutoff(monkeypatch, tmp_path, provider
                 json={"error": {"type": "invalid_request_error", "message": "max_tokens length limit"}})
         budget = body["options"]["num_predict"] if provider == "ollama" else body["max_tokens"]
         cutoff = kind == "always_truncated" or kind == "truncated_once" and budget == 240
-        content = '{"option":' if cutoff else json.dumps(answer)
+        content = json.dumps(answer)[:10] if cutoff else json.dumps(answer)
         if kind == "generated_phrase":
-            content = json.dumps({"option": "max_tokens length limit"})
+            content = json.dumps({"option" if operation == "choice" else "satisfaction": "max_tokens length limit"})
         finish = "length" if cutoff else "stop"
         if provider == "ollama":
             payload = {"model": "online-test", "done": True, "done_reason": finish,
@@ -65,17 +69,26 @@ def test_actual_sdk_recovers_only_a_typed_cutoff(monkeypatch, tmp_path, provider
         structured_output=structured, structured_sdk_retries=0, cache_dir=str(tmp_path), max_tokens=900,
         seed=0))
     original = state.model_dump()
-    result = asyncio.run(ModelPolicy(client, vision=vision).choose(site, shopper, view, Memory(), random.Random(7)))
+    policy = ModelPolicy(client, vision=vision)
+    result = asyncio.run(policy.choose(site, shopper, view, Memory(), random.Random(7)) if operation == "choice"
+                         else policy.survey(site, shopper, history=["Home: searched for tea", "Search: left"],
+                                            outcome="left", seconds=30, paid=0, seed=123))
     budgets = [b["options"]["num_predict"] if provider == "ollama" else b["max_tokens"] for b in calls]
     assert budgets == ([240, 480] if "truncated" in kind else [240])
     assert client.max_tokens == 900 and state.model_dump() == original
     if kind in {"truncated_once", "valid"}:
-        assert result.source == "model" and result.control.action.kind == ActionKind.SEARCH
-        assert result.query == "green tea" and result.thought == answer["thought"] and not result.error
+        if operation == "choice":
+            assert result.source == "model" and result.control.action.kind == ActionKind.SEARCH
+            assert result.query == "green tea" and result.thought == answer["thought"] and not result.error
+        else:
+            assert result == ExitSurvey.model_validate(answer)
         cached = [json.loads(p.read_text())["result"] for p in tmp_path.glob("*/*.json")]
         assert cached == [answer]
     else:
-        assert result.source == "fallback" and result.error and result.control in page.active
+        if operation == "choice":
+            assert result.source == "fallback" and result.error and result.control in page.active
+        else:
+            assert result is None
         assert not list(tmp_path.glob("*/*.json"))
     if len(calls) == 2:
         assert calls[0]["messages"] == calls[1]["messages"]
@@ -87,7 +100,8 @@ def test_actual_sdk_recovers_only_a_typed_cutoff(monkeypatch, tmp_path, provider
 
 @pytest.mark.parametrize("vision", [False, True])
 @pytest.mark.parametrize("kind", ["direct", "wrapped", "earlier_only", "last_only"])
-def test_only_the_terminal_typed_error_can_increase_the_budget(vision, kind):
+@pytest.mark.parametrize("operation", ["choice", "survey"])
+def test_only_the_terminal_typed_error_can_increase_the_budget(vision, kind, operation):
     site = _site(welcome_popup="none")
     shopper = _shoppers(site, 1)[0]
     state = BrowserState()
@@ -107,13 +121,20 @@ def test_only_the_terminal_typed_error_can_increase_the_budget(vision, kind):
             self.calls.append(kwargs)
             if len(self.calls) == 1:
                 raise error
-            return schema.model_validate({"option": numbers[page.leave.index]})
+            return schema.model_validate({"option": numbers[page.leave.index]} if operation == "choice" else {
+                "satisfaction": 4, "ease": 5, "recommend": 6, "would_return": True,
+            })
 
         generate_structured_with_image_async = generate_structured_async
 
     model = Model()
-    result = asyncio.run(ModelPolicy(model, vision=vision, max_tokens=160).choose(site, shopper, view, Memory(), random.Random(7)))
+    policy = ModelPolicy(model, vision=vision, max_tokens=160)
+    result = asyncio.run(policy.choose(site, shopper, view, Memory(), random.Random(7)) if operation == "choice"
+                         else policy.survey(site, shopper, history=[], outcome="left", seconds=30, paid=0, seed=17))
     should_retry = kind != "earlier_only"
     assert [c["max_tokens"] for c in model.calls] == ([160, 320] if should_retry else [160])
-    assert result.source == ("model" if should_retry else "fallback")
+    if operation == "choice":
+        assert result.source == ("model" if should_retry else "fallback")
+    else:
+        assert (result is not None) == should_retry
     assert all(c["route"] == shopper.id and c["seed"] == 17 for c in model.calls)

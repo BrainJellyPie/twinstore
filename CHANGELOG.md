@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recover an online exit survey once when a local model explicitly cuts its
+  answer off at the output limit. Keep invalid answers and ordinary service
+  errors within their original attempt budget, and exclude unanswered surveys.
 - Add quick experiments to online runs. Tick up to three one-click changes to the
   first store (drop the last-step fee, allow guest checkout, untick the add-on,
   remove the welcome popup or offer a welcome coupon, halve or double page load
