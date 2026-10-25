@@ -1,0 +1,160 @@
+// Online stores workspace: build web shops from templates (or the store's own shelves), browse them the way a
+// virtual shopper does — a screenshot with numbered options — tune their design, and run virtual shoppers with a
+// purchase, browsing or bargain-hunting mission through one store or several variants at once.
+
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, BarChart3, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
+
+import * as api from "@/shared/api/client";
+import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus } from "@/shared/api/online";
+import { Button } from "@/shared/components/ui/button";
+import { queryKeys } from "@/shared/queries/keys";
+import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+
+import { BrowserView } from "./BrowserView";
+import { RunLauncher } from "./RunLauncher";
+import { RunReport } from "./RunReport";
+import { SiteDesigner } from "./SiteDesigner";
+import { TemplateGallery } from "./TemplateGallery";
+
+type Tab = "browse" | "design" | "simulate";
+const TABS: { id: Tab; label: MessageKey; icon: typeof Globe2 }[] = [
+  { id: "browse", label: "onTabBrowse", icon: MousePointerClick },
+  { id: "design", label: "onTabDesign", icon: Settings2 },
+  { id: "simulate", label: "onTabSimulate", icon: Sparkles },
+];
+
+const busy = (run: OnlineRunStatus) => run.status === "pending" || run.status === "running";
+
+export function OnlinePage({ projectId }: { projectId: string }) {
+  const { t, locale } = useI18n();
+  const [siteId, setSiteId] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("browse");
+  const [gallery, setGallery] = useState(false);
+
+  const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
+  const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });
+  const runs = useQuery({
+    queryKey: onlineKeys.runs(projectId),
+    queryFn: ({ signal }) => listRuns(projectId, signal),
+    refetchInterval: (q) => (q.state.data?.some(busy) ? 1500 : false),
+  });
+  const templates = useQuery({ queryKey: onlineKeys.templates(), queryFn: ({ signal }) => listTemplates(signal), staleTime: Infinity });
+  const currency = project.data?.metadata.currency ?? "USD";
+  const list = sites.data ?? [];
+  const selected = list.find((s) => s.id === siteId) ?? list[0] ?? null;
+  const showGallery = gallery || (sites.isSuccess && list.length === 0);
+
+  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); };
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+      <aside className="panel m-3 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mr-0 lg:w-[320px] lg:overflow-y-auto">
+        <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-3" aria-hidden /> {t("areaBackToStore")}
+        </Link>
+        <div>
+          <h1 className="flex items-center gap-2 font-display text-2xl"><Globe2 className="size-5 text-primary" aria-hidden /> {t("onTitle")}</h1>
+          <p className="mt-1 text-xs text-muted-foreground">{t("onSubtitle")}</p>
+        </div>
+        <Button onClick={() => { setGallery(true); setRunId(null); }}><Plus className="size-4" aria-hidden /> {t("onNewStore")}</Button>
+
+        <section aria-labelledby="online-sites" className="space-y-2">
+          <h2 id="online-sites" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onStores")}</h2>
+          {sites.isPending && <p className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
+          {sites.isError && <p role="alert" className="text-xs text-destructive">{sites.error.message}</p>}
+          <ul className="space-y-1.5">
+            {list.map((s) => {
+              const parent = s.variant_of ? list.find((p) => p.id === s.variant_of) : null;
+              const active = !showGallery && !runId && selected?.id === s.id;
+              return (
+                <li key={s.id}>
+                  <button type="button" onClick={() => openSite(s.id)} aria-current={active ? "true" : undefined}
+                    className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
+                    <span className="flex items-center gap-2 font-medium">
+                      <span className="size-3 shrink-0 rounded-full" style={{ background: s.theme_color }} aria-hidden />
+                      <span className="truncate">{s.name}</span>
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {t("onStoreStats", { products: s.products, categories: s.categories })}
+                      {parent ? ` · ${t("onVariantOf", { name: parent.name })}` : ""}
+                    </span>
+                    {s.note && <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={s.note}>{s.note}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        <section aria-labelledby="online-runs" className="space-y-2">
+          <h2 id="online-runs" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onRuns")}</h2>
+          {runs.data?.length === 0 && <p className="text-xs text-muted-foreground">{t("onNoRuns")}</p>}
+          <ul className="space-y-1.5">
+            {(runs.data ?? []).map((r) => (
+              <li key={r.run_id}>
+                <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); }}
+                  aria-current={runId === r.run_id ? "true" : undefined}
+                  className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", runId === r.run_id ? "border-primary bg-primary/8" : "hover:bg-muted")}>
+                  <span className="flex items-center gap-2 font-medium">
+                    {busy(r) ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : <BarChart3 className="size-3.5 shrink-0" aria-hidden />}
+                    <span className="truncate">{r.name || r.site_names.join(" vs ")}</span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {r.status === "failed" ? t("onRunFailed") : busy(r) ? t("onRunProgress", { done: r.done, total: r.total })
+                      : t("onRunSummary", { shoppers: r.request.shoppers, stores: r.site_ids.length })}
+                    {" · "}{new Date(r.created_at).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" })}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </aside>
+
+      <main className="m-3 flex min-h-[32rem] min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
+        {runId ? (
+          <RunReport projectId={projectId} runId={runId} onDeleted={() => setRunId(null)} />
+        ) : showGallery ? (
+          <TemplateGallery
+            projectId={projectId} currency={currency} templates={templates.data ?? []} loading={templates.isPending}
+            error={templates.error?.message ?? null} setups={project.data?.setups ?? []}
+            onCreated={(id) => { openSite(id); setTab("browse"); }}
+            onCancel={list.length ? () => setGallery(false) : undefined}
+          />
+        ) : selected ? (
+          <>
+            <div className="panel flex flex-wrap items-center gap-2 rounded-[1.4rem] p-2" role="tablist" aria-label={t("onStoreTabs")}>
+              {TABS.map(({ id, label, icon: Icon }) => (
+                <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+                  className={cn("flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium", tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
+                  <Icon className="size-4" aria-hidden /> {t(label)}
+                </button>
+              ))}
+              <span className="ml-auto truncate px-2 text-sm font-semibold">{selected.name}</span>
+            </div>
+            {tab === "browse" && <BrowserView key={`${selected.id}:${selected.updated_at}`} projectId={projectId} siteId={selected.id} />}
+            {tab === "design" && (
+              <SiteDesigner key={selected.id} projectId={projectId} siteId={selected.id}
+                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)} />
+            )}
+            {tab === "simulate" && (
+              <RunLauncher projectId={projectId} sites={list} firstSiteId={selected.id}
+                hasCustomers={(project.data?.personas.length ?? 0) > 0}
+                onStarted={(id) => { setRunId(id); }} />
+            )}
+          </>
+        ) : (
+          <div className="panel flex flex-1 items-center justify-center rounded-[1.6rem] p-6 text-sm text-muted-foreground">
+            {sites.isPending ? t("studioLoading") : t("onEmpty")}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

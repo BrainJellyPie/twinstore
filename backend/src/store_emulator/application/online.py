@@ -1,0 +1,586 @@
+"""Online stores of a project: sites made from templates (or the project's own shelves), browsing them as a shopper
+would, and runs where virtual shoppers visit one site or compare up to four variants.
+
+Storage: `.data/<pid>/online/sites/<site_id>.json`; runs under `.data/<pid>/online/runs/<run_id>/` (status.json,
+request snapshot of the sites and shoppers, sessions-<variant>.json, result.json), polled like other background jobs.
+"""
+
+import asyncio
+import io
+import json
+import logging
+import time
+import uuid
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from functools import lru_cache
+from pathlib import Path
+from typing import cast
+
+from filelock import FileLock, Timeout
+from PIL import Image, ImageDraw
+from pydantic import BaseModel, Field, TypeAdapter
+
+from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.online import (
+    ActionKind,
+    BrowserState,
+    Device,
+    OnlineProduct,
+    OnlineRunRequest,
+    OnlineRunResult,
+    OnlineRunStatus,
+    OnlineShopper,
+    OnlineSite,
+    OnlineTemplate,
+    PageOption,
+    PageView,
+    SessionResult,
+    SiteOptions,
+    VariantComparison,
+)
+from store_emulator.domain.rack import SlotItem
+from store_emulator.domain.store import Store
+from store_emulator.domain.types import ResourceId
+from store_emulator.engine.files import remove_tree
+from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, summarize
+from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
+from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
+from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy
+from store_emulator.engine.online.render import ProductPicture, render_page
+from store_emulator.engine.online.session import run_session
+from store_emulator.engine.online.shoppers import sample_shoppers
+from store_emulator.engine.perception.product_images import bundled_product_image
+
+from .async_executor import executor, submit_background
+from .currencies import project_currency
+from .errors import AppError, job_failure
+from .product_images import project_image_loader
+from .providers import build_client, ensure_resolvable
+from .setups import setup_tree_transaction
+from .simulation import with_engine_model, with_vision_default
+from .storage.io import DATA_DIR, now_iso, read_json, write_json
+from .storage.personas import read_personas
+from .storage.setups import read_setup, read_state
+
+logger = logging.getLogger(__name__)
+
+_MIN_STATUS_INTERVAL_SEC = 1.0
+_MAX_SITES = 60
+_MODEL_CONCURRENCY = 4
+_SESSIONS = TypeAdapter(list[SessionResult])
+_SHOPPERS = TypeAdapter(list[OnlineShopper])
+_SITES = TypeAdapter(list[OnlineSite])
+
+
+class CreateSiteRequest(BaseModel):
+    template_id: str = Field(min_length=1, max_length=60)
+    name: str = Field(default="", max_length=60)
+    seed: int = 0
+    setup_id: ResourceId | None = Field(default=None, description='Layout whose shelves become the catalog ("from_store")')
+
+
+class CopySiteRequest(BaseModel):
+    name: str = Field(default="", max_length=60)
+    note: str = Field(default="", max_length=400)
+    options: SiteOptions | None = None  # the variant's options (default: the original's)
+
+
+class SiteSummary(BaseModel):
+    id: str
+    name: str
+    template_id: str
+    currency: str
+    categories: int
+    products: int
+    photos: int
+    theme_color: str
+    device: Device | None
+    variant_of: str
+    note: str
+    created_at: str
+    updated_at: str
+
+
+class BrowseRequest(BaseModel):
+    state: BrowserState | None = None  # None = a new visit
+    option: int | None = Field(default=None, ge=1, description="Number of the option to use on the state's page")
+    query: str = Field(default="", max_length=60, description="What was typed, when the option is the search box")
+    mark_seed: int = Field(default=0, ge=0)
+    has_account: bool = False
+    device: Device = "desktop"  # of a new visit
+
+
+class OnlineRunView(BaseModel):
+    status: OnlineRunStatus
+    result: OnlineRunResult | None = None
+
+
+class SessionView(BaseModel):
+    variant: int
+    site_id: str
+    site_name: str
+    shopper: OnlineShopper
+    session: SessionResult
+
+
+# ── storage ────────────────────────────────────────────────────────────────────
+
+
+def _root(pid: str) -> Path:
+    return Path(DATA_DIR) / pid / "online"
+
+
+def _site_path(pid: str, site_id: str) -> Path:
+    return _root(pid) / "sites" / f"{site_id}.json"
+
+
+def _run_dir(pid: str, run_id: str) -> Path:
+    return _root(pid) / "runs" / run_id
+
+
+@contextmanager
+def _write_transaction(pid: str) -> Iterator[None]:
+    """Hold the project tree (so the project cannot be deleted meanwhile) and the online lock."""
+    with setup_tree_transaction(pid):
+        lock_path = _root(pid) / ".online.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with FileLock(lock_path, timeout=10):
+                yield
+        except Timeout as exc:
+            raise AppError("Another online-store change is in progress; try again", 409) from exc
+
+
+def list_templates() -> list[OnlineTemplate]:
+    return template_summaries()
+
+
+def _summary(site: OnlineSite) -> SiteSummary:
+    return SiteSummary(
+        id=site.id, name=site.name, template_id=site.template_id, currency=site.currency,
+        categories=len(site.categories), products=len(site.products),
+        photos=sum(1 for p in site.products if p.image_url), theme_color=site.options.theme_color,
+        device=site.options.device, variant_of=site.variant_of, note=site.note, created_at=site.created_at,
+        updated_at=site.updated_at,
+    )
+
+
+def list_sites(pid: str) -> list[SiteSummary]:
+    folder = _root(pid) / "sites"
+    if not folder.is_dir():
+        return []
+    out: list[SiteSummary] = []
+    for path in folder.glob("*.json"):
+        try:
+            out.append(_summary(OnlineSite.model_validate(read_json(path))))
+        except ValueError as e:  # one damaged site must not hide the others
+            logger.warning(f"[online] skipping {pid}/{path.name}: {e}")
+    return sorted(out, key=lambda s: s.created_at)
+
+
+def get_site(pid: str, site_id: str) -> OnlineSite:
+    path = _site_path(pid, site_id)
+    if not path.exists():
+        raise AppError(f"online store not found: {site_id}", 404)
+    return OnlineSite.model_validate(read_json(path))
+
+
+def _check(site: OnlineSite) -> None:
+    for label, ids in (("category", [c.id for c in site.categories]), ("product", [p.id for p in site.products])):
+        if len(set(ids)) != len(ids):
+            raise AppError(f"Online store {label} IDs must be unique", 422)
+    categories = {c.id for c in site.categories}
+    stray = next((p for p in site.products if p.category_id not in categories), None)
+    if stray is not None:
+        raise AppError(f"Product {stray.name} is in a category the store does not have: {stray.category_id}", 422)
+    if not site.options.payment_methods:
+        raise AppError("Offer at least one payment method", 422)
+    if len(site.options.home_sections) != len(set(site.options.home_sections)):
+        raise AppError("Home page sections must not repeat", 422)
+
+
+def _store_of_layout(pid: str, setup_id: str | None) -> Store:
+    chosen = setup_id or read_state(pid).get("activeSetupId")
+    if not isinstance(chosen, str) or not chosen:
+        raise AppError("This project has no layout to take products from", 400)
+    try:
+        setup = read_setup(pid, chosen)
+    except FileNotFoundError:
+        raise AppError(f"layout not found: {chosen}", 404) from None
+    if not setup.get("store"):
+        raise AppError("This layout has no store yet", 400)
+    return Store.model_validate(setup["store"])
+
+
+def create_site(pid: str, request: CreateSiteRequest, config: SimulationConfig) -> OnlineSite:
+    site_id = f"site_{uuid.uuid4().hex[:12]}"
+    currency = project_currency(pid, config.currency)
+    now = now_iso()
+    with _write_transaction(pid):
+        if len(list_sites(pid)) >= _MAX_SITES:
+            raise AppError(f"A project can keep up to {_MAX_SITES} online stores; delete one first", 409)
+        if request.template_id == FROM_STORE_TEMPLATE:
+            store = _store_of_layout(pid, request.setup_id)
+            try:
+                site = site_from_store(store, site_id=site_id, name=request.name or _project_name(pid) or "Online store",
+                                       currency=store.currency or currency, seed=request.seed, now=now)
+            except ValueError as e:
+                raise AppError(str(e), 400) from e
+        elif request.template_id in template_ids():
+            site = build_site(request.template_id, site_id=site_id, currency=currency, name=request.name,
+                              seed=request.seed, now=now)
+        else:
+            raise AppError(f"unknown online store template: {request.template_id}", 400)
+        write_json(_site_path(pid, site_id), site.model_dump(mode="json"))
+    return site
+
+
+def _project_name(pid: str) -> str:
+    path = Path(DATA_DIR) / pid / "metadata.json"
+    try:
+        meta: object = read_json(path)
+    except (FileNotFoundError, ValueError):
+        return ""
+    if not isinstance(meta, dict):
+        return ""
+    name = cast(dict[str, object], meta).get("name", "")
+    return name if isinstance(name, str) else ""
+
+
+def save_site(pid: str, site_id: str, site: OnlineSite) -> OnlineSite:
+    if site.id != site_id:
+        raise AppError("The store's ID does not match the address", 400)
+    _check(site)
+    with _write_transaction(pid):
+        current = get_site(pid, site_id)
+        saved = site.model_copy(update={"created_at": current.created_at, "template_id": current.template_id,
+                                        "currency": current.currency, "updated_at": now_iso()})
+        write_json(_site_path(pid, site_id), saved.model_dump(mode="json"))
+    return saved
+
+
+def copy_site(pid: str, site_id: str, request: CopySiteRequest) -> OnlineSite:
+    """A variant: the same catalog with its own options, to compare with the original on the same shoppers."""
+    with _write_transaction(pid):
+        if len(list_sites(pid)) >= _MAX_SITES:
+            raise AppError(f"A project can keep up to {_MAX_SITES} online stores; delete one first", 409)
+        source = get_site(pid, site_id)
+        now = now_iso()
+        copy = source.model_copy(update={
+            "id": f"site_{uuid.uuid4().hex[:12]}", "name": request.name or f"{source.name} B"[:60],
+            "variant_of": source.id, "note": request.note, "options": request.options or source.options,
+            "created_at": now, "updated_at": now,
+        })
+        _check(copy)
+        write_json(_site_path(pid, copy.id), copy.model_dump(mode="json"))
+    return copy
+
+
+def delete_site(pid: str, site_id: str) -> None:
+    with _write_transaction(pid):
+        path = _site_path(pid, site_id)
+        if not path.exists():
+            raise AppError(f"online store not found: {site_id}", 404)
+        path.unlink()
+
+
+# ── browsing ───────────────────────────────────────────────────────────────────
+
+
+def _picture(pid: str) -> ProductPicture:
+    loader = project_image_loader(pid)
+
+    def picture(product: OnlineProduct) -> Image.Image | None:
+        if not product.image_url and not product.sku:
+            return None
+        return loader(SlotItem(sku=product.sku or product.id, name=product.name, price=product.price,
+                               image_url=product.image_url or None))
+
+    return picture
+
+
+def _bundled_picture(product: OnlineProduct) -> Image.Image | None:
+    return bundled_product_image(product.image_url) if product.image_url else None
+
+
+def page_view(site: OnlineSite, state: BrowserState, *, mark_seed: int = 0, picture: ProductPicture | None = None,
+              render: bool = True) -> PageView:
+    page = build_page(site, state)
+    numbers = numbering(page, mark_seed)
+    shot = render_page(page, site, numbers, picture) if render else None
+    options = sorted((PageOption(kind=c.action.kind, target=c.action.target, label=c.action.label,
+                                 number=numbers[c.index], box=shot.boxes.get(c.index) if shot else None)
+                      for c in page.active), key=lambda o: o.number)
+    return PageView(url=page.url, title=page.title, page=page.kind, options=options, outline=outline(page, site),
+                    state=state, image=shot.data_url() if shot else "", width=shot.width if shot else 0,
+                    height=shot.height if shot else 0)
+
+
+def browse(pid: str, site_id: str, request: BrowseRequest) -> PageView:
+    """The page after using one option of the current page (or the landing page of a new visit)."""
+    site = get_site(pid, site_id)
+    state = request.state or initial_state(site, device=request.device)
+    if request.option is not None:
+        page = build_page(site, state)
+        numbers = numbering(page, request.mark_seed)
+        index = next((i for i, n in numbers.items() if n == request.option), None)
+        if index is None:
+            raise AppError("That option is not on this page", 400)
+        action = page.controls[index].action
+        if action.kind == ActionKind.SEARCH and not request.query.strip():
+            raise AppError("Type what to search for", 400)
+        if action.kind == ActionKind.LEAVE:
+            state = initial_state(site, device=state.device).model_copy(update={"notice": "You left the site. This is a new visit."})
+        else:
+            state = apply(site, state, action, query=request.query, has_account=request.has_account)
+    return page_view(site, state, mark_seed=request.mark_seed, picture=_picture(pid))
+
+
+@lru_cache(maxsize=64)
+def template_preview(template_id: str, currency: str) -> bytes:
+    """The home page of a template, without popups or badges (gallery thumbnails)."""
+    if template_id not in template_ids():
+        raise AppError(f"unknown online store template: {template_id}", 404)
+    site = build_site(template_id, site_id="preview", currency=currency)
+    state = BrowserState(cookies_answered=True)
+    return render_page(build_page(site, state), site, {}, _bundled_picture).png
+
+
+def site_preview(pid: str, site_id: str, device: Device) -> bytes:
+    site = get_site(pid, site_id)
+    state = BrowserState(cookies_answered=True, device=device)
+    return render_page(build_page(site, state), site, {}, _picture(pid)).png
+
+
+# ── runs ───────────────────────────────────────────────────────────────────────
+
+
+def _write_status(pid: str, status: OnlineRunStatus) -> None:
+    write_json(_run_dir(pid, status.run_id) / "status.json", status.model_dump(mode="json"))
+
+
+def _policy(request: OnlineRunRequest, config: SimulationConfig) -> tuple[ShopperPolicy, str]:
+    """The shopper policy of a run and the model it uses ("" for rules). Raises AppError when the model cannot be used."""
+    if request.policy == "rule":
+        return RulePolicy(), ""
+    ensemble = request.ensemble if request.ensemble is not None and request.ensemble.members else None
+    if request.policy == "vlm":
+        run_config = with_vision_default(
+            config.model_copy(update={"engine_type": EngineType.VLM_GLANCE, "ensemble": ensemble}), request.model)
+        engine = EngineType.VLM_GLANCE
+    else:
+        run_config = config.model_copy(update={"engine_type": EngineType.PATTERN_INTENT_IMPULSE, "ensemble": ensemble})
+        if request.model:
+            run_config = with_engine_model(run_config, request.model)
+        engine = EngineType.PATTERN_INTENT_IMPULSE
+    try:
+        ensure_resolvable(run_config)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    llm_config = run_config.llm_for(engine)
+    label = " + ".join(m.model for m in ensemble.members) if ensemble else request.model or llm_config.model
+    return ModelPolicy(build_client(llm_config, ensemble), vision=request.policy == "vlm"), label
+
+
+def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> OnlineRunStatus:
+    if len(set(request.site_ids)) != len(request.site_ids):
+        raise AppError("Pick each online store once", 400)
+    if not any(w > 0 for w in request.missions.values()):
+        raise AppError("Give at least one shopping mission a share above zero", 400)
+    policy, model = _policy(request, config)
+    run_id = f"orun_{uuid.uuid4().hex[:12]}"
+    with _write_transaction(pid):
+        sites = [get_site(pid, site_id) for site_id in request.site_ids]
+        if len({site.currency for site in sites}) != 1:
+            raise AppError("Compare online stores using the same currency so shopper budgets and order totals are comparable", 400)
+        personas = read_personas(pid) if request.source == "project" else None
+        if request.source == "project" and not personas:
+            raise AppError("This project has no customers yet: generate them, or use the built-in panel", 400)
+        shoppers = sample_shoppers(sites[0], request.shoppers, seed=request.seed, missions=request.missions,
+                                   mobile_share=request.mobile_share, personas=personas)
+        status = OnlineRunStatus(
+            run_id=run_id, name=request.name or " vs ".join(s.name for s in sites)[:80], site_ids=[s.id for s in sites],
+            site_names=[s.name for s in sites], status="pending", total=len(shoppers) * len(sites), request=request,
+            created_at=now_iso(),
+        )
+        folder = _run_dir(pid, run_id)
+        folder.mkdir(parents=True, exist_ok=False)
+        try:
+            write_json(folder / "sites.json", _SITES.dump_python(sites, mode="json"))
+            write_json(folder / "shoppers.json", _SHOPPERS.dump_python(shoppers, mode="json"))
+            _write_status(pid, status)
+        except Exception:
+            remove_tree(folder)
+            raise
+    try:
+        submit_background(executor, _run_job, pid, status, sites, shoppers, policy, model, _picture(pid))
+    except RuntimeError as exc:
+        status.status, status.finished_at = "failed", now_iso()
+        status.error = "Could not start the online run. Please retry when the worker is available."
+        _write_status(pid, status)
+        raise AppError(status.error, 503) from exc
+    return status
+
+
+def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shoppers: list[OnlineShopper],
+             policy: ShopperPolicy, model: str, picture: ProductPicture) -> None:
+    started = time.monotonic()
+    status.status = "running"
+    last = 0.0
+
+    def progress(phase: str) -> None:
+        nonlocal last
+        status.done += 1
+        status.phase = phase
+        now = time.monotonic()
+        if status.done < status.total and now - last < _MIN_STATUS_INTERVAL_SEC:
+            return
+        last = now
+        _write_status(pid, status)
+
+    try:
+        _write_status(pid, status)
+        request = status.request
+        variants = asyncio.run(_simulate(sites, shoppers, policy, request, picture, progress))
+        for index, sessions in enumerate(variants):
+            write_json(_run_dir(pid, status.run_id) / f"sessions-{index}.json", _SESSIONS.dump_python(sessions, mode="json"))
+        by_id = {s.id: s for s in shoppers}
+        summaries = [summarize(site, by_id, sessions) for site, sessions in zip(sites, variants, strict=True)]
+        comparisons = [VariantComparison(site_id=site.id, site_name=site.name,
+                                         deltas=paired_deltas(variants[0], sessions, seed=request.seed))
+                       for site, sessions in zip(sites[1:], variants[1:], strict=True)]
+        requests = sum(s.model_requests for sessions in variants for s in sessions)
+        fallbacks = sum(s.fallbacks for sessions in variants for s in sessions)
+        notes = ["Virtual shoppers, not real traffic: use the differences between variants, measured on the same "
+                 "shoppers, rather than the absolute rates."]
+        if request.policy == "rule":
+            notes.append("Rule shoppers follow illustrative, uncalibrated probabilities. Use a vision model to let "
+                         "shoppers react to what each page actually shows.")
+        if fallbacks:
+            notes.append(f"{fallbacks} of {requests} model decisions failed and were made by the rules instead.")
+        result = OnlineRunResult(
+            run_id=status.run_id, name=status.name, policy=request.policy, model=model, currency=sites[0].currency,
+            variants=summaries, comparisons=comparisons, shoppers=shoppers, model_requests=requests,
+            fallbacks=fallbacks, seconds=round(time.monotonic() - started, 1), notes=notes,
+        )
+        write_json(_run_dir(pid, status.run_id) / "result.json", json.loads(result.model_dump_json()))
+        status.status, status.phase, status.finished_at = "completed", "done", now_iso()
+        _write_status(pid, status)
+    except Exception as e:  # surface any failure to the UI instead of a stuck job
+        logger.exception(f"[online] run {status.run_id} failed")
+        status.status = "failed"
+        status.error = job_failure(e, "The online run failed")
+        status.finished_at = now_iso()
+        _write_status(pid, status)
+
+
+async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], policy: ShopperPolicy,
+                    request: OnlineRunRequest, picture: ProductPicture,
+                    progress: Callable[[str], None]) -> list[list[SessionResult]]:
+    render = request.policy == "vlm"
+    slots = asyncio.Semaphore(_MODEL_CONCURRENCY if request.policy != "rule" else 1)
+    out: list[list[SessionResult]] = []
+    for index, site in enumerate(sites):
+        phase = f"variant {index + 1} of {len(sites)}"
+
+        async def one(shopper: OnlineShopper, site: OnlineSite = site, phase: str = phase) -> SessionResult:
+            async with slots:
+                result = await run_session(site, shopper, policy, seed=request.seed, max_steps=request.max_steps,
+                                           render=render, shuffle_marks=request.shuffle_marks,
+                                           image_width=request.image_width, picture=picture)
+            progress(phase)
+            return result
+
+        out.append(list(await asyncio.gather(*(one(s) for s in shoppers))))
+    return out
+
+
+def list_runs(pid: str) -> list[OnlineRunStatus]:
+    base = _root(pid) / "runs"
+    if not base.is_dir():
+        return []
+    runs: list[OnlineRunStatus] = []
+    for folder in base.iterdir():
+        if (folder / "status.json").exists():
+            try:
+                runs.append(OnlineRunStatus.model_validate(read_json(folder / "status.json")))
+            except ValueError as e:
+                logger.warning(f"[online] skipping run {pid}/{folder.name}: {e}")
+    return sorted(runs, key=lambda r: r.created_at, reverse=True)
+
+
+def get_run(pid: str, run_id: str) -> OnlineRunView:
+    path = _run_dir(pid, run_id) / "status.json"
+    if not path.exists():
+        raise AppError(f"online run not found: {run_id}", 404)
+    status = OnlineRunStatus.model_validate(read_json(path))
+    result_path = _run_dir(pid, run_id) / "result.json"
+    result = OnlineRunResult.model_validate(read_json(result_path)) if result_path.exists() else None
+    return OnlineRunView(status=status, result=result)
+
+
+def delete_run(pid: str, run_id: str) -> None:
+    with _write_transaction(pid):
+        view = get_run(pid, run_id)
+        if view.status.status in ("pending", "running"):
+            raise AppError("This run is still going; delete it when it has finished", 409)
+        remove_tree(_run_dir(pid, run_id))
+
+
+def _snapshot(pid: str, run_id: str) -> tuple[list[OnlineSite], list[OnlineShopper]]:
+    folder = _run_dir(pid, run_id)
+    if not (folder / "sites.json").exists():
+        raise AppError(f"online run not found: {run_id}", 404)
+    return _SITES.validate_python(read_json(folder / "sites.json")), _SHOPPERS.validate_python(read_json(folder / "shoppers.json"))
+
+
+def _sessions(pid: str, run_id: str, variant: int) -> list[SessionResult]:
+    path = _run_dir(pid, run_id) / f"sessions-{variant}.json"
+    if not path.exists():
+        raise AppError("This run has no sessions for that store yet", 404)
+    return _SESSIONS.validate_python(read_json(path))
+
+
+def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> SessionView:
+    sites, shoppers = _snapshot(pid, run_id)
+    if not 0 <= variant < len(sites):
+        raise AppError("No such store in this run", 404)
+    session = next((s for s in _sessions(pid, run_id, variant) if s.shopper_id == shopper_id), None)
+    shopper = next((s for s in shoppers if s.id == shopper_id), None)
+    if session is None or shopper is None:
+        raise AppError(f"shopper not found in this run: {shopper_id}", 404)
+    return SessionView(variant=variant, site_id=sites[variant].id, site_name=sites[variant].name, shopper=shopper,
+                       session=session)
+
+
+def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: int) -> bytes:
+    """The page as this shopper saw it at this step (drawn again from the run's own copy of the site)."""
+    view = get_session(pid, run_id, variant, shopper_id)
+    sites, _ = _snapshot(pid, run_id)
+    found = next((s for s in view.session.steps if s.index == step), None)
+    if found is None:
+        raise AppError("No such step in this session", 404)
+    site = sites[variant]
+    page = build_page(site, found.state)
+    numbers = numbering(page, found.mark_seed)
+    shot = render_page(page, site, numbers, _picture(pid))
+    chosen = next((i for i, n in numbers.items() if found.choice is not None and n == found.choice.number), None)
+    box = shot.boxes.get(chosen) if chosen is not None else None
+    if box is None:
+        return shot.png
+    with Image.open(io.BytesIO(shot.png)) as source:
+        image = source.convert("RGB")
+    ImageDraw.Draw(image).rounded_rectangle((box[0] - 3, box[1] - 3, box[2] + 3, box[3] + 3), radius=8,
+                                            outline=(244, 63, 94), width=4)
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
+
+
+def export_clickstream(pid: str, run_id: str) -> str:
+    view = get_run(pid, run_id)
+    if view.status.status != "completed":
+        raise AppError("The run has not finished yet", 409)
+    sites, shoppers = _snapshot(pid, run_id)
+    return clickstream_csv([(site, _sessions(pid, run_id, i)) for i, site in enumerate(sites)], {s.id: s for s in shoppers})

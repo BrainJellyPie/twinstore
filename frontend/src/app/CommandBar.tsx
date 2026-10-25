@@ -4,7 +4,7 @@
 
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, KeyRound, LayoutGrid, Map, Megaphone, Moon, Search, Store, Sun } from "lucide-react";
+import { Camera, Globe2, KeyRound, LayoutGrid, Map, Megaphone, Moon, Search, Store, Sun } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
@@ -140,7 +140,7 @@ export function CommandBar() {
     enabled: !!pid,
   });
 
-  const sub = pathname.startsWith("/town/") ? t("neighborhood") : pathname.startsWith("/capture/") ? t("shelfCapture") : pathname.startsWith("/marketing/") ? t("marketingStudio") : null;
+  const sub = pathname.startsWith("/town/") ? t("neighborhood") : pathname.startsWith("/capture/") ? t("shelfCapture") : pathname.startsWith("/marketing/") ? t("marketingStudio") : pathname.startsWith("/online/") ? t("onlineStores") : null;
   const pageKey = PAGE_TITLES[pathname];
   const pageTitle = pageKey ? t(pageKey) : undefined;
 
@@ -150,6 +150,7 @@ export function CommandBar() {
     { to: "/town/$pid", params: { pid: pid ?? "" }, label: t("area"), icon: Map, active: pathname.startsWith("/town/"), disabled: !pid },
     { to: "/capture/$pid", params: { pid: pid ?? "" }, label: t("capture"), icon: Camera, active: pathname.startsWith("/capture/"), disabled: !pid },
     { to: "/marketing/$pid", params: { pid: pid ?? "" }, label: t("market"), icon: Megaphone, active: pathname.startsWith("/marketing/"), disabled: !pid },
+    { to: "/online/$pid", params: { pid: pid ?? "" }, label: t("online"), icon: Globe2, active: pathname.startsWith("/online/"), disabled: !pid },
     { to: "/settings", label: t("models"), icon: KeyRound, active: pathname === "/settings" },
   ];
 

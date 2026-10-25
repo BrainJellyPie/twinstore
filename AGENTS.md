@@ -146,6 +146,9 @@ ordinary day. `richText()` puts bold figures or code into a translated sentence;
 `timeFormat.ts` gives weekday names and store clocks in the selected language.
 The shared-store run option and the **Store operations** results use `operationsMessages.ts` (`ops*`); their
 counts are written "label: value" so no language has to agree a noun with a number.
+The online stores page (templates, browsing, design, runs, reports and replays) uses keys in
+`messages/online.ts` (`on*`, built-in template descriptions as `onTpl_<template id>`); option labels, page text in
+screenshots, shopper goals and thoughts and run notes are server-written English and stay as sent.
 Virtual-customer generation copy distinguishes model estimates and copied daily samples. Use
 `Intl.PluralRules` for visitor nouns; a disabled local model must not advertise an unavailable
 download. Model-start errors use localized recovery text with original diagnostics accessible.
@@ -181,6 +184,9 @@ and confined to LLM-internal sites or compatibility values. The categories are:
   `domain/persona.py` (`Gender = Literal["남", "여"]`,
   `AgeGroup = Literal["10대", ...]`) and the matching comparison site in
   `frontend/src/shared/utils/assetMap.ts`.
+
+The online-store shopper prompt (`engine/online/prompt.py`) is written in English like the vision shelf
+prompts and carries a `## Language` block keeping `search_text` and `thought` in English.
 
 If you add a new prompt template, follow the pattern in
 `engine/generators/persona.py` (`PERSONA_PROMPT`): include a `## 언어`

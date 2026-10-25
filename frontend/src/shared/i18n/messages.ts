@@ -13,6 +13,7 @@ import { operationsMessages } from "./operationsMessages";
 import { storeMessages } from "./messages/store";
 import { studioMessages } from "./messages/studio";
 import { layoutMessages } from "./messages/layout";
+import { onlineMessages } from "./messages/online";
 
 export const LOCALES = [
   { code: "en", label: "English" }, { code: "ko", label: "한국어" }, { code: "zh", label: "中文" },
@@ -37,6 +38,7 @@ export const messages = {
   area: ["Area", "주변 지역", "周边", "周辺", "Zona", "Quartier"],
   capture: ["Capture", "선반 촬영", "货架识别", "棚の撮影", "Captura", "Capture"],
   market: ["Market", "마케팅", "营销", "マーケティング", "Marketing", "Marketing"],
+  online: ["Online", "온라인", "线上", "オンライン", "Online", "En ligne"],
   models: ["Models", "모델", "模型", "モデル", "Modelos", "Modèles"],
   openStoreFirst: ["Open a store first", "먼저 매장을 열어 주세요", "请先打开门店", "先に店舗を開いてください", "Abre una tienda primero", "Ouvrez d’abord un magasin"],
   breadcrumb: ["Breadcrumb", "현재 위치", "当前位置", "現在の位置", "Ruta de navegación", "Fil d’Ariane"],
@@ -45,6 +47,7 @@ export const messages = {
   neighborhood: ["Neighborhood", "주변 지역", "周边区域", "周辺地域", "Vecindario", "Quartier"],
   shelfCapture: ["Shelf capture", "선반 촬영", "货架识别", "棚の撮影", "Captura de estantes", "Capture des rayons"],
   marketingStudio: ["Marketing studio", "마케팅 스튜디오", "营销工作室", "マーケティングスタジオ", "Estudio de marketing", "Studio marketing"],
+  onlineStores: ["Online stores", "온라인 스토어", "线上商店", "オンラインストア", "Tiendas online", "Boutiques en ligne"],
   home: ["TwinStore home", "TwinStore 홈", "TwinStore 主页", "TwinStore ホーム", "Inicio de TwinStore", "Accueil TwinStore"],
   searchCommands: ["Search and jump (command palette)", "검색 및 이동 (명령 팔레트)", "搜索与跳转（命令面板）", "検索と移動（コマンドパレット）", "Buscar y navegar (paleta de comandos)", "Rechercher et naviguer (palette de commandes)"],
   commandAsk: ["Ask TwinStore", "TwinStore에 요청", "让 TwinStore 处理", "TwinStore に頼む", "Pedir a TwinStore", "Demander à TwinStore"],
@@ -70,6 +73,7 @@ export const messages = {
   commandAreaHint: ["demand, rivals, synergy", "수요, 경쟁 매장, 시너지", "需求、竞争门店、协同效应", "需要、競合店、相乗効果", "Demanda, competidores, sinergia", "Demande, concurrents, synergie"],
   commandCaptureHint: ["photo → planogram", "사진 → 진열 배치", "照片 → 陈列图", "写真 → 棚割り", "Foto → planograma", "Photo → planogramme"],
   commandMarketingHint: ["A/B tests, concept tests, product images", "A/B 테스트, 콘셉트 평가, 상품 이미지", "A/B 测试、概念测试、商品图片", "A/Bテスト、コンセプト評価、商品画像", "Pruebas A/B, conceptos, imágenes de productos", "Tests A/B, concepts, images de produits"],
+  commandOnlineHint: ["web shops, browsing shoppers, A/B tests", "웹 쇼핑몰, 가상 고객 브라우징, A/B 테스트", "网店、虚拟顾客浏览、A/B 测试", "ネットショップ、仮想顧客の閲覧、A/Bテスト", "Tiendas web, clientes navegando, pruebas A/B", "Boutiques web, clients qui naviguent, tests A/B"],
   allStores: ["All stores", "모든 매장", "所有门店", "すべての店舗", "Todas las tiendas", "Tous les magasins"],
   commandHomeHint: ["home", "홈", "主页", "ホーム", "Inicio", "Accueil"],
   commandNewHint: ["create, wizard", "만들기, 시작 안내", "创建、向导", "作成、ウィザード", "Crear, asistente", "Créer, assistant"],
@@ -554,5 +558,6 @@ export const messages = {
   ...starterCategoryMessages,
   ...rackCopyMessages,
   ...layoutMessages,
+  ...onlineMessages,
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;
 export type MessageKey = keyof typeof messages;

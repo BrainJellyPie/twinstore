@@ -5,6 +5,25 @@
 - Native Ollama requests for official Qwen3.5 models now disable optional thinking so short automatic-answer budgets remain available for the final response. Other model families, custom namespaces and cloud references keep their existing behavior; changed-policy caches are separated.
 - Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
 
+- Add online stores. Each project can build browser-style web shops from 42
+  ready-made templates (2,500+ catalog products, most with photos) or from a
+  layout's own shelves, and tune their design: layout, search quality,
+  sponsored listings, urgency and social proof, welcome popups, cookie banner,
+  delivery fees, coupons, guest checkout, checkout steps, payment methods,
+  drip-priced service fees, pre-ticked add-ons, returns and page speed.
+  Shoppers see each page as a screenshot with a numbered badge on every
+  clickable element; a vision model picks one option (search, back, open
+  product 3, open the menu or settings, add a payment method, close the tab…),
+  a text model reads the page outline instead, or instant rule shoppers decide.
+  Shoppers have missions (buy, window-shop, compare, hunt bargains, find a
+  gift, reorder), devices, budgets and patience. Runs compare up to four
+  variants on the same shoppers with paired bootstrap intervals and report the
+  funnel, cart abandonment, exits, segments, search terms with no results,
+  products, click maps, step-by-step replays and a clickstream CSV.
+- Keep online cart quantities within finite stock and the 99-unit limit, hide
+  exhausted add controls, and revalidate stock before placing an order. Reject
+  comparisons between online stores using different currencies before a job starts.
+
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
 - Exclude staff-script ratings with blank required replies or reasons. Spaces

@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TownPidRouteImport } from './routes/town.$pid'
 import { Route as ProjectsNewRouteImport } from './routes/projects/new'
 import { Route as ProjectsPidRouteImport } from './routes/projects/$pid'
+import { Route as OnlinePidRouteImport } from './routes/online.$pid'
 import { Route as MarketingPidRouteImport } from './routes/marketing.$pid'
 import { Route as CapturePidRouteImport } from './routes/capture.$pid'
 
@@ -42,6 +43,11 @@ const ProjectsPidRoute = ProjectsPidRouteImport.update({
   path: '/projects/$pid',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnlinePidRoute = OnlinePidRouteImport.update({
+  id: '/online/$pid',
+  path: '/online/$pid',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketingPidRoute = MarketingPidRouteImport.update({
   id: '/marketing/$pid',
   path: '/marketing/$pid',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/capture/$pid': typeof CapturePidRoute
   '/marketing/$pid': typeof MarketingPidRoute
+  '/online/$pid': typeof OnlinePidRoute
   '/projects/$pid': typeof ProjectsPidRoute
   '/projects/new': typeof ProjectsNewRoute
   '/town/$pid': typeof TownPidRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/capture/$pid': typeof CapturePidRoute
   '/marketing/$pid': typeof MarketingPidRoute
+  '/online/$pid': typeof OnlinePidRoute
   '/projects/$pid': typeof ProjectsPidRoute
   '/projects/new': typeof ProjectsNewRoute
   '/town/$pid': typeof TownPidRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/capture/$pid': typeof CapturePidRoute
   '/marketing/$pid': typeof MarketingPidRoute
+  '/online/$pid': typeof OnlinePidRoute
   '/projects/$pid': typeof ProjectsPidRoute
   '/projects/new': typeof ProjectsNewRoute
   '/town/$pid': typeof TownPidRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/capture/$pid'
     | '/marketing/$pid'
+    | '/online/$pid'
     | '/projects/$pid'
     | '/projects/new'
     | '/town/$pid'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/capture/$pid'
     | '/marketing/$pid'
+    | '/online/$pid'
     | '/projects/$pid'
     | '/projects/new'
     | '/town/$pid'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/capture/$pid'
     | '/marketing/$pid'
+    | '/online/$pid'
     | '/projects/$pid'
     | '/projects/new'
     | '/town/$pid'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   CapturePidRoute: typeof CapturePidRoute
   MarketingPidRoute: typeof MarketingPidRoute
+  OnlinePidRoute: typeof OnlinePidRoute
   ProjectsPidRoute: typeof ProjectsPidRoute
   ProjectsNewRoute: typeof ProjectsNewRoute
   TownPidRoute: typeof TownPidRoute
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsPidRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/online/$pid': {
+      id: '/online/$pid'
+      path: '/online/$pid'
+      fullPath: '/online/$pid'
+      preLoaderRoute: typeof OnlinePidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/marketing/$pid': {
       id: '/marketing/$pid'
       path: '/marketing/$pid'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   CapturePidRoute: CapturePidRoute,
   MarketingPidRoute: MarketingPidRoute,
+  OnlinePidRoute: OnlinePidRoute,
   ProjectsPidRoute: ProjectsPidRoute,
   ProjectsNewRoute: ProjectsNewRoute,
   TownPidRoute: TownPidRoute,

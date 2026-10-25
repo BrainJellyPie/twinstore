@@ -12,6 +12,7 @@ _STATUS_PATTERNS = (
     "*/runs/*/status.json",
     "*/optimizations/*/status.json",
     "*/synergy/*/status.json",
+    "*/online/runs/*/status.json",
     "*/captures/*/status.json",
     "*/captures/*/lab/jobs/*/status.json",
 )
