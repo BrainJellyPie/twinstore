@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from store_emulator.domain.persona import Persona
+from store_emulator.engine.prompting import display_price
 
 from .errors import AppError
 from .interview import _load  # pyright: ignore[reportPrivateUsage]
@@ -103,3 +104,20 @@ def channel_mix(pid: str, online_run_id: str, store_run_id: str | None = None) -
             store_currency=currency.upper(), online_currency=result.currency.upper(),
             by_age=by("age_group"), by_gender=by("gender"))
     return None
+
+
+def channel_lines(mix: ChannelMix) -> list[str]:
+    """The mix as fact-sheet lines for the online analyst."""
+    def split(groups: list[ChannelGroup]) -> str:
+        return "; ".join(f"{g.group} {g.customers} customers: both {g.both}, store only {g.store_only}, "
+                         f"online only {g.online_only}, nowhere {g.neither}" for g in groups)
+
+    lines = [f"Store and online (the same {mix.customers} customers in store run {mix.store_run_id} and online at "
+             f"{mix.online_store}): bought in both {mix.both}, only in the store {mix.store_only}, only online "
+             f"{mix.online_only}, nowhere {mix.neither}; spent in the store {display_price(mix.store_spend, mix.store_currency)}, "
+             f"paid online {display_price(mix.online_spend, mix.online_currency)}."]
+    if len(mix.by_age) > 1:
+        lines.append(f"Store and online by age: {split(mix.by_age)}.")
+    if len(mix.by_gender) > 1:
+        lines.append(f"Store and online by gender: {split(mix.by_gender)}.")
+    return lines

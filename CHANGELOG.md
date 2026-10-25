@@ -6,7 +6,9 @@
   are the store's customers has a **Store and online** section that reads
   each customer next to the newest store run of them — bought in both, only
   in the store, only online or nowhere — with what they spent in each channel
-  and the split by age and gender (`GET …/online/runs/{id}/channels`).
+  and the split by age and gender (`GET …/online/runs/{id}/channels`). The
+  run analyst reads the same lines, so it can answer who prefers which
+  channel, and a cited line links to the section.
 - Find a store or run: once the online page lists more than six stores or
   runs, a box above them filters both by name (and a store's note); a
   variant that matches opens its group.

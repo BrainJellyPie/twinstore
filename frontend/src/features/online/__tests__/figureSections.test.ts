@@ -16,6 +16,7 @@ it("finds the report section of each kind of fact-sheet line", () => {
     ["Threadline exit survey (12 answers): satisfaction 5.1/7, ease 5.4/7, NPS +8, would return 60%.", "online-surveys"],
     ["Threadline conversion by device: desktop: visits 14, conversion 14.3%; mobile: visits 16, conversion 50.0%.", "online-segments"],
     ["Threadline searches (count / found nothing / ordered): 'eyewear' 3/0/2.", "online-products"],
+    ["Store and online by age: 20s 34 customers: both 15, store only 19, online only 0, nowhere 0.", "online-channels"],
     ["Run: Threadline vs Quick add. Shoppers: 30 (rule shoppers).", null],
   ];
   for (const [line, section] of lines) expect([line, figureSection(line)]).toEqual([line, section]);

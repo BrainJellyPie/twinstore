@@ -941,14 +941,28 @@ def _analyst_lock(pid: str, run_id: str) -> Iterator[None]:
         lock.release()
 
 
+def _channel_facts(pid: str, view: OnlineRunView) -> list[str]:
+    """For a run of the project's customers, the same customers in the newest store run of them, as fact lines."""
+    if view.status.request.source != "project":
+        return []
+    from .channels import channel_lines, channel_mix  # late import: channels reads this module's runs
+    try:
+        mix = channel_mix(pid, view.status.run_id)
+    except AppError:
+        return []
+    return channel_lines(mix) if mix else []
+
+
 def ask_analyst(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> AnalystThread:
     """The question and the analyst's answer, read off the run's report, added to the run's analyst thread."""
     with _analyst_lock(pid, run_id):
         with _write_transaction(pid):
-            result = get_run(pid, run_id).result
+            view = get_run(pid, run_id)
+            result = view.result
             if result is None:
                 raise AppError("This run has no results yet", 409)
             thread = get_analyst(pid, run_id)
+        extra = _channel_facts(pid, view)
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1600})
         try:
             model = assistive_model(q.model, llm_config)
@@ -957,7 +971,8 @@ def ask_analyst(pid: str, run_id: str, q: AnalystQuestion, config: SimulationCon
             raise AppError(str(e), 400) from e
         try:
             answer = asyncio.run(answer_online_question(llm, result, q.question, thread.messages,
-                                                        seed=stable_seed("online-analyst", run_id, len(thread.messages))))
+                                                        seed=stable_seed("online-analyst", run_id, len(thread.messages)),
+                                                        extra=extra))
         except Exception as e:  # provider errors reach the user as advice
             logger.warning(f"[online analyst] {pid}/{run_id}: {type(e).__name__}: {e}")
             raise AppError(model_failure(e, "The question could not be answered"), 502) from e
@@ -976,7 +991,8 @@ def ask_analyst(pid: str, run_id: str, q: AnalystQuestion, config: SimulationCon
 
 def suggest_analyst_questions(pid: str, run_id: str, model: str, config: SimulationConfig) -> list[str]:
     """Three starter questions read off this run's report (what stands out); nothing is kept."""
-    result = get_run(pid, run_id).result
+    view = get_run(pid, run_id)
+    result = view.result
     if result is None:
         raise AppError("This run has no results yet", 409)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 500})
@@ -985,7 +1001,7 @@ def suggest_analyst_questions(pid: str, run_id: str, model: str, config: Simulat
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
-        return asyncio.run(suggest_online_questions(llm, result))
+        return asyncio.run(suggest_online_questions(llm, result, _channel_facts(pid, view)))
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[online analyst] suggestions {pid}/{run_id}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "No questions could be suggested"), 502) from e
@@ -1006,10 +1022,10 @@ def run_report_html(pid: str, run_id: str) -> str:
 
 
 def analyst_facts(pid: str, run_id: str) -> str:
-    result = get_run(pid, run_id).result
-    if result is None:
+    view = get_run(pid, run_id)
+    if view.result is None:
         raise AppError("This run has no results yet", 409)
-    return online_facts(result)
+    return online_facts(view.result, _channel_facts(pid, view))
 
 
 def _interview_path(pid: str, run_id: str, variant: int, shopper_id: str) -> Path:

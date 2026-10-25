@@ -89,8 +89,9 @@ def _store_lines(s: VariantSummary, money: Callable[[float], str]) -> list[str]:
     return lines
 
 
-def online_facts(result: OnlineRunResult) -> str:
-    """The run's report as a fact sheet a model can answer from (and a reader can check against)."""
+def online_facts(result: OnlineRunResult, extra: Sequence[str] = ()) -> str:
+    """The run's report as a fact sheet a model can answer from (and a reader can check against); `extra`: lines
+    read from elsewhere, such as the same customers in a store run."""
     def money(amount: float) -> str:
         return display_price(round(amount), result.currency)
 
@@ -120,15 +121,16 @@ def online_facts(result: OnlineRunResult) -> str:
         if biggest:
             lines.append(f"{c.site_name} conversion difference by segment: " + "; ".join(
                 f"{g.dimension} {g.value} {g.conversion_diff * 100:+.1f} pt (n {g.n})" for g in biggest) + ".")
+    lines.extend(extra)
     lines.extend(result.notes[:4])
     return "\n".join(lines)
 
 
 async def answer_online_question(llm: StructuredLLM, result: OnlineRunResult, question: str,
-                                 history: Sequence[AnalystMessage], seed: int = 0) -> RunAnswer:
-    return await answer_run_question(llm, online_facts(result), question, history, seed=seed,
+                                 history: Sequence[AnalystMessage], seed: int = 0, extra: Sequence[str] = ()) -> RunAnswer:
+    return await answer_run_question(llm, online_facts(result, extra), question, history, seed=seed,
                                      prompt=ONLINE_ANALYST_PROMPT, require_numerical_evidence=True)
 
 
-async def suggest_online_questions(llm: StructuredLLM, result: OnlineRunResult) -> list[str]:
-    return await suggest_run_questions(llm, online_facts(result), prompt=ONLINE_STARTER_PROMPT)
+async def suggest_online_questions(llm: StructuredLLM, result: OnlineRunResult, extra: Sequence[str] = ()) -> list[str]:
+    return await suggest_run_questions(llm, online_facts(result, extra), prompt=ONLINE_STARTER_PROMPT)

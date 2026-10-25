@@ -59,3 +59,12 @@ def test_no_store_run_of_these_customers_is_no_mix(client: TestClient, monkeypat
     monkeypatch.setattr(channels, "_store_runs", lambda pid: [])
     r = client.get(f"/api/projects/{PID}/online/runs/{run_id}/channels")
     assert r.status_code == 200 and r.json() is None
+
+
+def test_the_online_analyst_reads_the_channel_mix(client: TestClient) -> None:
+    run_id = _run(client, "project")["result"]["run_id"]
+    facts = client.get(f"/api/projects/{PID}/online/runs/{run_id}/analyst/facts").text
+    assert f"Store and online (the same " in facts and f"in store run {STORE_RUN}" in facts
+    assert "Store and online by age:" in facts and "Store and online by gender:" in facts
+    panel = _run(client, "panel")["result"]["run_id"]
+    assert "Store and online" not in client.get(f"/api/projects/{PID}/online/runs/{panel}/analyst/facts").text
