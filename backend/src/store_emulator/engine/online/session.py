@@ -2,11 +2,14 @@
 
 Time on the site is simulated: every page takes the site's load time (with jitter) plus reading time, which grows
 with what is on the page, and typing an address, a card or a new account takes longer. When it passes the shopper's
-patience, they give up. Random streams are seeded per (run seed, shopper, step), not per site, so two variants of a
-site are shopped with common random numbers.
+patience, they give up. Random streams are seeded per (run seed, shopper, decision point), not per site, so two
+variants of a site are shopped with common random numbers. A decision point is the page and what covers it, counted
+by how often the shopper has been there: a variant that adds a popup or a banner to answer first does not reshuffle
+every decision after it.
 """
 
 import random
+from collections import Counter
 
 from store_emulator.domain.online import (
     FUNNEL_STAGES,
@@ -103,10 +106,17 @@ async def run_session(
     outcome: SessionOutcome = "step_limit"
     exit_thought = ""
     requests = fallbacks = addon_paid = 0
+    visits: Counter[str] = Counter()
+    ad_products = {ad.id: ad.product_id for ad in site.ads}
     for index in range(max_steps):
         page = build_page(site, state)
         pages_seen.add(page.url)
-        step_rng = random.Random(stable_seed(seed, "online-step", shopper.id, index))
+        point = f"{state.at.model_dump_json()}|{state.overlay}|{page.cookie is not None}"
+        point_seed = stable_seed(seed, "online-step", shopper.id, point, visits[point])
+        visits[point] += 1
+        step_rng = random.Random(point_seed)
+        shown = page.ads_shown
+        memory.ad_products.update(ad_products[ad] for ad in shown)
         load = load_seconds(site, step_rng)
         memory.last_load = load
         mark_seed = stable_seed(seed, "online-marks", shopper.id, index) % _SEED_MOD + 1 if shuffle_marks else 0
@@ -117,7 +127,7 @@ async def run_session(
             image_url, boxes, screen = shot.scaled_data_url(image_width), shot.boxes, (shot.width, shot.height)
         count, subtotal, names = _cart_view(site, state)
         view = StepView(page, state, numbers, outline(page, site), count, subtotal, names, image_url,
-                        seed=stable_seed(seed, "online-call", shopper.id, index) % _SEED_MOD)
+                        seed=stable_seed(seed, "online-call", shopper.id, index) % _SEED_MOD, point=point_seed)
         choice = await policy.choose(site, shopper, view, memory, step_rng)
         if choice.control.index not in numbers:  # a policy may only use what is on the page
             choice = Choice(page.leave, thought=choice.thought, source=choice.source,
@@ -131,10 +141,10 @@ async def run_session(
         action = choice.control.action
         steps.append(SessionStep(
             index=index, url=page.url, page=page.kind, state=state, options=len(numbers),
-            choice=PageOption(kind=action.kind, target=action.target, label=action.label,
+            choice=PageOption(kind=action.kind, target=action.target, label=action.label, ad_id=action.ad_id,
                               number=numbers[choice.control.index], box=boxes.get(choice.control.index)),
             search_text=choice.query, thought=choice.thought[:240], seconds=round(seconds, 2), load_seconds=round(load, 2),
-            source=choice.source, error=choice.error, mark_seed=mark_seed, screen=screen,
+            source=choice.source, error=choice.error, mark_seed=mark_seed, screen=screen, ads=shown,
         ))
         memory.steps.append(_history_line(page, choice))
         if action.kind == ActionKind.LEAVE:

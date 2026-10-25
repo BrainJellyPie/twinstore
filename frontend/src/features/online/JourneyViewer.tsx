@@ -124,11 +124,13 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
               <span className="mr-1 rounded bg-rose-600 px-1.5 font-mono font-bold text-white">{choice.number}</span>
               <span className="font-medium">{choice.label}</span>
               {step.search_text && <span> — “{step.search_text}”</span>}
+              {choice.ad_id && <span className="ml-1 rounded bg-amber-500/20 px-1.5 text-[0.7rem] font-medium">{t("onStepAdClick")}</span>}
             </div>
             {step.thought && <p className="mt-1 italic">“{step.thought}”</p>}
             <p className="mt-1 text-muted-foreground">
               {t("onStepTime", { seconds: step.seconds.toFixed(1), load: step.load_seconds.toFixed(1), options: step.options })}
               {" · "}{t(step.source === "model" ? "onSourceModel" : step.source === "fallback" ? "onSourceFallback" : "onSourceRule")}
+              {step.ads.length > 0 && <>{" · "}{t("onStepAds", { count: step.ads.length })}</>}
             </p>
             {step.error && <p className="mt-1 break-words text-destructive">{step.error}</p>}
           </div>

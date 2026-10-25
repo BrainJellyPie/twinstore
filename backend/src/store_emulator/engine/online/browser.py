@@ -15,6 +15,7 @@ from typing import Literal
 
 from store_emulator.domain.online import (
     ActionKind,
+    AdPlacement,
     BrowserState,
     CartLine,
     OnlineAction,
@@ -26,6 +27,8 @@ from store_emulator.domain.online import (
     SortKey,
 )
 from store_emulator.engine.prompting import display_price
+
+from .ads import active_ads
 
 _HISTORY = 30
 _RECENT = 12
@@ -62,6 +65,15 @@ class Card:
 
 
 @dataclass(frozen=True)
+class Banner:
+    headline: str
+    small: str
+    control: Control | None
+    product: OnlineProduct | None = None  # an ad banner shows its product
+    sponsored: bool = False
+
+
+@dataclass(frozen=True)
 class Grid:
     title: str
     cards: tuple[Card, ...]
@@ -94,10 +106,11 @@ class Detail:
 
 @dataclass(frozen=True)
 class Overlay:
-    kind: Literal["menu", "welcome"]
+    kind: Literal["menu", "welcome", "promo"]
     title: str
     lines: tuple[Line, ...]
     modal: bool
+    product: OnlineProduct | None = None  # what a promo popup advertises
 
 
 @dataclass(frozen=True)
@@ -126,7 +139,7 @@ class Page:
     header: Header
     nav: tuple[Control, ...] = ()
     notice: str = ""
-    banner: tuple[str, str, Control | None] | None = None  # (headline, small print, call to action)
+    banner: Banner | None = None
     detail: Detail | None = None
     grids: tuple[Grid, ...] = ()
     panels: tuple[Panel, ...] = ()
@@ -145,6 +158,12 @@ class Page:
             return [c for c in self.controls if c.index in inside or c.index == self.leave.index]
         return list(self.controls)
 
+    @property
+    def ads_shown(self) -> list[str]:
+        """Ad campaigns on this page (their elements are visible, so each is one impression)."""
+        visible = self.active if self.overlay is not None and self.overlay.modal else self.controls
+        return sorted({c.action.ad_id for c in visible if c.action.ad_id})
+
     def products_shown(self) -> int:
         return sum(len(g.cards) for g in self.grids) + (1 if self.detail else 0)
 
@@ -153,8 +172,8 @@ class _Builder:
     def __init__(self) -> None:
         self.controls: list[Control] = []
 
-    def __call__(self, kind: ActionKind, label: str, target: str = "") -> Control:
-        control = Control(len(self.controls), OnlineAction(kind=kind, target=target, label=label))
+    def __call__(self, kind: ActionKind, label: str, target: str = "", ad_id: str = "") -> Control:
+        control = Control(len(self.controls), OnlineAction(kind=kind, target=target, label=label, ad_id=ad_id))
         self.controls.append(control)
         return control
 
@@ -355,12 +374,15 @@ def _can_add(state: BrowserState, product: OnlineProduct) -> bool:
 
 
 def _cards(site: OnlineSite, state: BrowserState, products: list[OnlineProduct], ctl: _Builder,
-           sponsored: set[str] | None = None) -> tuple[Card, ...]:
+           sponsored: set[str] | None = None, ad_ids: dict[str, str] | None = None) -> tuple[Card, ...]:
+    """Product tiles. `ad_ids`: product → campaign for tiles that are ads (labelled as such, clicks attributed)."""
     cards: list[Card] = []
     for p in products:
-        is_ad = sponsored is not None and p.id in sponsored
-        open_control = ctl(ActionKind.OPEN_PRODUCT, product_label(site, p, sponsored=is_ad), p.id)
-        quick = (ctl(ActionKind.ADD_TO_CART, f"Add to cart: {p.name} ({money(p.price, site)})", p.id)
+        ad_id = ad_ids.get(p.id, "") if ad_ids else ""
+        is_ad = bool(ad_id) or (sponsored is not None and p.id in sponsored)
+        label = product_label(site, p, sponsored=is_ad)
+        open_control = ctl(ActionKind.OPEN_PRODUCT, f"Ad · {label}" if ad_id else label, p.id, ad_id)
+        quick = (ctl(ActionKind.ADD_TO_CART, f"Add to cart: {p.name} ({money(p.price, site)})", p.id, ad_id)
                  if site.options.quick_add and _can_add(state, p) else None)
         cards.append(Card(p, open_control, quick, is_ad))
     return tuple(cards)
@@ -370,6 +392,17 @@ def _popular(site: OnlineSite, exclude: set[str] | None = None, limit: int = _HO
     skip = exclude or set()
     ranked = sorted((p for p in site.products if p.id not in skip), key=lambda p: (-p.weekly_sales, p.id))
     return ranked[:limit]
+
+
+def _ad_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, placement: AdPlacement, title: str,
+             keep: set[str] | None = None, exclude: str = "") -> Grid | None:
+    """A sponsored row of one placement's ads (only products in `keep`, when given)."""
+    ads = [ad for ad in active_ads(site, placement)
+           if ad.product_id != exclude and (keep is None or ad.product_id in keep)][:_HOME_ROW]
+    products = [p for ad in ads if (p := site.product(ad.product_id)) is not None]
+    if not products:
+        return None
+    return Grid(title, _cards(site, state, products, ctl, ad_ids={ad.product_id: ad.id for ad in ads}))
 
 
 def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str,
@@ -399,19 +432,30 @@ def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: s
     return Grid(title, _cards(site, state, shown, ctl, ads), tuple(controls), note)
 
 
-def _home(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[tuple[str, str, Control | None] | None, list[Grid], list[Panel]]:
+def _home(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[Banner | None, list[Grid], list[Panel]]:
     o = site.options
-    banner: tuple[str, str, Control | None] | None = None
-    if o.hero_banner:
+    banner: Banner | None = None
+    hero = active_ads(site, "hero_banner")
+    advertised = site.product(hero[0].product_id) if hero else None
+    if hero and advertised is not None:
+        ad = hero[0]
+        cta = ctl(ActionKind.OPEN_PRODUCT, f"Ad · banner: {ad.headline or advertised.name} ({money(advertised.price, site)})",
+                  advertised.id, ad.id)
+        banner = Banner(ad.headline or advertised.name, f"{advertised.name} · {money(advertised.price, site)}", cta,
+                        advertised, sponsored=True)
+    elif o.hero_banner:
         has_deals = any(p.discount_percent for p in site.products)
         cta = (ctl(ActionKind.OPEN_DEALS, "Banner: shop today's deals") if has_deals
                else ctl(ActionKind.OPEN_CATEGORY, f"Banner: shop {site.categories[0].name}", site.categories[0].id))
         small = (f"Use code {o.coupon_code} for {o.coupon_percent}% off" if o.coupon_code and o.coupon_percent
                  and o.coupon_public else _shipping_line(site))
-        banner = (o.hero_text or site.tagline or site.name, small, cta)
+        banner = Banner(o.hero_text or site.tagline or site.name, small, cta)
     grids: list[Grid] = []
     panels: list[Panel] = []
     used: set[str] = set()
+    tiles = _ad_grid(site, state, ctl, "home_tile", "Sponsored")
+    if tiles is not None:
+        grids.append(tiles)
     for section in o.home_sections:
         if section == "categories":
             panels.append(Panel("Shop by category", tuple(
@@ -485,6 +529,9 @@ def _detail(site: OnlineSite, state: BrowserState, ctl: _Builder) -> tuple[Detai
         else:
             buttons.append(ctl(ActionKind.READ_REVIEWS, f"Read reviews ({p.reviews:,})", p.id))
     grids: list[Grid] = []
+    cross = _ad_grid(site, state, ctl, "product_page", "Sponsored products", exclude=p.id)
+    if cross is not None:
+        grids.append(cross)
     if o.recommendations != "none":
         if o.recommendations == "similar":
             pool = [x for x in site.products if x.category_id == p.category_id and x.id != p.id]
@@ -535,6 +582,15 @@ def _cart(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[Panel]:
     if t.shipping and o.free_shipping_threshold:
         gap = o.free_shipping_threshold - (t.subtotal - t.discount)
         summary.append(Line(f"Add {money(gap, site)} more for free delivery", "muted"))
+    in_cart = {line.product_id for line in state.cart}
+    for ad in active_ads(site, "cart_upsell"):
+        extra = site.product(ad.product_id)
+        if extra is not None and extra.id not in in_cart and _can_add(state, extra):
+            price = money(extra.price, site)
+            summary.append(Line(f"Sponsored: {extra.name} · {price}", "muted"))
+            summary.append(Line("Add to order", "text", ctl(ActionKind.ADD_TO_CART,
+                                                            f"Ad · add {extra.name} ({price}) to the order", extra.id, ad.id)))
+            break
     summary.append(Line(f"Total: {money(t.total, site)}", "total"))
     summary.append(Line("Proceed to checkout", "strong", ctl(ActionKind.CHECKOUT, f"Proceed to checkout ({money(t.total, site)})")))
     summary.append(Line("Continue shopping", "muted", ctl(ActionKind.HOME, "Continue shopping")))
@@ -658,6 +714,19 @@ def _welcome(site: OnlineSite, ctl: _Builder) -> Overlay:
     ), modal=True)
 
 
+def _promo(site: OnlineSite, ctl: _Builder) -> Overlay | None:
+    ads = active_ads(site, "popup")
+    product = site.product(ads[0].product_id) if ads else None
+    if not ads or product is None:
+        return None
+    ad = ads[0]
+    return Overlay("promo", ad.headline or f"Today only: {product.name}", (
+        Line(f"{product.name} · {money(product.price, site)}", "strong"),
+        Line("View the offer", "strong", ctl(ActionKind.OPEN_PRODUCT, f"Ad · popup: view {product.name}", product.id, ad.id)),
+        Line("No thanks", "muted", ctl(ActionKind.CLOSE_POPUP, "Popup: no thanks, close it")),
+    ), modal=True, product=product)
+
+
 def build_page(site: OnlineSite, state: BrowserState) -> Page:
     o = site.options
     ref = state.at
@@ -692,16 +761,22 @@ def build_page(site: OnlineSite, state: BrowserState) -> Page:
     elif ref.page == PageKind.CATEGORY:
         category = site.category(ref.category_id)
         title = category.name if category else "Category"
-        grids = [_listing_grid(site, state, ctl, title)]
+        keep = {p.id for p in site.products if p.category_id == ref.category_id}
+        strip = _ad_grid(site, state, ctl, "sponsored_listing", "Sponsored", keep=keep) if ref.page_index == 0 else None
+        grids = [g for g in (strip, _listing_grid(site, state, ctl, title)) if g is not None]
     elif ref.page == PageKind.DEALS:
         title = "Deals"
-        grids = [_listing_grid(site, state, ctl, "Today's deals")]
+        keep = {p.id for p in site.products if p.discount_percent}
+        strip = _ad_grid(site, state, ctl, "sponsored_listing", "Sponsored", keep=keep) if ref.page_index == 0 else None
+        grids = [g for g in (strip, _listing_grid(site, state, ctl, "Today's deals")) if g is not None]
     elif ref.page == PageKind.SEARCH:
         title = f'Results for "{ref.query}"'
+        found = {p.id for p in search_products(site, ref.query)}
+        strip = _ad_grid(site, state, ctl, "sponsored_listing", "Sponsored", keep=found) if ref.page_index == 0 else None
         grid = _listing_grid(site, state, ctl, title)
         if not grid.cards:
             grid = Grid(title, (), (), f'No products match "{ref.query}". Check the spelling or try other words.')
-        grids = [grid]
+        grids = [strip, grid] if strip is not None else [grid]
     elif ref.page == PageKind.PRODUCT:
         detail, grids = _detail(site, state, ctl)
         title = detail.product.name if detail else "Product not found"
@@ -723,7 +798,8 @@ def build_page(site: OnlineSite, state: BrowserState) -> Page:
     cookie = ((ctl(ActionKind.ACCEPT_COOKIES, "Cookie banner: accept all"),
                ctl(ActionKind.REJECT_COOKIES, "Cookie banner: reject non-essential"))
               if o.cookie_banner and not state.cookies_answered else None)
-    overlay = _menu(site, ctl) if state.overlay == "menu" else _welcome(site, ctl) if state.overlay == "welcome" else None
+    overlay = (_menu(site, ctl) if state.overlay == "menu" else _welcome(site, ctl) if state.overlay == "welcome"
+               else _promo(site, ctl) if state.overlay == "promo" else None)
     return Page(
         kind=ref.page, url=page_url(site, ref), title=f"{title} | {site.name}" if title != site.name else site.name,
         device=device, large_text=state.large_text or o.large_text, theme=o.theme_color, site_name=site.name,
@@ -750,10 +826,11 @@ def outline(page: Page, site: OnlineSite) -> list[str]:
     if page.notice:
         out.append(f"Message: {page.notice}")
     if page.overlay is not None:
-        out.append(f"{'Popup' if page.overlay.modal else 'Open drawer'}: {page.overlay.title}")
+        out.append(f"{'Sponsored popup' if page.overlay.kind == 'promo' else 'Popup' if page.overlay.modal else 'Open drawer'}: "
+                   f"{page.overlay.title}")
         out.extend(f"  {line.text}" for line in page.overlay.lines if line.control is None)
     if page.banner is not None:
-        out.append(f"Banner: {page.banner[0]} — {page.banner[1]}")
+        out.append(f"{'Sponsored banner' if page.banner.sponsored else 'Banner'}: {page.banner.headline} — {page.banner.small}")
     if page.detail is not None:
         d = page.detail
         out.append(f"Product: {d.product.name}")
@@ -781,9 +858,11 @@ def outline(page: Page, site: OnlineSite) -> list[str]:
 
 
 def initial_state(site: OnlineSite, *, device: Literal["desktop", "mobile"] = "desktop", signed_in: bool = False) -> BrowserState:
-    """The landing page; a welcome popup opens over it when the site has one."""
+    """The landing page; a welcome popup (or else an ad popup) opens over it when the site has one."""
     popup = site.options.welcome_popup != "none"
-    return BrowserState(device=device, overlay="welcome" if popup else "none", welcome_seen=popup, signed_in=signed_in)
+    promo = bool(active_ads(site, "popup"))
+    return BrowserState(device=device, overlay="welcome" if popup else "promo" if promo else "none", welcome_seen=popup,
+                        signed_in=signed_in)
 
 
 def _go(state: BrowserState, ref: PageRef) -> BrowserState:
@@ -937,10 +1016,12 @@ def apply(
         step = 1 if kind == ActionKind.NEXT_PAGE else -1
         return _go(state, state.at.model_copy(update={"page_index": max(0, state.at.page_index + step)}))
     if kind in (ActionKind.CLOSE_POPUP, ActionKind.ACCEPT_POPUP):
+        # An ad popup waits for the welcome popup to be answered, then opens at once.
+        after: Literal["promo", "none"] = "promo" if state.overlay == "welcome" and active_ads(site, "popup") else "none"
         if kind == ActionKind.ACCEPT_POPUP and o.coupon_percent:
-            return state.model_copy(update={"overlay": "none", "coupon_known": True, "coupon_applied": True,
+            return state.model_copy(update={"overlay": after, "coupon_known": True, "coupon_applied": True,
                                             "notice": f"{o.coupon_percent}% off will be applied at checkout"})
-        return state.model_copy(update={"overlay": "none"})
+        return state.model_copy(update={"overlay": after})
     if kind in (ActionKind.ACCEPT_COOKIES, ActionKind.REJECT_COOKIES):
         return state.model_copy(update={"cookies_answered": True})
     return state

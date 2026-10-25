@@ -20,8 +20,8 @@ const view = (page: online.PageKind, options: online.PageOption[]): online.PageV
   image: "data:image/png;base64,AAAA", width: 1024, height: 800,
 });
 const home = view("home", [
-  { kind: "search", target: "", label: "Search box: type words to search the shop", number: 3, box: [10, 10, 200, 40] },
-  { kind: "open_product", target: "p001", label: "Open product: Canvas Tote Bag ($14.99)", number: 7, box: [20, 300, 220, 500] },
+  { kind: "search", target: "", label: "Search box: type words to search the shop", number: 3, box: [10, 10, 200, 40], ad_id: "" },
+  { kind: "open_product", target: "p001", label: "Open product: Canvas Tote Bag ($14.99)", number: 7, box: [20, 300, 220, 500], ad_id: "" },
 ]);
 
 beforeEach(() => { useLocale.getState().setLocale("en"); vi.mocked(online.browse).mockResolvedValue(home); });

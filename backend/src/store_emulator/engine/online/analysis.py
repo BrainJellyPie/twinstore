@@ -32,6 +32,8 @@ from store_emulator.domain.online import (
     VariantSummary,
 )
 
+from .ads import ad_rows
+
 _TOP_PRODUCTS = 20
 _TOP_SEARCHES = 25
 _MAX_CLICKS = 1500
@@ -124,7 +126,7 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
                 for stage in FUNNEL_STAGES],
         exits=[ExitRow(page=PageKind(page), sessions=count) for page, count in exits.most_common()],
         segments=segments, products=products, searches=searches, clicks=clicks,
-        frictions=frictions(site, sessions), survey=survey_summary(sessions),
+        frictions=frictions(site, sessions), survey=survey_summary(sessions), ads=ad_rows(site, sessions),
     )
 
 
@@ -138,9 +140,10 @@ def frictions(site: OnlineSite, sessions: list[SessionResult]) -> list[FrictionR
         kinds = [step.choice.kind for step in steps if step.choice is not None]
         left = s.outcome != "purchased"
         found: set[FrictionCode] = set()
-        if s.steps and s.steps[0].state.overlay == "welcome":
+        popups = [step for step in steps if step.state.overlay in ("welcome", "promo")]  # welcome or ad popup
+        if popups:
             found.add("popup_shown")
-            if kinds[:1] == [ActionKind.LEAVE]:
+            if any(step.choice is not None and step.choice.kind == ActionKind.LEAVE for step in popups):
                 found.add("popup_left")
         if ActionKind.ACCEPT_POPUP in kinds:
             found.add("popup_accepted")
@@ -252,7 +255,7 @@ def paired_deltas(control: list[SessionResult], variant: list[SessionResult], *,
 
 CLICKSTREAM_COLUMNS = (
     "variant", "site", "shopper", "mission", "device", "age_group", "gender", "vision", "step", "page", "url", "option", "action",
-    "target", "label", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
+    "target", "label", "ad_id", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
 )
 
 
@@ -279,7 +282,7 @@ def clickstream_csv(variants: list[tuple[OnlineSite, list[SessionResult]]], shop
                     index, site.name, session.shopper_id, shopper.mission if shopper else "",
                     shopper.device if shopper else "", shopper.age_group if shopper else "",
                     shopper.gender if shopper else "", shopper.vision if shopper else "", step.index, step.page.value, step.url, choice.number,
-                    choice.kind.value, choice.target, choice.label, step.search_text, step.thought, step.seconds,
+                    choice.kind.value, choice.target, choice.label, choice.ad_id, step.search_text, step.thought, step.seconds,
                     step.load_seconds, step.source, session.outcome, session.order_total,
                 )])
     return out.getvalue()

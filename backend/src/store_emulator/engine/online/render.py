@@ -448,20 +448,28 @@ def _notice(p: _Paint, page: Page, y: int) -> int:
     return y + h
 
 
-def _banner(p: _Paint, page: Page, y: int) -> int:
+def _banner(p: _Paint, page: Page, y: int, picture: ProductPicture | None) -> int:
     if page.banner is None:
         return y
-    headline, small, cta = page.banner
+    banner = page.banner
+    headline, small, cta = banner.headline, banner.small, banner.control
     h = round((128 if p.mobile else 150) * p.k)
     box = (p.pad, y, p.w - p.pad, y + h)
     p.d.rounded_rectangle(box, radius=18, fill=p.theme)
     p.d.polygon([(box[2] - 260, box[1]), (box[2] - 150, box[1]), (box[2] - 300, box[3]), (box[2] - 410, box[3])],
                 fill=_mix(p.theme, PAPER, 0.18))
-    lines = p.wrap(headline, 26 if p.mobile else 30, box[2] - box[0] - 48, 2, True)
+    text_w = box[2] - box[0] - 48
+    if banner.product is not None:
+        side = h - 24
+        _picture(p, banner.product, "box", (box[2] - side - 150, box[1] + 12, box[2] - 150, box[1] + 12 + side), picture)
+        text_w -= side + 150
+    if banner.sponsored:
+        _pill(p, box[2] - 110, box[1] + 12, "Sponsored", _mix(INK, PAPER, 0.25), size=11)
+    lines = p.wrap(headline, 26 if p.mobile else 30, text_w, 2, True)
     ty = box[1] + 18
     for line in lines:
         ty = p.text(box[0] + 24, ty, line, 26 if p.mobile else 30, PAPER, True)
-    p.text(box[0] + 24, ty + 2, p.fit(small, 14, box[2] - box[0] - 48), 14, _mix(PAPER, p.theme, 0.15))
+    p.text(box[0] + 24, ty + 2, p.fit(small, 14, text_w), 14, _mix(PAPER, p.theme, 0.15))
     if cta is not None:
         label = "Shop now"
         bw = p.width_of(label, 14, True) + 34
@@ -724,7 +732,7 @@ def _shade(img: Image.Image, top: int) -> None:
     img.paste(veil, (0, top), veil)
 
 
-def _overlay(p: _Paint, page: Page, height: int) -> None:
+def _overlay(p: _Paint, page: Page, height: int, picture: ProductPicture | None) -> None:
     overlay = page.overlay
     if overlay is None:
         return
@@ -748,11 +756,16 @@ def _overlay(p: _Paint, page: Page, height: int) -> None:
     w = min(460, p.w - 2 * p.pad)
     x0 = (p.w - w) // 2
     probe_lines = [line for line in overlay.lines if line.control is None]
-    h = 70 + sum(p.lh(15) * len(p.wrap(line.text, 15, w - 48, 3)) for line in probe_lines) + round(110 * p.k)
+    extra = round(150 * p.k) if overlay.product is not None else 0  # a promo shows its product above the text
+    h = 70 + sum(p.lh(15) * len(p.wrap(line.text, 15, w - 48, 3)) for line in probe_lines) + round(110 * p.k) + extra
     y0 = _CHROME + 90
     p.d.rounded_rectangle((x0, y0, x0 + w, y0 + h), radius=20, fill=PAPER)
     p.d.rectangle((x0, y0, x0 + w, y0 + 8), fill=p.theme)
-    y = p.text(x0 + 24, y0 + 24, p.fit(overlay.title, 20, w - 48, True), 20, INK, True) + 6
+    if overlay.product is not None:
+        side = extra - 30
+        _picture(p, overlay.product, "box", (x0 + (w - side) // 2, y0 + 24, x0 + (w + side) // 2, y0 + 24 + side), picture)
+        _pill(p, x0 + w - 104, y0 + 18, "Sponsored", _mix(INK, PAPER, 0.25), size=11)
+    y = p.text(x0 + 24, y0 + extra + 24, p.fit(overlay.title, 20, w - 48, True), 20, INK, True) + 6
     for line in probe_lines:
         for text in p.wrap(line.text, 15, w - 48, 3):
             y = p.text(x0 + 24, y, text, 15, MUTED)
@@ -790,7 +803,7 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
     y = _header(p, page, y)
     y = _nav(p, page, y)
     y = _notice(p, page, y) + 18
-    y = _banner(p, page, y)
+    y = _banner(p, page, y, picture)
     if page.kind == PageKind.PRODUCT:
         y = _detail(p, site, page, y, picture)
     side_by_side = page.kind == PageKind.CART and len(page.panels) == 2 and not p.mobile
@@ -820,7 +833,7 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
     height = min(y, _MAX_HEIGHT)
     p.img = p.img.crop((0, 0, width, height))
     p.d = ImageDraw.Draw(p.img)
-    _overlay(p, page, height)
+    _overlay(p, page, height, picture)
     _badges(p, numbers)
     out = io.BytesIO()
     p.img.save(out, format="PNG", compress_level=6)

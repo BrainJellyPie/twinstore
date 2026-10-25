@@ -19,7 +19,7 @@ import { personaLabel } from "@/shared/i18n/personaLabels";
 
 import { JourneyViewer } from "./JourneyViewer";
 import {
-  DELTA_LABELS, DEVICE_LABELS, FRICTION_HARMS, FRICTION_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_COLORS, OUTCOME_LABELS,
+  AD_PLACEMENT_LABELS, DELTA_LABELS, DEVICE_LABELS, FRICTION_HARMS, FRICTION_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_COLORS, OUTCOME_LABELS,
   PAGE_LABELS, POLICY_LABELS, VISION_LABELS,
 } from "./labels";
 
@@ -198,6 +198,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
         </Section>
       </div>
 
+      <Ads result={result} money={money} pct={pct} />
       <Frictions variants={v} money={money} pct={pct} />
       <Surveys variants={v} pct={pct} />
       <Segments result={result} money={money} pct={pct} />
@@ -279,6 +280,75 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
           onVariant={(variant) => setJourney({ ...journey, variant })} onClose={() => setJourney(null)} />
       )}
     </>
+  );
+}
+
+function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: number) => string; pct: (x: number) => string }) {
+  const { t } = useI18n();
+  const variants = result.variants;
+  if (variants.every((s) => s.ads.length === 0)) return null;
+  const signedMoney = (x: number) => `${x >= 0 ? "+" : "−"}${money(Math.abs(x))}`;
+  return (
+    <Section title={t("onAds")} hint={t("onAdsHint")}>
+      {variants.map((s) => s.ads.length > 0 && (
+        <div key={s.site_id} className="space-y-1">
+          {variants.length > 1 && <div className="text-xs font-medium">{s.site_name}</div>}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-xs">
+              <thead><tr className="text-left text-muted-foreground">
+                <th className="font-medium">{t("onAdName")}</th><th className="font-medium">{t("onAdImpressions")}</th>
+                <th className="font-medium">{t("onAdReach")}</th><th className="font-medium">{t("onAdClicks")}</th>
+                <th className="font-medium">{t("onAdCtr")}</th><th className="font-medium">{t("onAdClickConversions")}</th>
+                <th className="font-medium">{t("onAdViewConversions")}</th><th className="font-medium">{t("onAdAttributed")}</th>
+                <th className="font-medium">{t("onAdCost")}</th><th className="font-medium">{t("onAdRoas")}</th>
+              </tr></thead>
+              <tbody>
+                {s.ads.map((ad) => (
+                  <tr key={ad.ad_id} className="border-t align-top">
+                    <td className="py-1 pr-2">
+                      <div className="font-medium">{ad.name}</div>
+                      <div className="text-muted-foreground">{t(AD_PLACEMENT_LABELS[ad.placement])} · {ad.product_name}</div>
+                    </td>
+                    <td className="tabular-nums">{ad.impressions}</td><td className="tabular-nums">{ad.reach}</td>
+                    <td className="tabular-nums">{ad.clicks}</td><td className="tabular-nums">{pct(ad.ctr)}</td>
+                    <td className="tabular-nums">{ad.click_conversions}</td><td className="tabular-nums">{ad.view_conversions}</td>
+                    <td className="tabular-nums">{money(ad.attributed_revenue)}</td><td className="tabular-nums">{money(ad.cost)}</td>
+                    <td className="tabular-nums">{ad.roas === null ? "—" : `${ad.roas.toFixed(2)}×`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+      {result.comparisons.some((c) => c.ad_lifts.length > 0) && (
+        <div className="space-y-2">
+          <div>
+            <div className="text-sm font-semibold">{t("onAdLift")}</div>
+            <p className="text-xs text-muted-foreground">{t("onAdLiftHint")}</p>
+          </div>
+          {result.comparisons.map((c) => c.ad_lifts.map((lift) => (
+            <div key={`${c.site_id}:${lift.ad_id}`} className="grid gap-2 rounded-xl border p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2 lg:col-span-4">
+                <div className="font-medium">{lift.name}</div>
+                <div className="text-muted-foreground">
+                  {t("onAdLiftStores", lift.site_id === c.site_id
+                    ? { withAd: c.site_name, withoutAd: result.variants[0]?.site_name ?? "" }
+                    : { withAd: result.variants[0]?.site_name ?? "", withoutAd: c.site_name })}
+                </div>
+              </div>
+              <Stat label={t("onAdUnitsDiff")} value={`${lift.units_diff >= 0 ? "+" : "−"}${Math.abs(lift.units_diff)}`} />
+              <Stat label={t("onAdRevenueDiff")} value={signedMoney(lift.revenue_diff)} />
+              <Stat label={t("onAdOtherDiff")} value={signedMoney(lift.other_revenue_diff)} />
+              <Stat label={t("onAdIroas")} value={lift.iroas === null ? "—" : `${lift.iroas.toFixed(2)}×`} />
+              <div className="text-muted-foreground sm:col-span-2 lg:col-span-4">
+                {t("onAdUnitsLine", { withoutAd: lift.units_without, withAd: lift.units_with })} · {t("onAdCost")}: {money(lift.cost)}
+              </div>
+            </div>
+          )))}
+        </div>
+      )}
+    </Section>
   );
 }
 

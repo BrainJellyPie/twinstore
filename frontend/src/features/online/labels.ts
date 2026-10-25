@@ -1,7 +1,7 @@
 // Display names of the online-store codes the server sends. Codes stay unchanged; only these labels are translated.
 
 import type {
-  Accessibility, ActionKind, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
+  Accessibility, ActionKind, AdPlacement, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
   SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
 } from "@/shared/api/online";
 import { messages, type MessageKey } from "@/shared/i18n/messages";
@@ -110,3 +110,13 @@ export function templateDescriptionKey(templateId: string): MessageKey | null {
   const key = `onTpl_${templateId}`;
   return key in messages ? (key as MessageKey) : null;
 }
+
+export const AD_PLACEMENT_LABELS: Record<AdPlacement, MessageKey> = {
+  hero_banner: "onAdPlaceHero", sponsored_listing: "onAdPlaceListing", home_tile: "onAdPlaceTile",
+  product_page: "onAdPlaceProduct", cart_upsell: "onAdPlaceCart", popup: "onAdPlacePopup",
+};
+
+export const AD_PLACEMENT_HINTS: Record<AdPlacement, MessageKey> = {
+  hero_banner: "onAdPlaceHeroHint", sponsored_listing: "onAdPlaceListingHint", home_tile: "onAdPlaceTileHint",
+  product_page: "onAdPlaceProductHint", cart_upsell: "onAdPlaceCartHint", popup: "onAdPlacePopupHint",
+};

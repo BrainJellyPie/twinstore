@@ -44,6 +44,7 @@ from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import ResourceId
 from store_emulator.engine.files import remove_tree
+from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, summarize
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
@@ -200,6 +201,13 @@ def _check(site: OnlineSite) -> None:
         raise AppError("Offer at least one payment method", 422)
     if len(site.options.home_sections) != len(set(site.options.home_sections)):
         raise AppError("Home page sections must not repeat", 422)
+    ad_ids = [ad.id for ad in site.ads]
+    if len(set(ad_ids)) != len(ad_ids):
+        raise AppError("Ad IDs must be unique", 422)
+    products = {p.id for p in site.products}
+    unknown = next((ad for ad in site.ads if ad.product_id not in products), None)
+    if unknown is not None:
+        raise AppError(f"Ad {unknown.name} promotes a product the store does not sell: {unknown.product_id}", 422)
 
 
 def _store_of_layout(pid: str, setup_id: str | None) -> Store:
@@ -312,7 +320,7 @@ def page_view(site: OnlineSite, state: BrowserState, *, mark_seed: int = 0, pict
     numbers = numbering(page, mark_seed)
     shot = see_as(render_page(page, site, numbers, picture), vision, large_text=page.large_text) if render else None
     options = sorted((PageOption(kind=c.action.kind, target=c.action.target, label=c.action.label,
-                                 number=numbers[c.index], box=shot.boxes.get(c.index) if shot else None)
+                                 ad_id=c.action.ad_id, number=numbers[c.index], box=shot.boxes.get(c.index) if shot else None)
                       for c in page.active), key=lambda o: o.number)
     return PageView(url=page.url, title=page.title, page=page.kind, options=options, outline=outline(page, site),
                     state=state, image=shot.data_url() if shot else "", width=shot.width if shot else 0,
@@ -451,8 +459,10 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
         by_id = {s.id: s for s in shoppers}
         summaries = [summarize(site, by_id, sessions) for site, sessions in zip(sites, variants, strict=True)]
         comparisons = [VariantComparison(site_id=site.id, site_name=site.name,
-                                         deltas=paired_deltas(variants[0], sessions, seed=request.seed))
-                       for site, sessions in zip(sites[1:], variants[1:], strict=True)]
+                                         deltas=paired_deltas(variants[0], sessions, seed=request.seed),
+                                         ad_lifts=ad_lifts(sites[0], variants[0], summaries[0].ads, site, sessions,
+                                                           summary.ads))
+                       for site, sessions, summary in zip(sites[1:], variants[1:], summaries[1:], strict=True)]
         requests = sum(s.model_requests for sessions in variants for s in sessions)
         fallbacks = sum(s.fallbacks for sessions in variants for s in sessions)
         notes = ["Virtual shoppers, not real traffic: use the differences between variants, measured on the same "

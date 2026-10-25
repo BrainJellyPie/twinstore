@@ -373,7 +373,7 @@ use a browser. Start from 42 ready-made shops — groceries, quick commerce, pha
 pets, toys, food delivery, a marketplace, flash sales and more, about 2,500 listings, most with photos — or put a
 layout's own shelves online, then change what a designer would: layout, search quality, sponsored listings, urgency
 and social proof, popups, cookie banners, delivery fees, coupons, guest checkout, checkout steps, payment methods,
-last-step fees, pre-ticked add-ons, returns and page speed.
+last-step fees, pre-ticked add-ons, returns and page speed — and run ad campaigns for its products.
 
 Each page is a screenshot with a numbered badge on every clickable element. A **vision model** looks at it and picks
 one option — search (and what to type), go back, open product 3, open the menu or settings, add a payment method,
@@ -386,6 +386,7 @@ browse any store yourself by clicking the same screenshot.
 | :-- | :-- |
 | **Variants on the same shoppers** | Up to four stores per run; conversion, revenue per visit, add-to-cart, clicks and time as paired differences with bootstrap 95 % intervals. |
 | **Funnel and exits** | Visit → product → cart → checkout → payment → order, and the pages people left from. |
+| **Ads** | Banners, sponsored tiles and listings, product-page and cart ads, popups: impressions, clicks, credited orders and ROAS per ad, and against the same store without it the extra units, revenue and incremental ROAS. |
 | **Friction audit** | Popup exits, forced sign-in, last-step fees, add-ons paid without unticking, failed coupons, empty searches, sold-out pages, slow exits. |
 | **Exit survey** | Satisfaction, ease, NPS, return intent and the biggest annoyance, from model shoppers right after the visit. |
 | **Search, products, clicks** | What people searched for (and found nothing), product views/adds/sales, a click map of the screenshots. |

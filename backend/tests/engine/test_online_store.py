@@ -32,10 +32,10 @@ from store_emulator.engine.online.browser import (
     search_products,
 )
 from store_emulator.engine.online.catalog import build_site, template_ids, template_summaries
-from store_emulator.engine.online.policies import ModelPolicy, RulePolicy
+from store_emulator.engine.online.policies import Choice, ModelPolicy, RulePolicy
 from store_emulator.engine.online.prompt import SurveyAnswer, choice_model, user_prompt
 from store_emulator.engine.online.render import render_page, see_as
-from store_emulator.engine.online.session import run_session
+from store_emulator.engine.online.session import read_seconds, run_session
 from store_emulator.engine.online.shoppers import sample_shoppers
 
 
@@ -436,9 +436,12 @@ def test_low_vision_rule_shoppers_look_for_large_text() -> None:
     sessions = _run(site, shoppers)
     toggled = [s for s in sessions if any(st.choice and st.choice.kind == ActionKind.TOGGLE_LARGE_TEXT for st in s.steps)]
     assert toggled and all(s.steps[-1].state.large_text or s.outcome == "purchased" for s in toggled)
-    same = _run(site, [s.model_copy(update={"vision": "typical"}) for s in shoppers])
     # The landing page takes longer to read for the same shoppers with low vision.
-    assert sum(s.steps[0].seconds for s in sessions) > 1.3 * sum(s.steps[0].seconds for s in same)
+    page = build_page(site, BrowserState())
+    for shopper in shoppers[:5]:
+        typical = shopper.model_copy(update={"vision": "typical"})
+        slow, usual = (read_seconds(page, s, Choice(page.leave), random.Random(1)) for s in (shopper, typical))
+        assert slow == pytest.approx(1.8 * usual)
 
 
 def test_friction_audit_counts_dark_patterns() -> None:

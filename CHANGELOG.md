@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Add ad campaigns to online stores and measure what they add. A store runs up to
+  12 ads for its own products: a home banner, sponsored home tiles, sponsored
+  tops of category, search and deal lists, sponsored products on other product
+  pages, a one-click cart upsell or a popup (right after the welcome popup when
+  there is one), paid per click or per thousand impressions. Reports give each
+  ad's impressions, reach, clicks, CTR, post-click and view-through orders,
+  credited revenue, cost and ROAS, and, against the same store without the ad on
+  the same shoppers, the extra units, the change in total and other-product
+  revenue and incremental ROAS. "Make a version without ads" sets up that
+  comparison; replays mark ad clicks and the clickstream CSV gains an `ad_id`
+  column. Rule shoppers find advertised products a little more familiar after
+  seeing them, pass over ad tiles more often the more experienced they are, and
+  click banners, popups and upsells mostly when the product fits.
+- Pair online variants more tightly. Random draws are keyed to the decision point
+  (the page, what covers it and how often the shopper has been there) and to each
+  product's or ad's own draw, so a variant that adds a popup, a tile or an ad no
+  longer reshuffles the shopper's other decisions. The popup friction rows count
+  ad popups and exits at a later popup too.
+
 ## 0.5.0 — Online stores shopped by vision shoppers
 
 - Native Ollama requests for official Qwen3.5 models now disable optional thinking so short automatic-answer budgets remain available for the final response. Other model families, custom namespaces and cloud references keep their existing behavior; changed-policy caches are separated.
