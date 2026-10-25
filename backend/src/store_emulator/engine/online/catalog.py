@@ -426,13 +426,16 @@ def site_from_store(store: Store, *, site_id: str, name: str, currency: str, see
     categories: list[OnlineCategory] = []
     products: list[OnlineProduct] = []
     seen: set[str] = set()
+    category_ids: dict[str, str] = {}
     for rack in store.racks:
         items = [item for slot in rack.slots for item in slot.items if item.sku not in seen]
         if not items:
             continue
         label = category_label(rack)
-        key = "c_" + "".join(ch if ch.isalnum() else "_" for ch in label.lower()).strip("_")[:40]
-        if not any(c.id == key for c in categories):
+        key = category_ids.get(label.lower())
+        if key is None:
+            key = f"c{len(categories) + 1:03d}"
+            category_ids[label.lower()] = key
             categories.append(OnlineCategory(id=key, name=label[:80], glyph=glyph_for(label)))
         for item in items:
             if item.sku in seen:

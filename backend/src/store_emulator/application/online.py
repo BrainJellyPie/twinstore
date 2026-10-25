@@ -467,7 +467,7 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
             remove_tree(folder)
             raise
     try:
-        submit_background(executor, _run_job, pid, status, sites, rival, shoppers, policy, model, _picture(pid))
+        submit_background(executor, _run_job, pid, status, sites, shoppers, policy, model, _picture(pid), rival)
     except RuntimeError as exc:
         status.status, status.finished_at = "failed", now_iso()
         status.error = "Could not start the online run. Please retry when the worker is available."
@@ -476,8 +476,8 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
     return status
 
 
-def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], rival: OnlineSite | None,
-             shoppers: list[OnlineShopper], policy: ShopperPolicy, model: str, picture: ProductPicture) -> None:
+def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shoppers: list[OnlineShopper],
+             policy: ShopperPolicy, model: str, picture: ProductPicture, rival: OnlineSite | None = None) -> None:
     started = time.monotonic()
     status.status = "running"
     last = 0.0
@@ -495,7 +495,9 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], rival: 
     try:
         _write_status(pid, status)
         request = status.request
-        variants, at_rival_shop = asyncio.run(_simulate(sites, rival, shoppers, policy, request, picture, progress))
+        variants, at_rival_shop = asyncio.run(_simulate(sites, shoppers, policy, request, picture, progress, rival))
+        if isinstance(policy, ModelPolicy) and not policy.answered and policy.last_failure is not None:
+            raise policy.last_failure
         for index, sessions in enumerate([*variants, at_rival_shop] if rival is not None else variants):
             write_json(_run_dir(pid, status.run_id) / f"sessions-{index}.json", _SESSIONS.dump_python(sessions, mode="json"))
         by_id = {s.id: s for s in shoppers}
@@ -538,9 +540,9 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], rival: 
         _write_status(pid, status)
 
 
-async def _simulate(sites: list[OnlineSite], rival: OnlineSite | None, shoppers: list[OnlineShopper],
-                    policy: ShopperPolicy, request: OnlineRunRequest, picture: ProductPicture,
-                    progress: Callable[[str], None]) -> tuple[list[list[SessionResult]], list[SessionResult]]:
+async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], policy: ShopperPolicy,
+                    request: OnlineRunRequest, picture: ProductPicture, progress: Callable[[str], None],
+                    rival: OnlineSite | None = None) -> tuple[list[list[SessionResult]], list[SessionResult]]:
     """Every shopper's visit to each variant, then, with a rival shop, the visits of those who left a variant without
     buying and try the rival. A rival visit is the same whichever variant the shopper left, so it runs once and is
     attached to each of their visits that ended without an order."""
@@ -559,7 +561,46 @@ async def _simulate(sites: list[OnlineSite], rival: OnlineSite | None, shoppers:
 
     for index, site in enumerate(sites):
         phase = f"variant {index + 1} of {len(sites)}"
-        out.append(list(await asyncio.gather(*(one(site, s, phase, surveyor) for s in shoppers))))
+        visiting: list[OnlineShopper] = shoppers
+        if index:
+            # Product/category IDs belong to one catalog. Match the original intent before
+            # visiting another store, where the same ID may describe an unrelated item.
+            category_ids: dict[str, str] = {}
+            for category in sites[0].categories:
+                matches = [c.id for c in site.categories if c.name.strip().casefold() == category.name.strip().casefold()]
+                category_ids[category.id] = (category.id if category.id in matches
+                                             else matches[0] if len(matches) == 1 else "")
+            product_ids: dict[str, str] = {}
+            local_ids = {p.id for p in site.products}
+            for product in sites[0].products:
+                if product.sku:
+                    matches = [p.id for p in site.products if p.sku == product.sku]
+                else:
+                    matches = [p.id for p in site.products
+                               if p.name.strip().casefold() == product.name.strip().casefold()
+                               and p.category_id == category_ids.get(product.category_id)]
+                if product.id in matches:
+                    target = product.id
+                elif len(matches) == 1:
+                    target = matches[0]
+                else:
+                    # A nonempty, absent target retains the rule shopper's preference for
+                    # a specific unavailable product, instead of turning it into a generic goal.
+                    target = product.id
+                    while target in local_ids:
+                        target = f"missing:{target}"
+                product_ids[product.id] = target
+            visiting = []
+            for shopper in shoppers:
+                target_id = product_ids.get(shopper.target_product, shopper.target_product)
+                target_product = site.product(target_id) if target_id else None
+                visiting.append(shopper.model_copy(update={
+                    "target_product": target_id,
+                    "target_category": (target_product.category_id if target_product is not None
+                                        else category_ids.get(shopper.target_category, "")),
+                }))
+
+        out.append(list(await asyncio.gather(*(one(site, s, phase, surveyor) for s in visiting))))
     if rival is None:
         return out, []
     lost = [there for i, s in enumerate(shoppers)

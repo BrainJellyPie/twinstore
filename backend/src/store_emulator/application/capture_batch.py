@@ -165,7 +165,6 @@ def save(
 ) -> CaptureBatchSaved:
     _project(pid)
     path = setup_path(pid, f"setup_batch_{req.request_id}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with (setup_tree_transaction(pid), FileLock(path.parent / ".capture-batch.lock", timeout=0),
               FileLock(setup_lock_path(pid, path.stem), timeout=10)):

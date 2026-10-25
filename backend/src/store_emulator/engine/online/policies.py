@@ -558,6 +558,7 @@ class ModelPolicy:
         self.max_retries = max_retries
         self.answered = 0
         self.failed = 0
+        self.last_failure: Exception | None = None
 
     async def choose(self, site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Memory,
                      rng: random.Random) -> Choice:
@@ -596,6 +597,7 @@ class ModelPolicy:
             query = answer.search_text.strip() if control.action.kind == ActionKind.SEARCH else ""
             return Choice(control, query=query, thought=answer.thought.strip(), source="model")
         self.failed += 1
+        self.last_failure = failure
         if failure is not None and not self.answered and self.failed >= _UNANSWERED_LIMIT:
             raise failure
         fallback = decide(site, shopper, view, memory, rng)

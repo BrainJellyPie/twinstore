@@ -1,7 +1,7 @@
 """Snapshot-checked rack reuse stored as an idempotent child layout."""
 from filelock import FileLock, Timeout
 from store_emulator.application.errors import AppError
-from store_emulator.application.setups import setup_tree_transaction
+from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.images import layout_image_url, load_manifest
@@ -46,10 +46,9 @@ def preview(pid: str, sid: str, req: RackCopyRequest) -> RackCopyPreview:
 def save(pid: str, sid: str, req: RackCopySave) -> RackCopySaved:
     check_product_layout(pid, sid)
     path = setup_path(pid, f"setup_rackcopy_{req.request_id}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     receipt = path.parent / ".rack-copy" / f"{req.request_id}.json"
     try:
-        with FileLock(path.parent / ".rack-copy.lock", timeout=0):
+        with FileLock(setup_lock_path(pid, sid).with_name(".rack-copy.lock"), timeout=0):
             if receipt.exists() and ProductEditsReceipt.model_validate_json(receipt.read_bytes()).source_id != sid:
                 raise AppError("This request belongs to another source layout", 409)
             if path.exists():
@@ -63,16 +62,16 @@ def save(pid: str, sid: str, req: RackCopySave) -> RackCopySaved:
             result = RackCopySaved(setup_id=path.stem, placements_added=report.placements_added)
             draft = new_setup_data("Reused shelf products", sid, store.model_dump(mode="json"),
                                    f"Copied existing products from {report.source_name} to {len(report.targets)} empty racks. Original preserved; no stock quantities inferred.")
-            source = read_setup(pid, sid)
-            if source.get("operations") is not None:
-                draft["operations"] = source["operations"]
-            building = source.get("building")
-            if building is not None:
-                draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft["id"] = path.stem
             draft["rack_copy_request"] = req.model_dump(mode="json")
             draft["rack_copy_result"] = result.model_dump(mode="json")
-            with setup_tree_transaction(pid, [sid]):
+            with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
+                source = read_setup(pid, sid)
+                if source.get("operations") is not None:
+                    draft["operations"] = source["operations"]
+                building = source.get("building")
+                if building is not None:
+                    draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
                 write_json(receipt, {"source_id": sid})
                 write_json(path, draft)
             return result

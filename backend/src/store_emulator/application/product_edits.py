@@ -48,11 +48,10 @@ def _existing(path: Path, req: ProductEditsSave) -> ProductEditsSaved | None:
 def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
     check_product_layout(pid, sid)
     path = setup_path(pid, f"setup_products_{req.request_id}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     # The source ID is also part of replay identity, including when the source was later removed.
     receipt = path.parent / ".product-edits" / f"{req.request_id}.json"
     try:
-        with FileLock(path.parent / ".product-edits.lock", timeout=0):
+        with FileLock(setup_lock_path(pid, sid).with_name(".product-edits.lock"), timeout=0):
             if receipt.exists():
                 accepted_source = ProductEditsReceipt.model_validate_json(receipt.read_bytes()).source_id
                 if accepted_source != sid:

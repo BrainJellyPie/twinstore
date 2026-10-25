@@ -18,12 +18,36 @@
   shoppers who leave without buying may look for the same thing there (more
   often when they came to buy, rarely when window-shopping) if it sells
   something that fits, arriving from a search engine on its best match. Each
-  shopper decides once and their rival
-  visit is the same whichever store they left, so reports show, per store, the
-  visits lost, how many tried the rival, bought there and what it took, plus the
-  paired difference in the rival's revenue per visit. Replays show where a lost
+  shopper decides once and their rival visit is the same whichever store they
+  left, so reports show, per store, the visits lost, how many tried the rival,
+  bought there and what it took, plus the paired difference in the rival's
+  revenue per visit. Replays show where a lost
   shopper went and open that visit; rival visits are in the clickstream CSV and
   can be interviewed, and they ask no exit survey.
+
+- Fail short online model runs that finish without any model decision, before
+  publishing fallback-only results. Preserve successful runs and partial fallback.
+
+- Serialize operating-setting inheritance for reviewed shelf-copy, photo and
+  text-edit branches with source edits, preserving their reviewed product snapshot.
+
+- Prevent reviewed shelf-copy, library-photo, text-edit and capture-batch saves
+  from recreating deleted projects. Protect photo preview snapshots against
+  project deletion as well.
+
+- Keep late starter-product and product-edit saves from recreating deleted
+  project directories while acquiring their save locks.
+
+- Preserve shopper intent across online catalogs that reuse local product and
+  category IDs. Match variant targets by SKU or product/category identity;
+  keep unavailable or ambiguous products from becoming unrelated exact matches.
+
+- Include direct product landings from search engines and social media in
+  product-view reports, using recorded views without double-counting clicks.
+
+- Keep distinct shelf categories separate when importing a physical store online,
+  including emoji, punctuation and long multilingual labels. Repeated signs
+  still share one category.
 
 ## 0.5.0 — Online stores shopped by vision shoppers
 

@@ -7,7 +7,7 @@ from uuid import uuid4
 from filelock import FileLock, Timeout
 from PIL import Image, UnidentifiedImageError
 from store_emulator.application.errors import AppError
-from store_emulator.application.setups import setup_tree_transaction
+from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.shelf_lab import PackageAsset, package_asset, package_directory, package_edit
 from store_emulator.application.storage.io import DATA_DIR, write_json
@@ -76,14 +76,15 @@ def photo_file(pid: str, digest: str) -> Path:
 def _snapshot(pid: str, data: bytes) -> str:
     digest = hashlib.sha256(data).hexdigest()
     path = Path(DATA_DIR) / pid / "product_photos" / f"{digest}.png"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists() or path.stat().st_size != len(data) or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-        tmp = path.with_suffix(f".tmp-{uuid4().hex}")
-        try:
-            tmp.write_bytes(data)
-            tmp.replace(path)
-        finally:
-            tmp.unlink(missing_ok=True)
+    with setup_tree_transaction(pid):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists() or path.stat().st_size != len(data) or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            tmp = path.with_suffix(f".tmp-{uuid4().hex}")
+            try:
+                tmp.write_bytes(data)
+                tmp.replace(path)
+            finally:
+                tmp.unlink(missing_ok=True)
     return f"/api/projects/{pid}/product-photo-files/{digest}"
 
 
@@ -116,10 +117,9 @@ def preview(pid: str, sid: str, req: PhotoRequest) -> PhotoPreview:
 def save(pid: str, sid: str, req: PhotoSave) -> PhotoSaved:
     check_product_layout(pid, sid)
     path = setup_path(pid, f"setup_photos_{req.request_id}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     receipt = path.parent / ".library-photos" / f"{req.request_id}.json"
     try:
-        with FileLock(path.parent / ".library-photos.lock", timeout=0):
+        with FileLock(setup_lock_path(pid, sid).with_name(".library-photos.lock"), timeout=0):
             if receipt.exists() and ProductEditsReceipt.model_validate_json(receipt.read_bytes()).source_id != sid:
                 raise AppError("This request belongs to another source layout", 409)
             if path.exists():
@@ -133,14 +133,14 @@ def save(pid: str, sid: str, req: PhotoSave) -> PhotoSaved:
             result = PhotoSaved(setup_id=path.stem, changed_placements=report.changed_placements)
             draft = new_setup_data("Library product photos", sid, store.model_dump(mode="json"),
                                    "Reviewed existing photos applied to products. Original preserved; no model calls or stock/price inference.")
-            source = read_setup(pid, sid)
-            if source.get("operations") is not None:
-                draft["operations"] = source["operations"]
-            building = source.get("building")
-            if building is not None:
-                draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft.update(id=path.stem, library_photos_request=req.model_dump(mode="json"), library_photos_result=result.model_dump(mode="json"))
-            with setup_tree_transaction(pid, [sid]):
+            with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
+                source = read_setup(pid, sid)
+                if source.get("operations") is not None:
+                    draft["operations"] = source["operations"]
+                building = source.get("building")
+                if building is not None:
+                    draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
                 write_json(receipt, {"source_id": sid})
                 write_json(path, draft)
             return result

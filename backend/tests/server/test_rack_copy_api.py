@@ -176,11 +176,12 @@ def test_replay_keeps_later_edits_and_deleted_child_stays_deleted(workflow):
 
 def test_busy_lock_and_lost_write_response_recover_same_identity(workflow, monkeypatch):
     from filelock import FileLock
+    from store_emulator.application.setups import setup_lock_path
     from store_emulator.application import rack_copy
     client, _ = workflow
     body = {**request(client), "request_id": "f" * 32}
     path = setup_path(PID, "setup_rackcopy_" + "f" * 32)
-    with FileLock(path.parent / ".rack-copy.lock"):
+    with FileLock(setup_lock_path(PID, SID).with_name(".rack-copy.lock")):
         assert client.post(URL + "/save", json=body).status_code == 409
     real = rack_copy.write_json
     def lost(path, data):
