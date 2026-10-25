@@ -98,3 +98,22 @@ def test_questions_about_an_online_run(client: TestClient, monkeypatch: pytest.M
 
     assert client.delete(url).status_code == 200
     assert client.get(url).json()["messages"] == []
+
+
+class _Starters:
+    async def generate_structured_async[T: BaseModel](self, response_model: type[T], system_prompt: str, user_prompt: str,
+                                                      **_: object) -> T:
+        assert "online run" in system_prompt and "Fact sheet:" in user_prompt
+        return response_model.model_validate({"questions": ["Why do phone shoppers leave at the cart?",
+                                                            "why do phone shoppers leave at the cart?", "Short?"]})
+
+
+def test_starter_questions_are_read_off_the_run(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from store_emulator.application import online
+
+    run_id = _run(client)
+    monkeypatch.setattr(online, "assistive_client", lambda *_a, **_k: _Starters())
+    r = client.post(f"/api/projects/{PID}/online/runs/{run_id}/analyst/suggestions", json={"model": "openai/gpt-test"})
+    assert r.status_code == 200, r.text
+    assert r.json() == ["Why do phone shoppers leave at the cart?"]  # repeats and fragments are dropped
+    assert client.get(f"/api/projects/{PID}/online/runs/{run_id}/analyst").json()["messages"] == []  # nothing is kept

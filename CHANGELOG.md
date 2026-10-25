@@ -2,20 +2,28 @@
 
 ## Unreleased
 
+## 0.6.0 — Online stores you can see, style and design by asking
+
 - Give local layout-edit models an operation-specific grammar: moves require a
   shelf, discounts require a negative percentage, and unrelated fields are omitted.
   Clarify combined edits and whole-shelf price changes. Real CPU probes now check
   prices, reference prices, signs, placements and untouched products, including an
   unrelated discounted product whose reference price previously disappeared.
-
 - Require report evidence before caching or storing numerical online-analyst answers.
   Constrain citations to at most three actual report lines, bound follow-up question
   lengths and label overall conversion and interval uncertainty explicitly. Add
   real CPU probes for comparison questions and unsupported real-world forecasts;
   the tiny model's remaining interpretation errors are recorded as probe failures.
-
-## 0.6.0 — Online stores you can see, style and design by asking
-
+- Ask the online analyst for starter questions read off the run: **Suggest
+  questions from this run** replaces the built-in starters with three about
+  what stands out (a store version, step, page or shopper group).
+- Share an online run as one page: the report's header opens a print-ready
+  page with the verdict, every store's conversion ring, the paired
+  differences with their intervals, the funnel, how visits ended, friction,
+  ads, cart reminders, the rival shop's take, the exit survey, conversion by
+  group, products, searches and the questions asked about the run with the
+  report lines each answer used. It reads on a phone and prints to PDF
+  (`GET …/online/runs/{id}/report.html`).
 - Ask about the web shop from the command bar: a question such as "did the
   web shop's new checkout win?" opens the latest finished online run, where
   **Ask about this run** answers it; with no finished online run the command

@@ -223,9 +223,9 @@ compared with the rest. Name the shelf, product, hour or group as written in the
 answer or that point to what would explain them. One sentence each, no numbers in the question. Write in English."""
 
 
-async def suggest_run_questions(llm: StructuredLLM, facts: str) -> list[str]:
+async def suggest_run_questions(llm: StructuredLLM, facts: str, prompt: str = STARTER_PROMPT) -> list[str]:
     """Three questions read off the fact sheet (what stands out), for an empty analyst thread."""
-    reply = await llm.generate_structured_async(_Starters, STARTER_PROMPT, f"Fact sheet:\n{facts}", max_retries=2, seed=0)
+    reply = await llm.generate_structured_async(_Starters, prompt, f"Fact sheet:\n{facts}", max_retries=2, seed=0)
     seen: dict[str, str] = {}
     for q in reply.questions:
         text = " ".join(q.split())

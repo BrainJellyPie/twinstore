@@ -255,6 +255,22 @@ nothing); an A/B test with three variants on 300 vision shoppers is roughly 1,20
 rule shoppers first for price and placement questions, and keep vision shoppers for packaging and
 signs, which only they can see.
 
+Online stores (`/online/<project>`):
+
+```
+online_run_calls (rule shoppers)  = 0
+online_run_calls (text / vision)  ≈ shoppers × stores × (clicks per visit + 1)
+                                  # one call per click, at most max_steps (default 24); +1 for the exit survey
+                                  # when it is on. A visit to the rival shop or a return from a cart reminder
+                                  # adds its own clicks. Visits usually take 8–15 clicks.
+design_chat_calls                 = 1 per message (2 when the model set nothing and is asked once more)
+online_analyst_calls              = 1 per question (+1 for "Suggest questions from this run")
+online_interview_calls            = 1 per question
+```
+
+Thirty model shoppers comparing two stores is roughly 800 calls; run the rule shoppers first to check the setup,
+and use model shoppers for design questions, which rule shoppers cannot see.
+
 Source: `backend/src/store_emulator/engine/generators/persona.py:99-242`,
 `backend/src/store_emulator/engine/simulation/engines/pattern_intent_impulse/engine.py:56-119`,
 `backend/src/store_emulator/application/supplemental.py:214-499`.

@@ -2,7 +2,7 @@
 // as the numbers count up, and the shopper replay one click away.
 
 import type { Ref } from "react";
-import { ArrowDownRight, ArrowUpRight, Columns2, Download, Maximize2, Minimize2, Minus, Play, Scale, Trash2, Trophy, Users } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Columns2, Download, FileText, Maximize2, Minimize2, Minus, Play, Scale, Trash2, Trophy, Users } from "lucide-react";
 
 import type { OnlineRunResult, OnlineRunStatus } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -33,7 +33,7 @@ function verdict(result: OnlineRunResult): Verdict {
   return { kind: "close" };
 }
 
-export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onCompare, csvUrl, onDelete, deleting, deleteError }: {
+export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onCompare, csvUrl, reportUrl, onDelete, deleting, deleteError }: {
   status: OnlineRunStatus;
   result: OnlineRunResult | null;
   heroRef?: Ref<HTMLElement>;
@@ -42,6 +42,8 @@ export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onComp
   onWatch: (() => void) | null;
   onCompare: (() => void) | null;
   csvUrl: string | null;
+  /** The run's print-ready page to share. */
+  reportUrl: string | null;
   onDelete: (() => void) | null;
   deleting: boolean;
   deleteError: string;
@@ -84,6 +86,12 @@ export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onComp
             aria-pressed={wide} aria-label={wide ? t("onWideOff") : t("onWideOn")} title={wide ? t("onWideOff") : t("onWideOn")}>
             {wide ? <Minimize2 aria-hidden /> : <Maximize2 aria-hidden />}
           </Button>
+          {reportUrl && (
+            <a href={reportUrl} target="_blank" rel="noopener" aria-label={t("onOpenReport")} title={t("onOpenReport")}
+              className="grid size-10 place-items-center rounded-2xl text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+              <FileText className="size-4" aria-hidden />
+            </a>
+          )}
           {csvUrl && (
             <a href={csvUrl} download aria-label={t("onDownloadClicks")} title={t("onDownloadClicks")}
               className="grid size-10 place-items-center rounded-2xl text-white/80 transition-colors hover:bg-white/10 hover:text-white">

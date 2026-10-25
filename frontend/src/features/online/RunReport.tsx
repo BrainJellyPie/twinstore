@@ -8,7 +8,7 @@ import { BarChart3, Columns2, Filter, GitCompareArrows, MessageSquareText, Play,
 import type { LucideIcon } from "lucide-react";
 
 import {
-  clickstreamUrl, deleteRun, getRun, onlineKeys,
+  clickstreamUrl, deleteRun, getRun, onlineKeys, runReportUrl,
   type ClickPoint, type Device, type OnlineRunResult, type PageKind, type PairedDelta, type SegmentRow, type VariantSummary,
 } from "@/shared/api/online";
 import { cn } from "@/shared/utils/cn";
@@ -83,7 +83,8 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
   return (
     <div className="flex flex-col gap-4">
       <RunHero status={status} result={result} heroRef={watchHero} wide={wide} onWide={onWide} onWatch={watch} onCompare={compare}
-        csvUrl={status.status === "completed" ? clickstreamUrl(projectId, runId) : null} onDelete={running ? null : () => remove.mutate()}
+        csvUrl={status.status === "completed" ? clickstreamUrl(projectId, runId) : null}
+        reportUrl={status.status === "completed" ? runReportUrl(projectId, runId) : null} onDelete={running ? null : () => remove.mutate()}
         deleting={remove.isPending} deleteError={remove.error?.message ?? ""} />
 
       {running && (

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import online as online_service
@@ -21,7 +21,7 @@ from store_emulator.application.online import (
     SessionView,
     SiteSummary,
 )
-from store_emulator.domain.interview import AnalystQuestion, AnalystThread, InterviewQuestion
+from store_emulator.domain.interview import AnalystQuestion, AnalystThread, InterviewQuestion, SuggestionRequest
 from store_emulator.domain.online import (
     DesignChatReply,
     DesignChatRequest,
@@ -202,6 +202,15 @@ def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
     return _call(lambda: online_service.run_store_changes(pid, run_id, variant))
 
 
+@router.get("/projects/{pid}/online/runs/{run_id}/report.html", summary="Online run report (print-ready HTML)",
+            response_class=HTMLResponse)
+def run_report_html(pid: str, run_id: str, download: bool = False) -> HTMLResponse:
+    """The run's numbers, charts and the questions asked about it on one self-contained page; `download` saves it."""
+    html = _call(lambda: online_service.run_report_html(pid, run_id))
+    headers = {"Content-Disposition": f'attachment; filename="{run_id}-report.html"'} if download else None
+    return HTMLResponse(html, headers=headers)
+
+
 @router.get("/projects/{pid}/online/runs/{run_id}/analyst", summary="Questions asked about this online run",
             response_model=AnalystThread)
 def get_analyst(pid: str, run_id: str) -> AnalystThread:
@@ -215,6 +224,14 @@ async def ask_analyst(pid: str, run_id: str, q: AnalystQuestion) -> AnalystThrea
     paired differences with their intervals) and lists the figures it used. Returns the whole thread."""
     config = get_config()
     return await run_in_threadpool(_call, lambda: online_service.ask_analyst(pid, run_id, q, config))
+
+
+@router.post("/projects/{pid}/online/runs/{run_id}/analyst/suggestions", summary="Questions worth asking about this online run",
+             response_model=list[str])
+async def suggest_analyst_questions(pid: str, run_id: str, req: SuggestionRequest) -> list[str]:
+    """Three questions the model reads off the run's report: the store version, step, page or group that stands out."""
+    config = get_config()
+    return await run_in_threadpool(_call, lambda: online_service.suggest_analyst_questions(pid, run_id, req.model, config))
 
 
 @router.delete("/projects/{pid}/online/runs/{run_id}/analyst", summary="Clear the questions about this online run")

@@ -67,12 +67,13 @@ from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.layout_edit import ZERO_DECIMAL
-from store_emulator.engine.online.analyst import answer_online_question, online_facts
+from store_emulator.engine.online.analyst import answer_online_question, online_facts, suggest_online_questions
 from store_emulator.engine.online.design_chat import apply_design, chat_design
 from store_emulator.engine.online.store_changes import apply_store_changes, price_changes
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
 from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
+from store_emulator.engine.online.report import online_report_html
 from store_emulator.engine.online.session import run_session
 from store_emulator.engine.online.shoppers import at_rival, sample_shoppers
 from store_emulator.engine.perception.product_images import bundled_product_image
@@ -909,10 +910,35 @@ def ask_analyst(pid: str, run_id: str, q: AnalystQuestion, config: SimulationCon
         return thread
 
 
+def suggest_analyst_questions(pid: str, run_id: str, model: str, config: SimulationConfig) -> list[str]:
+    """Three starter questions read off this run's report (what stands out); nothing is kept."""
+    result = get_run(pid, run_id).result
+    if result is None:
+        raise AppError("This run has no results yet", 409)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 500})
+    try:
+        llm = assistive_client(assistive_model(model, llm_config), llm_config)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(suggest_online_questions(llm, result))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[online analyst] suggestions {pid}/{run_id}: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "No questions could be suggested"), 502) from e
+
+
 def clear_analyst(pid: str, run_id: str) -> None:
     with _analyst_lock(pid, run_id), _write_transaction(pid):
         get_run(pid, run_id)
         _analyst_path(pid, run_id).unlink(missing_ok=True)
+
+
+def run_report_html(pid: str, run_id: str) -> str:
+    """The run's report as one page to share or print, with the questions asked about it."""
+    view = get_run(pid, run_id)
+    if view.result is None:
+        raise AppError("This run has no results yet", 409)
+    return online_report_html(view.result, view.status.created_at, get_analyst(pid, run_id))
 
 
 def analyst_facts(pid: str, run_id: str) -> str:

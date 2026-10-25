@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 from store_emulator.domain.interview import AnalystMessage
 from store_emulator.domain.online import OnlineRunResult, VariantSummary
 from store_emulator.engine.prompting import display_price
-from store_emulator.engine.run_analyst import RunAnswer, StructuredLLM, answer_run_question
+from store_emulator.engine.run_analyst import RunAnswer, StructuredLLM, answer_run_question, suggest_run_questions
 
 ONLINE_ANALYST_PROMPT = """You are an e-commerce analyst answering a shop owner's questions about one simulated
 online run: virtual shoppers visited one or more versions of a web shop (the first is the control), the same
@@ -23,6 +23,12 @@ Answer the owner's latest question; do not repeat a question as your answer.
 The simulation cannot forecast future real-world sales. For a forecast, say "The run does not show that".
 Copy up to three supporting sheet lines into figures exactly as written. Numerical answers need supporting figures.
 Use [] for absent figures or follow_ups, not null. Plain sentences, no markdown. Write in English."""
+
+ONLINE_STARTER_PROMPT = """You help a shop owner start reading one simulated online run. From the fact sheet, write three
+short questions worth asking about what stands out: a store version, funnel step, exit page, friction point, search or
+shopper group whose numbers are unusual compared with the rest. Name it as written in the sheet, and ask questions the
+sheet can answer or that point to what would explain them. One sentence each, no numbers in the question. Write in
+English."""
 
 _DELTA_NAMES = {"conversion": "conversion", "revenue_per_session": "revenue per visit", "add_to_cart_rate": "add-to-cart rate",
                 "steps": "clicks per visit", "seconds": "seconds per visit", "satisfaction": "satisfaction (1-7)",
@@ -122,3 +128,7 @@ async def answer_online_question(llm: StructuredLLM, result: OnlineRunResult, qu
                                  history: Sequence[AnalystMessage], seed: int = 0) -> RunAnswer:
     return await answer_run_question(llm, online_facts(result), question, history, seed=seed,
                                      prompt=ONLINE_ANALYST_PROMPT, require_numerical_evidence=True)
+
+
+async def suggest_online_questions(llm: StructuredLLM, result: OnlineRunResult) -> list[str]:
+    return await suggest_run_questions(llm, online_facts(result), prompt=ONLINE_STARTER_PROMPT)

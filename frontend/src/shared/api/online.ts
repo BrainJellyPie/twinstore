@@ -429,6 +429,10 @@ export function askOnlineAnalyst(pid: string, runId: string, question: string, m
   return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { method: "POST", ...json({ question, model }) });
 }
 
+export function suggestOnlineAnalystQuestions(pid: string, runId: string, model = ""): Promise<string[]> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst/suggestions`, { method: "POST", ...json({ model }) });
+}
+
 export function clearOnlineAnalyst(pid: string, runId: string): Promise<void> {
   return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { method: "DELETE" });
 }
@@ -448,6 +452,10 @@ export function getPlayback(pid: string, runId: string, variant: number, shopper
 /** One shopper's whole visit as an animated GIF to download and share. */
 export function journeyGifUrl(pid: string, runId: string, variant: number, shopperId: string): string {
   return `${BASE}/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/replay.gif`;
+}
+
+export function runReportUrl(pid: string, runId: string): string {
+  return `${BASE}/api/projects/${pid}/online/runs/${runId}/report.html`;
 }
 
 export function clickstreamUrl(pid: string, runId: string): string {
