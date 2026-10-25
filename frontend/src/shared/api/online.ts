@@ -429,6 +429,10 @@ export function askOnlineAnalyst(pid: string, runId: string, question: string, m
   return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { method: "POST", ...json({ question, model }) });
 }
 
+export function suggestOnlineAnalystQuestions(pid: string, runId: string, model = ""): Promise<string[]> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst/suggestions`, { method: "POST", ...json({ model }) });
+}
+
 export function clearOnlineAnalyst(pid: string, runId: string): Promise<void> {
   return fetchJson(`/api/projects/${pid}/online/runs/${runId}/analyst`, { method: "DELETE" });
 }

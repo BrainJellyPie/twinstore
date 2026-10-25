@@ -7,7 +7,7 @@ import { CheckCircle2, DoorOpen, Loader2, RotateCcw, Scale, Send, Sparkles, User
 import type { LucideIcon } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { askOnlineAnalyst, clearOnlineAnalyst, getOnlineAnalyst, onlineKeys } from "@/shared/api/online";
+import { askOnlineAnalyst, clearOnlineAnalyst, getOnlineAnalyst, onlineKeys, suggestOnlineAnalystQuestions } from "@/shared/api/online";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
@@ -64,11 +64,16 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
     const question = q.trim();
     if (Array.from(question).length >= 2 && !busy) { clear.reset(); ask.mutate(question); }
   };
-  const starters: { icon: LucideIcon; text: MessageKey }[] = [
+  const builtIn: { icon: LucideIcon; text: MessageKey }[] = [
     compared ? { icon: Scale, text: "onAnalystStarterWinner" } : { icon: Sparkles, text: "onAnalystStarterFix" },
     { icon: DoorOpen, text: "onAnalystStarterLeave" },
     { icon: Users, text: "onAnalystStarterSegment" },
   ];
+  // Starters read off this run (what stands out) replace the built-in ones once asked for.
+  const ideas = useMutation({ mutationFn: () => suggestOnlineAnalystQuestions(projectId, runId, model) });
+  const starters = ideas.data && ideas.data.length > 0
+    ? ideas.data.map((text) => ({ icon: Sparkles, text }))
+    : builtIn.map(({ icon, text }) => ({ icon, text: t(text) }));
 
   return (
     <div ref={root} className="flex flex-col gap-3">
@@ -83,15 +88,23 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
           <p className="text-xs text-muted-foreground">{t("onAnalystIntro")}</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {starters.map(({ icon: Icon, text: starter }) => (
-              <button key={starter} type="button" onClick={() => send(t(starter))} disabled={busy}
+              <button key={starter} type="button" onClick={() => send(starter)} disabled={busy}
                 className="group flex items-start gap-2.5 rounded-2xl border bg-card/50 p-3 text-left text-xs leading-snug transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_12px_30px_-18px_var(--heat-2)] disabled:opacity-50">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground" aria-hidden>
                   <Icon className="size-3.5" />
                 </span>
-                {t(starter)}
+                {starter}
               </button>
             ))}
           </div>
+          {!ideas.data && (
+            <button type="button" onClick={() => ideas.mutate()} disabled={ideas.isPending}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-60">
+              {ideas.isPending ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />}
+              {ideas.isPending ? t("analystReading") : t("analystSuggest")}
+            </button>
+          )}
+          {ideas.error && <p role="alert" className="text-xs text-destructive">{ideas.error.message}</p>}
         </div>
       ) : (
         <div ref={list} data-testid="online-analyst-thread" className="max-h-[32rem] space-y-3 overflow-y-auto overscroll-contain pr-1">

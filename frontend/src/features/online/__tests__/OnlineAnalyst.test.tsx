@@ -12,6 +12,7 @@ import { OnlineAnalyst } from "../OnlineAnalyst";
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof api>(), getModels: vi.fn() }));
 vi.mock("@/shared/api/online", async (original) => ({
   ...await original<typeof online>(), getOnlineAnalyst: vi.fn(), askOnlineAnalyst: vi.fn(), clearOnlineAnalyst: vi.fn(),
+  suggestOnlineAnalystQuestions: vi.fn(),
 }));
 
 const empty: AnalystThread = { run_id: "r", model: "", messages: [] };
@@ -77,4 +78,15 @@ it("asks a question routed from the command palette as soon as the run is open",
   mount(true);
   await waitFor(() => expect(online.askOnlineAnalyst).toHaveBeenCalledWith("p1", "r", "Did quick add help?", ""));
   expect(useAssistStore.getState().pending).toBeNull();
+});
+
+it("replaces the built-in starters with questions read off this run", async () => {
+  vi.mocked(online.suggestOnlineAnalystQuestions).mockResolvedValue(["Why do phone shoppers leave at the cart?"]);
+  vi.mocked(online.askOnlineAnalyst).mockResolvedValue(answered);
+  mount(true);
+  fireEvent.click(await screen.findByRole("button", { name: "Suggest questions from this run" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Why do phone shoppers leave at the cart?" }));
+  expect(screen.queryByRole("button", { name: winner })).toBeNull();
+  await waitFor(() => expect(online.askOnlineAnalyst).toHaveBeenCalledWith("p1", "r", "Why do phone shoppers leave at the cart?", ""));
+  expect(online.suggestOnlineAnalystQuestions).toHaveBeenCalledWith("p1", "r", "");
 });

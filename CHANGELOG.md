@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Ask the online analyst for starter questions read off the run: **Suggest
+  questions from this run** replaces the built-in starters with three about
+  what stands out (a store version, step, page or shopper group).
 - Share an online run as one page: the report's header opens a print-ready
   page with the verdict, every store's conversion ring, the paired
   differences with their intervals, the funnel, how visits ended, friction,
