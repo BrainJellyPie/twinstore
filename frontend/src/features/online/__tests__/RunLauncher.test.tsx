@@ -10,7 +10,7 @@ import { useLocale } from "@/shared/i18n/i18n";
 import { RunLauncher } from "../RunLauncher";
 
 vi.mock("@/shared/api/client", () => ({ getModels: vi.fn() }));
-vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof online>(), startRun: vi.fn() }));
+vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof online>(), startRun: vi.fn(), getSite: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: ReactNode }) => <span>{children}</span> }));
 const models: api.ModelOption[] = [
   { ref: "local:text", provider: "Local", label: "Local text", vision: false, local: true },
@@ -24,6 +24,7 @@ const clients: QueryClient[] = [];
 beforeEach(() => {
   useLocale.getState().setLocale("en");
   vi.mocked(api.getModels).mockResolvedValue(models);
+  vi.mocked(online.getSite).mockRejectedValue(new Error("Store options unavailable"));
   vi.mocked(online.startRun).mockImplementation(() => new Promise(() => {}));
 });
 afterEach(() => { cleanup(); clients.splice(0).forEach((c) => c.clear()); vi.resetAllMocks(); });

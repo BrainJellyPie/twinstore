@@ -24,6 +24,7 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="#simulate-compare-optimize">Simulate</a> ·
 <a href="#stores-layouts-and-shelves">Stores</a> ·
 <a href="#marketing-studio">Marketing studio</a> ·
+<a href="#online-stores">Online stores</a> ·
 <a href="#how-it-works">How it works</a> ·
 <a href="#validated-on-real-baskets">Validation</a> ·
 <a href="#for-developers">Developers</a> ·
@@ -365,6 +366,32 @@ Finished A/B, shelf, concept and conjoint tests have print-ready reports and can
 **Read the answers** on concept, shelf, conjoint and staff-script results groups respondents' reasons into themes and
 writes a short commentary on the numbers, labelled as model-written.
 
+## Online stores
+
+**Online** in the command bar builds web shops for a store and sends virtual shoppers through them the way people
+use a browser. Start from 42 ready-made shops — groceries, quick commerce, pharmacy, beauty, fashion, electronics,
+pets, toys, food delivery, a marketplace, flash sales and more, about 2,500 listings, most with photos — or put a
+layout's own shelves online, then change what a designer would: layout, search quality, sponsored listings, urgency
+and social proof, popups, cookie banners, delivery fees, coupons, guest checkout, checkout steps, payment methods,
+last-step fees, pre-ticked add-ons, returns and page speed — and run ad campaigns for its products.
+
+Each page is a screenshot with a numbered badge on every clickable element. A **vision model** looks at it and picks
+one option — search (and what to type), go back, open product 3, open the menu or settings, add a payment method,
+close the tab; a **text model** reads the page outline instead; **rule shoppers** run instantly. Shoppers come with a
+mission (buy something, window-shop, compare, hunt bargains, find a gift, reorder), a device, a budget, patience,
+comfort with websites and eyesight (low vision, colour blindness and older eyes see filtered screenshots). You can
+browse any store yourself by clicking the same screenshot.
+
+| Result | What it shows |
+| :-- | :-- |
+| **Variants on the same shoppers** | Up to four stores per run; conversion, revenue per visit, add-to-cart, clicks and time as paired differences with bootstrap 95 % intervals. |
+| **Funnel and exits** | Visit → product → cart → checkout → payment → order, and the pages people left from. |
+| **Ads** | Banners, sponsored tiles and listings, product-page and cart ads, popups: impressions, clicks, credited orders and ROAS per ad, and against the same store without it the extra units, revenue and incremental ROAS. |
+| **Friction audit** | Popup exits, forced sign-in, last-step fees, add-ons paid without unticking, failed coupons, empty searches, sold-out pages, slow exits. |
+| **Exit survey** | Satisfaction, ease, NPS, return intent and the biggest annoyance, from model shoppers right after the visit. |
+| **Search, products, clicks** | What people searched for (and found nothing), product views/adds/sales, a click map of the screenshots. |
+| **Replays and data** | Every visit page by page with the shopper's thoughts; segments by mission, device, age, gender and eyesight; a clickstream CSV. |
+
 ## How it works
 
 <img src="./.github/assets/twinstore/architecture.png" alt="Fig. 1 — TwinStore system: real-world inputs, twin builders, the twin, shopper engines, answers">
@@ -580,6 +607,9 @@ Defaults live in `backend/src/store_emulator/application/config.py`; these envir
   hundreds of calls; the app times one call first and asks before writing them all when that takes about 10 minutes or
   costs about $1, offering a quick sample instead. Model-based runs ask the same way. The rule-based engine and
   response caches make iteration free.
+- **Online shoppers are a screen, not a forecast.** Rule shoppers follow illustrative, uncalibrated probabilities;
+  model shoppers react to what each page shows but are not real traffic. Compare variants on the same shoppers
+  rather than reading absolute conversion rates.
 - **One store at a time.** No fleet view or multi-week dynamics; crowding is light (per-shopper paths, no queues);
   floors of a building are simulated separately.
 - **APIs and data shapes may still change** between versions.

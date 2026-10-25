@@ -1,8 +1,8 @@
 // Display names of the online-store codes the server sends. Codes stay unchanged; only these labels are translated.
 
 import type {
-  ActionKind, DeltaMetric, Device, FunnelStage, HomeSection, PageKind, PaymentMethod, SessionOutcome, ShopperMission,
-  ShopperPolicyKind, SortKey, TemplateHighlight,
+  Accessibility, ActionKind, AdPlacement, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
+  SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
 } from "@/shared/api/online";
 import { messages, type MessageKey } from "@/shared/i18n/messages";
 
@@ -82,11 +82,41 @@ export const SECTION_LABELS: Record<HomeSection, MessageKey> = {
 
 export const DELTA_LABELS: Record<DeltaMetric, MessageKey> = {
   conversion: "onKpiConversion", revenue_per_session: "onKpiRevenuePerSession", add_to_cart_rate: "onKpiAddToCart",
-  steps: "onKpiSteps", seconds: "onKpiSeconds",
+  steps: "onKpiSteps", seconds: "onKpiSeconds", satisfaction: "onSurveySatisfaction", recommend: "onSurveyRecommend",
 };
+
+export const VISION_LABELS: Record<Vision, MessageKey> = {
+  typical: "onVisionTypical", low_vision: "onVisionLow", color_blind: "onVisionColorBlind", aging_eyes: "onVisionAging",
+};
+
+export const ACCESSIBILITY_LABELS: Record<Accessibility, MessageKey> = {
+  typical: "onAccessTypical", realistic: "onAccessRealistic", low_vision: "onAccessLow", color_blind: "onAccessColorBlind",
+  aging_eyes: "onAccessAging",
+};
+
+export const FRICTION_LABELS: Record<FrictionCode, MessageKey> = {
+  popup_shown: "onFrPopupShown", popup_left: "onFrPopupLeft", popup_accepted: "onFrPopupAccepted",
+  signin_reached: "onFrSigninReached", signin_left: "onFrSigninLeft", account_created: "onFrAccountCreated",
+  fee_seen: "onFrFeeSeen", fee_left: "onFrFeeLeft", addon_seen: "onFrAddonSeen", addon_removed: "onFrAddonRemoved",
+  addon_paid: "onFrAddonPaid", coupon_failed: "onFrCouponFailed", zero_results: "onFrZeroResults",
+  sold_out_seen: "onFrSoldOut", slow_exit: "onFrSlowExit", cookies_rejected: "onFrCookiesRejected",
+};
+
+/** Friction points where the shopper ended up worse off or gave up: shown in a warning tone. */
+export const FRICTION_HARMS = new Set<FrictionCode>(["popup_left", "signin_left", "fee_left", "addon_paid", "coupon_failed", "zero_results", "slow_exit"]);
 
 /** The translated description of a built-in template, or the server's text for any other. */
 export function templateDescriptionKey(templateId: string): MessageKey | null {
   const key = `onTpl_${templateId}`;
   return key in messages ? (key as MessageKey) : null;
 }
+
+export const AD_PLACEMENT_LABELS: Record<AdPlacement, MessageKey> = {
+  hero_banner: "onAdPlaceHero", sponsored_listing: "onAdPlaceListing", home_tile: "onAdPlaceTile",
+  product_page: "onAdPlaceProduct", cart_upsell: "onAdPlaceCart", popup: "onAdPlacePopup",
+};
+
+export const AD_PLACEMENT_HINTS: Record<AdPlacement, MessageKey> = {
+  hero_banner: "onAdPlaceHeroHint", sponsored_listing: "onAdPlaceListingHint", home_tile: "onAdPlaceTileHint",
+  product_page: "onAdPlaceProductHint", cart_upsell: "onAdPlaceCartHint", popup: "onAdPlacePopupHint",
+};

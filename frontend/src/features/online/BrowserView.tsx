@@ -5,15 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Monitor, RotateCcw, Shuffle, Smartphone, UserCheck } from "lucide-react";
 
-import { browse, type BrowserState, type Device, type PageOption, type PageView } from "@/shared/api/online";
+import { browse, VISIONS, type BrowserState, type Device, type PageOption, type PageView, type Vision } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
-import { ACTION_LABELS, PAGE_LABELS } from "./labels";
+import { ACTION_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
 
-interface Step { state: BrowserState | null; option?: number; query?: string; markSeed: number; device: Device }
+interface Step { state: BrowserState | null; option?: number; query?: string; markSeed: number; device: Device; vision: Vision }
 
 export function BrowserView({ projectId, siteId }: { projectId: string; siteId: string }) {
   const { t } = useI18n();
@@ -21,6 +21,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
   const [device, setDevice] = useState<Device>("desktop");
   const [hasAccount, setHasAccount] = useState(false);
   const [markSeed, setMarkSeed] = useState(0);
+  const [vision, setVision] = useState<Vision>("typical");
   const [searching, setSearching] = useState<PageOption | null>(null);
   const [query, setQuery] = useState("");
   const [clicks, setClicks] = useState<string[]>([]);
@@ -28,20 +29,21 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
   const go = useMutation({
     mutationFn: (step: Step) => browse(projectId, siteId, {
       state: step.state, option: step.option ?? null, query: step.query ?? "", mark_seed: step.markSeed,
-      has_account: hasAccount, device: step.device,
+      has_account: hasAccount, device: step.device, vision: step.vision,
     }),
     onSuccess: (next, step) => {
-      setView(next); setMarkSeed(step.markSeed); setDevice(step.device); setSearching(null); setQuery("");
+      setView(next); setMarkSeed(step.markSeed); setDevice(step.device); setVision(step.vision); setSearching(null); setQuery("");
       if (step.state === null) setClicks([]);
     },
   });
   const start = go.mutate;
-  useEffect(() => { start({ state: null, markSeed: 0, device: "desktop" }); }, [start]);
-  const newVisit = (next: Device) => go.mutate({ state: null, markSeed, device: next });
+  useEffect(() => { start({ state: null, markSeed: 0, device: "desktop", vision: "typical" }); }, [start]);
+  const newVisit = (next: Device) => go.mutate({ state: null, markSeed, device: next, vision });
   const renumber = (on: boolean) => {
     const seed = on ? 1 + Math.floor(Math.random() * 1e6) : 0;
-    go.mutate({ state: view?.state ?? null, markSeed: seed, device });
+    go.mutate({ state: view?.state ?? null, markSeed: seed, device, vision });
   };
+  const seeAs = (next: Vision) => go.mutate({ state: view?.state ?? null, markSeed, device, vision: next });
   useEffect(() => { if (searching) searchRef.current?.focus(); }, [searching]);
 
   const use = (option: PageOption) => {
@@ -51,12 +53,12 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
       return;
     }
     setClicks((c) => [...c.slice(-30), `${t(PAGE_LABELS[view.page])} → [${option.number}] ${option.label}`]);
-    go.mutate({ state: view.state, option: option.number, markSeed, device });
+    go.mutate({ state: view.state, option: option.number, markSeed, device, vision });
   };
   const submitSearch = () => {
     if (!view || !searching || !query.trim() || go.isPending) return;
     setClicks((c) => [...c.slice(-30), `${t(PAGE_LABELS[view.page])} → [${searching.number}] “${query.trim()}”`]);
-    go.mutate({ state: view.state, option: searching.number, query: query.trim(), markSeed, device });
+    go.mutate({ state: view.state, option: searching.number, query: query.trim(), markSeed, device, vision });
   };
 
   return (
@@ -79,6 +81,13 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
           <label className="flex items-center gap-1.5" title={t("onShuffleHint")}>
             <input type="checkbox" checked={markSeed !== 0} onChange={(e) => renumber(e.target.checked)} disabled={go.isPending} />
             <Shuffle className="size-3.5" aria-hidden /> {t("onShuffle")}
+          </label>
+          <label className="flex items-center gap-1.5" title={t("onSeeAsHint")}>
+            {t("onSeeAs")}
+            <select className="h-7 rounded-md border bg-background px-1.5" value={vision} disabled={go.isPending}
+              onChange={(e) => seeAs(e.target.value as Vision)}>
+              {VISIONS.map((v) => <option key={v} value={v}>{t(VISION_LABELS[v])}</option>)}
+            </select>
           </label>
           <Button variant="outline" size="xs" className="ml-auto" onClick={() => newVisit(device)} disabled={go.isPending}>
             <RotateCcw aria-hidden /> {t("onNewVisit")}

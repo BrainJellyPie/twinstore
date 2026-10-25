@@ -35,12 +35,22 @@ export type ShopperPolicyKind = "rule" | "vlm" | "text";
 export type SessionOutcome = "purchased" | "abandoned_cart" | "left" | "bounced" | "timed_out" | "step_limit";
 export type FunnelStage = "visit" | "product_view" | "add_to_cart" | "checkout" | "payment" | "purchase";
 export type ProductBadge = "bestseller" | "new" | "limited" | "eco" | "sponsored";
+export type Vision = "typical" | "low_vision" | "color_blind" | "aging_eyes";
+export type AdPlacement = "hero_banner" | "sponsored_listing" | "home_tile" | "product_page" | "cart_upsell" | "popup";
+export type Accessibility = "typical" | "realistic" | "low_vision" | "color_blind" | "aging_eyes";
+export type FrictionCode =
+  | "popup_shown" | "popup_left" | "popup_accepted" | "signin_reached" | "signin_left" | "account_created" | "fee_seen"
+  | "fee_left" | "addon_seen" | "addon_removed" | "addon_paid" | "coupon_failed" | "zero_results" | "sold_out_seen"
+  | "slow_exit" | "cookies_rejected";
 export type TemplateHighlight =
   | "mobile" | "quick_add" | "one_click" | "coupon_popup" | "newsletter_popup" | "urgency" | "social_proof"
   | "sponsored" | "addon" | "service_fee" | "account_required" | "one_page_checkout" | "bnpl" | "cash_on_delivery"
   | "paid_returns" | "large_text" | "free_delivery";
 
 export const MISSIONS: ShopperMission[] = ["purchase", "browse", "compare", "deal_hunt", "gift", "replenish"];
+export const VISIONS: Vision[] = ["typical", "low_vision", "color_blind", "aging_eyes"];
+export const AD_PLACEMENTS: AdPlacement[] = ["hero_banner", "sponsored_listing", "home_tile", "product_page", "cart_upsell", "popup"];
+export const ACCESSIBILITY: Accessibility[] = ["typical", "realistic", "low_vision", "color_blind", "aging_eyes"];
 export const PAYMENT_METHODS: PaymentMethod[] = ["card", "paypal", "apple_pay", "bnpl", "bank_transfer", "cash_on_delivery"];
 export const HOME_SECTIONS: HomeSection[] = ["categories", "bestsellers", "deals", "new", "recommended"];
 export const FROM_STORE = "from_store";
@@ -70,9 +80,14 @@ export interface SiteOptions {
   return_policy: "free_30" | "paid" | "hidden"; trust_badges: boolean; page_load_ms: number;
 }
 
+export interface AdCampaign {
+  id: string; name: string; product_id: string; placement: AdPlacement; headline: string; pricing: "cpc" | "cpm";
+  cost: number; active: boolean;
+}
+
 export interface OnlineSite {
   id: string; name: string; template_id: string; currency: string; tagline: string;
-  categories: OnlineCategory[]; products: OnlineProduct[]; options: SiteOptions;
+  categories: OnlineCategory[]; products: OnlineProduct[]; options: SiteOptions; ads: AdCampaign[];
   variant_of: string; note: string; created_at: string; updated_at: string;
 }
 
@@ -98,6 +113,7 @@ export interface BrowserState {
 
 export interface PageOption {
   kind: ActionKind; target: string; label: string; number: number; box: [number, number, number, number] | null;
+  ad_id: string;
 }
 
 export interface PageView {
@@ -109,12 +125,17 @@ export interface OnlineShopper {
   id: string; identity: string; age_group: string; gender: string; device: Device; mission: ShopperMission; goal: string;
   target_category: string; target_terms: string[]; target_product: string; budget: number; price_sensitivity: number;
   patience_sec: number; tech_savvy: number; has_account: boolean; description: string; persona_id: string;
+  vision: Vision;
+}
+
+export interface ExitSurvey {
+  satisfaction: number; ease: number; recommend: number; would_return: boolean; frustration: string; improvement: string;
 }
 
 export interface SessionStep {
   index: number; url: string; page: PageKind; state: BrowserState; options: number; choice: PageOption | null;
   search_text: string; thought: string; seconds: number; load_seconds: number; source: "rule" | "model" | "fallback";
-  error: string; mark_seed: number; screen: [number, number] | null;
+  error: string; mark_seed: number; screen: [number, number] | null; ads: string[];
 }
 
 export interface SessionResult {
@@ -122,23 +143,39 @@ export interface SessionResult {
   order: { product_id: string; name: string; category_id: string; quantity: number; price: number }[];
   subtotal: number; order_total: number; seconds: number; reached: FunnelStage[]; viewed_products: string[];
   searches: { query: string; results: number; step: number }[]; exit_page: PageKind; exit_thought: string;
-  model_requests: number; fallbacks: number;
+  model_requests: number; fallbacks: number; survey: ExitSurvey | null; addon_paid: number;
 }
 
 export interface OnlineRunRequest {
   site_ids: string[]; name?: string; shoppers: number; policy: ShopperPolicyKind; model?: string | null;
   ensemble?: EnsembleConfig | null; seed: number; max_steps: number; missions: Record<ShopperMission, number>;
   mobile_share: number; source: "panel" | "project"; image_width: number; shuffle_marks: boolean;
+  accessibility: Accessibility; exit_survey: boolean;
 }
 
 export interface FunnelRow { stage: FunnelStage; sessions: number; share: number }
 export interface SegmentRow {
-  dimension: "mission" | "device" | "age_group" | "gender"; value: string; sessions: number; conversion: number;
+  dimension: "mission" | "device" | "age_group" | "gender" | "vision"; value: string; sessions: number; conversion: number;
   revenue_per_session: number; avg_steps: number;
 }
 export interface ProductRow { product_id: string; name: string; views: number; adds: number; purchases: number; units: number; revenue: number }
 export interface SearchTermRow { query: string; count: number; zero_results: number; purchases: number }
 export interface ClickPoint { page: PageKind; kind: ActionKind; device: Device; x: number; y: number }
+
+export interface FrictionRow { code: FrictionCode; sessions: number; share: number; amount: number }
+export interface AdRow {
+  ad_id: string; name: string; placement: AdPlacement; product_id: string; product_name: string; impressions: number;
+  reach: number; clicks: number; ctr: number; click_conversions: number; view_conversions: number;
+  attributed_revenue: number; units_sold: number; cost: number; roas: number | null;
+}
+export interface AdLift {
+  ad_id: string; name: string; site_id: string; product_id: string; units_without: number; units_with: number; units_diff: number;
+  revenue_diff: number; other_revenue_diff: number; cost: number; iroas: number | null;
+}
+export interface SurveySummary {
+  responses: number; satisfaction: number; ease: number; nps: number; would_return: number; frustrations: string[];
+  improvements: string[];
+}
 
 export interface VariantSummary {
   site_id: string; site_name: string; sessions: number; purchases: number; conversion: number; revenue: number;
@@ -146,17 +183,18 @@ export interface VariantSummary {
   avg_steps: number; avg_seconds: number; search_share: number; zero_result_searches: number;
   outcomes: Partial<Record<SessionOutcome, number>>; actions: Partial<Record<ActionKind, number>>;
   funnel: FunnelRow[]; exits: { page: PageKind; sessions: number }[]; segments: SegmentRow[]; products: ProductRow[];
-  searches: SearchTermRow[]; clicks: ClickPoint[];
+  searches: SearchTermRow[]; clicks: ClickPoint[]; frictions: FrictionRow[]; survey: SurveySummary | null; ads: AdRow[];
 }
 
-export type DeltaMetric = "conversion" | "revenue_per_session" | "add_to_cart_rate" | "steps" | "seconds";
+export type DeltaMetric = "conversion" | "revenue_per_session" | "add_to_cart_rate" | "steps" | "seconds" | "satisfaction" | "recommend";
 export interface PairedDelta {
   metric: DeltaMetric; control: number; variant: number; diff: number; ci_low: number | null; ci_high: number | null; n: number;
 }
 
 export interface OnlineRunResult {
   run_id: string; name: string; policy: ShopperPolicyKind; model: string; currency: string;
-  variants: VariantSummary[]; comparisons: { site_id: string; site_name: string; deltas: PairedDelta[] }[];
+  variants: VariantSummary[];
+  comparisons: { site_id: string; site_name: string; deltas: PairedDelta[]; ad_lifts: AdLift[] }[];
   shoppers: OnlineShopper[]; model_requests: number; fallbacks: number; seconds: number; notes: string[];
 }
 
@@ -203,7 +241,9 @@ export function saveSite(pid: string, site: OnlineSite): Promise<OnlineSite> {
   return fetchJson(`/api/projects/${pid}/online/sites/${site.id}`, { method: "PUT", ...json(site) });
 }
 
-export function copySite(pid: string, siteId: string, body: { name?: string; note?: string; options?: SiteOptions | null; products?: OnlineProduct[] | null }): Promise<OnlineSite> {
+export function copySite(pid: string, siteId: string, body: {
+  name?: string; note?: string; options?: SiteOptions | null; products?: OnlineProduct[] | null; ads?: AdCampaign[] | null;
+}): Promise<OnlineSite> {
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/copy`, { method: "POST", ...json(body) });
 }
 
@@ -217,7 +257,10 @@ export function sitePreviewUrl(pid: string, siteId: string, device: Device, vers
 
 export function browse(
   pid: string, siteId: string,
-  body: { state?: BrowserState | null; option?: number | null; query?: string; mark_seed?: number; has_account?: boolean; device?: Device },
+  body: {
+    state?: BrowserState | null; option?: number | null; query?: string; mark_seed?: number; has_account?: boolean;
+    device?: Device; vision?: Vision;
+  },
   signal?: AbortSignal,
 ): Promise<PageView> {
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/browse`, { method: "POST", ...json(body), signal });

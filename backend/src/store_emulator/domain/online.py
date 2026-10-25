@@ -82,7 +82,11 @@ type CheckoutStep = Literal["address", "payment", "review"]
 type PaymentMethod = Literal["card", "paypal", "apple_pay", "bnpl", "bank_transfer", "cash_on_delivery"]
 type ReturnPolicy = Literal["free_30", "paid", "hidden"]
 type Device = Literal["desktop", "mobile"]
-type Overlay = Literal["none", "menu", "welcome"]
+type Overlay = Literal["none", "menu", "welcome", "promo"]
+# Where an ad campaign shows: the home banner, the top of the lists that hold its product, a sponsored row on the
+# home page, other products' pages, the cart ("add this to your order"), or a popup over the landing page.
+type AdPlacement = Literal["hero_banner", "sponsored_listing", "home_tile", "product_page", "cart_upsell", "popup"]
+type AdPricing = Literal["cpc", "cpm"]
 type ProductBadge = Literal["bestseller", "new", "limited", "eco", "sponsored"]
 type HomeSection = Literal["categories", "bestsellers", "deals", "new", "recommended"]
 type TemplateHighlight = Literal[
@@ -97,6 +101,16 @@ type ShopperMission = Literal["purchase", "browse", "compare", "deal_hunt", "gif
 # the page outline (no image), e.g. to see what the picture adds.
 type ShopperPolicyKind = Literal["rule", "vlm", "text"]
 type ShopperSource = Literal["panel", "project"]
+# What the shopper's eyes make of a screen. The screenshot a vision model gets is filtered to match.
+type Vision = Literal["typical", "low_vision", "color_blind", "aging_eyes"]
+# Eyesight of a run's shoppers: all typical, a realistic mix by age and gender, or everyone with one condition
+# (a stress test of the design).
+type Accessibility = Literal["typical", "realistic", "low_vision", "color_blind", "aging_eyes"]
+type FrictionCode = Literal[
+    "popup_shown", "popup_left", "popup_accepted", "signin_reached", "signin_left", "account_created",
+    "fee_seen", "fee_left", "addon_seen", "addon_removed", "addon_paid", "coupon_failed", "zero_results",
+    "sold_out_seen", "slow_exit", "cookies_rejected",
+]
 type StepSource = Literal["rule", "model", "fallback"]
 type SessionOutcome = Literal["purchased", "abandoned_cart", "left", "bounced", "timed_out", "step_limit"]
 type FunnelStage = Literal["visit", "product_view", "add_to_cart", "checkout", "payment", "purchase"]
@@ -185,6 +199,17 @@ class SiteOptions(BaseModel):
     page_load_ms: int = Field(default=600, ge=50, le=15000)  # how long every page takes to load
 
 
+class AdCampaign(BaseModel):
+    id: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=60)
+    product_id: str
+    placement: AdPlacement
+    headline: str = Field(default="", max_length=70)
+    pricing: AdPricing = "cpc"
+    cost: int = Field(default=50, ge=0)  # per click (CPC) or per thousand impressions (CPM), minor units
+    active: bool = True
+
+
 class OnlineSite(BaseModel):
     model_config = ConfigDict(allow_inf_nan=False)
 
@@ -196,6 +221,7 @@ class OnlineSite(BaseModel):
     categories: list[OnlineCategory] = Field(min_length=1)
     products: list[OnlineProduct] = Field(min_length=1)
     options: SiteOptions = SiteOptions()
+    ads: list[AdCampaign] = Field(default_factory=list[AdCampaign], max_length=12)
     variant_of: str = ""  # site this one was copied from
     note: str = Field(default="", max_length=400)  # what this variant changes
     created_at: str = ""
@@ -268,6 +294,7 @@ class OnlineAction(BaseModel):
     kind: ActionKind
     target: str = ""  # product, category, sort key or payment method the action is about
     label: str = ""
+    ad_id: str = ""  # the ad campaign this element belongs to ("" = not an ad)
 
 
 class PageOption(OnlineAction):
@@ -308,6 +335,7 @@ class OnlineShopper(BaseModel):
     has_account: bool = False
     description: str = ""
     persona_id: str = ""  # project customer this shopper was made from ("" = panel)
+    vision: Vision = "typical"
 
 
 class SearchRecord(BaseModel):
@@ -339,6 +367,18 @@ class SessionStep(BaseModel):
     error: str = ""
     mark_seed: int = 0  # badge numbering of the screenshot (0 = in reading order)
     screen: tuple[int, int] | None = None  # (width, height) of the screenshot, when one was drawn
+    ads: list[str] = []  # ad campaigns shown on this page
+
+
+class ExitSurvey(BaseModel):
+    """What the shopper says right after the visit (model runs). Scales: satisfaction and ease 1–7 (ease is the
+    single ease question, SEQ), recommend 0–10 (net promoter question)."""
+    satisfaction: int = Field(ge=1, le=7)
+    ease: int = Field(ge=1, le=7)
+    recommend: int = Field(ge=0, le=10)
+    would_return: bool
+    frustration: str = Field(default="", max_length=200)
+    improvement: str = Field(default="", max_length=200)
 
 
 class SessionResult(BaseModel):
@@ -357,6 +397,8 @@ class SessionResult(BaseModel):
     exit_thought: str = ""
     model_requests: int = 0
     fallbacks: int = 0
+    survey: ExitSurvey | None = None
+    addon_paid: int = 0  # what a pre-ticked add-on the shopper left ticked cost them
 
 
 class OnlineRunRequest(BaseModel):
@@ -377,6 +419,8 @@ class OnlineRunRequest(BaseModel):
     source: ShopperSource = "panel"
     image_width: int = Field(default=896, ge=480, le=1600)
     shuffle_marks: bool = True  # number badges drawn at random, so a model's liking for low numbers is noise
+    accessibility: Accessibility = "typical"
+    exit_survey: bool = True  # model runs: each shopper answers a short survey after the visit (one more call)
 
 
 class FunnelRow(BaseModel):
@@ -386,7 +430,7 @@ class FunnelRow(BaseModel):
 
 
 class SegmentRow(BaseModel):
-    dimension: Literal["mission", "device", "age_group", "gender"]
+    dimension: Literal["mission", "device", "age_group", "gender", "vision"]
     value: str
     sessions: int
     conversion: float
@@ -424,6 +468,59 @@ class ClickPoint(BaseModel):
     y: float
 
 
+class AdRow(BaseModel):
+    """What one ad campaign was credited with in one store variant."""
+    ad_id: str
+    name: str
+    placement: AdPlacement
+    product_id: str
+    product_name: str
+    impressions: int  # page views it was on
+    reach: int  # visits that saw it
+    clicks: int
+    ctr: float
+    click_conversions: int  # visits that clicked it and ordered the product
+    view_conversions: int  # visits that saw it, did not click and ordered the product
+    attributed_revenue: int  # the product's revenue in post-click conversions
+    units_sold: int  # the product's units in every order
+    cost: int
+    roas: float | None  # attributed revenue / cost
+
+
+class AdLift(BaseModel):
+    """What an ad running in only one of two compared stores added, on the same shoppers: the store with it minus
+    the store without it."""
+    ad_id: str
+    name: str
+    site_id: str  # the store that runs the ad
+    product_id: str
+    units_without: int
+    units_with: int
+    units_diff: int
+    revenue_diff: int  # total revenue, with the ad minus without
+    other_revenue_diff: int  # revenue from every other product (negative: cannibalization)
+    cost: int
+    iroas: float | None  # revenue_diff / cost
+
+
+class FrictionRow(BaseModel):
+    """How often one known friction point (or dark pattern) came up, and how many sessions ended right there."""
+    code: FrictionCode
+    sessions: int  # sessions where it happened
+    share: float  # of all sessions
+    amount: int = 0  # money involved, e.g. add-on revenue from shoppers who never unticked it
+
+
+class SurveySummary(BaseModel):
+    responses: int
+    satisfaction: float  # mean, 1–7
+    ease: float  # mean, 1–7
+    nps: float  # % promoters (9–10) minus % detractors (0–6), −100…100
+    would_return: float  # share
+    frustrations: list[str]  # a sample, most common first
+    improvements: list[str]
+
+
 class VariantSummary(BaseModel):
     site_id: str
     site_name: str
@@ -448,10 +545,13 @@ class VariantSummary(BaseModel):
     products: list[ProductRow]
     searches: list[SearchTermRow]
     clicks: list[ClickPoint]
+    frictions: list[FrictionRow] = []
+    survey: SurveySummary | None = None
+    ads: list[AdRow] = []
 
 
 class PairedDelta(BaseModel):
-    metric: Literal["conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds"]
+    metric: Literal["conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds", "satisfaction", "recommend"]
     control: float
     variant: float
     diff: float
@@ -464,6 +564,7 @@ class VariantComparison(BaseModel):
     site_id: str
     site_name: str
     deltas: list[PairedDelta]
+    ad_lifts: list[AdLift] = []
 
 
 class OnlineRunResult(BaseModel):

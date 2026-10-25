@@ -20,7 +20,7 @@ from store_emulator.domain.online import (
     PageRef,
 )
 from store_emulator.domain.types import TokenUsage
-from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, summarize
+from store_emulator.engine.online.analysis import clickstream_csv, frictions, paired_deltas, summarize, survey_summary
 from store_emulator.engine.online.browser import (
     Page,
     apply,
@@ -32,10 +32,10 @@ from store_emulator.engine.online.browser import (
     search_products,
 )
 from store_emulator.engine.online.catalog import build_site, template_ids, template_summaries
-from store_emulator.engine.online.policies import ModelPolicy, RulePolicy
-from store_emulator.engine.online.prompt import choice_model
-from store_emulator.engine.online.render import render_page
-from store_emulator.engine.online.session import run_session
+from store_emulator.engine.online.policies import Choice, ModelPolicy, RulePolicy
+from store_emulator.engine.online.prompt import SurveyAnswer, choice_model, user_prompt
+from store_emulator.engine.online.render import render_page, see_as
+from store_emulator.engine.online.session import read_seconds, run_session
 from store_emulator.engine.online.shoppers import sample_shoppers
 
 
@@ -277,7 +277,7 @@ def test_analysis_and_paired_deltas() -> None:
     shares = [row.sessions for row in summary.funnel]
     assert shares == sorted(shares, reverse=True) and shares[0] == 40
     assert summary.purchases == sum(s.outcome == "purchased" for s in sessions)
-    assert {row.dimension for row in summary.segments} == {"mission", "device", "age_group", "gender"}
+    assert {row.dimension for row in summary.segments} == {"mission", "device", "age_group", "gender", "vision"}
     slow = site.model_copy(update={"options": site.options.model_copy(update={"page_load_ms": 6000})})
     slow_sessions = _run(slow, shoppers)
     deltas = {d.metric: d for d in paired_deltas(sessions, slow_sessions)}
@@ -396,3 +396,101 @@ def test_random_crawl_every_option_is_drawn(template: str) -> None:
                                               ActionKind.OPEN_CART) else 1 for c in choices]
             control = rng.choices(choices, weights=weights, k=1)[0]
             state = apply(site, state, control.action, query="gift", has_account=rng.random() < 0.5)
+
+
+
+def test_eyesight_mixes_keep_everything_else_about_the_shoppers() -> None:
+    site = _site()
+    request = OnlineRunRequest(site_ids=["s1"])
+    plain = sample_shoppers(site, 400, seed=2, missions=request.missions, mobile_share=0.5)
+    real = sample_shoppers(site, 400, seed=2, missions=request.missions, mobile_share=0.5, accessibility="realistic")
+    assert [s.model_copy(update={"vision": "typical"}) for s in real] == plain
+    assert {s.vision for s in plain} == {"typical"}
+    blind = [s for s in real if s.vision == "color_blind"]
+    assert blind and sum(s.gender == "Male" for s in blind) > len(blind) * 0.8
+    assert all(s.age_group in ("40s", "50s", "60s+") for s in real if s.vision == "aging_eyes")
+    everyone = sample_shoppers(site, 10, seed=2, missions=request.missions, mobile_share=0.5, accessibility="low_vision")
+    assert {s.vision for s in everyone} == {"low_vision"}
+
+
+def test_screens_are_seen_through_the_shoppers_eyes() -> None:
+    site = _site(cookie_banner=False)
+    page = build_page(site, BrowserState())
+    shot = render_page(page, site, numbering(page))
+    assert see_as(shot, "typical") is shot
+    for vision in ("low_vision", "color_blind", "aging_eyes"):
+        seen = see_as(shot, vision)  # type: ignore[arg-type]
+        assert seen.png != shot.png and (seen.width, seen.height, seen.boxes) == (shot.width, shot.height, shot.boxes)
+    with Image.open(io.BytesIO(see_as(shot, "color_blind").png)) as image:
+        r, g, _b = image.convert("RGB").getpixel((30, 4))  # type: ignore[misc]
+        assert abs(r - g) < 40  # red and green move together for a red–green colour-blind eye
+    shopper = _shoppers(site, 1)[0].model_copy(update={"vision": "low_vision"})
+    text = user_prompt(site, shopper, page_title="Home", options=[(1, "Leave")], history=[], elapsed=0, load_seconds=1,
+                       cart=(0, 0, ()), outline=None)
+    assert "low vision" in text and "the way they see it" in text
+
+
+def test_low_vision_rule_shoppers_look_for_large_text() -> None:
+    site = _site(welcome_popup="none", cookie_banner=False)
+    shoppers = [s.model_copy(update={"vision": "low_vision", "tech_savvy": 1.0}) for s in _shoppers(site, 40)]
+    sessions = _run(site, shoppers)
+    toggled = [s for s in sessions if any(st.choice and st.choice.kind == ActionKind.TOGGLE_LARGE_TEXT for st in s.steps)]
+    assert toggled and all(s.steps[-1].state.large_text or s.outcome == "purchased" for s in toggled)
+    # The landing page takes longer to read for the same shoppers with low vision.
+    page = build_page(site, BrowserState())
+    for shopper in shoppers[:5]:
+        typical = shopper.model_copy(update={"vision": "typical"})
+        slow, usual = (read_seconds(page, s, Choice(page.leave), random.Random(1)) for s in (shopper, typical))
+        assert slow == pytest.approx(1.8 * usual)
+
+
+def test_friction_audit_counts_dark_patterns() -> None:
+    site = _site("electronics", preselected_addon_percent=15, service_fee=300, guest_checkout=False,
+                 welcome_popup="coupon", coupon_code="X", coupon_percent=5, coupon_public=False)
+    shoppers = sample_shoppers(site, 80, seed=9, missions={"purchase": 1.0}, mobile_share=0.5)
+    sessions = _run(site, shoppers)
+    rows = {r.code: r for r in frictions(site, sessions)}
+    assert rows["popup_shown"].sessions == 80 and rows["signin_reached"].sessions > 0
+    assert rows["fee_seen"].sessions >= rows["fee_left"].sessions if "fee_left" in rows else rows["fee_seen"].sessions > 0
+    paid = [s for s in sessions if s.addon_paid]
+    assert rows["addon_seen"].sessions > 0
+    if paid:
+        assert rows["addon_paid"].amount == sum(s.addon_paid for s in paid)
+        assert all(s.outcome == "purchased" for s in paid)
+    plain = _site("electronics", preselected_addon_percent=0, service_fee=0, welcome_popup="none", cookie_banner=False)
+    assert not {"fee_seen", "addon_seen", "popup_shown"} & {r.code for r in frictions(plain, _run(plain, shoppers))}
+
+
+class _Surveyed(_FakeModel):
+    """Leaves at once and answers the survey with fixed scores."""
+
+    def __init__(self, recommend: int) -> None:
+        super().__init__(want="Close the tab")
+        self.recommend = recommend
+
+    def _answer[T: BaseModel](self, response_model: type[T], system: str, prompt: str, image: str | None) -> T:
+        if issubclass(response_model, SurveyAnswer):
+            self.calls.append({"system": system, "prompt": prompt, "image": image})
+            return response_model.model_validate({"satisfaction": 3, "ease": 4, "recommend": self.recommend,
+                                                  "would_return": self.recommend >= 7, "frustration": "Too many popups",
+                                                  "improvement": None})
+        return super()._answer(response_model, system, prompt, image)
+
+
+def test_exit_survey_is_asked_once_per_visit_and_summarized() -> None:
+    site = _site(welcome_popup="none")
+    shoppers = _shoppers(site, 6)
+
+    async def go(recommend: int) -> list:  # type: ignore[type-arg]
+        policy = ModelPolicy(_Surveyed(recommend), vision=False)
+        return [await run_session(site, s, policy, seed=1, max_steps=5, render=False, surveyor=policy.survey) for s in shoppers]
+
+    low, high = asyncio.run(go(3)), asyncio.run(go(10))
+    assert all(s.survey is not None and s.survey.improvement == "" for s in low)
+    assert all(s.model_requests == 2 for s in low)  # one decision, one survey
+    summary = survey_summary(low)
+    assert summary is not None and summary.nps == -100 and summary.frustrations == ["Too many popups"]
+    assert survey_summary(high).nps == 100  # type: ignore[union-attr]
+    deltas = {d.metric: d for d in paired_deltas(low, high)}
+    assert deltas["recommend"].diff == 7 and deltas["recommend"].n == 6
+    assert "satisfaction" not in {d.metric for d in paired_deltas(_run(site, shoppers), high)}

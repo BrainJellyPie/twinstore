@@ -25,6 +25,7 @@ const source: online.OnlineSite = {
     payment_methods: ["card"], one_click_buy: false, service_fee: 0, preselected_addon_percent: 0,
     return_policy: "free_30", trust_badges: true, page_load_ms: 600,
   },
+  ads: [],
 };
 
 beforeEach(() => {
@@ -123,4 +124,37 @@ it("keeps saving blocked until every invalid amount has been corrected", async (
   expect((screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.change(delivery, { target: { value: "0" } });
   expect((screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+const ad: online.AdCampaign = {
+  id: "ad1", name: "Shirt banner", product_id: "p1", placement: "hero_banner", headline: "", pricing: "cpc", cost: 50, active: true,
+};
+
+it("sends a variant's ads with the copy, and a version without ads pauses every ad", async () => {
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, ads: [ad] });
+  vi.mocked(online.saveSite).mockImplementation(async (_pid, site) => site);
+  const copied = mount();
+  fireEvent.change(await screen.findByRole("textbox", { name: "Ad name" }), { target: { value: "Renamed banner" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save as a variant" }));
+  await waitFor(() => expect(copied).toHaveBeenCalledWith("variant"));
+  const renamed = { ...ad, name: "Renamed banner" };
+  expect(online.copySite).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({ ads: [renamed] }));
+  expect(online.saveSite).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Make a version without ads" }));
+  await waitFor(() => expect(online.copySite).toHaveBeenCalledTimes(2));
+  // The store is saved first, so the copy differs from it only in its ads.
+  expect(online.saveSite).toHaveBeenCalledExactlyOnceWith("p1", expect.objectContaining({ id: "s1", ads: [renamed] }));
+  expect(online.copySite).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({ ads: [{ ...renamed, active: false }] }));
+});
+
+it("blocks saving while an ad cost is invalid, until the ad is fixed or removed", async () => {
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, ads: [ad] });
+  mount();
+  const cost = await screen.findByRole("textbox", { name: "Cost per click" });
+  fireEvent.change(cost, { target: { value: "lots" } });
+  expect(cost.getAttribute("aria-invalid")).toBe("true");
+  expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.queryByRole("button", { name: "Make a version without ads" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Remove ad" }));
+  expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
 });

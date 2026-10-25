@@ -8,7 +8,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
-from store_emulator.domain.online import OnlineShopper, OnlineSite
+from store_emulator.domain.online import ExitSurvey, OnlineShopper, OnlineSite, Vision
 from store_emulator.engine.prompting import display_price
 
 SYSTEM_PROMPT = """You role-play one online shopper using a web browser.
@@ -58,6 +58,8 @@ def user_prompt(
     ]
     if shopper.description and shopper.persona_id:
         lines.append(shopper.description)
+    if shopper.vision != "typical":
+        lines.append(_EYESIGHT[shopper.vision] + ("" if outline is not None else " " + _EYESIGHT_IMAGE))
     lines += [
         f"Why they are on {site.name}: {shopper.goal}.",
         f"Budget: {money(shopper.budget, site.currency)}." if shopper.budget else "Budget: no fixed limit.",
@@ -84,7 +86,16 @@ def user_prompt(
     return "\n".join(lines)
 
 
-_TEXT_LIMITS = {"search_text": 60, "thought": 200}
+_EYESIGHT: dict[Vision, str] = {
+    "low_vision": "The shopper has low vision: small text and thin lines are hard for them to make out. The site's "
+                  "settings may offer large text.",
+    "color_blind": "The shopper is red-green colour-blind: red sale tags and green stock notes do not stand out for them.",
+    "aging_eyes": "The shopper's eyes are older: small print is tiring to read without reading glasses.",
+    "typical": "",
+}
+_EYESIGHT_IMAGE = "The screenshot shows the page the way they see it."
+
+_TEXT_LIMITS = {"search_text": 60, "thought": 200, "frustration": 200, "improvement": 200}
 
 
 class BrowserChoice(BaseModel):
@@ -128,3 +139,62 @@ def choice_model(numbers: list[int], search_number: int | None) -> type[BrowserC
             return self
 
     return PageChoice
+
+
+SURVEY_PROMPT = """You role-play one online shopper who has just left a web shop. Answer a short survey about the
+visit, in character and honestly: a shopper who was annoyed or could not find what they wanted gives low scores.
+
+Reply in JSON:
+- satisfaction: 1 (very dissatisfied) to 7 (very satisfied) with the visit
+- ease: 1 (very difficult) to 7 (very easy): how easy it was to do what they came for
+- recommend: 0 to 10: how likely they are to recommend this shop to a friend
+- would_return: true or false: would they shop here again
+- frustration: the biggest annoyance of the visit in at most 20 words, or "" if there was none
+- improvement: one change that would have helped them, at most 20 words, or ""
+
+## Language
+Write frustration and improvement in English."""
+
+
+def survey_prompt(site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: str, seconds: float,
+                  paid: int) -> str:
+    lines = [
+        f"Shopper: {shopper.identity}, {_age_words(shopper.age_group)}, {shopper.gender.lower()}, on a {shopper.device}.",
+        f"Why they went to {site.name}: {shopper.goal}.",
+    ]
+    if shopper.vision != "typical":
+        lines.append(_EYESIGHT[shopper.vision])
+    lines.append("What they did on the site:")
+    lines += [f"{i + 1}. {text}" for i, text in enumerate(history[-20:])]
+    lines.append(f"How the visit ended: {outcome}. Time on the site: {int(seconds) // 60} min {int(seconds) % 60} s.")
+    if paid:
+        lines.append(f"They paid {display_price(paid, site.currency)}.")
+    lines.append("How do they answer the survey?")
+    return "\n".join(lines)
+
+
+class SurveyAnswer(BaseModel):
+    satisfaction: int = Field(ge=1, le=7)
+    ease: int = Field(ge=1, le=7)
+    recommend: int = Field(ge=0, le=10)
+    would_return: bool
+    frustration: str = Field(default="", max_length=200)
+    improvement: str = Field(default="", max_length=200)
+
+    @field_validator("satisfaction", "ease", "recommend", mode="before")
+    @classmethod
+    def _score(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("scores are numbers, not true or false")
+        return value
+
+    @field_validator("frustration", "improvement", mode="before")
+    @classmethod
+    def _clip(cls, value: object, info: ValidationInfo) -> object:
+        if value is None:
+            return ""
+        limit = _TEXT_LIMITS[info.field_name or "frustration"]
+        return value[:limit] if isinstance(value, str) else value
+
+    def survey(self) -> ExitSurvey:
+        return ExitSurvey.model_validate(self.model_dump())

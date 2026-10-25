@@ -6,7 +6,7 @@ import * as online from "@/shared/api/online";
 import { useLocale } from "@/shared/i18n/i18n";
 import { BrowserView } from "../BrowserView";
 
-vi.mock("@/shared/api/online", () => ({ browse: vi.fn() }));
+vi.mock("@/shared/api/online", async (importOriginal) => ({ ...(await importOriginal<typeof online>()), browse: vi.fn() }));
 
 const state = (page: online.PageKind, extra: Partial<online.BrowserState> = {}): online.BrowserState => ({
   at: { page, category_id: "", query: "", product_id: "", sort: null, page_index: 0, checkout_step: "address" },
@@ -20,8 +20,8 @@ const view = (page: online.PageKind, options: online.PageOption[]): online.PageV
   image: "data:image/png;base64,AAAA", width: 1024, height: 800,
 });
 const home = view("home", [
-  { kind: "search", target: "", label: "Search box: type words to search the shop", number: 3, box: [10, 10, 200, 40] },
-  { kind: "open_product", target: "p001", label: "Open product: Canvas Tote Bag ($14.99)", number: 7, box: [20, 300, 220, 500] },
+  { kind: "search", target: "", label: "Search box: type words to search the shop", number: 3, box: [10, 10, 200, 40], ad_id: "" },
+  { kind: "open_product", target: "p001", label: "Open product: Canvas Tote Bag ($14.99)", number: 7, box: [20, 300, 220, 500], ad_id: "" },
 ]);
 
 beforeEach(() => { useLocale.getState().setLocale("en"); vi.mocked(online.browse).mockResolvedValue(home); });
@@ -60,6 +60,13 @@ it("starts a mobile visit and shows server errors", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Mobile" }));
   await waitFor(() => expect(online.browse).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({ state: null, device: "mobile" })));
   expect((await screen.findByRole("alert")).textContent).toContain("That option is not on this page");
+});
+
+it("shows the page through a shopper's eyesight without leaving the page", async () => {
+  mount();
+  await screen.findByRole("button", { name: /^7\./ });
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "low_vision" } });
+  await waitFor(() => expect(online.browse).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({ state: home.state, vision: "low_vision", option: null })));
 });
 
 it.each([false, true])("keeps the displayed numbers after a failed shuffle transition from %s", async (alreadyShuffled) => {

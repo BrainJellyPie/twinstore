@@ -2,11 +2,39 @@
 
 ## Unreleased
 
+- Add quick experiments to online runs. Tick up to three one-click changes to the
+  first store (drop the last-step fee, allow guest checkout, untick the add-on,
+  remove the welcome popup or offer a welcome coupon, halve or double page load
+  time, free delivery or a lower threshold, smart search, one-page checkout,
+  urgency messages off or on, no cookie banner or sponsored slots, add wallets,
+  free returns, large text, add-to-cart buttons on cards); each becomes a variant
+  and all are compared on the same shoppers in one run.
+- Add ad campaigns to online stores and measure what they add. A store runs up to
+  12 ads for its own products: a home banner, sponsored home tiles, sponsored
+  tops of category, search and deal lists, sponsored products on other product
+  pages, a one-click cart upsell or a popup (right after the welcome popup when
+  there is one), paid per click or per thousand impressions. Reports give each
+  ad's impressions, reach, clicks, CTR, post-click and view-through orders,
+  credited revenue, cost and ROAS, and, against the same store without the ad on
+  the same shoppers, the extra units, the change in total and other-product
+  revenue and incremental ROAS. "Make a version without ads" sets up that
+  comparison; replays mark ad clicks and the clickstream CSV gains an `ad_id`
+  column. Rule shoppers find advertised products a little more familiar after
+  seeing them, pass over ad tiles more often the more experienced they are, and
+  click banners, popups and upsells mostly when the product fits.
+- Pair online variants more tightly. Random draws are keyed to the decision point
+  (the page, what covers it and how often the shopper has been there) and to each
+  product's or ad's own draw, so a variant that adds a popup, a tile or an ad no
+  longer reshuffles the shopper's other decisions. The popup friction rows count
+  ad popups and exits at a later popup too.
+
+## 0.5.0 — Online stores shopped by vision shoppers
+
 - Native Ollama requests for official Qwen3.5 models now disable optional thinking so short automatic-answer budgets remain available for the final response. Other model families, custom namespaces and cloud references keep their existing behavior; changed-policy caches are separated.
 - Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
 
 - Add online stores. Each project can build browser-style web shops from 42
-  ready-made templates (2,500+ catalog products, most with photos) or from a
+  ready-made templates (about 2,500 listings, most with photos) or from a
   layout's own shelves, and tune their design: layout, search quality,
   sponsored listings, urgency and social proof, welcome popups, cookie banner,
   delivery fees, coupons, guest checkout, checkout steps, payment methods,
@@ -52,6 +80,16 @@
   unavailable models and invalid ensemble weights no longer fall through to the
   server default. Online ensembles offer their supported mixture mode; requests
   for shelf voting are rejected before creating a run.
+
+- Add eyesight, friction and exit-survey research to online stores. Shoppers
+  can have low vision, red–green colour blindness or older eyes (all, none or a
+  realistic mix by age and gender); vision shoppers then see blurred, yellowed
+  or colour-shifted screenshots, and anyone can preview a store that way. Run
+  reports audit friction points and dark patterns (popups, forced sign-in,
+  last-step fees, pre-ticked add-ons paid without unticking, failed coupons,
+  empty searches, sold-out pages, slow exits). Model shoppers answer a short
+  exit survey (satisfaction, ease, recommendation, would return, biggest
+  annoyance); reports show NPS and paired survey differences between variants.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 

@@ -12,9 +12,9 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
-from store_emulator.domain.online import OnlineProduct, OnlineSite, PageKind
+from store_emulator.domain.online import OnlineProduct, OnlineSite, PageKind, Vision
 from store_emulator.engine.perception.shelf_render import load_font, wrap_text
 
 from .browser import Card, Control, Grid, Line, Page, Panel, money
@@ -448,20 +448,28 @@ def _notice(p: _Paint, page: Page, y: int) -> int:
     return y + h
 
 
-def _banner(p: _Paint, page: Page, y: int) -> int:
+def _banner(p: _Paint, page: Page, y: int, picture: ProductPicture | None) -> int:
     if page.banner is None:
         return y
-    headline, small, cta = page.banner
+    banner = page.banner
+    headline, small, cta = banner.headline, banner.small, banner.control
     h = round((128 if p.mobile else 150) * p.k)
     box = (p.pad, y, p.w - p.pad, y + h)
     p.d.rounded_rectangle(box, radius=18, fill=p.theme)
     p.d.polygon([(box[2] - 260, box[1]), (box[2] - 150, box[1]), (box[2] - 300, box[3]), (box[2] - 410, box[3])],
                 fill=_mix(p.theme, PAPER, 0.18))
-    lines = p.wrap(headline, 26 if p.mobile else 30, box[2] - box[0] - 48, 2, True)
+    text_w = box[2] - box[0] - 48
+    if banner.product is not None:
+        side = h - 24
+        _picture(p, banner.product, "box", (box[2] - side - 150, box[1] + 12, box[2] - 150, box[1] + 12 + side), picture)
+        text_w -= side + 150
+    if banner.sponsored:
+        _pill(p, box[2] - 110, box[1] + 12, "Sponsored", _mix(INK, PAPER, 0.25), size=11)
+    lines = p.wrap(headline, 26 if p.mobile else 30, text_w, 2, True)
     ty = box[1] + 18
     for line in lines:
         ty = p.text(box[0] + 24, ty, line, 26 if p.mobile else 30, PAPER, True)
-    p.text(box[0] + 24, ty + 2, p.fit(small, 14, box[2] - box[0] - 48), 14, _mix(PAPER, p.theme, 0.15))
+    p.text(box[0] + 24, ty + 2, p.fit(small, 14, text_w), 14, _mix(PAPER, p.theme, 0.15))
     if cta is not None:
         label = "Shop now"
         bw = p.width_of(label, 14, True) + 34
@@ -724,7 +732,7 @@ def _shade(img: Image.Image, top: int) -> None:
     img.paste(veil, (0, top), veil)
 
 
-def _overlay(p: _Paint, page: Page, height: int) -> int:
+def _overlay(p: _Paint, page: Page, height: int, picture: ProductPicture | None) -> int:
     overlay = page.overlay
     if overlay is None:
         return height
@@ -748,11 +756,16 @@ def _overlay(p: _Paint, page: Page, height: int) -> int:
     w = min(460, p.w - 2 * p.pad)
     x0 = (p.w - w) // 2
     probe_lines = [line for line in overlay.lines if line.control is None]
-    h = 70 + sum(p.lh(15) * len(p.wrap(line.text, 15, w - 48, 3)) for line in probe_lines) + round(110 * p.k)
+    extra = round(150 * p.k) if overlay.product is not None else 0  # a promo shows its product above the text
+    h = 70 + sum(p.lh(15) * len(p.wrap(line.text, 15, w - 48, 3)) for line in probe_lines) + round(110 * p.k) + extra
     y0 = _CHROME + 90
     p.d.rounded_rectangle((x0, y0, x0 + w, y0 + h), radius=20, fill=PAPER)
     p.d.rectangle((x0, y0, x0 + w, y0 + 8), fill=p.theme)
-    y = p.text(x0 + 24, y0 + 24, p.fit(overlay.title, 20, w - 48, True), 20, INK, True) + 6
+    if overlay.product is not None:
+        side = extra - 30
+        _picture(p, overlay.product, "box", (x0 + (w - side) // 2, y0 + 24, x0 + (w + side) // 2, y0 + 24 + side), picture)
+        _pill(p, x0 + w - 104, y0 + 18, "Sponsored", _mix(INK, PAPER, 0.25), size=11)
+    y = p.text(x0 + 24, y0 + extra + 24, p.fit(overlay.title, 20, w - 48, True), 20, INK, True) + 6
     for line in probe_lines:
         for text in p.wrap(line.text, 15, w - 48, 3):
             y = p.text(x0 + 24, y, text, 15, MUTED)
@@ -791,7 +804,7 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
     y = _header(p, page, y)
     y = _nav(p, page, y)
     y = _notice(p, page, y) + 18
-    y = _banner(p, page, y)
+    y = _banner(p, page, y, picture)
     if page.kind == PageKind.PRODUCT:
         y = _detail(p, site, page, y, picture)
     side_by_side = page.kind == PageKind.CART and len(page.panels) == 2 and not p.mobile
@@ -818,7 +831,7 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
         p.d.text((p.w - p.pad - 26, y - 36), "?", font=load_font(24, True), fill=PAPER, anchor="mm")
     y = _footer(p, page, y)
     y = _cookie(p, page, y)
-    height = min(_overlay(p, page, y), _MAX_HEIGHT)
+    height = min(_overlay(p, page, y, picture), _MAX_HEIGHT)
     p.img = p.img.crop((0, 0, width, height))
     p.d = ImageDraw.Draw(p.img)
     _badges(p, numbers)
@@ -826,3 +839,30 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
     p.img.save(out, format="PNG", compress_level=6)
     usable = {index: box for index, box in p.boxes.items() if index in numbers}
     return Screenshot(out.getvalue(), width, height, usable)
+
+
+# Red–green colour blindness (deuteranopia) in sRGB, after Viénot, Brettel & Mollon (1999); an approximation for
+# showing a model what such a shopper can tell apart, not a clinical simulation.
+_DEUTERANOPIA = (0.625, 0.375, 0.0, 0.0, 0.7, 0.3, 0.0, 0.0, 0.0, 0.3, 0.7, 0.0)
+
+
+def see_as(shot: Screenshot, vision: Vision, *, large_text: bool = False) -> Screenshot:
+    """The screenshot as a shopper with this eyesight sees it: blurred and flatter for low vision (less so with large
+    text switched on), slightly blurred and yellowed for older eyes, red–green shifted for colour blindness."""
+    if vision == "typical":
+        return shot
+    with Image.open(io.BytesIO(shot.png)) as source:
+        image = source.convert("RGB")
+    if vision == "color_blind":
+        image = image.convert("RGB", _DEUTERANOPIA)
+    elif vision == "low_vision":
+        image = image.filter(ImageFilter.GaussianBlur(1.6 if large_text else 2.8))
+        image = ImageEnhance.Contrast(image).enhance(0.72)
+    else:
+        image = image.filter(ImageFilter.GaussianBlur(0.8 if large_text else 1.4))
+        image = ImageEnhance.Contrast(image).enhance(0.85)
+        r, g, b = image.split()
+        image = Image.merge("RGB", (r, g, b.point([round(v * 0.82) for v in range(256)])))
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return Screenshot(out.getvalue(), shot.width, shot.height, shot.boxes)

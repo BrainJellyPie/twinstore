@@ -13,7 +13,7 @@ import { currencyCode, formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 
-import { ACTION_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS } from "./labels";
+import { ACTION_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_LABELS, PAGE_LABELS, VISION_LABELS } from "./labels";
 
 export function JourneyViewer({ projectId, runId, variant, shopperId, variants, currency, onVariant, onClose }: {
   projectId: string; runId: string; variant: number; shopperId: string; variants: string[]; currency: string;
@@ -62,7 +62,10 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
       <div className="space-y-3">
         <div className="rounded-xl border p-3 text-xs">
           <div className="font-semibold">{shopper.identity}</div>
-          <div className="text-muted-foreground">{personaLabel(shopper.age_group, t)} · {personaLabel(shopper.gender, t)} · {t(DEVICE_LABELS[shopper.device])}</div>
+          <div className="text-muted-foreground">
+            {personaLabel(shopper.age_group, t)} · {personaLabel(shopper.gender, t)} · {t(DEVICE_LABELS[shopper.device])}
+            {shopper.vision !== "typical" ? ` · ${t(VISION_LABELS[shopper.vision])}` : ""}
+          </div>
           <div className="mt-2"><span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">{t(MISSION_LABELS[shopper.mission])}</span></div>
           <p className="mt-1">{shopper.goal}</p>
           <p className="mt-1 text-muted-foreground">
@@ -85,6 +88,17 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
           )}
           {session.exit_thought && <p className="mt-2 italic">“{session.exit_thought}”</p>}
         </div>
+        {session.survey && (
+          <div className="rounded-xl border p-3 text-xs">
+            <div className="font-semibold">{t("onSurveys")}</div>
+            <div className="text-muted-foreground">
+              {t("onSurveyLine", { satisfaction: session.survey.satisfaction, ease: session.survey.ease, recommend: session.survey.recommend })}
+              {" · "}{session.survey.would_return ? t("onSurveyWouldReturn") : t("onSurveyWouldNotReturn")}
+            </div>
+            {session.survey.frustration && <p className="mt-1">“{session.survey.frustration}”</p>}
+            {session.survey.improvement && <p className="mt-1 text-muted-foreground">→ {session.survey.improvement}</p>}
+          </div>
+        )}
         <ol className="max-h-[50vh] space-y-1 overflow-y-auto">
           {session.steps.map((s, i) => (
             <li key={s.index}>
@@ -110,11 +124,13 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
               <span className="mr-1 rounded bg-rose-600 px-1.5 font-mono font-bold text-white">{choice.number}</span>
               <span className="font-medium">{choice.label}</span>
               {step.search_text && <span> — “{step.search_text}”</span>}
+              {choice.ad_id && <span className="ml-1 rounded bg-amber-500/20 px-1.5 text-[0.7rem] font-medium">{t("onStepAdClick")}</span>}
             </div>
             {step.thought && <p className="mt-1 italic">“{step.thought}”</p>}
             <p className="mt-1 text-muted-foreground">
               {t("onStepTime", { seconds: step.seconds.toFixed(1), load: step.load_seconds.toFixed(1), options: step.options })}
               {" · "}{t(step.source === "model" ? "onSourceModel" : step.source === "fallback" ? "onSourceFallback" : "onSourceRule")}
+              {step.ads.length > 0 && <>{" · "}{t("onStepAds", { count: step.ads.length })}</>}
             </p>
             {step.error && <p className="mt-1 break-words text-destructive">{step.error}</p>}
           </div>

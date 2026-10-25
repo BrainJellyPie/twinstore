@@ -58,6 +58,8 @@ def test_site_lifecycle_and_browsing(client: TestClient) -> None:
     assert [s["id"] for s in listed] == [sid, variant["id"]] and listed[0]["products"] == len(site["products"])
 
     page = client.post(f"/api/projects/{PID}/online/sites/{sid}/browse", json={"device": "mobile"}).json()
+    blurred = client.post(f"/api/projects/{PID}/online/sites/{sid}/browse", json={"device": "mobile", "vision": "low_vision"}).json()
+    assert blurred["image"] != page["image"] and blurred["options"] == page["options"]
     assert page["page"] == "home" and page["image"].startswith("data:image/png;base64,") and page["width"] < 500
     assert all(o["box"] is not None for o in page["options"])
     search = next(o for o in page["options"] if o["kind"] == "search")
@@ -140,10 +142,14 @@ def test_run_requests_are_validated(client: TestClient) -> None:
 class _FakeVision:
     def __init__(self) -> None:
         self.images = 0
+        self.surveys = 0
 
     async def generate_structured_async[T: BaseModel](self, response_model: type[T], system_prompt: str, user_prompt: str,
                                                       **_: object) -> T:
-        raise AssertionError("a vision run must send the screenshot")
+        assert "survey" in system_prompt  # only the exit survey is asked without the screenshot
+        self.surveys += 1
+        return response_model.model_validate({"satisfaction": 2, "ease": 3, "recommend": 4, "would_return": False,
+                                              "frustration": "Nothing caught my eye"})
 
     async def generate_structured_with_image_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str, **_: object,
@@ -167,10 +173,14 @@ def test_vision_run_uses_the_model(client: TestClient, monkeypatch: pytest.Monke
     monkeypatch.setattr(online, "build_client", lambda *_args, **_kw: fake)
     site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "pharmacy"}).json()
     status = client.post(f"/api/projects/{PID}/online/runs",
-                         json={"site_ids": [site["id"]], "shoppers": 3, "policy": "vlm", "model": "llamacpp:local"}).json()
+                         json={"site_ids": [site["id"]], "shoppers": 3, "policy": "vlm", "model": "llamacpp:local",
+                               "accessibility": "low_vision"}).json()
     view = _wait(client, status["run_id"])
     assert view["status"]["status"] == "completed", view["status"]["error"]
     result = view["result"]
-    assert result["policy"] == "vlm" and result["model"] == "llamacpp:local" and result["model_requests"] == 3
-    assert result["variants"][0]["outcomes"] == {"bounced": 3} and fake.images == 3
+    assert result["policy"] == "vlm" and result["model"] == "llamacpp:local" and result["model_requests"] == 6
+    assert result["variants"][0]["outcomes"] == {"bounced": 3} and fake.images == 3 and fake.surveys == 3
+    survey = result["variants"][0]["survey"]
+    assert survey["responses"] == 3 and survey["nps"] == -100 and survey["frustrations"] == ["Nothing caught my eye"]
+    assert {s["vision"] for s in result["shoppers"]} == {"low_vision"}
     assert result["variants"][0]["clicks"] and all(0 <= c["x"] <= 1 and 0 <= c["y"] <= 1 for c in result["variants"][0]["clicks"])

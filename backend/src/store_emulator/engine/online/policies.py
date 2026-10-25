@@ -2,8 +2,10 @@
 
 The rule shopper follows its mission with seeded probabilities: it searches or browses to what it came for, weighs
 relevance, price against budget, rating and discounts, and reacts to friction the way shoppers commonly do — some
-leave at a forced sign-up, a fee revealed at the last step or a slow page, some accept a welcome coupon. Its numbers
-are illustrative priors, not calibrated measurements. The model shopper sees the page (screenshot or text outline)
+leave at a forced sign-up, a fee revealed at the last step or a slow page, some accept a welcome coupon. Ads work
+on it the way they commonly do: a product seen in an ad appeals a little more afterwards, while tiles marked as ads
+are discounted (more so by experienced shoppers) and banners and popups catch mostly the shoppers they fit. Its
+numbers are illustrative priors, not calibrated measurements. The model shopper sees the page (screenshot or text outline)
 and the numbered options and picks one; when a call fails, the rule shopper decides that step.
 """
 
@@ -17,6 +19,8 @@ from store_emulator.domain.online import (
     PAYMENT_METHODS,
     ActionKind,
     BrowserState,
+    ExitSurvey,
+    SessionOutcome,
     OnlineProduct,
     OnlineShopper,
     OnlineSite,
@@ -25,11 +29,12 @@ from store_emulator.domain.online import (
     StepSource,
 )
 
+from store_emulator.domain.types import stable_seed
 from store_emulator.engine.llm_router import SimLLM
 from store_emulator.engine.prompting import display_price
 
-from .browser import Control, Page, cart_totals, query_terms
-from .prompt import choice_model, system_prompt, user_prompt
+from .browser import Card, Control, Page, cart_totals, query_terms
+from .prompt import SURVEY_PROMPT, SurveyAnswer, choice_model, survey_prompt, system_prompt, user_prompt
 from .shoppers import product_terms
 
 
@@ -46,6 +51,9 @@ class Memory:
     last_load: float = 0.0
     want_views: int = 0  # products a browser or comparer looks at before deciding
     looked: bool = False  # the landing page made its first impression
+    tried_large_text: bool = False
+    ad_products: set[str] = field(default_factory=set[str])  # products seen in an ad this visit
+    upsell_answered: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,11 +78,26 @@ class StepView:
     cart_names: tuple[str, ...] = ()
     image_url: str = ""
     seed: int = 0
+    point: int = 0  # seed of this decision point: draws keyed to it come out the same in every variant
 
 
 class ShopperPolicy(Protocol):
     async def choose(self, site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Memory,
                      rng: random.Random) -> Choice: ...
+
+
+class Surveyor(Protocol):
+    """Asks the shopper the exit survey; None when no valid answer came back."""
+    async def __call__(self, site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: SessionOutcome,
+                       seconds: float, paid: int, seed: int) -> ExitSurvey | None: ...
+
+
+OUTCOME_WORDS: dict[SessionOutcome, str] = {
+    "purchased": "they placed an order", "abandoned_cart": "they left with items still in the cart",
+    "left": "they closed the tab without buying", "bounced": "they left right after landing",
+    "timed_out": "they gave up because it was taking too long",
+    "step_limit": "they were still browsing when the visit was cut off",
+}
 
 
 def _find(page: Page, kind: ActionKind, target: str | None = None) -> Control | None:
@@ -110,6 +133,11 @@ def relevance(shopper: OnlineShopper, product: OnlineProduct, site: OnlineSite) 
     return min(1.0, score)
 
 
+def _seen_discount(shopper: OnlineShopper, product: OnlineProduct) -> float:
+    """A discount as it registers: red sale tags stand out less for a red–green colour-blind shopper."""
+    return product.discount_percent * (0.5 if shopper.vision == "color_blind" else 1.0)
+
+
 def _rating_factor(rating: float) -> float:
     return min(1.0, max(0.4, 0.85 + 0.15 * (rating - 4)))
 
@@ -120,7 +148,14 @@ def _budget_left(site: OnlineSite, shopper: OnlineShopper, view: StepView) -> in
     return shopper.budget - view.cart_subtotal
 
 
-def _appeal(site: OnlineSite, shopper: OnlineShopper, product: OnlineProduct, view: StepView, rng: random.Random) -> float:
+def _keyed(view: StepView, *key: str) -> float:
+    """A draw in [0, 1) of its own for this decision point and key. A product's jitter or an ad's pull does not use up
+    the step's random stream, so a variant that adds a tile or an ad leaves the rest of the decision paired with the
+    store without it."""
+    return random.Random(stable_seed(view.point, *key)).random()
+
+
+def _appeal(site: OnlineSite, shopper: OnlineShopper, product: OnlineProduct, view: StepView, memory: Memory) -> float:
     left = _budget_left(site, shopper, view)
     score = relevance(shopper, product, site)
     if product.stock == 0:
@@ -128,10 +163,26 @@ def _appeal(site: OnlineSite, shopper: OnlineShopper, product: OnlineProduct, vi
     if left is not None and product.price > left:
         score *= 0.25
     score *= _rating_factor(product.rating)
-    score *= 1 + shopper.price_sensitivity * product.discount_percent / 60
+    score *= 1 + shopper.price_sensitivity * _seen_discount(shopper, product) / 60
     if "bestseller" in product.badges:
         score *= 1.08
-    return score * rng.uniform(0.85, 1.15)
+    if product.id in memory.ad_products:
+        score *= 1.25  # seen in an ad: familiar now
+    return score * (0.85 + 0.3 * _keyed(view, "appeal", product.id))
+
+
+def _ad_discount(shopper: OnlineShopper) -> float:
+    """How much a tile marked as an ad is trusted next to the same tile unmarked."""
+    return 1 - 0.3 * shopper.tech_savvy
+
+
+def _as_seen(card: Card, cards: list[Card], shopper: OnlineShopper, view: StepView) -> Card:
+    """A product on the page both as an ad and unpaid is opened where the shopper meets it first, on the ad, unless
+    they pass over ads (experienced shoppers more often): the ad takes the click, the product is the same."""
+    ad = next((c for c in cards if c.product.id == card.product.id and c.open.action.ad_id), None)
+    if ad is None or ad is card:
+        return card
+    return ad if _keyed(view, "ad", ad.open.action.ad_id) < _ad_discount(shopper) else card
 
 
 def _goal_link(page: Page, shopper: OnlineShopper) -> Control | None:
@@ -199,6 +250,13 @@ def decide(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Mem
             target = rng.choice(categories) if categories else None
         return (pick(target, f"{target.action.label.removeprefix('Menu: ')} is what I want." if target else "")
                 or pick(_find(page, ActionKind.CLOSE_MENU), "Nothing useful in here.") or Choice(leave))
+    if page.overlay is not None and page.overlay.kind == "promo":
+        product = page.overlay.product
+        if rng.random() < 0.02 + 0.04 * (1 - shopper.tech_savvy):
+            return Choice(leave, thought="An ad before I've even seen the shop? No thanks.")
+        if product is not None and rng.random() < min(0.6, 0.4 * _appeal(site, shopper, product, view, memory)):
+            return pick(_find(page, ActionKind.OPEN_PRODUCT), f"{product.name}? Let's have a look.") or Choice(leave)
+        return pick(_find(page, ActionKind.CLOSE_POPUP), "Close the ad and get on with it.") or Choice(leave)
 
     # A slow page tests patience.
     if memory.last_load > 2.5 and page.kind != PageKind.ORDER_COMPLETE:
@@ -218,6 +276,20 @@ def decide(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Mem
     if page.cookie is not None and not memory.steps and rng.random() < 0.7:
         accept, reject = page.cookie
         return Choice(accept if rng.random() < 0.72 else reject, thought="Get this banner out of the way.")
+
+    # Eyesight: shoppers who struggle to read look for a bigger text setting, and some give up.
+    straining = shopper.vision in ("low_vision", "aging_eyes") and not page.large_text
+    if page.kind == PageKind.SETTINGS:
+        toggle = _find(page, ActionKind.TOGGLE_LARGE_TEXT)
+        if toggle is not None and straining:
+            return Choice(toggle, thought="Bigger text, finally.")
+        return Choice(page.back or page.header.home, thought="Back to shopping.")
+    if straining and not memory.tried_large_text and page.overlay is None:
+        memory.tried_large_text = True
+        if rng.random() < (0.4 if shopper.vision == "low_vision" else 0.12) * (0.5 + shopper.tech_savvy):
+            return Choice(page.header.settings, thought="I can barely read this. Is there a bigger text option?")
+    if straining and shopper.vision == "low_vision" and rng.random() < 0.05:
+        return Choice(leave, thought="I can't read any of this.")
 
     if page.kind == PageKind.PRODUCT and page.detail is not None:
         return _on_product(site, shopper, view, memory, rng)
@@ -244,18 +316,25 @@ def _on_listing(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory
         if view.cart_count and rng.random() < 0.8:
             return Choice(page.header.cart, thought="Let me look at what I picked.")
         return Choice(leave, thought="That's enough browsing for today.")
+    banner = page.banner
+    if (banner is not None and banner.sponsored and banner.product is not None and banner.control is not None
+            and banner.control.index in view.numbers and banner.product.id not in view.state.viewed
+            and banner.product.id not in memory.rejected):
+        pull = _appeal(site, shopper, banner.product, view, memory) * (0.45 - 0.25 * shopper.tech_savvy)
+        if _keyed(view, "ad", banner.control.action.ad_id) < min(0.5, pull):
+            return Choice(banner.control, thought=f"That banner for {banner.product.name} caught my eye.")
     cards = [card for grid in page.grids for card in grid.cards
              if card.open.index in view.numbers and card.product.id not in memory.rejected]
     unseen = [c for c in cards if not browsing or c.product.id not in view.state.viewed]
-    scored = sorted(((_appeal(site, shopper, c.product, view, rng), i, c) for i, c in enumerate(unseen)),
-                    key=lambda s: (-s[0], s[1]))
+    scored = sorted(((_appeal(site, shopper, c.product, view, memory) * (_ad_discount(shopper) if c.open.action.ad_id else 1),
+                      i, c) for i, c in enumerate(unseen)), key=lambda s: (-s[0], s[1]))
     threshold = 0.25 if browsing else 0.5
     if page.kind == PageKind.HOME and browsing and rng.random() < 0.5:
         link = _goal_link(page, shopper) or (rng.choice(_all(page, ActionKind.OPEN_CATEGORY)) if _all(page, ActionKind.OPEN_CATEGORY) else None)
         if link is not None:
             return Choice(link, thought="Let me see what they have in here.")
     if scored and scored[0][0] >= threshold:
-        best = scored[0][2]
+        best = _as_seen(scored[0][2], unseen, shopper, view)
         return Choice(best.open, thought=f"{best.product.name} looks right." if not browsing
                       else f"Ooh, {best.product.name}.")
     if page.kind == PageKind.SEARCH and not cards:
@@ -290,7 +369,7 @@ def _on_listing(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory
     if menu.index in view.numbers and page.kind == PageKind.HOME and rng.random() < 0.6:
         return Choice(menu, thought="Where are the categories?")
     if scored and scored[0][0] > 0.05 and rng.random() < 0.5:
-        best = scored[0][2]
+        best = _as_seen(scored[0][2], unseen, shopper, view)
         return Choice(best.open, thought=f"Maybe {best.product.name}?")
     if page.back is not None and rng.random() < 0.4:
         return Choice(page.back, thought="Not here. Back.")
@@ -325,7 +404,7 @@ def _on_product(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory
     if o.social_proof and product.weekly_sales > 50:
         pressure += 0.1
     p_buy = min(0.97, base * fit ** 2 * (1.0 if shopper.mission == "replenish" else _rating_factor(product.rating))
-                * (1 + pressure) * (1 + shopper.price_sensitivity * product.discount_percent / 80))
+                * (1 + pressure) * (1 + shopper.price_sensitivity * _seen_discount(shopper, product) / 80))
     if not affordable:
         p_buy *= 0.05
     if add is not None and rng.random() < p_buy:
@@ -351,7 +430,8 @@ def _on_product(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory
         thought = "Not quite what I'm looking for."
     similar = [c for grid in page.grids for c in grid.cards if c.product.id not in memory.rejected]
     if similar and shopper.mission in ("browse", "compare", "gift") and rng.random() < 0.35:
-        choice = max(similar, key=lambda c: _appeal(site, shopper, c.product, view, rng))
+        choice = _as_seen(max(similar, key=lambda c: _appeal(site, shopper, c.product, view, memory)
+                              * (_ad_discount(shopper) if c.open.action.ad_id else 1)), similar, shopper, view)
         return Choice(choice.open, thought=f"{thought} What about {choice.product.name}?")
     if page.back is not None:
         return Choice(page.back, thought=thought)
@@ -370,6 +450,12 @@ def _on_cart(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: M
             return Choice(coupon, thought="Let me try a coupon code first.")
     if rejected and rng.random() < 0.25 * shopper.price_sensitivity:
         return Choice(page.leave, thought="I'll go find a coupon code somewhere else.")
+    upsell = next((c for c in _all(page, ActionKind.ADD_TO_CART) if c.action.ad_id), None)
+    extra = site.product(upsell.action.target) if upsell is not None else None
+    if upsell is not None and extra is not None and not memory.upsell_answered:
+        memory.upsell_answered = True
+        if _keyed(view, "ad", upsell.action.ad_id) < min(0.35, 0.3 * _appeal(site, shopper, extra, view, memory)):
+            return Choice(upsell, thought=f"Oh, {extra.name} too. Why not.")
     # Extra costs seen in the cart are the most common reason to abandon it; impulse picks get second thoughts.
     totals = cart_totals(site, view.state.cart, view.state, at_review=False)
     hesitate = 0.04 + (0.05 + 0.2 * shopper.price_sensitivity if totals.shipping else 0.0)
@@ -475,3 +561,14 @@ class ModelPolicy:
             return Choice(control, query=query, thought=answer.thought.strip(), source="model")
         fallback = decide(site, shopper, view, memory, rng)
         return Choice(fallback.control, fallback.query, fallback.thought, source="fallback", error=error)
+
+    async def survey(self, site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: SessionOutcome,
+                     seconds: float, paid: int, seed: int) -> ExitSurvey | None:
+        prompt = survey_prompt(site, shopper, history=history, outcome=OUTCOME_WORDS[outcome], seconds=seconds, paid=paid)
+        try:
+            answer = await self.llm.generate_structured_async(
+                SurveyAnswer, SURVEY_PROMPT, prompt, max_retries=self.max_retries, seed=seed, route=shopper.id,
+                max_tokens=self.max_tokens)
+        except Exception:  # noqa: BLE001 — a survey without an answer is left out, the visit still counts
+            return None
+        return answer.survey()

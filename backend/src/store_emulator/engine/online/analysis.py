@@ -17,6 +17,8 @@ from store_emulator.domain.online import (
     ActionKind,
     ClickPoint,
     ExitRow,
+    FrictionCode,
+    FrictionRow,
     FunnelRow,
     OnlineShopper,
     OnlineSite,
@@ -26,8 +28,11 @@ from store_emulator.domain.online import (
     SearchTermRow,
     SegmentRow,
     SessionResult,
+    SurveySummary,
     VariantSummary,
 )
+
+from .ads import ad_rows
 
 _TOP_PRODUCTS = 20
 _TOP_SEARCHES = 25
@@ -92,7 +97,7 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
                 for q, (c, z, p) in sorted(terms.items(), key=lambda kv: (-kv[1][0], kv[0]))[:_TOP_SEARCHES]]
     exits = Counter(s.exit_page for s in sessions if s.outcome != "purchased")
     segments: list[SegmentRow] = []
-    for dimension in ("mission", "device", "age_group", "gender"):
+    for dimension in ("mission", "device", "age_group", "gender", "vision"):
         groups: dict[str, list[SessionResult]] = defaultdict(list)
         for session in sessions:
             shopper = shoppers.get(session.shopper_id)
@@ -121,6 +126,86 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
                 for stage in FUNNEL_STAGES],
         exits=[ExitRow(page=PageKind(page), sessions=count) for page, count in exits.most_common()],
         segments=segments, products=products, searches=searches, clicks=clicks,
+        frictions=frictions(site, sessions), survey=survey_summary(sessions), ads=ad_rows(site, sessions),
+    )
+
+
+def frictions(site: OnlineSite, sessions: list[SessionResult]) -> list[FrictionRow]:
+    """Known friction points and dark patterns: how many sessions met each, and how many ended right there."""
+    o = site.options
+    counts: Counter[FrictionCode] = Counter()
+    addon_amount = 0
+    for s in sessions:
+        steps = [step for step in s.steps if step.choice is not None]
+        kinds = [step.choice.kind for step in steps if step.choice is not None]
+        left = s.outcome != "purchased"
+        found: set[FrictionCode] = set()
+        popups = [step for step in steps if step.state.overlay in ("welcome", "promo")]  # welcome or ad popup
+        if popups:
+            found.add("popup_shown")
+            if any(step.choice is not None and step.choice.kind == ActionKind.LEAVE for step in popups):
+                found.add("popup_left")
+        if ActionKind.ACCEPT_POPUP in kinds:
+            found.add("popup_accepted")
+        if any(step.page == PageKind.SIGN_IN for step in s.steps):
+            found.add("signin_reached")
+            if left and s.exit_page == PageKind.SIGN_IN:
+                found.add("signin_left")
+        if ActionKind.CREATE_ACCOUNT in kinds:
+            found.add("account_created")
+        review = any(step.page == PageKind.CHECKOUT and (o.checkout_flow == "one_page" or step.state.at.checkout_step == "review")
+                     for step in s.steps)
+        if review and o.service_fee:
+            found.add("fee_seen")
+            if left and s.exit_page == PageKind.CHECKOUT:
+                found.add("fee_left")
+        if review and o.preselected_addon_percent:
+            found.add("addon_seen")
+            if ActionKind.REMOVE_ADDON in kinds:
+                found.add("addon_removed")
+            if s.addon_paid:
+                found.add("addon_paid")
+                addon_amount += s.addon_paid
+        if any(a.choice is not None and a.choice.kind == ActionKind.APPLY_COUPON and b.state.notice == "That code is not valid"
+               for a, b in zip(s.steps, s.steps[1:], strict=False)):
+            found.add("coupon_failed")
+        if any(r.results == 0 for r in s.searches):
+            found.add("zero_results")
+        if any(step.page == PageKind.PRODUCT and (p := site.product(step.state.at.product_id)) is not None and p.stock == 0
+               for step in s.steps):
+            found.add("sold_out_seen")
+        if left and steps and steps[-1].load_seconds > 2.5:
+            found.add("slow_exit")
+        if ActionKind.REJECT_COOKIES in kinds:
+            found.add("cookies_rejected")
+        counts.update(found)
+    n = len(sessions)
+    order: tuple[FrictionCode, ...] = (
+        "popup_shown", "popup_left", "popup_accepted", "signin_reached", "signin_left", "account_created", "fee_seen",
+        "fee_left", "addon_seen", "addon_removed", "addon_paid", "coupon_failed", "zero_results", "sold_out_seen",
+        "slow_exit", "cookies_rejected",
+    )
+    return [FrictionRow(code=code, sessions=counts[code], share=_share(counts[code], n),
+                        amount=addon_amount if code == "addon_paid" else 0)
+            for code in order if counts[code]]
+
+
+def _common(texts: list[str], limit: int = 8) -> list[str]:
+    seen: Counter[str] = Counter(t.strip() for t in texts if t.strip())
+    return [text for text, _ in seen.most_common(limit)]
+
+
+def survey_summary(sessions: list[SessionResult]) -> SurveySummary | None:
+    answers = [s.survey for s in sessions if s.survey is not None]
+    if not answers:
+        return None
+    n = len(answers)
+    promoters = sum(a.recommend >= 9 for a in answers)
+    detractors = sum(a.recommend <= 6 for a in answers)
+    return SurveySummary(
+        responses=n, satisfaction=round(mean(a.satisfaction for a in answers), 2), ease=round(mean(a.ease for a in answers), 2),
+        nps=round((promoters - detractors) * 100 / n, 1), would_return=_share(sum(a.would_return for a in answers), n),
+        frustrations=_common([a.frustration for a in answers]), improvements=_common([a.improvement for a in answers]),
     )
 
 
@@ -133,6 +218,10 @@ def _metric(session: SessionResult, metric: str) -> float:
         return float("add_to_cart" in session.reached)
     if metric == "steps":
         return float(_steps(session))
+    if metric == "satisfaction":
+        return float(session.survey.satisfaction) if session.survey else float("nan")
+    if metric == "recommend":
+        return float(session.survey.recommend) if session.survey else float("nan")
     return session.seconds
 
 
@@ -143,27 +232,30 @@ def paired_deltas(control: list[SessionResult], variant: list[SessionResult], *,
     ids = sorted(set(a) & set(b))
     rng = np.random.default_rng(abs(seed))
     out: list[PairedDelta] = []
-    metrics: tuple[str, ...] = ("conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds")
+    metrics: tuple[str, ...] = ("conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds",
+                                "satisfaction", "recommend")
     for metric in metrics:
         xa = np.array([_metric(a[i], metric) for i in ids], dtype=float)
         xb = np.array([_metric(b[i], metric) for i in ids], dtype=float)
-        if not ids:
+        both = ~(np.isnan(xa) | np.isnan(xb))  # survey measures: shoppers who answered in both stores
+        xa, xb = xa[both], xb[both]
+        if not len(xa):
             continue
         d = xb - xa
         low = high = None
-        if len(ids) > 1:
-            boot = d[rng.integers(0, len(ids), size=(_BOOTSTRAP, len(ids)))].mean(axis=1)
+        if len(d) > 1:
+            boot = d[rng.integers(0, len(d), size=(_BOOTSTRAP, len(d)))].mean(axis=1)
             low, high = round(float(np.percentile(boot, 2.5)), 4), round(float(np.percentile(boot, 97.5)), 4)
         out.append(PairedDelta.model_validate({
             "metric": metric, "control": round(float(xa.mean()), 4), "variant": round(float(xb.mean()), 4),
-            "diff": round(float(d.mean()), 4), "ci_low": low, "ci_high": high, "n": len(ids),
+            "diff": round(float(d.mean()), 4), "ci_low": low, "ci_high": high, "n": len(d),
         }))
     return out
 
 
 CLICKSTREAM_COLUMNS = (
-    "variant", "site", "shopper", "mission", "device", "age_group", "gender", "step", "page", "url", "option", "action",
-    "target", "label", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
+    "variant", "site", "shopper", "mission", "device", "age_group", "gender", "vision", "step", "page", "url", "option", "action",
+    "target", "label", "ad_id", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
 )
 
 
@@ -189,8 +281,8 @@ def clickstream_csv(variants: list[tuple[OnlineSite, list[SessionResult]]], shop
                 writer.writerow([_cell(v) for v in (
                     index, site.name, session.shopper_id, shopper.mission if shopper else "",
                     shopper.device if shopper else "", shopper.age_group if shopper else "",
-                    shopper.gender if shopper else "", step.index, step.page.value, step.url, choice.number,
-                    choice.kind.value, choice.target, choice.label, step.search_text, step.thought, step.seconds,
+                    shopper.gender if shopper else "", shopper.vision if shopper else "", step.index, step.page.value, step.url, choice.number,
+                    choice.kind.value, choice.target, choice.label, choice.ad_id, step.search_text, step.thought, step.seconds,
                     step.load_seconds, step.source, session.outcome, session.order_total,
                 )])
     return out.getvalue()

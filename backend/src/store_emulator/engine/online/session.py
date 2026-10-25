@@ -2,11 +2,14 @@
 
 Time on the site is simulated: every page takes the site's load time (with jitter) plus reading time, which grows
 with what is on the page, and typing an address, a card or a new account takes longer. When it passes the shopper's
-patience, they give up. Random streams are seeded per (run seed, shopper, step), not per site, so two variants of a
-site are shopped with common random numbers.
+patience, they give up. Random streams are seeded per (run seed, shopper, decision point), not per site, so two
+variants of a site are shopped with common random numbers. A decision point is the page and what covers it, counted
+by how often the shopper has been there: a variant that adds a popup or a banner to answer first does not reshuffle
+every decision after it.
 """
 
 import random
+from collections import Counter
 
 from store_emulator.domain.online import (
     FUNNEL_STAGES,
@@ -26,8 +29,8 @@ from store_emulator.domain.online import (
 from store_emulator.domain.types import stable_seed
 
 from .browser import Page, apply, build_page, cart_totals, initial_state, numbering, outline, search_products
-from .policies import Choice, Memory, ShopperPolicy, StepView
-from .render import ProductPicture, render_page
+from .policies import Choice, Memory, ShopperPolicy, StepView, Surveyor
+from .render import ProductPicture, render_page, see_as
 
 _EXTRA_SECONDS: dict[ActionKind, float] = {
     ActionKind.SEARCH: 3.0, ActionKind.ADD_ADDRESS: 38.0, ActionKind.ADD_PAYMENT: 32.0, ActionKind.CREATE_ACCOUNT: 45.0,
@@ -50,6 +53,10 @@ def read_seconds(page: Page, shopper: OnlineShopper, choice: Choice, rng: random
         base += 2
     if shopper.device == "mobile":
         base *= 1.15
+    if shopper.vision == "low_vision":
+        base *= 1.25 if page.large_text else 1.8
+    elif shopper.vision == "aging_eyes":
+        base *= 1.1 if page.large_text else 1.3
     base *= 1.35 - 0.5 * shopper.tech_savvy
     base += _EXTRA_SECONDS.get(choice.control.action.kind, 0.0) + 0.25 * len(choice.query)
     return base * rng.lognormvariate(0, 0.3)
@@ -84,8 +91,10 @@ def _cart_view(site: OnlineSite, state: BrowserState) -> tuple[int, int, tuple[s
 async def run_session(
     site: OnlineSite, shopper: OnlineShopper, policy: ShopperPolicy, *, seed: int, max_steps: int, render: bool,
     shuffle_marks: bool = True, image_width: int = 896, picture: ProductPicture | None = None,
+    surveyor: Surveyor | None = None,
 ) -> SessionResult:
-    """`render`: draw a screenshot of every page (vision models need it; rules and text models do not)."""
+    """`render`: draw a screenshot of every page (vision models need it; rules and text models do not). The
+    screenshot is filtered to the shopper's eyesight. `surveyor`: asks the exit survey when the visit is over."""
     state = initial_state(site, device=shopper.device)
     rng = random.Random(stable_seed(seed, "online-session", shopper.id))
     memory = Memory(want_views=_want_views(shopper, rng))
@@ -96,22 +105,29 @@ async def run_session(
     viewed: list[str] = []
     outcome: SessionOutcome = "step_limit"
     exit_thought = ""
-    requests = fallbacks = 0
+    requests = fallbacks = addon_paid = 0
+    visits: Counter[str] = Counter()
+    ad_products = {ad.id: ad.product_id for ad in site.ads}
     for index in range(max_steps):
         page = build_page(site, state)
         pages_seen.add(page.url)
-        step_rng = random.Random(stable_seed(seed, "online-step", shopper.id, index))
+        point = f"{state.at.model_dump_json()}|{state.overlay}|{page.cookie is not None}"
+        point_seed = stable_seed(seed, "online-step", shopper.id, point, visits[point])
+        visits[point] += 1
+        step_rng = random.Random(point_seed)
+        shown = page.ads_shown
+        memory.ad_products.update(ad_products[ad] for ad in shown)
         load = load_seconds(site, step_rng)
         memory.last_load = load
         mark_seed = stable_seed(seed, "online-marks", shopper.id, index) % _SEED_MOD + 1 if shuffle_marks else 0
         numbers = numbering(page, mark_seed)
         image_url, boxes, screen = "", dict[int, tuple[int, int, int, int]](), None
         if render:
-            shot = render_page(page, site, numbers, picture)
+            shot = see_as(render_page(page, site, numbers, picture), shopper.vision, large_text=page.large_text)
             image_url, boxes, screen = shot.scaled_data_url(image_width), shot.boxes, (shot.width, shot.height)
         count, subtotal, names = _cart_view(site, state)
         view = StepView(page, state, numbers, outline(page, site), count, subtotal, names, image_url,
-                        seed=stable_seed(seed, "online-call", shopper.id, index) % _SEED_MOD)
+                        seed=stable_seed(seed, "online-call", shopper.id, index) % _SEED_MOD, point=point_seed)
         choice = await policy.choose(site, shopper, view, memory, step_rng)
         if choice.control.index not in numbers:  # a policy may only use what is on the page
             choice = Choice(page.leave, thought=choice.thought, source=choice.source,
@@ -125,10 +141,10 @@ async def run_session(
         action = choice.control.action
         steps.append(SessionStep(
             index=index, url=page.url, page=page.kind, state=state, options=len(numbers),
-            choice=PageOption(kind=action.kind, target=action.target, label=action.label,
+            choice=PageOption(kind=action.kind, target=action.target, label=action.label, ad_id=action.ad_id,
                               number=numbers[choice.control.index], box=boxes.get(choice.control.index)),
             search_text=choice.query, thought=choice.thought[:240], seconds=round(seconds, 2), load_seconds=round(load, 2),
-            source=choice.source, error=choice.error, mark_seed=mark_seed, screen=screen,
+            source=choice.source, error=choice.error, mark_seed=mark_seed, screen=screen, ads=shown,
         ))
         memory.steps.append(_history_line(page, choice))
         if action.kind == ActionKind.LEAVE:
@@ -136,6 +152,8 @@ async def run_session(
             outcome = "abandoned_cart" if state.cart else "bounced" if len(pages_seen) <= 1 else "left"
             break
         new_state = apply(site, state, action, query=choice.query, has_account=shopper.has_account)
+        if action.kind == ActionKind.PLACE_ORDER and new_state.order_id:
+            addon_paid = cart_totals(site, state.cart, state, at_review=True).addon
         if action.kind == ActionKind.SEARCH and new_state.at.page == PageKind.SEARCH:
             query = new_state.at.query
             searches.append(SearchRecord(query=query, results=len(search_products(site, query)), step=index))
@@ -172,10 +190,15 @@ async def run_session(
                                    quantity=line.quantity, price=product.price))
     if outcome == "step_limit" and state.cart:
         outcome = "abandoned_cart"
+    survey = None
+    if surveyor is not None:
+        requests += 1
+        survey = await surveyor(site, shopper, history=memory.steps, outcome=outcome, seconds=memory.elapsed,
+                                paid=state.order_total, seed=stable_seed(seed, "online-survey", shopper.id) % _SEED_MOD)
     return SessionResult(
         shopper_id=shopper.id, site_id=site.id, outcome=outcome, steps=steps, order=order,
         subtotal=sum(line.price * line.quantity for line in order), order_total=state.order_total,
         seconds=round(memory.elapsed, 1), reached=[s for s in FUNNEL_STAGES if s in reached], viewed_products=viewed,
         searches=searches, exit_page=steps[-1].page if steps else PageKind.HOME, exit_thought=exit_thought[:240],
-        model_requests=requests, fallbacks=fallbacks,
+        model_requests=requests, fallbacks=fallbacks, survey=survey, addon_paid=addon_paid,
     )

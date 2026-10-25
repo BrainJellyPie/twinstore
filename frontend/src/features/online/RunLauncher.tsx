@@ -1,18 +1,22 @@
 // Send virtual shoppers through one store, or compare up to four variants on the very same shoppers.
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FlaskConical, Loader2, Play } from "lucide-react";
 
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
 import { useAvailableModels } from "@/features/runs/hooks";
-import { MISSIONS, onlineKeys, startRun, type ShopperMission, type ShopperPolicyKind, type SiteSummary } from "@/shared/api/online";
+import {
+  ACCESSIBILITY, copySite, getSite, MISSIONS, onlineKeys, startRun, type Accessibility, type ShopperMission, type ShopperPolicyKind,
+  type SiteSummary,
+} from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
-import { MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
+import { experimentsFor } from "./experiments";
+import { ACCESSIBILITY_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
 const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, compare: 15, deal_hunt: 10, gift: 7, replenish: 8 };
@@ -35,37 +39,60 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [source, setSource] = useState<"panel" | "project">("panel");
   const [imageWidth, setImageWidth] = useState(896);
   const [shuffle, setShuffle] = useState(true);
+  const [accessibility, setAccessibility] = useState<Accessibility>("typical");
+  const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const controlId = chosen[0] ?? "";
+  const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
+  const available = control.data ? experimentsFor(control.data.options) : [];
+  const room = MAX_VARIANTS - chosen.length;
+  // Picks that no longer apply (another first store, or no room left) simply drop out.
+  const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
-  const sessions = shoppers * chosen.length;
+  const sessions = shoppers * (chosen.length + experiments.length);
   const models = useAvailableModels(policy !== "rule");
-  const available = models.data?.filter((m) => policy !== "vlm" || m.vision);
+  const availableModels = models.data?.filter((m) => policy !== "vlm" || m.vision);
   let modelError: string | null = null;
   if (policy !== "rule" && model.kind !== "default") {
-    if (!available) modelError = t(models.isError ? "onRunModelsFailed" : "loadingModels");
+    if (!availableModels) modelError = t(models.isError ? "onRunModelsFailed" : "loadingModels");
     else if (model.kind === "single") {
       modelError = !model.model ? t("onRunChooseModel")
-        : available.some((m) => m.ref === model.model) ? null : t("onRunModelUnavailable");
+        : availableModels.some((m) => m.ref === model.model) ? null : t("onRunModelUnavailable");
     } else {
       const members = model.ensemble?.members ?? [];
       if (!members.length) modelError = t("onRunNeedEnsemble");
-      else if (members.some((member) => !available.some((m) => m.ref === member.model))) modelError = t("onRunModelUnavailable");
+      else if (members.some((member) => !availableModels.some((m) => m.ref === member.model))) modelError = t("onRunModelUnavailable");
       else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = t("invalidWeights");
     }
   }
 
   const start = useMutation({
-    mutationFn: () => startRun(projectId, {
-      site_ids: chosen, name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
-      missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
-      mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle,
-      model: policy !== "rule" && model.kind === "single" ? model.model ?? null : null,
-      ensemble: policy !== "rule" && model.kind === "ensemble" && model.ensemble?.members.length ? model.ensemble : null,
-    }),
+    mutationFn: async () => {
+      // Each picked change becomes a copy of the first store, then all are run on the same shoppers.
+      const created: string[] = [];
+      for (const x of experiments) {
+        const label = t(x.label);
+        const base = control.data!;
+        const copy = await copySite(projectId, base.id, { name: `${base.name} – ${label}`.slice(0, 60), note: label, options: x.options });
+        created.push(copy.id);
+      }
+      return startRun(projectId, {
+        site_ids: [...chosen, ...created], name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
+        missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
+        mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle, accessibility,
+        exit_survey: survey,
+        model: policy !== "rule" && model.kind === "single" ? model.model ?? null : null,
+        ensemble: policy !== "rule" && model.kind === "ensemble" && model.ensemble?.members.length ? model.ensemble : null,
+      });
+    },
     onSuccess: (status) => {
       void qc.invalidateQueries({ queryKey: onlineKeys.runs(projectId) });
+      setPicked([]);
       onStarted(status.run_id);
     },
+    // Variants created before a failed start are kept: they show up in the store list.
+    onSettled: () => void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId) }),
   });
   const toggleSite = (id: string) =>
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length >= MAX_VARIANTS ? c : [...c, id]));
@@ -95,6 +122,29 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
             );
           })}
         </ul>
+        {control.data && (
+          <fieldset className="space-y-2 rounded-xl border border-dashed p-3">
+            <legend className="flex items-center gap-1 px-1 text-xs font-medium">
+              <FlaskConical className="size-3.5 text-primary" aria-hidden /> {t("onXpTitle")}
+            </legend>
+            <p className="text-[0.7rem] text-muted-foreground">{t("onXpHint", { name: control.data.name })}</p>
+            {available.length === 0 ? <p className="text-xs text-muted-foreground">{t("onXpNone")}</p> : (
+              <div className="grid gap-1 sm:grid-cols-2">
+                {available.map((x) => {
+                  const on = experiments.some((e) => e.id === x.id);
+                  return (
+                    <label key={x.id} className={cn("flex items-center gap-2 text-xs", !on && experiments.length >= room && "opacity-50")}>
+                      <input type="checkbox" checked={on} disabled={!on && experiments.length >= room}
+                        onChange={() => setPicked((p) => (on ? p.filter((id) => id !== x.id) : [...p.filter((id) => experiments.some((e) => e.id === id)), x.id]))} />
+                      {t(x.label)}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[0.7rem] text-muted-foreground">{t("onXpRoom", { count: Math.max(0, room - experiments.length) })}</p>
+          </fieldset>
+        )}
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">{t("onRunName")}</span>
           <Input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
@@ -126,6 +176,13 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
           <span>{t("onRunMobile")}</span>
           <input type="range" min={0} max={100} value={mobile} onChange={(e) => setMobile(Number(e.target.value))} aria-label={t("onRunMobile")} />
           <span className="text-right tabular-nums">{mobile}%</span>
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="font-medium">{t("onRunEyesight")}</span>
+          <select className="h-8 rounded-md border bg-background px-2" value={accessibility} onChange={(e) => setAccessibility(e.target.value as Accessibility)}>
+            {ACCESSIBILITY.map((a) => <option key={a} value={a}>{t(ACCESSIBILITY_LABELS[a])}</option>)}
+          </select>
+          <span className="text-[0.7rem] text-muted-foreground">{t("onRunEyesightHint")}</span>
         </label>
         <fieldset className="flex flex-wrap gap-3 text-xs">
           <legend className="mb-1 w-full font-medium">{t("onRunSource")}</legend>
@@ -162,14 +219,19 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
               <label className="flex items-center gap-1.5" title={t("onShuffleHint")}>
                 <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} /> {t("onShuffle")}
               </label>
+              <label className="flex items-center gap-1.5" title={t("onRunSurveyHint")}>
+                <input type="checkbox" checked={survey} onChange={(e) => setSurvey(e.target.checked)} /> {t("onRunSurvey")}
+              </label>
             </div>
-            <p className="text-xs text-muted-foreground">{t("onRunCalls", { calls: sessions * TYPICAL_STEPS, max: sessions * maxSteps })}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("onRunCalls", { calls: sessions * (TYPICAL_STEPS + (survey ? 1 : 0)), max: sessions * (maxSteps + (survey ? 1 : 0)) })}
+            </p>
           </>
         )}
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => { if (!modelError) start.mutate(); }} disabled={start.isPending || chosen.length === 0 || mixTotal === 0 || modelError !== null}>
             {start.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
-            {chosen.length > 1 ? t("onRunStartCompare", { count: chosen.length }) : t("onRunStart")}
+            {experiments.length ? t("onXpStart") : chosen.length > 1 ? t("onRunStartCompare", { count: chosen.length }) : t("onRunStart")}
           </Button>
           <span className="text-xs text-muted-foreground">{t("onRunSessions", { count: sessions })}</span>
         </div>

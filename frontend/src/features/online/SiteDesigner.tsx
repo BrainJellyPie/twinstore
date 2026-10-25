@@ -7,7 +7,7 @@ import { Copy, Loader2, Save, Trash2 } from "lucide-react";
 
 import {
   copySite, deleteSite, getSite, HOME_SECTIONS, onlineKeys, PAYMENT_METHODS, saveSite,
-  type OnlineProduct, type OnlineSite, type SiteOptions,
+  type AdCampaign, type OnlineProduct, type OnlineSite, type SiteOptions,
 } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -16,6 +16,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 import { majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { searchText } from "@/shared/utils/searchText";
 
+import { AdsEditor } from "./AdsEditor";
 import { PAYMENT_LABELS, SECTION_LABELS, SORT_LABELS } from "./labels";
 
 const PRODUCT_ROWS = 60;
@@ -39,13 +40,20 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
   const [note, setNote] = useState(site.note);
   const [options, setOptions] = useState<SiteOptions>(site.options);
   const [products, setProducts] = useState<OnlineProduct[]>(site.products);
+  const [ads, setAds] = useState<AdCampaign[]>(site.ads);
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const invalidAmounts = Object.values(amountDrafts).some((text) => toMinor(text, minorUnitDivisor(site.currency)) === null);
   const editAmount = (field: string, text: string) => setAmountDrafts((drafts) => ({ ...drafts, [field]: text }));
+  // A removed ad takes its unfinished cost text with it.
+  const changeAds = (next: AdCampaign[]) => {
+    setAds(next);
+    setAmountDrafts((drafts) => Object.fromEntries(Object.entries(drafts).filter(
+      ([field]) => !field.startsWith("ad_cost:") || next.some((ad) => field === `ad_cost:${ad.id}`))));
+  };
   const set = <K extends keyof SiteOptions>(key: K, value: SiteOptions[K]) => setOptions((o) => ({ ...o, [key]: value }));
-  const draft: OnlineSite = { ...site, name: name.trim() || site.name, note, options, products };
+  const draft: OnlineSite = { ...site, name: name.trim() || site.name, note, options, products, ads };
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId) });
     void qc.invalidateQueries({ queryKey: onlineKeys.site(projectId, site.id) });
@@ -55,11 +63,23 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
     mutationFn: () => copySite(projectId, site.id, {
       name: name.trim() && name.trim() !== site.name ? name.trim() : undefined, note, options,
       products: products === site.products ? undefined : products,
+      ads: ads === site.ads ? undefined : ads,
     }),
     onSuccess: (copy) => { refresh(); onCopied(copy.id); },
   });
+  const withoutAds = useMutation({
+    // This store is saved first, so the copy differs from it only in its ads.
+    mutationFn: async () => {
+      await saveSite(projectId, draft);
+      return copySite(projectId, site.id, {
+        name: t("onNoAdsName", { name: draft.name }).slice(0, 60), note: t("onNoAdsNote"),
+        ads: ads.map((ad) => ({ ...ad, active: false })),
+      });
+    },
+    onSuccess: (copy) => { refresh(); onCopied(copy.id); },
+  });
   const remove = useMutation({ mutationFn: () => deleteSite(projectId, site.id), onSuccess: () => { refresh(); onDeleted(); } });
-  const error = save.error ?? variant.error ?? remove.error;
+  const error = save.error ?? variant.error ?? remove.error ?? withoutAds.error;
 
   const shown = useMemo(() => {
     const words = searchText(filter);
@@ -200,6 +220,12 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
           <Select label={t("onOptReturns")} value={options.return_policy} onChange={(v) => set("return_policy", v as SiteOptions["return_policy"])}
             choices={[["free_30", t("onOptReturnsFree")], ["paid", t("onOptReturnsPaid")], ["hidden", t("onOptReturnsHidden")]]} />
         </Field>
+      </Card>
+
+      <Card title={t("onDesignAds")} hint={t("onDesignAdsHint")} className="xl:col-span-2">
+        <AdsEditor ads={ads} products={products} currency={site.currency} onChange={changeAds}
+          costText={(id) => amountDrafts[`ad_cost:${id}`]} onCostText={(id, text) => editAmount(`ad_cost:${id}`, text)}
+          onCompareWithout={withoutAds.isPending || invalidAmounts ? undefined : () => withoutAds.mutate()} />
       </Card>
 
       <Card title={t("onDesignProducts", { count: products.length })} className="xl:col-span-2">
