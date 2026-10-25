@@ -38,6 +38,7 @@ from store_emulator.domain.online import (
     OnlineSite,
     OnlineTemplate,
     PageOption,
+    PageStyle,
     Vision,
     PageView,
     RivalVisit,
@@ -396,8 +397,10 @@ def template_preview(template_id: str, currency: str) -> bytes:
     return render_page(build_page(site, state), site, {}, _bundled_picture).png
 
 
-def site_preview(pid: str, site_id: str, device: Device) -> bytes:
+def site_preview(pid: str, site_id: str, device: Device, style: PageStyle | None = None) -> bytes:
     site = get_site(pid, site_id)
+    if style is not None:
+        site = site.model_copy(update={"options": site.options.model_copy(update={"page_style": style})})
     state = BrowserState(cookies_answered=True, device=device)
     return render_page(build_page(site, state), site, {}, _picture(pid)).png
 

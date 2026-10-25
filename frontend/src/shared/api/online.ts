@@ -72,8 +72,15 @@ export interface OnlineProduct {
   weekly_sales: number; sku: string;
 }
 
+/** How a shop's pages look (colours, corners, type, header and banner); see engine/online/render.py. */
+export type PageStyle =
+  | "classic" | "minimal" | "luxury" | "brutalist" | "playful" | "marketplace" | "editorial" | "neon" | "retro" | "organic" | "tech";
+export const PAGE_STYLES: PageStyle[] = [
+  "classic", "minimal", "luxury", "brutalist", "playful", "marketplace", "editorial", "neon", "retro", "organic", "tech",
+];
+
 export interface SiteOptions {
-  theme_color: string; device: Device | null; grid_columns: number; products_per_page: number; hero_banner: boolean;
+  theme_color: string; page_style: PageStyle; device: Device | null; grid_columns: number; products_per_page: number; hero_banner: boolean;
   hero_text: string; home_sections: HomeSection[]; large_text: boolean; show_ratings: boolean; show_review_counts: boolean;
   default_sort: SortKey; search: "smart" | "exact" | "off"; sponsored_slots: number;
   recommendations: "none" | "popular" | "similar"; quick_add: boolean; reviews_on_product: boolean; wishlist: boolean;
@@ -303,8 +310,8 @@ export function deleteSite(pid: string, siteId: string): Promise<{ status: strin
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}`, { method: "DELETE" });
 }
 
-export function sitePreviewUrl(pid: string, siteId: string, device: Device, version: string): string {
-  return `${BASE}/api/projects/${pid}/online/sites/${siteId}/preview.png?device=${device}&v=${encodeURIComponent(version)}`;
+export function sitePreviewUrl(pid: string, siteId: string, device: Device, version: string, style?: PageStyle): string {
+  return `${BASE}/api/projects/${pid}/online/sites/${siteId}/preview.png?device=${device}&v=${encodeURIComponent(version)}${style ? `&style=${style}` : ""}`;
 }
 
 export function browse(

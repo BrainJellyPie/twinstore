@@ -23,6 +23,7 @@ from store_emulator.domain.online import (
     OnlineSite,
     PageKind,
     PageRef,
+    PageStyle,
     PaymentMethod,
     SearchMode,
     SortKey,
@@ -149,6 +150,7 @@ class Page:
     chat: bool = False
     overlay: Overlay | None = None
     trust: bool = False
+    style: PageStyle = "classic"
     controls: tuple[Control, ...] = field(default=())
 
     @property
@@ -828,7 +830,7 @@ def build_page(site: OnlineSite, state: BrowserState) -> Page:
         theme=o.theme_color, site_name=site.name,
         back=back, leave=leave, header=header, nav=nav, notice=state.notice, banner=banner, detail=detail,
         grids=tuple(grids), panels=tuple(panels), footer=footer, cookie=cookie, chat=o.chat_widget, overlay=overlay,
-        trust=o.trust_badges and ref.page in (PageKind.CART, PageKind.CHECKOUT, PageKind.PRODUCT),
+        trust=o.trust_badges and ref.page in (PageKind.CART, PageKind.CHECKOUT, PageKind.PRODUCT), style=o.page_style,
         controls=tuple(ctl.controls),
     )
 

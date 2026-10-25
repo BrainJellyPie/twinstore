@@ -6,7 +6,7 @@ import { messages } from "@/shared/i18n/messages";
 import { experimentsFor, QUICK_EXPERIMENTS } from "../experiments";
 
 const OPTIONS: SiteOptions = {
-  theme_color: "#2563eb", device: null, grid_columns: 4, products_per_page: 8, hero_banner: true, hero_text: "",
+  page_style: "classic", theme_color: "#2563eb", device: null, grid_columns: 4, products_per_page: 8, hero_banner: true, hero_text: "",
   home_sections: ["categories", "bestsellers"], large_text: false, show_ratings: true, show_review_counts: true,
   default_sort: "featured", search: "exact", sponsored_slots: 2, recommendations: "similar", quick_add: false,
   reviews_on_product: true, wishlist: true, urgency: true, social_proof: false, welcome_popup: "newsletter",

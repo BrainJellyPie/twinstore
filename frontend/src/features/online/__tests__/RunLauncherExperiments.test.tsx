@@ -18,7 +18,7 @@ const source: online.OnlineSite = {
   products: [{ id: "p1", name: "Shirt", category_id: "c", price: 1299, list_price: 1599, rating: 4.2, reviews: 5,
     badges: [], stock: 8, description: "", tags: [], image_url: "", weekly_sales: 4, sku: "shirt" }],
   options: {
-    theme_color: "#2563eb", device: null, grid_columns: 4, products_per_page: 8, hero_banner: true, hero_text: "",
+    page_style: "classic", theme_color: "#2563eb", device: null, grid_columns: 4, products_per_page: 8, hero_banner: true, hero_text: "",
     home_sections: ["categories"], large_text: false, show_ratings: true, show_review_counts: true,
     default_sort: "featured", search: "smart", sponsored_slots: 0, recommendations: "similar", quick_add: false,
     reviews_on_product: true, wishlist: true, urgency: false, social_proof: false, welcome_popup: "none",

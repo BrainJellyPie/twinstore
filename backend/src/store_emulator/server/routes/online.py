@@ -21,7 +21,7 @@ from store_emulator.application.online import (
     SiteSummary,
 )
 from store_emulator.domain.interview import InterviewQuestion
-from store_emulator.domain.online import OnlineRunRequest, OnlineRunStatus, OnlineSite, OnlineTemplate, PageView
+from store_emulator.domain.online import OnlineRunRequest, OnlineRunStatus, OnlineSite, OnlineTemplate, PageStyle, PageView
 
 from ..deps import get_config
 
@@ -83,8 +83,10 @@ def delete_site(pid: str, site_id: str) -> dict[str, str]:
 
 
 @router.get("/projects/{pid}/online/sites/{site_id}/preview.png", summary="Home page of a store, as a picture")
-async def site_preview(pid: str, site_id: str, device: Literal["desktop", "mobile"] = "desktop") -> Response:
-    png = await run_in_threadpool(_call, lambda: online_service.site_preview(pid, site_id, device))
+async def site_preview(pid: str, site_id: str, device: Literal["desktop", "mobile"] = "desktop",
+                       style: PageStyle | None = None) -> Response:
+    """`style` draws the store in another page style without changing it (the designer's style picker)."""
+    png = await run_in_threadpool(_call, lambda: online_service.site_preview(pid, site_id, device, style))
     return Response(png, media_type="image/png", headers=_PNG_CACHE)
 
 

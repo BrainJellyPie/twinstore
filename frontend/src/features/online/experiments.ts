@@ -44,6 +44,8 @@ export const QUICK_EXPERIMENTS: QuickExperiment[] = [
       ? { welcome_popup: "coupon", coupon_percent: o.coupon_percent || 10, coupon_code: o.coupon_code || "WELCOME10" }
       : null),
   },
+  { id: "luxury_look", label: "onXpLuxury", change: (o) => (o.page_style !== "luxury" ? { page_style: "luxury" } : null) },
+  { id: "minimal_look", label: "onXpMinimal", change: (o) => (o.page_style !== "minimal" ? { page_style: "minimal" } : null) },
   { id: "faster", label: "onXpFaster", change: (o) => (o.page_load_ms >= 300 ? { page_load_ms: Math.round(o.page_load_ms / 2) } : null) },
   { id: "slower", label: "onXpSlower", change: (o) => (o.page_load_ms <= 7500 ? { page_load_ms: o.page_load_ms * 2 } : null) },
   { id: "free_delivery", label: "onXpFreeDelivery", change: (o) => (o.shipping_fee > 0 ? { shipping_fee: 0 } : null) },
