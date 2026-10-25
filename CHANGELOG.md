@@ -28,6 +28,8 @@
   answers within their existing attempt budget.
 - Find online products by category and tag in smart search. Metadata matches use
   the same required word coverage as names while name matches still rank first.
+- Preserve projects while online runs are pending or running, including a
+  simultaneous run-start/delete request. Completed runs still allow deletion.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
