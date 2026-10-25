@@ -147,9 +147,12 @@ def draft_pitch_script(pid: str, req: ScriptDraftRequest, config: SimulationConf
     _check_id(req.setup_id, "setup id")
     store = _load_store(pid, req.setup_id)
     currency = simulation_currency(pid, store, config.currency)
-    item = next((p for rack in store.racks for slot in rack.slots for p in slot.items if p.sku == req.sku), None)
-    if item is None:
+    products = [p for rack in store.racks for slot in rack.slots for p in slot.items if p.sku == req.sku]
+    if not products:
         raise AppError("Choose a product present in this layout", 400)
+    if len({(p.name, p.price, p.promo) for p in products}) > 1:
+        raise AppError("This SKU has conflicting names, prices or offers across shelves; resolve them before drafting", 400)
+    item = products[0]
     offer = display_price(item.price, currency) + (f", promotion '{item.promo}'" if item.promo else "")
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
     try:

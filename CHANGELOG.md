@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Check for conflicting shelf offers before drafting a staff script. A SKU
+  with different names, prices or promotions no longer supplies an arbitrary
+  first offer to the model; identical repeat placements remain supported.
+
 - Avoid selecting the longest image name from an ambiguous survey draft.
   A single entry naming different packs is now left out with a warning, along
   with its reference price, instead of silently selecting one of those packs.
