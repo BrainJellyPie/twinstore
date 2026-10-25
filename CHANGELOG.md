@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve distinct shelf offers when drafting a concept survey from product
+  images. A repeated SKU no longer inherits only its last placement's price;
+  each image lists up to four relevant offers and reports omitted ones.
+
 - Keep native Ollama context intact during generation as well as input loading.
   Requests disable context shifting so a full context can stop with a length
   cutoff and reach bounded recovery instead of silently forgetting conditions.

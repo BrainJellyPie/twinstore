@@ -20,7 +20,7 @@ from store_emulator.engine.marketing.shelf_test_design import (
     design_shelf_test,
 )
 from store_emulator.engine.marketing.survey_design import SurveyDesign, design_survey
-from store_emulator.engine.prompting import display_price
+from store_emulator.engine.prompting import display_price, relevant_first
 
 from .currencies import project_currency
 from .errors import AppError, model_failure
@@ -28,6 +28,7 @@ from .providers import assistive_client
 from .scenarios import _store_for  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
+_SURVEY_OFFERS_PER_IMAGE = 4
 
 
 class ConjointDesignRequest(BaseModel):
@@ -136,8 +137,20 @@ def design_concept(pid: str, req: SurveyDesignRequest, config: SimulationConfig)
     def listed(name: str, price: int, rack: str) -> str:
         return f"{name} at {display_price(price, store_currency)} on {rack}" if same_money else f"{name} on {rack}"
 
-    on_shelf = {i.sku: listed(i.name, i.price, r.rack_name or "a shelf")
-                for r in store.product_racks for s in r.slots for i in s.items} if store is not None else {}
+    shelf_offers: dict[str, list[tuple[str, str, str]]] = {}
+    if store is not None:
+        for rack in store.product_racks:
+            for slot in rack.slots:
+                for item in slot.items:
+                    offer = (rack.rack_name or "a shelf", item.name, listed(item.name, item.price, rack.rack_name or "a shelf"))
+                    offers = shelf_offers.setdefault(item.sku, [])
+                    if offer not in offers:
+                        offers.append(offer)
+    on_shelf: dict[str, str] = {}
+    for sku, offers in shelf_offers.items():
+        on_shelf[sku] = "; ".join(relevant_first(offers, req.question, _SURVEY_OFFERS_PER_IMAGE))
+        if len(offers) > _SURVEY_OFFERS_PER_IMAGE:
+            on_shelf[sku] += f"; {len(offers) - _SURVEY_OFFERS_PER_IMAGE} additional shelf offers omitted"
     packages = [(p.name, p.asset_id, p.brand, on_shelf.get(p.sku, "")) for p in list_packages(pid)]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1200})
     try:

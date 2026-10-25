@@ -95,6 +95,8 @@ Use [] for unspecified images, age_groups and genders, and empty strings for uns
 Copy the lowercase question IDs exactly, including underscores. Use age labels 10s, 20s, 30s, 40s, 50s, 60s+
 and gender labels Male, Female exactly as written.
 Use null only when reference_price is not given.
+When several shelf offers are listed for an image, use a reference price only when the question identifies the offer
+or states a price; otherwise leave it null. Do not choose between different offers by their listing order.
 Write in English."""
 
 
