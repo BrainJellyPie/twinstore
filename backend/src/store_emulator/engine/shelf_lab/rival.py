@@ -51,9 +51,19 @@ def _product_key(name: str) -> str:
     return normalize_text(name) or f"symbol:{name.strip()}"
 
 
+def _product_skus(store: Store) -> dict[str, set[str]]:
+    identities: dict[str, set[str]] = {}
+    for _, slot in store.all_slots:
+        for item in slot.items:
+            identities.setdefault(_product_key(item.name), set()).add(item.sku)
+    return identities
+
+
 def unmatched_names(store: Store, rival: CaptureResult) -> tuple[list[str], list[str]]:
     """Names without an exact normalized match, for explicit product matching, and our product names."""
-    ours = {_product_key(item.name): item.name for _, slot in store.all_slots for item in slot.items}
+    identities = _product_skus(store)
+    ours = {_product_key(item.name): item.name for _, slot in store.all_slots for item in slot.items
+            if len(identities[_product_key(item.name)]) == 1}
     missing: list[str] = []
     for item in rival.items:
         if not item.labeled:
@@ -71,13 +81,15 @@ def compare_rival(
 ) -> RivalComparison:
     """`aliases`: rival product name → our product name for matches the names alone miss (e.g. read by a model)."""
     categories = {i.category for i in rival.items if i.category}
-    ours: dict[str, tuple[str, int, str]] = {}          # normalized name → (name, price, category)
+    ambiguous = {name for name, skus in _product_skus(store).items() if len(skus) != 1}
+    ours: dict[str, tuple[str, set[int], str]] = {}    # normalized name → (name, distinct prices, category)
     for rack, slot in store.all_slots:
         for item in slot.items:
             key = _product_key(item.name)
             if key not in ours:
                 category = _category_of(rack.rack_desc, rack.rack_name, item.name, rack.type) if categories else ""
-                ours[key] = (item.name, item.price, category)
+                ours[key] = (item.name, set(), category)
+            ours[key][1].add(item.price)
     ours_here = {k: v for k, v in ours.items() if not categories or v[2] in categories}
     prices: list[PriceComparison] = []
     canonical: dict[str, str] = {}                      # rival product name → our key, or its own normalized name
@@ -88,16 +100,19 @@ def compare_rival(
         key = _product_key(name)
         raw_alias = (aliases or {}).get(name)
         alias = _product_key(raw_alias) if raw_alias else None
-        if key in ours:
+        if key in ours and key not in ambiguous:
             hit = key
-        elif alias is not None and alias in ours:
+        elif alias is not None and alias in ours and alias not in ambiguous:
             hit = alias
         else:
             hit = None
         canonical[name] = hit if hit is not None else f"rival:{key}"
         if hit is None:
             continue
-        our_name, our_price, _ = ours[hit]
+        our_name, our_prices, _ = ours[hit]
+        if len(our_prices) != 1:
+            continue  # A known SKU may have several offers; shelf order cannot select its reference price.
+        our_price = next(iter(our_prices))
         if item.price is not None and not item.price_estimated and item.price > 0 and our_price > 0:
             prices.append(PriceComparison(name=our_name, rival_price=item.price, our_price=our_price, ratio=item.price / our_price))
     index = math.exp(sum(math.log(p.ratio) for p in prices) / len(prices)) if prices else None

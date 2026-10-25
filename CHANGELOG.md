@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Exclude ambiguous reference identities and conflicting shelf prices from
+  rival price comparisons. Reordering shelves no longer chooses a different
+  SKU or price and reverses the suggested venue adjustment.
+
 - Require a unique complete normalized product name for automatic receipt SKU
   matching. Similar variants and abbreviated labels stay available for manual
   review instead of silently assigning sales to another product.
