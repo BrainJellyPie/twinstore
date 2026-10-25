@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Resolve rival-model product names by exact spelling first, then a unique
+  case/whitespace variant. Unicode case-fold collisions no longer select a
+  different product by list order, and valid copied rival labels are retained.
+
 - Reject rival-model replies that both match a product and declare it unmatched.
   Contradictory empty/null answers now trigger correction before price comparison
   or caching, instead of silently keeping only the positive match.

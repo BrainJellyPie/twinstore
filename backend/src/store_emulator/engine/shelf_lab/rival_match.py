@@ -1,10 +1,12 @@
 """Rival products matched to ours by a language model when their names differ ("Coca-Cola Original 500ml" on the
 rival's tag, "Coke 500 ml" in our layout). Only the same product counts: same brand, variant and size."""
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from typing import Protocol, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+from store_emulator.engine.prompting import canonical_identifier
 
 MAX_OURS = 300
 MAX_NAME_CHARS = 160
@@ -40,28 +42,29 @@ For a name longer than 160 characters, copy its first 160 characters only when t
 in that list. Omit an ambiguous pair; do not guess between products sharing that prefix."""
 
 
-def _listed_name(raw: str, names: dict[str, str], *, fold: bool) -> str | None:
-    key = raw.strip().casefold() if fold else raw
+def _listed_name(raw: str, names: Collection[str]) -> str | None:
+    key = raw.strip().casefold()
     if not key:
         return None
     if len(raw) == MAX_NAME_CHARS:
-        matches = [name for name in names if name.startswith(key)]
-        return names[matches[0]] if len(matches) == 1 else None
-    return names.get(key)
+        matches = [name for name in names if name.casefold().startswith(key)]
+        return matches[0] if len(matches) == 1 else None
+    name = canonical_identifier(raw, names)
+    return name if name in names else None
 
 
 async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_names: Sequence[str]) -> dict[str, str]:
     """Rival name → our name, only for pairs the model gives with a name that is really ours."""
     if not rival_names or not our_names:
         return {}
-    ours = {n.casefold(): n for n in our_names}
-    rivals = {n: n for n in rival_names}
+    ours = set(our_names)
+    rivals = set(rival_names)
 
     def resolved_pairs(pairs: list[_Pair]) -> dict[str, str]:
         matched: dict[str, str | None] = {}
         for pair in pairs:
-            rival = _listed_name(pair.rival, rivals, fold=False)
-            target = _listed_name(pair.ours, ours, fold=True)
+            rival = _listed_name(pair.rival, rivals)
+            target = _listed_name(pair.ours, ours)
             if rival is None or (target is None and pair.ours.strip()):
                 continue
             if rival in matched and matched[rival] != target:
