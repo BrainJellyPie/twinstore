@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, RotateCcw, Send } from "lucide-react";
+import { RotateCcw, Send } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -87,7 +88,7 @@ export function ShopperChat({ projectId, runId, variant, shopper, outcome, onSte
         {pending && (
           <>
             <div className="flex justify-end"><div className="max-w-[90%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground opacity-80">{pending}</div></div>
-            <div className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="size-3.5 animate-spin" aria-hidden /> {t("interviewThinking", { name })}</div>
+            <div className="text-muted-foreground"><ModelWaiting label={t("interviewThinking", { name })} /></div>
           </>
         )}
         <div ref={end} />

@@ -10,6 +10,7 @@ import * as api from "@/shared/api/client";
 import { askOnlineAnalyst, clearOnlineAnalyst, getOnlineAnalyst, getSite, onlineKeys, suggestOnlineAnalystQuestions } from "@/shared/api/online";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import { useAssistStore } from "@/stores/assistStore";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -181,7 +182,7 @@ export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry
               <div className="flex justify-end">
                 <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-[0.8rem] text-primary-foreground opacity-80">{pending}</p>
               </div>
-              <p className="flex items-center gap-1.5 pl-9 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" aria-hidden /> {t("analystReading")}</p>
+              <p className="pl-9 text-xs text-muted-foreground"><ModelWaiting label={t("analystReading")} /></p>
             </>
           )}
         </div>

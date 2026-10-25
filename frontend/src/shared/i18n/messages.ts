@@ -55,6 +55,8 @@ export const messages = {
   storeRunNoticeDone: ["Store simulation finished", "매장 시뮬레이션이 끝났습니다", "门店模拟已完成", "店舗シミュレーションが完了しました", "Simulación de la tienda terminada", "Simulation du magasin terminée"],
   storeRunNoticeFailed: ["Store simulation failed", "매장 시뮬레이션에 실패했습니다", "门店模拟失败", "店舗シミュレーションに失敗しました", "La simulación de la tienda falló", "La simulation du magasin a échoué"],
   storeRunNoticeOpen: ["Open the results", "결과 열기", "打开结果", "結果を開く", "Abrir los resultados", "Ouvrir les résultats"],
+  slowModelHint: ["A small local model can take a few minutes.", "작은 로컬 모델은 몇 분 걸릴 수 있습니다.", "小型本地模型可能需要几分钟。", "小さなローカルモデルでは数分かかることがあります。", "Un modelo local pequeño puede tardar unos minutos.", "Un petit modèle local peut prendre quelques minutes."],
+  elapsedSeconds: ["{seconds} s", "{seconds}초", "{seconds} 秒", "{seconds} 秒", "{seconds} s", "{seconds} s"],
   home: ["TwinStore home", "TwinStore 홈", "TwinStore 主页", "TwinStore ホーム", "Inicio de TwinStore", "Accueil TwinStore"],
   searchCommands: ["Search and jump (command palette)", "검색 및 이동 (명령 팔레트)", "搜索与跳转（命令面板）", "検索と移動（コマンドパレット）", "Buscar y navegar (paleta de comandos)", "Rechercher et naviguer (palette de commandes)"],
   commandAsk: ["Ask TwinStore", "TwinStore에 요청", "让 TwinStore 处理", "TwinStore に頼む", "Pedir a TwinStore", "Demander à TwinStore"],

@@ -15,6 +15,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -148,9 +149,13 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
             </div>
           ))}
           {ask.isPending && (
-            <p className="flex w-fit items-center gap-2 rounded-2xl border bg-card px-3 py-2 text-sm text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden /> {t("onAiThinking")}
-            </p>
+            <>
+              {/* The request shows at once; it joins the conversation for good when the reply arrives. */}
+              <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground opacity-80">{ask.variables}</p>
+              <p className="w-fit max-w-[92%] rounded-2xl border bg-card px-3 py-2 text-sm text-muted-foreground">
+                <ModelWaiting label={t("onAiThinking")} />
+              </p>
+            </>
           )}
           <div ref={end} />
         </div>

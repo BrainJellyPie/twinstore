@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Waiting on a model is easier to read: the store designer shows your request
+  in the conversation at once, and every model wait (designer, both analysts,
+  shopper interviews) adds after 15 seconds that a small local model can take
+  a few minutes, with the seconds so far. A real CPU run of the 450M model
+  took over three minutes to redesign a store, with nothing but "Redesigning…"
+  on screen.
 - A store whose brand colour is near black (Threadline's navy) keeps a
   visible colour dot in dark mode: the dots' outline is stronger there.
 - Know when a run is done: if an online run or a store simulation of the
