@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Send JSON schemas to local Ollama models instead of requesting JSON syntax
+  alone. Automatic starter selection now transmits rack/SKU constraints through
+  Ollama's native format field, as do other structured text and image calls.
+  Cloud-tagged models and the Ollama Cloud host retain their supported JSON mode.
+
 - Disable template thinking for named vLLM and llama.cpp requests, matching the
   managed local server's direct-answer policy. Hybrid models can use short output
   budgets for the requested answer; other providers keep their own controls,

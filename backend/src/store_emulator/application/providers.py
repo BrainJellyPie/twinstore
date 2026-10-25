@@ -98,7 +98,7 @@ PRESETS: dict[ProviderKind, ProviderPreset] = {
     ),
     ProviderKind.OLLAMA: ProviderPreset(
         kind=ProviderKind.OLLAMA, label="Ollama", litellm_prefix="ollama_chat",
-        default_api_base="http://127.0.0.1:11434", needs_key=False, local=True,
+        default_api_base="http://127.0.0.1:11434", needs_key=False, structured_output="json_schema", local=True,
         models=[ModelSuggestion(id="qwen3.5:2b", label="qwen3.5:2b", vision=True)],
     ),
     ProviderKind.LLAMACPP: ProviderPreset(
@@ -388,11 +388,19 @@ def resolve_model(
         # The SDK needs a key even for no-auth servers. An explicit placeholder
         # prevents it from borrowing another provider's environment credential.
         key = "not-needed"
+    structured_output = preset.structured_output
+    if parsed.provider == ProviderKind.OLLAMA and (
+        model_id.casefold().endswith((":cloud", "-cloud"))
+        or api_base and _valid_api_base(api_base) and (urlsplit(api_base).hostname or "").rstrip(".") == "ollama.com"
+    ):
+        # Ollama Cloud does not yet accept schemas, including cloud-tagged
+        # models forwarded through the local Ollama server.
+        structured_output = "json"
     parallel = _local_slots(api_base) if api_base else None
     return base.model_copy(update={
         "model": f"{preset.litellm_prefix}/{model_id}",
         "api_base": api_base,
-        "structured_output": preset.structured_output,
+        "structured_output": structured_output,
         "api_key": SecretStr(key) if key else None,
         "max_parallel": min(parallel, base.max_parallel) if parallel and base.max_parallel else parallel or base.max_parallel,
         "cache_namespace": _local_cache_namespace(api_base),
