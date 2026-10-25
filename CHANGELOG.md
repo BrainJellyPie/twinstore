@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Validate online interview echoes before caching, give the model corrective
+  retry feedback, and let a failed question recover when the user asks again.
+
 - Fail short online model runs that finish without any model decision, before
   publishing fallback-only results. Preserve successful runs and partial fallback.
 
