@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Save applied shelf-photo crops under the SKU used by the resulting layout.
+  Products matched to an existing SKU now receive their photo in the viewer
+  and vision-model input; existing product images remain intact.
+
 - Preserve distinct captured products when applying shelf photos or auditing a
   shelf. Automatic SKU reuse now requires the complete name with brand/size,
   preventing similar variants or a bare product name from replacing identity

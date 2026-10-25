@@ -51,6 +51,7 @@ from store_emulator.engine.capture import (
 )
 from store_emulator.engine.capture.catalog_match import match_category, typical_price
 from store_emulator.engine.capture.frame import load_photo
+from store_emulator.engine.capture.planogram import match_store_skus
 from store_emulator.engine.layout_gen.catalog import CATALOG
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
@@ -631,7 +632,8 @@ def apply_captures(
     if errors:
         raise AppError(f"the resulting layout is invalid: {errors[0].message}", 409)
     for cid, result in zip(capture_ids, results, strict=True):
-        _save_sku_images(pid, cid, result)
+        matched = match_store_skus(new_store, result, PlacementReport(), exact=True)
+        _save_sku_images(pid, cid, matched)
     label = "shelf photo" if len(results) == 1 else f"{len(results)} shelf photos"
     final_name = name or f"{source.get('name') or 'layout'} ({label})"
     memo = _memo(capture_ids, results, report)
