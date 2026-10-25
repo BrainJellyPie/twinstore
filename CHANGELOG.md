@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A tidier online store list: variants sit under the store they were first
+  copied from (copies of copies too), behind a **Variants: N** toggle that
+  opens by itself when it holds the open store; a copy whose original was
+  deleted stays at the top level.
 - From an answer to a test: when the online analyst's answer (or the report
   lines it cites) points at something a quick experiment can change — a
   popup, fees, a forced sign-in, empty searches, slow pages, delivery costs,

@@ -5,10 +5,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronRight, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus } from "@/shared/api/online";
+import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus, type SiteSummary } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
@@ -73,6 +73,25 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
     if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
   const [picks, setPicks] = useState<string[]>([]);
+  // Variants sit under the store they were first copied from (copies of copies included), collapsed unless open.
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const rootOf = (site: SiteSummary): string => {
+    const seen = new Set<string>();
+    let current = site;
+    while (current.variant_of && !seen.has(current.id)) {
+      seen.add(current.id);
+      const parent = list.find((p) => p.id === current.variant_of);
+      if (!parent) break;
+      current = parent;
+    }
+    return current.id;
+  };
+  const roots = list.filter((s) => rootOf(s) === s.id);
+  const family = new Map<string, SiteSummary[]>();
+  for (const s of list) {
+    const root = rootOf(s);
+    if (root !== s.id) family.set(root, [...(family.get(root) ?? []), s]);
+  }
   const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); reveal(); };
 
   return (
@@ -92,23 +111,28 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           {sites.isPending && <p className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
           {sites.isError && <p role="alert" className="text-xs text-destructive">{sites.error.message}</p>}
           <ul className="space-y-1.5">
-            {list.map((s) => {
-              const parent = s.variant_of ? list.find((p) => p.id === s.variant_of) : null;
-              const active = !showGallery && !runId && selected?.id === s.id;
+            {roots.map((root) => {
+              const variants = family.get(root.id) ?? [];
+              const expanded = open[root.id] ?? variants.some((v) => v.id === selected?.id);
               return (
-                <li key={s.id}>
-                  <button type="button" onClick={() => openSite(s.id)} aria-current={active ? "true" : undefined}
-                    className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
-                    <span className="flex items-center gap-2 font-medium">
-                      <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: s.theme_color }} aria-hidden />
-                      <span className="truncate">{s.name}</span>
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {t("onStoreStats", { products: s.products, categories: s.categories })}
-                      {parent ? ` · ${t("onVariantOf", { name: parent.name })}` : ""}
-                    </span>
-                    {s.note && <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={s.note}>{s.note}</span>}
-                  </button>
+                <li key={root.id} className="space-y-1">
+                  <SiteButton site={root} active={!showGallery && !runId && selected?.id === root.id} onOpen={openSite} />
+                  {variants.length > 0 && (
+                    <>
+                      <button type="button" aria-expanded={expanded} onClick={() => setOpen((o) => ({ ...o, [root.id]: !expanded }))}
+                        className="ml-3 inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <ChevronRight className={cn("size-3.5 transition-transform", expanded && "rotate-90")} aria-hidden />
+                        {t("onVariantsCount", { count: variants.length })}
+                      </button>
+                      {expanded && (
+                        <ul className="ml-3 space-y-1 border-l pl-2">
+                          {variants.map((v) => (
+                            <li key={v.id}><SiteButton site={v} active={!showGallery && !runId && selected?.id === v.id} onOpen={openSite} compact /></li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
                 </li>
               );
             })}
@@ -188,5 +212,23 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         )}
       </main>
     </div>
+  );
+}
+
+function SiteButton({ site, active, onOpen, compact = false }: {
+  site: SiteSummary; active: boolean; onOpen: (id: string) => void; compact?: boolean;
+}) {
+  const { t } = useI18n();
+  return (
+    <button type="button" onClick={() => onOpen(site.id)} aria-current={active ? "true" : undefined}
+      className={cn("w-full rounded-xl border text-left transition-colors", compact ? "px-2.5 py-1.5" : "px-3 py-2",
+        active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
+      <span className={cn("flex items-center gap-2 font-medium", compact && "text-[0.8rem]")}>
+        <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: site.theme_color }} aria-hidden />
+        <span className="truncate">{site.name}</span>
+      </span>
+      {!compact && <span className="mt-0.5 block text-xs text-muted-foreground">{t("onStoreStats", { products: site.products, categories: site.categories })}</span>}
+      {site.note && <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={site.note}>{site.note}</span>}
+    </button>
   );
 }

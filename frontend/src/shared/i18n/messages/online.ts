@@ -11,7 +11,7 @@ export const onlineMessages = {
   onRuns: ["Runs", "시뮬레이션 실행", "运行记录", "実行履歴", "Ejecuciones", "Simulations"],
   onNoRuns: ["No runs yet. Open a store and choose Simulate.", "아직 실행 기록이 없습니다. 스토어를 열고 시뮬레이션을 선택하세요.", "还没有运行记录。打开商店并选择“模拟”。", "まだ実行履歴はありません。ストアを開いて「シミュレーション」を選んでください。", "Aún no hay ejecuciones. Abre una tienda y elige Simular.", "Aucune simulation pour l’instant. Ouvrez une boutique et choisissez Simuler."],
   onStoreStats: ["Products: {products} · Categories: {categories}", "상품: {products} · 카테고리: {categories}", "商品：{products} · 类别：{categories}", "商品：{products} · カテゴリ：{categories}", "Productos: {products} · Categorías: {categories}", "Produits : {products} · Catégories : {categories}"],
-  onVariantOf: ["variant of {name}", "{name}의 변형", "{name} 的变体", "{name} のバリエーション", "variante de {name}", "variante de {name}"],
+  onVariantsCount: ["Variants: {count}", "변형: {count}", "变体：{count}", "バリエーション：{count}", "Variantes: {count}", "Variantes : {count}"],
   onRunFailed: ["Failed", "실패", "失败", "失敗", "Fallida", "Échec"],
   onRunProgress: ["Visits done: {done} of {total}", "완료된 방문: {total} 중 {done}", "已完成访问：{done} / {total}", "完了した訪問：{total} 件中 {done} 件", "Visitas hechas: {done} de {total}", "Visites terminées : {done} sur {total}"],
   onRunSummary: ["Shoppers: {shoppers} · Stores: {stores}", "고객: {shoppers} · 스토어: {stores}", "顾客：{shoppers} · 商店：{stores}", "顧客：{shoppers} · ストア：{stores}", "Clientes: {shoppers} · Tiendas: {stores}", "Clients : {shoppers} · Boutiques : {stores}"],
