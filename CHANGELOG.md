@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Place bundled CUDA runtime libraries beside llama-server after extraction.
+  Wrapped archive directories no longer hide them from the system loader;
+  existing managed installations are repaired locally without redownloading.
+
 - Count each distinct rival product/price offer once. Repeated shelf detections,
   facings, case variants and confirmed aliases no longer overweight a product
   in the price index or inflate the unique-product count.

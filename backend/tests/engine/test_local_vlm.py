@@ -316,7 +316,13 @@ def test_a_whole_build_from_before_the_marker_is_kept(no_keys, monkeypatch, back
     hw, plan = mgr.plan()
     server = mgr._runtime(hw, plan.model_copy(update={"backend": backend}))  # pyright: ignore[reportPrivateUsage]
     assert server == home / "bin" / backend / "build" / "bin" / "llama-server"
-    assert {p.relative_to(home / "bin" / backend).as_posix() for p in (home / "bin" / backend).rglob("*") if p.is_file()} == set(files)
+    expected = dict(files)
+    if backend == "cuda":
+        expected["build/bin/libcudart.so.12"] = expected.pop("libcudart.so.12")
+        expected["build/bin/libcublas.so.12"] = expected.pop("libcublas.so.12")
+    kept = {p.relative_to(home / "bin" / backend).as_posix(): p.read_bytes()
+            for p in (home / "bin" / backend).rglob("*") if p.is_file()}
+    assert kept == expected
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="checks the executable bit the old versions set")

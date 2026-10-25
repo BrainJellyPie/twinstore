@@ -167,6 +167,19 @@ def _find_server(root: Path) -> Path | None:
     return None
 
 
+def _place_cuda_libraries(target: Path, server: Path) -> None:
+    """CUDA archives may have their own wrapper directory; loaders search beside the executable."""
+    pattern = r"(?:lib(?:cudart|cublas|cublasLt)\.so(?:\.\d+)*|(?:cudart|cublas|cublasLt)64_\d+\.dll)"
+    for library in sorted(target.rglob("*")):
+        if library.parent == server.parent or re.fullmatch(pattern, library.name) is None:
+            continue
+        if not (library.is_file() or library.is_symlink()):
+            continue
+        destination = server.parent / library.name
+        if not destination.exists() and not destination.is_symlink():
+            replace_file(library, destination)
+
+
 # ── the manager ─────────────────────────────────────────────────────────────
 
 class _StartCancelled(Exception):
@@ -455,6 +468,8 @@ class LocalVLMManager:
                     whole = len(pick_runtime_assets(recorded, os_name=hw.os, arch=hw.arch, backend="cuda")) == 2
         found = _find_server(target) if whole else None
         if found is not None:
+            if plan.backend == "cuda":
+                _place_cuda_libraries(target, found)
             self._set(runtime=str(found))
             return found
         self._check_download()
@@ -500,6 +515,8 @@ class LocalVLMManager:
         found = _find_server(target)
         if found is None:
             raise RuntimeError("llama-server not found in the downloaded build (an antivirus may have removed it)")
+        if plan.backend == "cuda":
+            _place_cuda_libraries(target, found)
         if os.name != "nt":
             for exe in found.parent.iterdir():
                 if exe.is_file() and not exe.suffix:
