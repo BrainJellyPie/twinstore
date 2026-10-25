@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from store_emulator.domain.analysis import MetricComparison
 from store_emulator.domain.marketing import (
@@ -147,7 +147,8 @@ REPORT_NARRATIVE_PROMPT = """You are a retail analyst writing the commentary of 
 manager. The test ran on a digital twin of the store with synthetic shoppers; every arm used the same shoppers. Use only
 the numbers in the report below; do not invent figures, products or causes you cannot support from them. Say plainly
 when a difference is within noise (its 95 % interval crosses zero). Always provide a nonblank summary of what the
-report shows. Write in English, short paragraphs, no headings."""
+report shows. Use empty strings for interpretation or next_steps when no supported detail can be given; do not use null.
+Write in English, short paragraphs, no headings."""
 
 
 class ReportNarrative(BaseModel):
@@ -162,8 +163,13 @@ class _NarrativeResponse(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     summary: str = Field(min_length=1, max_length=1200, description="what happened, two to four sentences")
-    interpretation: str = Field(max_length=1200, description="why it may have happened, as hypotheses tied to the numbers")
-    next_steps: str = Field(max_length=900, description="what to test or do next")
+    interpretation: str = Field(default="", max_length=1200, description="why it may have happened, as hypotheses tied to the numbers")
+    next_steps: str = Field(default="", max_length=900, description="what to test or do next")
+
+    @field_validator("interpretation", "next_steps", mode="before")
+    @classmethod
+    def _absent_detail(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 class StructuredLLM(Protocol):

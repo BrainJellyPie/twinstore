@@ -9,6 +9,18 @@
   work out where each click landed without the slow eyesight filters, instead
   of waiting for every page of the visit to be drawn twice.
 
+- Preserve explicitly free reference prices in automatically drafted concept
+  tests, keeping a zero-price offer distinct from showing no price.
+
+- Keep valid model-written report summaries when optional interpretation or
+  next-step text is null or omitted, while still rejecting empty summaries.
+
+- Keep run-analysis locks outside project folders so a pending model response
+  does not leave an open lock handle that blocks project deletion on Windows.
+
+- Serialize report commentary generation, replacement and removal per study,
+  preventing late model replies from restoring cleared or overwritten content.
+
 - Preserve complete study statistics and caveats in model commentary input by
   compacting repeated table keys instead of cutting large reports mid-JSON.
 

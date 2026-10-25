@@ -10,7 +10,7 @@ from store_emulator.engine.marketing.survey_design import _Draft, to_design
     ('KRW', .4999, None), ('JPY', .5, 1), ('usd', 1.005, 101),
     ('USD', float('inf'), None), ('USD', 1e308, None), ('JPY', 1e308, None),
     ('USD', 90071992547409.92, None), ('JPY', 9007199254740992.0, None),
-    ('JPY', 9007199254740991.0, 9007199254740991), ('USD', 0, None), ('USD', None, None),
+    ('JPY', 9007199254740991.0, 9007199254740991), ('USD', 0, 0), ('USD', None, None),
 ])
 def test_reference_prices_round_half_up_and_stay_representable(currency, price, expected):
     draft = _Draft(name='Price test', questions=['value'], reference_price=price)

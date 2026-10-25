@@ -16,8 +16,9 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from concurrent.futures import Executor
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal, cast
 
@@ -114,6 +115,23 @@ def _root(pid: str, kind: Kind) -> Path:
 def _job_dir(pid: str, kind: Kind, jid: str) -> Path:
     _check_id(jid, f"{kind} id")
     return _root(pid, kind) / jid
+
+
+@contextmanager
+def commentary_transaction(pid: str, kind: Kind, jid: str) -> Iterator[None]:
+    """Serialize commentary replacement/removal while allowing deletion of its study or project."""
+    _job_dir(pid, kind, jid)  # validate IDs before building an external lock path
+    path = Path(DATA_DIR) / "locks" / pid / f"commentary_{kind}_{jid}.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock = FileLock(path, timeout=0)
+    try:
+        lock.acquire()
+    except Timeout as exc:
+        raise AppError("The report commentary is still being written. Try again in a moment.", 409) from exc
+    try:
+        yield
+    finally:
+        lock.release()
 
 
 def _write_status(pid: str, status: JobStatus) -> None:
@@ -409,27 +427,30 @@ def experiment_report_markdown(pid: str, eid: str) -> str:
 
 def write_experiment_narrative(pid: str, eid: str, model: str, config: SimulationConfig) -> ReportNarrative:
     """A model's commentary on the report, kept with the experiment and added to the write-up."""
-    with setup_tree_transaction(pid):
-        report, layout, _ = _report_inputs(pid, eid)
-    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
-    try:
-        model = assistive_model(model, llm_config)
-        llm = assistive_client(model, llm_config)
-        narrative = asyncio.run(write_narrative(llm, report, layout))
-    except ValueError as e:
-        raise AppError(str(e), 400) from e
-    except Exception as e:  # provider errors reach the user as a message
-        logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
-        raise AppError(model_failure(e, "The commentary could not be written"), 502) from e
-    narrative.model = answered_by(llm, model)
-    with setup_tree_transaction(pid):
-        _status(pid, "experiment", eid)
-        write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
-    return narrative
+    with commentary_transaction(pid, "experiment", eid):
+        with setup_tree_transaction(pid):
+            report, layout, _ = _report_inputs(pid, eid)
+        llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
+        try:
+            model = assistive_model(model, llm_config)
+            llm = assistive_client(model, llm_config)
+            narrative = asyncio.run(write_narrative(llm, report, layout))
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+        except Exception as e:  # provider errors reach the user as a message
+            logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
+            raise AppError(model_failure(e, "The commentary could not be written"), 502) from e
+        narrative.model = answered_by(llm, model)
+        with setup_tree_transaction(pid):
+            _status(pid, "experiment", eid)
+            write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
+        return narrative
 
 
 def delete_experiment_narrative(pid: str, eid: str) -> None:
-    (_job_dir(pid, "experiment", eid) / "narrative.json").unlink(missing_ok=True)
+    with commentary_transaction(pid, "experiment", eid), setup_tree_transaction(pid):
+        _status(pid, "experiment", eid)
+        (_job_dir(pid, "experiment", eid) / "narrative.json").unlink(missing_ok=True)
 
 
 # ── surveys ─────────────────────────────────────────────────────────────────────
