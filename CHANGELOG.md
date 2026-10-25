@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Bound analyst conversation context by UTF-8 bytes and retain complete recent
+  exchanges, while preserving the entire report and current question. Four-store
+  reports with long Korean conversations no longer crowd out the tested local
+  model's reply. Keep the remaining unsupported-forecast failure visible in the
+  real CPU harness instead of treating complete JSON as a correct analysis.
+
 - Preserve every price change when bringing an online variant back to a store.
   Review and save up to 500 changes; reject larger transfers explicitly instead
   of repeatedly returning only the first 20. Show transfer errors with a retry

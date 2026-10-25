@@ -22,6 +22,7 @@ from store_emulator.domain.types import Action
 from store_emulator.engine.prompting import display_price
 
 TOP = 12
+_HISTORY_BYTES = 4000  # Leave room for the report and a complete reply on small local contexts.
 
 
 class StructuredLLM(Protocol):
@@ -151,7 +152,20 @@ async def answer_run_question(
     prompt: str = ANALYST_PROMPT,
     require_numerical_evidence: bool = False,
 ) -> RunAnswer:
-    convo = "\n".join(f"{'Manager' if m.role == 'user' else 'Analyst'}: {m.text}" for m in history[-8:])
+    recent = history[-8:]
+    lines = [f"{'Manager' if m.role == 'user' else 'Analyst'}: {m.text}" for m in recent]
+    start, used = len(lines), 0
+    for line in reversed(lines):
+        size = len(line.encode("utf-8")) + 1
+        if used + size > _HISTORY_BYTES:
+            break
+        start -= 1
+        used += size
+    while start < len(lines) and recent[start].role == "analyst":
+        start += 1  # Never provide an answer without the question it answered.
+    convo = "\n".join(lines[start:])
+    if start:
+        convo = "[Earlier conversation omitted. Use the full fact sheet; ask for clarification if context is missing.]\n" + convo
     user = f"Fact sheet:\n{facts}\n\n{'Conversation so far:' + chr(10) + convo + chr(10) + chr(10) if convo else ''}Manager: {question.strip()}"
     questions = [question, *(m.text for m in history[-8:] if m.role == "user")]
     asked = {"".join(c for c in normalize("NFKC", text).casefold() if c.isalnum()) for text in questions}

@@ -21,6 +21,7 @@ from pydantic import SecretStr
 
 from store_emulator.application import online, template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
+from store_emulator.domain.interview import AnalystMessage
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.domain.online import DesignMessage, OnlineRunResult, VariantComparison
 from store_emulator.domain.rack import Rack, Slot, SlotItem
@@ -60,7 +61,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
-    "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
@@ -216,16 +217,43 @@ try:
             shoppers=shoppers, variants=[summarize(control, by_id, a), summarize(variant, by_id, b)],
             comparisons=[VariantComparison(site_id=variant.id, site_name=variant.name, deltas=paired_deltas(a, b, seed=4),
                 segments=segment_deltas(a, b, by_id, seed=4), won=won, lost=lost, changed=changed, switches=rows)])
-        question = ("What exact real-world sales uplift will this store achieve next year?" if args.case == "analyst-forecast"
+        history = []
+        if args.case == "analyst-history":
+            sites = [control, variant, control.model_copy(deep=True), control.model_copy(deep=True)]
+            labels = ["기본 배송비와 팝업을 유지한 우리 동네 신선식품 온라인 매장",
+                "빠른 담기와 팝업 제거를 적용한 우리 동네 신선식품 온라인 매장",
+                "배송비를 없애고 비교하는 우리 동네 신선식품 온라인 매장",
+                "회원 가입 없이 구매하는 우리 동네 신선식품 온라인 매장"]
+            sites[2].options.shipping_fee, sites[3].options.guest_checkout = 0, True
+            for i, site in enumerate(sites):
+                site.id, site.name = f"site-{i}", labels[i]
+            sessions = [asyncio.run(visits(site)) for site in sites]
+            report.name = "Quick add study"
+            report.variants = [summarize(site, by_id, session) for site, session in zip(sites, sessions)]
+            report.comparisons = []
+            for site, session in zip(sites[1:], sessions[1:]):
+                won, lost, changed, rows = switches(sessions[0], session)
+                report.comparisons.append(VariantComparison(site_id=site.id, site_name=site.name,
+                    deltas=paired_deltas(sessions[0], session, seed=4), segments=segment_deltas(sessions[0], session, by_id, seed=4),
+                    won=won, lost=lost, changed=changed, switches=rows))
+            owner = ("모바일 고객이 장바구니와 결제 화면에서 이탈하는 이유를 알고 싶습니다. 할인 팝업과 배송비를 바꾼 매장을 비교해주세요. " * 20)[:600]
+            old_answer = ("이 실험은 가상 고객의 방문을 비교한 결과입니다. 고객군별 전환율과 매출은 서로 다르므로 전체 수치와 함께 살펴보아야 합니다. 실제 매출을 예측하려면 실제 방문과 주문 자료가 필요합니다. " * 20)[:1500]
+            history = [AnalystMessage(role="user" if i % 2 == 0 else "analyst", text=owner if i % 2 == 0 else old_answer) for i in range(8)]
+        question = ("What exact real-world sales uplift will this store achieve next year?" if args.case in {"analyst-forecast", "analyst-history"}
                     else "Did the variant improve conversion? Quote both overall conversion rates and say whether the difference is clear.")
         (output / "run.json").write_text(report.model_dump_json(indent=2))
         (output / "facts.txt").write_text(online_facts(report))
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            reply = asyncio.run(answer_online_question(client, report, question, [], seed=0))
+            reply = asyncio.run(answer_online_question(client, report, question, history, seed=0))
         issues = []
         if args.case == "analyst-forecast":
             if "does not show" not in reply.answer.casefold() or any(c.isdigit() for c in reply.answer):
                 issues.append("Expected an explicit refusal to invent a future real-world forecast")
+        elif args.case == "analyst-history":
+            if "does not show" not in reply.answer.casefold():
+                issues.append("Expected an explicit refusal to invent a future forecast")
+            if any(word in reply.answer.casefold() for word in ["major driver", "differs significantly", "significant improvement"]):
+                issues.append("Unsupported causal or significance claim in this inconclusive fixture")
         else:
             if not reply.figures or "25" not in reply.answer or "12.5" not in reply.answer:
                 issues.append("Expected cited overall conversion rates of 25% and 12.5%")
@@ -233,8 +261,8 @@ try:
                 issues.append("Expected the interval including zero to be recognized as inconclusive")
             if any(word in reply.answer.casefold() for word in ["is statistically significant", "is significant", "significant increase", "significant improvement"]):
                 issues.append("Contradicts this fixture's interval including zero")
-        result.update(success=not issues, question=question, reply=reply.model_dump(mode="json"), issues=issues,
-            expected_conversion=[summary.conversion for summary in report.variants])
+        result.update(success=not issues, completed=True, question=question, reply=reply.model_dump(mode="json"), issues=issues,
+            expected_conversion=[summary.conversion for summary in report.variants], history_characters=sum(len(message.text) for message in history))
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."
