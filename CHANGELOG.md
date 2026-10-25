@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add price tests to the online quick experiments (all prices 10 % lower or
+  higher, 20 % off the five best sellers, rounded the way the store's currency
+  is), and say under every unclear paired difference about how many shoppers per
+  store would confirm a difference of that size, or that it needs more than a
+  run allows.
 - Ask an online shopper about their visit. In a replay, a model answers a
   researcher's questions in the shopper's voice from who they are and what they
   saw and did on the site only (pages, clicks, thoughts, outcome, exit survey),

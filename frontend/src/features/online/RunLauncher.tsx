@@ -47,7 +47,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const listedSites = [...sites, ...createdSites.filter((copy) => !sites.some((site) => site.id === copy.id))];
   const controlId = chosen[0] ?? "";
   const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
-  const available = control.data ? experimentsFor(control.data.options) : [];
+  const available = control.data ? experimentsFor(control.data) : [];
   const room = MAX_VARIANTS - chosen.length;
   // Picks that no longer apply (another first store, or no room left) simply drop out.
   const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
@@ -76,7 +76,9 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
       for (const x of experiments) {
         const label = t(x.label);
         const base = control.data!;
-        const copy = await copySite(projectId, base.id, { name: `${base.name} – ${label}`.slice(0, 60), note: label, options: x.options });
+        const copy = await copySite(projectId, base.id, {
+          name: `${base.name} – ${label}`.slice(0, 60), note: label, options: x.options, products: x.products,
+        });
         created.push(copy.id);
         // Keep confirmed copies selected if a later copy or the run start fails.
         setCreatedSites((previous) => [...previous, { id: copy.id, name: copy.name, theme_color: copy.options.theme_color }]);

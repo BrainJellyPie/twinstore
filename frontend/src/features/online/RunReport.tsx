@@ -8,7 +8,7 @@ import { Download, Trash2 } from "lucide-react";
 
 import {
   clickstreamUrl, deleteRun, getRun, onlineKeys,
-  type ClickPoint, type Device, type OnlineRunResult, type PageKind, type SegmentRow, type SessionOutcome, type VariantSummary,
+  type ClickPoint, type Device, type OnlineRunResult, type PageKind, type PairedDelta, type SegmentRow, type SessionOutcome, type VariantSummary,
 } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
@@ -155,6 +155,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
                         {d.ci_low !== null && d.ci_high !== null ? t("studioCi95", { low: signed(d.ci_low), high: signed(d.ci_high) }) : "—"}
                       </div>
                       <div className="text-muted-foreground">{clear ? t("onClearDiff") : t("onNoClearDiff")}</div>
+                      {!clear && <Needed delta={d} />}
                     </div>
                   );
                 })}
@@ -353,6 +354,22 @@ function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: numbe
         </div>
       )}
     </Section>
+  );
+}
+
+// The interval narrows with the square root of the shoppers, so this many paired shoppers would make a difference of
+// the size seen about as wide as the interval's half-width (a rough guide, not a power analysis).
+const MAX_SHOPPERS = 500;
+
+function Needed({ delta }: { delta: PairedDelta }) {
+  const { t } = useI18n();
+  if (delta.ci_low === null || delta.ci_high === null || delta.diff === 0 || delta.n < 2) return null;
+  const half = (delta.ci_high - delta.ci_low) / 2;
+  const needed = Math.ceil(delta.n * (half / Math.abs(delta.diff)) ** 2);
+  return (
+    <div className="mt-1 text-[0.7rem] text-muted-foreground" title={t("onNeedHint")}>
+      {needed > MAX_SHOPPERS ? t("onNeedMany", { max: MAX_SHOPPERS }) : t("onNeedShoppers", { count: Math.max(needed, delta.n + 1) })}
+    </div>
   );
 }
 
