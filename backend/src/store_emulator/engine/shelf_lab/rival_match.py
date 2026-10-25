@@ -9,7 +9,7 @@ from litellm.exceptions import BadRequestError
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from store_emulator.engine.llm_client import is_context_overflow
-from store_emulator.engine.prompting import canonical_identifier
+from store_emulator.engine.prompting import canonical_identifier, relevant_first
 
 MAX_OURS = 300
 MAX_NAME_CHARS = 160
@@ -76,13 +76,14 @@ async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_nam
             matched[rival] = target
         return {rival: target for rival, target in matched.items() if target is not None}
 
-    listed = "\n".join(f"- {n}" for n in list(our_names)[:MAX_OURS])
+    candidates = [("", name, name) for name in our_names]
     requested = list(rival_names[:80])
     pairs: list[_Pair] = []
     start, batch_limit = 0, len(requested)
     while start < len(requested):
         batch = requested[start:start + batch_limit]
         asked = "\n".join(f"- {name}" for name in batch)
+        listed = "\n".join(f"- {name}" for name in relevant_first(candidates, "\n".join(batch), MAX_OURS))
 
         class MatchedPairs(_Pairs):
             @model_validator(mode="after")

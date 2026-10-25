@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prioritize relevant store products in rival comparisons. A matching product
+  after the first 300 catalog entries can now reach the model regardless of
+  shelf order, while each request keeps the existing 300-reference limit.
+
 - Reject ambiguous names in automatic shelf tests and setup drafts. A reply
   naming different products, formats or categories no longer selects the
   longest name; complete longer names and aliases for one target still work.
