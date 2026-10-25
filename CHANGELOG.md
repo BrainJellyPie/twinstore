@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Accept 100% discounts as free offers while retaining reference prices. Resolve
+  a local model's copied product-and-price label only when it identifies one
+  product in the actual store. Extend real CPU probes to free offers, discounted
+  products, compound edits and Korean instructions; retain remaining semantic
+  failures as failed probes.
+
 - Bound analyst conversation context by UTF-8 bytes and retain complete recent
   exchanges, while preserving the entire report and current question. Four-store
   reports with long Korean conversations no longer crowd out the tested local

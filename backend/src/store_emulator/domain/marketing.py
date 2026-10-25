@@ -30,7 +30,7 @@ class VariantChange(BaseModel):
     kind: ChangeKind
     sku: str = ""
     price: int | None = Field(default=None, ge=0)
-    percent: float | None = Field(default=None, ge=-90, le=300, description="-20 = 20 % cheaper")
+    percent: float | None = Field(default=None, ge=-100, le=300, description="-20 = 20 % cheaper")
     promo: str = Field(default="", max_length=24)
     rack_id: str = ""
     face: Literal["N", "S", "E", "W"] | None = None

@@ -54,7 +54,7 @@ class _Change(_ChangeTextDefaults):
     kind: Literal["price", "discount", "promo", "move", "package", "category_price"]
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
-    percent: float | None = Field(default=None, ge=-90, le=300, description="discount (negative) or category_price change")
+    percent: float | None = Field(default=None, ge=-100, le=300, description="discount (negative) or category_price change")
     promo: str = Field(default="", max_length=24, description="promo: the sign text, e.g. '1+1', 'SALE', '-30%'")
     shelf: str = Field(default="", max_length=80, description="move: the listed shelf, exactly as listed")
     level: int | None = Field(default=None, ge=1, le=4, description="move: shelf level, 3 = eye level, 1 = bottom")
@@ -166,6 +166,11 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
         for slot in rack.slots:
             for item in slot.items:
                 product_ids.setdefault(item.name.strip().casefold(), set()).add(item.sku)
+                # Tiny models sometimes copy the displayed price or the entire listing as the name.
+                # Match only labels built from this store, and keep collisions ambiguous.
+                priced = f"{item.name} {display_price(item.price, currency)}"
+                for label in (priced, f"{priced} ({rack.rack_name}, level {slot.level})"):
+                    product_ids.setdefault(label.strip().casefold(), set()).add(item.sku)
     for name, aid in packages:
         image_ids.setdefault(name.strip().casefold(), set()).add(aid)
     skus = {name: next(iter(ids)) for name, ids in product_ids.items() if len(ids) == 1}

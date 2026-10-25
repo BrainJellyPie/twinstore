@@ -9,6 +9,7 @@ from store_emulator.engine.layout_edit import _EditDraft
 @pytest.mark.parametrize("change", [
     {"kind": "price", "product": "Tea", "price": 3},
     {"kind": "discount", "product": "Tea", "percent": -10},
+    {"kind": "discount", "product": "Tea", "percent": -100},
     {"kind": "promo", "product": "Chips", "promo": "SALE"},
     {"kind": "move", "product": "Tea", "shelf": "Drinks", "level": 3},
     {"kind": "move", "product": "Tea", "shelf": "Drinks"},
@@ -34,7 +35,7 @@ def test_minimal_operations_and_canonical_cache_entries_remain_readable(change):
     {"kind": "discount", "product": "Tea", "price": 4.5},
     {"kind": "discount", "product": "Tea", "percent": 10},
     {"kind": "discount", "product": "Tea", "percent": 0},
-    {"kind": "discount", "product": "Tea", "percent": -91},
+    {"kind": "discount", "product": "Tea", "percent": -100.01},
     {"kind": "promo", "product": "Chips"},
     {"kind": "promo", "product": "Chips", "promo": ""},
     {"kind": "category_price", "shelf": "Drinks", "percent": -10},

@@ -58,6 +58,12 @@ layout_requests = {
     "layout-category": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
     "layout-bulk-bridge": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
     "layout-move": "Move Green Tea to eye level on its current Drinks shelf. Keep its price and other products unchanged.",
+    "layout-free-item": "Make only Mineral Water free. Keep all other products and settings unchanged.",
+    "layout-full-discount": "Give Green Tea a 100 percent discount, making it free while showing its original $5.00 price. Change nothing else.",
+    "layout-set-discount": "Set Green Tea to 20 percent off its regular price. Keep all other products and settings unchanged.",
+    "layout-extra-discount": "Green Tea is already discounted from $5.00 to $4.00. Take an extra 10 percent off its CURRENT $4.00 price. Keep its original $5.00 reference price unchanged. Change nothing else.",
+    "layout-extra-discount-ko": "Green Tea는 정가 5,000원에서 4,000원으로 이미 할인 중입니다. 현재 판매가 4,000원에서 추가로 10% 할인해 주세요. 정가 표시는 5,000원으로 유지하고 다른 상품은 변경하지 마세요.",
+    "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
@@ -143,7 +149,7 @@ try:
             reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
             characters=sum(len(message.text) for message in messages))
     elif args.case in layout_requests:
-        currency = "KRW" if args.case == "layout-price-krw" else "USD"
+        currency = "KRW" if args.case in {"layout-price-krw", "layout-extra-discount-ko"} else "USD"
         scale = 10 if currency == "KRW" else 1
         store = Store(id="cpu-layout", name="Corner shop", type="convenience", currency=currency, grid_size=(8, 8), racks=[
             Rack(id="drinks", rack_name="Drinks", type="shelf", shape=[[1]], position=(3, 3), slots=[
@@ -162,6 +168,9 @@ try:
             items = [SlotItem(sku=f"drink-{i:02}", name=f"Beverage {i:02}", price=500 + i * 10) for i in range(30)]
             store.racks[0].shape = [[1, 1]]
             store.racks[0].slots = [Slot(block=i // 4, face="N", level=i % 4 + 1, items=items[i * 4:(i + 1) * 4]) for i in range(8)]
+        if args.case in {"layout-set-discount", "layout-extra-discount", "layout-extra-discount-ko"}:
+            tea = store.racks[0].slots[0].items[0]
+            tea.price, tea.regular_price = 400 * scale, 500 * scale
         expected = products(store)
         if args.case == "layout-price-krw":
             expected["tea"]["price"] = 3000
@@ -172,6 +181,17 @@ try:
             for item in expected.values():
                 if item["rack"] == "drinks":
                     item["price"] = round(item["price"] * .9)
+        elif args.case == "layout-free-item":
+            expected["water"]["price"] = 0
+        elif args.case == "layout-full-discount":
+            expected["tea"].update(price=0, regular_price=500)
+        elif args.case == "layout-set-discount":
+            expected["tea"].update(price=400, regular_price=500)
+        elif args.case in {"layout-extra-discount", "layout-extra-discount-ko"}:
+            expected["tea"].update(price=360 * scale, regular_price=500 * scale)
+        elif args.case == "layout-sequence":
+            expected["tea"].update(price=360, regular_price=400)
+            expected["water"]["promo"] = "SALE"
         else:
             expected["tea"]["level"] = 3
         with patch.object(httpx.AsyncClient, "send", traced_send):
@@ -192,6 +212,9 @@ try:
             warnings += skipped + transfer.skipped
             result["transferred_changes"] = len(transfer.changes)
         after = products(edited)
+        if args.case == "layout-free-item" and after["water"]["regular_price"] in {0, 100}:
+            # A free offer may be an everyday zero price or a 100% discount with a was-price.
+            expected["water"]["regular_price"] = after["water"]["regular_price"]
         issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
         if set(after) != set(expected):
             issues.append("Product identities changed")
