@@ -65,6 +65,8 @@ def test_instructions_become_checked_edits_and_a_new_layout(client, monkeypatch)
     assert r.status_code == 200, r.text
     d = r.json()
     assert [c["kind"] for c in d["changes"]] == ["promo", "price"] and d["changes"][1]["price"] == 99
+    assert not d["changes"][1]["keep_reference"]
+    assert "remember" not in " ".join(d["applied"])
     assert len(d["applied"]) == 2 and any("Imaginary soda" in w for w in d["warnings"])
     assert "Instructions: SALE sign on one" in fake.calls[0][1]
     # Nothing was saved by drafting.
@@ -78,6 +80,7 @@ def test_instructions_become_checked_edits_and_a_new_layout(client, monkeypatch)
     detail = client.get(f"/api/projects/{PID}/setups/{new['id']}").json()
     items = {i["sku"]: i for r in detail["store"]["racks"] for s in r["slots"] for i in s["items"]}
     assert items[a_sku]["promo"] == "SALE" and items[b_sku]["price"] == 99
+    assert items[b_sku]["regular_price"] == 0 and new["applied"] == d["applied"]
     # The original layout is unchanged.
     original = {i.sku: i for r in store.racks for s in r.slots for i in s.items}
     assert _store().model_dump() == store.model_dump() and original[b_sku].price != 99

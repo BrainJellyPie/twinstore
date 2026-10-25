@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Keep model-written everyday-price edits separate from A/B-test reference
+  prices. Setting 1.49 and then discounting 10% now produces 1.34 instead of
+  discounting an old 1.99 price to 1.79. Draft previews use the same price
+  semantics as saved layouts; explicit discounts and A/B comparisons retain
+  their reference prices.
+
 - Recover conjoint studies that exceed a model's input context by splitting
   the same choice tasks into smaller requests. Original designs, task numbers,
   choices and respondent counts are preserved. Irreducible or unrelated

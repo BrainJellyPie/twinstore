@@ -75,6 +75,7 @@ Make exactly the edits the manager asked for, one change per product and edit, u
 below, written exactly as listed. Return at least one change that fits a listed product or category. A discount
 requires a negative percent. Prices must be finite and positive after currency rounding.
 Return at least one applicable operation; correct unavailable moves or empty categories when validation reports them.
+An everyday price replaces the previous regular price. Use discount for a reduction against a regular price.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
 Name the edited layout in a few words and summarize the edits. Use "" instead of null for an absent summary.
 If a listed product or shelf name exceeds its field's character limit, copy its prefix up to that limit.
@@ -91,8 +92,11 @@ def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:
         design = to_design(_Draft(name=draft.name or "Edited layout", variants=[variant]), store, currency, [])
     except ValueError as e:
         raise ValueError(f"none of the edits fits this layout's products and shelves: {e}") from e
-    changes = design.variants[0].changes
-    _, applied, problems = apply_changes(store, changes, minor_per_major=1 if currency.upper() in ZERO_DECIMAL else 100)
+    # A/B price tests remember the control price; an everyday-price edit must
+    # reset that reference before any following discount is applied.
+    changes = [c.model_copy(update={"keep_reference": False}) if c.kind == "price" else c
+               for c in design.variants[0].changes]
+    _, applied, problems = apply_layout_edit(store, changes, currency)
     warnings = [w.removeprefix("Edit: ") for w in design.warnings]
     warnings.extend(p for p in problems if p not in warnings)
     return LayoutEditDraft(name=draft.name.strip()[:40] or "Edited layout", summary=draft.summary.strip(), changes=changes,
