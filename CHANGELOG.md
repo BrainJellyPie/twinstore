@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Ask an online shopper about their visit. In a replay, a model answers a
+  researcher's questions in the shopper's voice from who they are and what they
+  saw and did on the site only (pages, clicks, thoughts, outcome, exit survey),
+  points at the steps it means and keeps the conversation per store and shopper.
+  Suggested first questions follow how the visit ended; a cited step opens that
+  page of the replay.
 - Show who an online change won and lost. Each comparison breaks the paired
   conversion difference down by mission, device, age, gender and eyesight with
   95 % intervals and revenue per visit, counts orders won and lost, and lists the

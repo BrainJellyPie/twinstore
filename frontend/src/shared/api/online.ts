@@ -3,6 +3,7 @@
 // currency's minor unit.
 
 import { BASE, type EnsembleConfig } from "./client";
+import type { InterviewMessage } from "./interview";
 import { apiErrorMessage } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -235,6 +236,8 @@ export const onlineKeys = {
   run: (pid: string, runId: string) => ["projects", pid, "online", "runs", runId] as const,
   session: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId] as const,
+  interview: (pid: string, runId: string, variant: number, shopperId: string) =>
+    ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId, "interview"] as const,
 };
 
 export function listTemplates(signal?: AbortSignal): Promise<OnlineTemplate[]> {
@@ -304,6 +307,24 @@ export function deleteRun(pid: string, runId: string): Promise<{ status: string 
 
 export function getSession(pid: string, runId: string, variant: number, shopperId: string, signal?: AbortSignal): Promise<SessionView> {
   return fetchJson(`/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}`, { signal });
+}
+
+/** A conversation with one shopper about their visit to one store of a run. */
+export interface OnlineInterview { run_id: string; variant: number; shopper_id: string; model: string; messages: InterviewMessage[] }
+
+const interviewUrl = (pid: string, runId: string, variant: number, shopperId: string) =>
+  `/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/interview`;
+
+export function getShopperInterview(pid: string, runId: string, variant: number, shopperId: string, signal?: AbortSignal): Promise<OnlineInterview> {
+  return fetchJson(interviewUrl(pid, runId, variant, shopperId), { signal });
+}
+
+export function askOnlineShopper(pid: string, runId: string, variant: number, shopperId: string, question: string, model: string): Promise<OnlineInterview> {
+  return fetchJson(interviewUrl(pid, runId, variant, shopperId), { method: "POST", ...json({ question, model }) });
+}
+
+export function clearShopperInterview(pid: string, runId: string, variant: number, shopperId: string): Promise<void> {
+  return fetchJson(interviewUrl(pid, runId, variant, shopperId), { method: "DELETE" });
 }
 
 export function stepScreenshotUrl(pid: string, runId: string, variant: number, shopperId: string, step: number): string {

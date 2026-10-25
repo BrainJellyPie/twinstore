@@ -392,7 +392,7 @@ browse any store yourself by clicking the same screenshot.
 | **Friction audit** | Popup exits, forced sign-in, last-step fees, add-ons paid without unticking, failed coupons, empty searches, sold-out pages, slow exits. |
 | **Exit survey** | Satisfaction, ease, NPS, return intent and the biggest annoyance, from model shoppers right after the visit. |
 | **Search, products, clicks** | What people searched for (and found nothing), product views/adds/sales, a click map of the screenshots. |
-| **Replays and data** | Every visit page by page with the shopper's thoughts; segments by mission, device, age, gender and eyesight; a clickstream CSV. |
+| **Replays and data** | Every visit page by page with the shopper's thoughts, and a conversation with the shopper about it; segments by mission, device, age, gender and eyesight; a clickstream CSV. |
 
 ## How it works
 
