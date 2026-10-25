@@ -118,7 +118,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
                 <label className={cn("flex items-center gap-2 rounded-lg border px-2 py-1.5", index >= 0 && "border-primary bg-primary/5")}>
                   <input type="checkbox" checked={index >= 0} onChange={() => toggleSite(s.id)}
                     disabled={start.isPending || (index < 0 && chosen.length >= MAX_VARIANTS)} />
-                  <span className="size-3 shrink-0 rounded-full" style={{ background: s.theme_color }} aria-hidden />
+                  <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: s.theme_color }} aria-hidden />
                   <span className="min-w-0 flex-1 truncate">{s.name}</span>
                   {index >= 0 && (
                     <span className="rounded bg-muted px-1.5 text-[0.7rem]">

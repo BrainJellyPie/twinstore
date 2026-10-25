@@ -77,7 +77,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
                   <button type="button" onClick={() => openSite(s.id)} aria-current={active ? "true" : undefined}
                     className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
                     <span className="flex items-center gap-2 font-medium">
-                      <span className="size-3 shrink-0 rounded-full" style={{ background: s.theme_color }} aria-hidden />
+                      <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: s.theme_color }} aria-hidden />
                       <span className="truncate">{s.name}</span>
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
