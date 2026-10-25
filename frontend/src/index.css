@@ -438,6 +438,34 @@ body {
   80%, 100% { box-shadow: 0 0 0 10px transparent; }
 }
 
+/* Online run report: each shopper streams along the store's pipe to the stage where the visit stopped, then
+   drops onto that stage's pile; buyers keep a soft glow. Inline left/top hold the resting place. */
+@keyframes crowd-flow {
+  0% { left: 0%; top: var(--pipe); opacity: 0; scale: 0.3; }
+  6% { opacity: 1; scale: 1; }
+  70% { left: var(--x); top: var(--pipe); }
+  100% { left: var(--x); top: var(--y); }
+}
+@keyframes crowd-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 9px 1px var(--positive); }
+}
+.crowd-dot { animation: crowd-flow var(--dur, 1.4s) cubic-bezier(0.45, 0, 0.2, 1) var(--delay, 0s) both; }
+.crowd-dot.crowd-bought {
+  animation: crowd-flow var(--dur, 1.4s) cubic-bezier(0.45, 0, 0.2, 1) var(--delay, 0s) both,
+    crowd-glow 2.6s ease-in-out calc(var(--delay, 0s) + var(--dur, 1.4s)) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .crowd-dot, .crowd-dot.crowd-bought { animation: none; }
+}
+/* Page flow: particles of visits running along each ribbon. */
+@keyframes flow-run { to { stroke-dashoffset: -64; } }
+.flow-particles { animation: flow-run 1.6s linear infinite; }
+/* Report sections rise into place as they scroll into view, where the browser can tie it to scrolling. */
+@supports (animation-timeline: view()) {
+  .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+}
+
 /* App backdrop: aurora light, dot grid and film grain behind every page. */
 .app-backdrop {
   position: absolute;
@@ -642,6 +670,7 @@ select {
   --viz-neg-1: #f0a09f;
   --viz-neg-2: #e34948;
   --viz-grid: color-mix(in oklab, var(--foreground) 9%, transparent);
+  --viz-other: #8a8f9c; /* a series outside the compared set (an online run's rival shop) */
 }
 .dark {
   --viz-1: #3987e5;
@@ -654,4 +683,5 @@ select {
   --viz-neg-1: #9c3433;
   --viz-neg-2: #e66767;
   --viz-grid: color-mix(in oklab, var(--foreground) 11%, transparent);
+  --viz-other: #6b7180;
 }

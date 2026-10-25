@@ -57,9 +57,9 @@ it("shows what the rival took from each store, and less taken as good", async ()
   expect(rows[1]!.textContent).toContain("12 · 40.0%");
   expect(rows[1]!.textContent).toContain("$240.00");
   expect(rows[2]!.textContent).toContain("$80.00");
-  const tile = screen.getByText("Rival’s revenue per visit").parentElement!;
-  expect(tile.className).toContain("tone-good");
-  expect(tile.textContent).toContain("−$4.00");
+  const row = screen.getByText("Rival’s revenue per visit").parentElement!;
+  expect(row.textContent).toContain("−$4.00");
+  expect(within(row).getByText("Clearly better").className).toContain("text-positive");
 });
 
 it("has no rival section without a rival shop", async () => {

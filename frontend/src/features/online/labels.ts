@@ -139,3 +139,8 @@ export const ARRIVAL_LABELS: Record<Arrival, MessageKey> = {
 export const ARRIVAL_HINTS: Record<Arrival, MessageKey> = {
   direct: "onArrDirectHint", search_engine: "onArrSearchHint", social: "onArrSocialHint", email: "onArrEmailHint",
 };
+
+/** The color of the store at this position in a run's charts (the rival, or a fifth store, is neutral). */
+export function storeColor(index: number): string {
+  return index < 4 ? `var(--viz-${index + 1})` : "var(--viz-other)";
+}

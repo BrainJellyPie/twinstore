@@ -6,6 +6,27 @@
   promise 10% off, and rule shoppers receive no discount incentive for them.
   Offers without a coupon code no longer invent a `WELCOME` code.
 
+- Make shopper tracking easy to find in a store's results: a **Track a shopper**
+  banner tops the Results tab and opens the Shoppers tab, every shopper in the
+  list has its own **Follow in 3D** button, and a shopper's page leads with a
+  large **Follow in 3D** button.
+
+- Redesign the online run report. A dark stage opens it with the run's verdict
+  (a clear winner, a control that holds, or too close to call), each store's
+  conversion as a glowing ring with counting figures, and large **Watch a
+  shopper** / **Side by side** buttons that follow you down the page in a dock.
+  A new **Shopper stream** animates every virtual shopper as a dot that enters
+  each store at the same moment, travels the funnel and settles under the stage
+  where the visit stopped (hover to find the same shopper in the other stores,
+  click to watch the visit). A **Page flow** chart shows the first six pages of
+  every visit and how it ended, with the busiest route spelled out. Shopper
+  cards with filters, per-measure tiles, an interval chart per variant, outcome
+  bars, a segment heat map and sticky section links replace the plain tables,
+  and a full-width button hides the store list. Runs record each visit's
+  furthest funnel stage and the page flow; older runs show the rest of the report.
+  Count the busiest route from complete recorded page prefixes, avoiding routes
+  assembled from unrelated shoppers' popular transitions.
+
 - Keep online-store editing and conflicting writes locked until a save and its
   refreshed snapshot finish; failed writes preserve the draft for correction or retry.
 

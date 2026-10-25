@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import * as online from "@/shared/api/online";
@@ -90,15 +90,15 @@ it("keeps the active store and form values when a refreshed site list changes or
 it.each([false, true])("resets cached report shopper and variant selection on a new run (open journey: %s)", async (open) => {
   mount();
   fireEvent.click(await screen.findByRole("button", { name: /Old study/ }));
-  fireEvent.change(screen.getByLabelText("Shopper"), { target: { value: "old_2" } });
-  fireEvent.change(screen.getByLabelText("Store"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Find a shopper"), { target: { value: "old_2" } });
+  const card = screen.getByText("old_2", { selector: "div" }).closest("li")!;
   if (open) {
-    fireEvent.click(screen.getByRole("button", { name: "Play the visit" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Watch the visit to Shop B" }));
     expect(screen.getByRole("dialog").textContent).toBe("Old study:1:old_2");
   }
   fireEvent.click(screen.getByRole("button", { name: /New study/ }));
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect((screen.getByLabelText("Shopper") as HTMLSelectElement).value).toBe("new_1");
-  fireEvent.click(screen.getByRole("button", { name: "Play the visit" }));
+  expect((screen.getByLabelText("Find a shopper") as HTMLInputElement).value).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: "Watch a shopper" }));
   expect(screen.getByRole("dialog").textContent).toBe("New study:0:new_1");
 });

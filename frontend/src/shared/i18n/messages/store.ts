@@ -363,6 +363,9 @@ export const storeMessages = {
   optAbsoluteChange: ["{gain} (absolute change from zero)", "{gain} (0에서의 절대 변화량)", "{gain}（相对于零的绝对变化）", "{gain}（ゼロからの絶対変化）", "{gain} (cambio absoluto desde cero)", "{gain} (variation absolue depuis zéro)"],
 
   // Shoppers tab
+  spTrackCta: ["Track a shopper", "고객 추적하기", "追踪一位顾客", "買い物客を追跡", "Seguir a un comprador", "Suivre un client"],
+  spTrackHint: ["Follow any shopper through the store in 3D, read their thoughts step by step and interview them", "아무 고객이나 골라 3D 매장에서 따라가고, 단계별 생각을 읽고, 인터뷰할 수 있습니다", "在 3D 店内跟随任意顾客，逐步查看其想法并采访他们", "どの買い物客でも3Dの店内で追いかけ、一歩ずつ考えを読み、インタビューできます", "Sigue a cualquier comprador por la tienda en 3D, lee lo que piensa paso a paso y entrevístalo", "Suivez n’importe quel client dans le magasin en 3D, lisez ses pensées étape par étape et interrogez-le"],
+  shopperFollowName: ["Follow {name} in 3D", "{name} 3D로 따라가기", "在 3D 中跟随 {name}", "{name} を3Dで追いかける", "Seguir a {name} en 3D", "Suivre {name} en 3D"],
   allShoppers: ["All shoppers", "전체 고객", "所有顾客", "すべての買い物客", "Todos los compradores", "Tous les clients"],
   groupInterview: ["Group interview", "그룹 인터뷰", "小组访谈", "グループインタビュー", "Entrevista de grupo", "Entretien de groupe"],
   groupInterviewHint: ["Ask many shoppers one question — e.g. everyone who left empty-handed — and see the themes", "여러 고객에게 같은 질문을 하고(예: 빈손으로 나간 고객 전체) 공통 주제를 확인하세요", "向多位顾客提同一个问题（例如所有空手离开的人），查看归纳出的主题", "多くの買い物客に同じ質問をして（例：何も買わずに帰った全員）、共通のテーマを確認", "Haz una misma pregunta a muchos compradores (p. ej., a todos los que se fueron sin comprar) y mira los temas", "Posez une même question à de nombreux clients (ex. : tous ceux repartis les mains vides) et voyez les thèmes"],
