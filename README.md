@@ -433,7 +433,7 @@ decide the same way whatever the style.
 | **Friction audit** | Popup exits, forced sign-in, last-step fees, add-ons paid without unticking, failed coupons, empty searches, sold-out pages, slow exits. |
 | **Exit survey** | Satisfaction, ease, NPS, return intent and the biggest annoyance, from model shoppers right after the visit. |
 | **Search, products, clicks** | What people searched for (and found nothing), product views/adds/sales, a click map of the screenshots. |
-| **Replays and data** | Every visit page by page with the shopper's thoughts, played back as an animation or side by side across two stores, downloadable as a GIF, and a conversation with the shopper about it; segments by mission, device, age, gender, eyesight and traffic source; a clickstream CSV. |
+| **Replays and data** | Every visit page by page with the shopper's thoughts, played back as an animation or side by side across two stores, downloadable as a GIF, and a conversation with the shopper about it; segments by mission, device, age, gender, eyesight and traffic source; a clickstream CSV and a print-ready report page to share. |
 | **Ask about the run** | Questions answered from the report's own numbers, each answer listing the report lines it used (figures not in the report are dropped); ask in the report or from the command bar. |
 | **Both twins** | Marketing A/B variants, shelf tests, price tests and concept-test packages become online variants by SKU (an eye-level shelf becomes first in its category); an online variant's prices go back to a store layout as a new layout after a review. |
 
