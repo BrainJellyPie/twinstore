@@ -18,6 +18,33 @@
   instead of a block that pushed the work below the fold, and an A/B result
   notice puts its CSV button under the text. The neighborhood's area
   description gets a full-width box with a character count.
+- Keep browsing customers' available budget in both live online decisions and
+  post-visit interviews, separately from their lack of a purchase plan. An actual
+  CPU VLM checkout probe exposed the missing amount; save the screenshot and raw
+  responses with `verification/local-shopper-probe.py`.
+
+
+- Keep channel comparisons and online analyst facts available while another
+  store run is being saved. Choose a completed, readable run; skip incomplete
+  or damaged candidates and give an explicit error for a requested unreadable
+  run. Complete legacy results remain usable without valid status metadata.
+
+- Count free physical purchases in the store/online comparison and accumulate
+  all online visits for each shared customer. A later non-purchase no longer
+  erases an earlier order or its spending; changing customer-list order leaves
+  the comparison unchanged.
+
+- Use the same configured arrival mix for quick design scans and ordinary runs.
+  Search, social and email visitors no longer silently become direct visitors
+  during the scan. A real CPU-model design probe now checks the generated draft
+  and the full customer conditions used for its paired comparison.
+
+- Accept 100% discounts as free offers while retaining reference prices. Resolve
+  a local model's copied product-and-price label only when it identifies one
+  product in the actual store. Extend real CPU probes to free offers, discounted
+  products, compound edits and Korean instructions; retain remaining semantic
+  failures as failed probes.
+
 - Shelf capture leads with the photo drop zone: a large target with an icon
   sits right under the settings, the browser recovery copy moves below it as
   a quieter box, and the settings use the app's field style.

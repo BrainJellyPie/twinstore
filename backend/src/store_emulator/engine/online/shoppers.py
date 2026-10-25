@@ -6,6 +6,7 @@ panel depends only on the request and the control site's catalog, so every varia
 same people.
 """
 
+import math
 import random
 import re
 from statistics import median
@@ -40,9 +41,12 @@ _IDENTITIES: dict[AgeGroup, tuple[str, ...]] = {
     "60s+": ("Retiree", "Grandparent", "Semi-retired consultant"),
 }
 _PATIENCE: dict[ShopperMission, tuple[int, int]] = {
-    "purchase": (360, 720), "browse": (240, 900), "compare": (480, 1080), "deal_hunt": (300, 720), "gift": (360, 840),
-    "replenish": (180, 360),
+    "purchase": (830, 1660), "browse": (70, 550), "compare": (1100, 2480), "deal_hunt": (690, 1660), "gift": (830, 1930),
+    "replenish": (410, 830),
 }
+# Window shoppers who only glance around rather than browse at length; those who do browse give the site longer.
+_GLANCING = 0.75
+_BROWSING_PATIENCE = (140, 2070)
 _SENSITIVITY: dict[ShopperMission, float] = {
     "purchase": 0.45, "browse": 0.5, "compare": 0.6, "deal_hunt": 0.9, "gift": 0.35, "replenish": 0.3,
 }
@@ -73,8 +77,8 @@ def _pick_mission(rng: random.Random, missions: dict[ShopperMission, float]) -> 
 
 def _mission_details(
     site: OnlineSite, mission: ShopperMission, rng: random.Random, preferred: list[str],
-) -> tuple[str, str, list[str], str, int]:
-    """(goal, target category, search terms, target product, budget) of one mission."""
+) -> tuple[str, str, list[str], str, int, tuple[int, int]]:
+    """(goal, target category, search terms, target product, budget, patience range) of one mission."""
     in_stock = [p for p in site.products if p.stock != 0] or site.products
     prices = sorted(p.price for p in in_stock)
     typical = int(median(prices)) if prices else 0
@@ -91,26 +95,34 @@ def _mission_details(
         if mission == "replenish":
             budget = round(product.price * rng.uniform(1.5, 3.0))
             return (f"Reorder {product.name}, which you buy regularly", product.category_id, [product.name.lower()],
-                    product.id, budget)
+                    product.id, budget, _PATIENCE[mission])
         terms = product_terms(product.name)
         budget = round(product.price * rng.uniform(1.15, 2.2))
-        return (f"Buy {terms} (you expect to pay about {money(product.price)})", product.category_id, [terms], "", budget)
+        return (f"Buy {terms} (you expect to pay about {money(product.price)})", product.category_id, [terms], "", budget,
+                _PATIENCE[mission])
     cat_prices = sorted(p.price for p in in_category)
     if mission == "compare":
         budget = round(cat_prices[len(cat_prices) * 3 // 4] * rng.uniform(1.0, 1.4))
         words = category.name.lower()
         return (f"Compare a few {words} options and buy the best one for the money, up to {money(budget)}",
-                category.id, [words], "", budget)
+                category.id, [words], "", budget, _PATIENCE[mission])
     if mission == "gift":
         budget = round(cat_prices[len(cat_prices) * 2 // 3] * rng.uniform(1.1, 1.6))
         return (f"Find a gift from {category.name.lower()} for a friend's birthday, up to {money(budget)}",
-                category.id, [category.name.lower()], "", budget)
+                category.id, [category.name.lower()], "", budget, _PATIENCE[mission])
     if mission == "deal_hunt":
         budget = round(typical * rng.uniform(2.0, 4.0))
-        return ("Look for real bargains; buy only something that is clearly discounted", "", [], "", budget)
-    budget = round(typical * rng.uniform(1.0, 3.0))
-    return (f"Window-shop {category.name.lower()} for ideas, with no plan to buy anything in particular",
-            category.id, [category.name.lower()], "", budget)
+        return ("Look for real bargains; buy only something that is clearly discounted", "", [], "", budget,
+                _PATIENCE[mission])
+    budget = round(typical * rng.uniform(0.4, 1.2))
+    if rng.random() < _GLANCING:
+        goal = (f"Look around {category.name.lower()} out of mild curiosity, with no plan to buy; you move on as soon as "
+                "nothing catches your eye")
+        patience = _PATIENCE[mission]
+    else:
+        goal = f"Window-shop {category.name.lower()} for ideas, with no plan to buy anything in particular"
+        patience = _BROWSING_PATIENCE
+    return goal, category.id, [category.name.lower()], "", budget, patience
 
 
 def _shopper(
@@ -126,14 +138,14 @@ def _shopper(
         gender = rng.choice(GENDERS)
         identity, description, preferred = rng.choice(_IDENTITIES[age]), "", []
     mission = _pick_mission(rng, missions)
-    goal, category, terms, product, budget = _mission_details(site, mission, rng, preferred)
+    goal, category, terms, product, budget, (low, high) = _mission_details(site, mission, rng, preferred)
     savvy = min(1.0, max(0.05, rng.gauss(_SAVVY[age], 0.12)))
     # Weight the odds so age preferences preserve both all-mobile and all-desktop panels.
     mobile_weight = mobile_share * _MOBILE[age]
     device = "mobile" if rng.random() < mobile_weight / (1 - mobile_share + mobile_weight) else "desktop"
     sensitivity = min(1.0, max(0.0, rng.gauss(_SENSITIVITY[mission], 0.12)))
-    low, high = _PATIENCE[mission]
-    patience = round(rng.uniform(low, high) * (0.8 + 0.4 * (1 - savvy)))
+    # Log-uniform: most visits are short and a few run long, as real session times are right-skewed.
+    patience = round(math.exp(rng.uniform(math.log(low), math.log(high))) * (0.8 + 0.4 * (1 - savvy)))
     has_account = rng.random() < (0.9 if mission == "replenish" else 0.3)
     if not description:
         description = (f"{identity} in their {age.removesuffix('+')}{' or older' if age == '60s+' else ''}, shopping on "

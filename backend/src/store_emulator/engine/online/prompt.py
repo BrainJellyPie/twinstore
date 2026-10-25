@@ -62,7 +62,8 @@ def user_prompt(
         lines.append(EYESIGHT[shopper.vision] + ("" if outline is not None else " " + _EYESIGHT_IMAGE))
     lines += [
         f"Why they are on {site.name}: {shopper.goal}.",
-        f"Budget: {money(shopper.budget, site.currency)}." if shopper.budget else "Budget: no fixed limit.",
+        (f"Budget: {money(shopper.budget, site.currency)}." if shopper.budget else "Budget: no fixed limit.")
+        + (" No purchase planned." if shopper.mission == "browse" else ""),
         f"Price sensitivity: {_level(shopper.price_sensitivity)}. Comfort with websites: {_level(shopper.tech_savvy)}. "
         f"Has an account on this site: {'yes' if shopper.has_account else 'no'}.",
         f"Time on the site so far: {int(elapsed) // 60}:{int(elapsed) % 60:02d}; they give it about "

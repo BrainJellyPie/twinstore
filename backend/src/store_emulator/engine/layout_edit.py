@@ -71,7 +71,7 @@ class _EditChange(_ChangeTextDefaults):
     kind: Literal["price", "discount", "promo", "move", "category_price"]
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
-    percent: float | None = Field(default=None, ge=-90, le=300, description="discount (negative) or category_price change")
+    percent: float | None = Field(default=None, ge=-100, le=300, description="discount (negative) or category_price change")
     promo: str = Field(default="", max_length=24, description="promo: the sign text, e.g. '1+1', 'SALE', '-30%'")
     shelf: str = Field(default="", max_length=80, description="move: the listed shelf, exactly as listed")
     level: int | None = Field(default=None, ge=1, le=4, description="move: shelf level, 3 = eye level, 1 = bottom")

@@ -94,4 +94,3 @@ function Split({ title, groups, label }: { title: string; groups: ChannelGroup[]
     </div>
   );
 }
-

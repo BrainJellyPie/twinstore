@@ -38,3 +38,24 @@ def test_changes_are_screened_on_the_same_shoppers(client: TestClient) -> None:
     wrong = client.post(f"/api/projects/{PID}/online/sites/{site['id']}/scan", json={"candidates": [
         {"id": "fewer", "options": site["options"], "products": site["products"][:3]}]})
     assert wrong.status_code == 400 and "keep the store's products" in wrong.json()["detail"]
+
+
+def test_scan_keeps_the_normal_arrival_mix_and_paired_customer_conditions(client, monkeypatch):
+    from store_emulator.application import online
+
+    visits = []
+    run_session = online.run_session
+
+    async def record_visit(site, shopper, *args, **kwargs):
+        result = await run_session(site, shopper, *args, **kwargs)
+        visits.append((shopper.model_dump(), result.steps[0].page if result.steps else None))
+        return result
+
+    monkeypatch.setattr(online, "run_session", record_visit)
+    site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "fashion"}).json()
+    response = client.post(f"/api/projects/{PID}/online/sites/{site['id']}/scan", json={"shoppers": 40, "seed": 0,
+        "candidates": [{"id": "same", "options": site["options"]}]})
+    assert response.status_code == 200, response.text
+    assert len(visits) == 80 and visits[:40] == visits[40:]
+    arrivals = {shopper["arrival"] for shopper, _ in visits[:40]}
+    assert arrivals == {"direct", "search_engine", "social", "email"}

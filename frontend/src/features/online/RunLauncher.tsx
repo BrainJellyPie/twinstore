@@ -22,10 +22,10 @@ import { ScanChip } from "./ScanChip";
 import { ACCESSIBILITY_LABELS, ARRIVAL_HINTS, ARRIVAL_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
-const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 100, search_engine: 0, social: 0, email: 0 };
-const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, compare: 15, deal_hunt: 10, gift: 7, replenish: 8 };
+const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 30, search_engine: 45, social: 15, email: 10 };
+const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 1, browse: 98, compare: 1, deal_hunt: 0, gift: 0, replenish: 0 };
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
-const TYPICAL_STEPS = 11;
+const TYPICAL_STEPS = 4;
 
 export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initialPicked, hasCustomers, onStarted }: {
   projectId: string; sites: SiteSummary[]; firstSiteId: string;
@@ -44,7 +44,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
   const [seed, setSeed] = useState(1);
   const [maxSteps, setMaxSteps] = useState(24);
   const [mix, setMix] = useState(DEFAULT_MIX);
-  const [mobile, setMobile] = useState(55);
+  const [mobile, setMobile] = useState(68);
   const [arrivals, setArrivals] = useState<Record<Arrival, number>>(DEFAULT_ARRIVALS);
   const [source, setSource] = useState<"panel" | "project">("panel");
   const [imageWidth, setImageWidth] = useState(896);

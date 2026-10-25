@@ -359,7 +359,7 @@ def scan_site(pid: str, site_id: str, req: ScanRequest) -> ScanResult:
         variants.append((c.id, site.model_copy(update={"options": c.options, "products": c.products or site.products})))
     defaults = OnlineRunRequest(site_ids=[site.id])
     shoppers = sample_shoppers(site, req.shoppers, seed=req.seed, missions=defaults.missions,
-                               mobile_share=defaults.mobile_share)
+                               mobile_share=defaults.mobile_share, arrivals=defaults.arrivals)
     policy = RulePolicy()
 
     async def visits(store: OnlineSite) -> list[SessionResult]:

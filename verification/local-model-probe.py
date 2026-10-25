@@ -10,7 +10,9 @@ Every run gets a fresh cache; the trace contains built-in sample prompts, not he
 import argparse
 import asyncio
 import json
+import re
 import time
+from collections import Counter
 from pathlib import Path
 from urllib.parse import urlsplit
 from unittest.mock import patch
@@ -23,7 +25,7 @@ from store_emulator.application import online, template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.interview import AnalystMessage
 from store_emulator.domain.layout_options import TemplateLayoutRequest
-from store_emulator.domain.online import DesignMessage, OnlineRunResult, VariantComparison
+from store_emulator.domain.online import DesignMessage, OnlineRunRequest, OnlineRunResult, VariantComparison
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
@@ -49,6 +51,7 @@ design_requests = {
     "design-color-ko": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
     "design-long-history": "테마 색상만 #00AA33으로 변경해 주세요. 나머지 설정은 모두 그대로 두세요.",
     "design-free-popup": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
+    "design-free-popup-scan": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
     "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
     "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
 }
@@ -58,6 +61,12 @@ layout_requests = {
     "layout-category": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
     "layout-bulk-bridge": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
     "layout-move": "Move Green Tea to eye level on its current Drinks shelf. Keep its price and other products unchanged.",
+    "layout-free-item": "Make only Mineral Water free. Keep all other products and settings unchanged.",
+    "layout-full-discount": "Give Green Tea a 100 percent discount, making it free while showing its original $5.00 price. Change nothing else.",
+    "layout-set-discount": "Set Green Tea to 20 percent off its regular price. Keep all other products and settings unchanged.",
+    "layout-extra-discount": "Green Tea is already discounted from $5.00 to $4.00. Take an extra 10 percent off its CURRENT $4.00 price. Keep its original $5.00 reference price unchanged. Change nothing else.",
+    "layout-extra-discount-ko": "Green Tea는 정가 5,000원에서 4,000원으로 이미 할인 중입니다. 현재 판매가 4,000원에서 추가로 10% 할인해 주세요. 정가 표시는 5,000원으로 유지하고 다른 상품은 변경하지 마세요.",
+    "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
@@ -133,17 +142,39 @@ try:
             "design-color-ko": {"theme_color": "#00AA33"},
             "design-long-history": {"theme_color": "#00AA33"},
             "design-free-popup": {"shipping_fee": 0, "welcome_popup": "none"},
+            "design-free-popup-scan": {"shipping_fee": 0, "welcome_popup": "none"},
             "design-neon": {"page_style": "neon"},
             "design-calm": {"urgency": False, "social_proof": False, "welcome_popup": "none"},
         }[args.case]
         allowed = set(expected) | ({"page_style", "theme_color"} if args.case == "design-calm" else set())
         issues = [f"Expected {key}={value!r}, received {after[key]!r}" for key, value in expected.items() if after[key] != value]
         issues += [f"Unrequested change: {key}" for key in changed if key not in allowed]
+        if args.case == "design-free-popup-scan":
+            captured = []
+
+            def record_panel(*positional, **keywords):
+                people = sample_shoppers(*positional, **keywords)
+                captured.extend(people)
+                return people
+
+            with patch.object(online, "get_site", return_value=site), patch.object(online, "sample_shoppers", record_panel):
+                scan = online.scan_site("proj_cpu", site.id, online.ScanRequest(candidates=[
+                    online.ScanCandidate(id="same", options=site.options), online.ScanCandidate(id="draft", options=edited)]))
+            defaults = OnlineRunRequest(site_ids=[site.id])
+            expected_panel = sample_shoppers(site, scan.shoppers, seed=0, missions=defaults.missions,
+                mobile_share=defaults.mobile_share, arrivals=defaults.arrivals)
+            if captured != expected_panel:
+                issues.append("Quick scan did not use the ordinary run's default customer conditions")
+            if scan.rows[0].won or scan.rows[0].lost or any(delta.diff != 0 for delta in scan.rows[0].deltas):
+                issues.append("Unchanged store did not produce an identical paired result")
+            result.update(scan=scan.model_dump(mode="json"), arrivals=dict(Counter(p.arrival for p in captured)),
+                expected_arrivals=dict(Counter(p.arrival for p in expected_panel)))
+            (output / "scan-shoppers.json").write_text(json.dumps([p.model_dump(mode="json") for p in captured], ensure_ascii=False))
         result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
             reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
             characters=sum(len(message.text) for message in messages))
     elif args.case in layout_requests:
-        currency = "KRW" if args.case == "layout-price-krw" else "USD"
+        currency = "KRW" if args.case in {"layout-price-krw", "layout-extra-discount-ko"} else "USD"
         scale = 10 if currency == "KRW" else 1
         store = Store(id="cpu-layout", name="Corner shop", type="convenience", currency=currency, grid_size=(8, 8), racks=[
             Rack(id="drinks", rack_name="Drinks", type="shelf", shape=[[1]], position=(3, 3), slots=[
@@ -162,6 +193,9 @@ try:
             items = [SlotItem(sku=f"drink-{i:02}", name=f"Beverage {i:02}", price=500 + i * 10) for i in range(30)]
             store.racks[0].shape = [[1, 1]]
             store.racks[0].slots = [Slot(block=i // 4, face="N", level=i % 4 + 1, items=items[i * 4:(i + 1) * 4]) for i in range(8)]
+        if args.case in {"layout-set-discount", "layout-extra-discount", "layout-extra-discount-ko"}:
+            tea = store.racks[0].slots[0].items[0]
+            tea.price, tea.regular_price = 400 * scale, 500 * scale
         expected = products(store)
         if args.case == "layout-price-krw":
             expected["tea"]["price"] = 3000
@@ -172,6 +206,17 @@ try:
             for item in expected.values():
                 if item["rack"] == "drinks":
                     item["price"] = round(item["price"] * .9)
+        elif args.case == "layout-free-item":
+            expected["water"]["price"] = 0
+        elif args.case == "layout-full-discount":
+            expected["tea"].update(price=0, regular_price=500)
+        elif args.case == "layout-set-discount":
+            expected["tea"].update(price=400, regular_price=500)
+        elif args.case in {"layout-extra-discount", "layout-extra-discount-ko"}:
+            expected["tea"].update(price=360 * scale, regular_price=500 * scale)
+        elif args.case == "layout-sequence":
+            expected["tea"].update(price=360, regular_price=400)
+            expected["water"]["promo"] = "SALE"
         else:
             expected["tea"]["level"] = 3
         with patch.object(httpx.AsyncClient, "send", traced_send):
@@ -192,6 +237,9 @@ try:
             warnings += skipped + transfer.skipped
             result["transferred_changes"] = len(transfer.changes)
         after = products(edited)
+        if args.case == "layout-free-item" and after["water"]["regular_price"] in {0, 100}:
+            # A free offer may be an everyday zero price or a 100% discount with a was-price.
+            expected["water"]["regular_price"] = after["water"]["regular_price"]
         issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
         if set(after) != set(expected):
             issues.append("Product identities changed")
@@ -255,8 +303,10 @@ try:
             if any(word in reply.answer.casefold() for word in ["major driver", "differs significantly", "significant improvement"]):
                 issues.append("Unsupported causal or significance claim in this inconclusive fixture")
         else:
-            if not reply.figures or "25" not in reply.answer or "12.5" not in reply.answer:
-                issues.append("Expected cited overall conversion rates of 25% and 12.5%")
+            expected_rates = {round(summary.conversion * 100, 1) for summary in report.variants}
+            quoted_rates = {float(value) for value in re.findall(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%|percent\b)", reply.answer, re.I)}
+            if not reply.figures or not expected_rates <= quoted_rates:
+                issues.append(f"Expected cited overall conversion rates of {sorted(expected_rates)} percent")
             if not any(word in reply.answer.casefold() for word in ["not clear", "includes zero", "includes 0", "not statistically significant"]):
                 issues.append("Expected the interval including zero to be recognized as inconclusive")
             if any(word in reply.answer.casefold() for word in ["is statistically significant", "is significant", "significant increase", "significant improvement"]):
