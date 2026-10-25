@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 — The same customers in both twins, and answers that become tests
+
 - The online report on a phone: the run's title takes the whole row (it was
   squeezed beside the action buttons into one word per line) and the shopper
   cards are one swipeable row, which takes about 3,000 px off the page.

@@ -84,7 +84,7 @@ function HomePage() {
               </div>
             )}
             <div className="glass inline-flex animate-rise items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium">
-              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.6</span>
+              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.7</span>
               <Sparkles className="size-3.5 text-heat-2" aria-hidden />
               {t("heroBadge")}
             </div>
