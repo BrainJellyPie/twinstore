@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep distinct shelf offers separate when voting on vision-shopper entry
+  plans. Shared SKUs at different locations no longer let the first model's
+  minority choice override the majority's shelf, price or quantity. Structured
+  vote identities also prevent literal SKU separators from merging choices.
+
 - Preserve a vision shopper's named category when stored product names have
   surrounding whitespace. Exact and bounded-prefix matches now compare trimmed
   names, preventing a padded product from redirecting purchases to a different

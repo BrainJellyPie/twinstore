@@ -11,6 +11,7 @@ Several equally good candidates are drawn by the customer's seeded RNG (shelf le
 promotion), so the same customer always gets the same SKU.
 """
 
+import json
 import random
 from dataclasses import dataclass
 
@@ -38,8 +39,12 @@ class PlanMatch:
 
     @property
     def key(self) -> str:
-        """Identity of what was asked for, for ensemble votes: the candidate set (or "")."""
-        return "|".join(sorted({entry[2].sku for entry in self.candidates}))
+        """Resolved offer set for ensemble votes; a SKU alone can have several prices or locations."""
+        if not self.candidates:
+            return ""
+        offers = {(rack.id, slot.block, slot.face.value, slot.level, item.sku)
+                  for rack, slot, item, _, _ in self.candidates}
+        return json.dumps(sorted(offers), ensure_ascii=False, separators=(",", ":"))
 
 
 def _category_entries(catalog: list[CatalogEntry], category: str, *, clipped: bool = False) -> list[CatalogEntry]:
