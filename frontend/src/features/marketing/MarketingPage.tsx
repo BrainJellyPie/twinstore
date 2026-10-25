@@ -1,7 +1,7 @@
 // Marketing studio: A/B tests of price, promotion, placement and packaging on the store's twin, concept tests with
 // synthetic respondents, and the product image library both use.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardList, Copy, FlaskConical, Grid3x3, Images, Loader2, MessagesSquare, Plus, Rows3, Trash2, TriangleAlert } from "lucide-react";
 
@@ -166,6 +166,16 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     select("");
   };
 
+  // A tab opened from a link can sit past the edge of the phone's scrolling tab row.
+  const tabRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = tabRow.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (row && chip && (chip.offsetLeft < row.scrollLeft || chip.offsetLeft + chip.offsetWidth > row.scrollLeft + row.clientWidth)) {
+      row.scrollTo?.({ left: chip.offsetLeft - 8 });
+    }
+  }, [tab]);
+
   useEffect(() => {
     if (tab === "products" || tab === "pilot" || tab === "inventory" || tab === "prices" || tab === "protocols" || tab === "priceChecks" || selected[tab] !== null || !jobs.length) return;
     // Open the latest test on first visit; "New test" sets the selection to "" afterwards.
@@ -179,17 +189,18 @@ export function MarketingPage({ projectId }: { projectId: string }) {
           <h1 className="font-display text-[1.7rem] leading-tight tracking-[-0.04em]">{t("mkTitleMain")} <span className="font-accent aurora-text">{t("mkTitleAccent")}</span></h1>
           <p className="text-sm text-muted-foreground">{t(TABS.find((item) => item.id === tab)!.blurb)}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             {t("mkLayout")}
             <select value={activeSetup} onChange={(e) => setSetupId(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2.5 text-sm text-foreground">
               {setups.map((s) => <option key={s.id} value={s.id}>{s.name || s.id}</option>)}
             </select>
           </label>
-          <div className="flex flex-wrap rounded-xl bg-foreground/[0.055] p-1" role="tablist">
+          {/* One scrolling row on a phone, so the studio's content starts near the top. */}
+          <div ref={tabRow} className="relative flex max-w-full overflow-x-auto rounded-xl bg-foreground/[0.055] p-1 [scrollbar-width:none] sm:flex-wrap" role="tablist">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-                className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
                   tab === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                 <Icon className="size-4" /> {t(label)}
                 {id === "products" && packages.length > 0 && <span className="num rounded-full bg-foreground/[0.08] px-1.5 text-[0.68rem]">{packages.length}</span>}

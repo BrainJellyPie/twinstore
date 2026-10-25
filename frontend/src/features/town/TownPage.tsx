@@ -299,14 +299,17 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
     <details ref={panel} className="rounded-lg border p-3" open={!hasTown}>
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> {t("areaGenerateTitle")}</summary>
       <div className="mt-3 space-y-2 text-xs">
-        <div className="flex items-start gap-1.5">
-          <textarea value={area} onChange={(e) => setArea(Array.from(e.target.value).slice(0, 800).join(""))} rows={2} aria-label={t("areaDescribeLabel")}
+        <div className="space-y-1.5">
+          <textarea value={area} onChange={(e) => setArea(Array.from(e.target.value).slice(0, 800).join(""))} rows={3} aria-label={t("areaDescribeLabel")}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDescription(area); } }}
             placeholder={t("areaDescribePlaceholder")}
-            className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
-          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={areaLength < 5 || describe.isPending} onClick={() => requestDescription(area)}>
-            {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {t("areaSetUp")}
-          </Button>
+            className="block w-full resize-y rounded-lg border bg-background px-2.5 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-muted-foreground tabular-nums">{Array.from(area).length}/800</span>
+            <Button type="button" size="sm" disabled={areaLength < 5 || describe.isPending} onClick={() => requestDescription(area)}>
+              {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {t("areaSetUp")}
+            </Button>
+          </div>
         </div>
         {rationale && <p className="text-muted-foreground">{rationale} {t("areaCheckSettings")}</p>}
         {describe.error && <p role="alert" className="text-destructive">{describe.error.message}</p>}
