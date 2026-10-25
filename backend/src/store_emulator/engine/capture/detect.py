@@ -530,7 +530,7 @@ class _GroundedBox(BaseModel):
 
 
 class _Grounding(BaseModel):
-    products: list[_GroundedBox] = Field(default_factory=list[_GroundedBox], max_length=80)
+    products: list[_GroundedBox] = Field(max_length=80)
 
 
 VLM_GROUNDING_SYSTEM_PROMPT = "You detect products on store shelf photos. Answer with JSON only."
@@ -538,6 +538,7 @@ VLM_GROUNDING_PROMPT = (
     "Find every product facing on the shelves in this photo: one box per visible package "
     "(bottle, can, box, bag, cup). Do not box shelves, price tags or signs. "
     "Return products: [{{\"box_2d\": [{box_order}]}}]. Return coordinates only; do not name or describe products. "
+    "Always include products; use an empty list when no products are visible. "
     "Coordinates: {convention}. Use finite numbers only, never NaN or Infinity."
 )
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require an explicit `products` list in shelf-grounding model replies. Missing
+  or misnamed lists now get the existing correction attempt before classic
+  detection is used; a deliberate empty list remains valid. Old schema cache
+  entries cannot turn a missing answer into a persistent empty detection.
+
 - Retry model-written shopper searches whose minimum spend or visit duration
   exceeds the maximum. Contradictory ranges no longer become cached empty
   results; equal, zero and one-sided bounds retain their existing meanings.
