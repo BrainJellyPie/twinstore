@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate cached model responses with the same strict JSON rules as fresh
+  Instructor responses. Invalid cached quantities, coordinates and other typed
+  values now trigger a fresh request instead of silently changing simulation
+  results. Valid tuple, enum, date and decimal values still round-trip.
+
 - Reject boolean answers in numeric model measurements: survey ratings and
   prices, shelf badges and interest, storefront scores, and receipt quantities
   and amounts. `true` and `false` can no longer become 1 and 0 through response

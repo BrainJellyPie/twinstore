@@ -453,7 +453,10 @@ class LiteLLMClient:
             data: object = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict):
                 raise ValueError("expected a cache entry object")
-            result = response_model.model_validate(cast(dict[str, object], data)["result"])
+            # Match Instructor's strict JSON validation, including JSON arrays
+            # for tuple fields. Cache reuse must not add numeric/type coercions.
+            result = response_model.model_validate_json(
+                json.dumps(cast(dict[str, object], data)["result"]), strict=True)
         except FileNotFoundError:
             return None
         except (OSError, ValueError, KeyError) as e:
