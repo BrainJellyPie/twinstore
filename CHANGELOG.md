@@ -16,6 +16,10 @@
   now sits under the text instead of over the end of the headline, and on
   desktop the headline wraps before reaching the button.
 
+- Show only the configured welcome discount: zero-percent popups no longer
+  promise 10% off, and rule shoppers receive no discount incentive for them.
+  Offers without a coupon code no longer invent a `WELCOME` code.
+
 - Make shopper tracking easy to find in a store's results: a **Track a shopper**
   banner tops the Results tab and opens the Shoppers tab, every shopper in the
   list has its own **Follow in 3D** button, and a shopper's page leads with a
@@ -34,6 +38,8 @@
   bars, a segment heat map and sticky section links replace the plain tables,
   and a full-width button hides the store list. Runs record each visit's
   furthest funnel stage and the page flow; older runs show the rest of the report.
+  Count the busiest route from complete recorded page prefixes, avoiding routes
+  assembled from unrelated shoppers' popular transitions.
 
 - Keep online-store editing and conflicting writes locked until a save and its
   refreshed snapshot finish; failed writes preserve the draft for correction or retry.

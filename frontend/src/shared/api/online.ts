@@ -211,6 +211,7 @@ export interface VariantSummary {
   recovery: RecoveryRow | null;
   rival?: RivalRow | null;
   flow?: FlowLink[];
+  flow_route?: (PageKind | SessionOutcome)[];
 }
 
 export type DeltaMetric =

@@ -82,7 +82,10 @@ it("draws the page flow with the busiest route and follows a page on hover", () 
     { depth: 1, source: "product", target: null, outcome: "left", sessions: 1 },
     { depth: 2, source: "order_complete", target: null, outcome: "purchased", sessions: 1 },
   ];
-  const { container } = render(<PageFlow variants={[summary({ flow }), summary({ site_id: "s2", site_name: "Variant", flow: [] })]} />);
+  const { container } = render(<PageFlow variants={[
+    summary({ flow, flow_route: ["home", "product", "order_complete", "purchased"] }),
+    summary({ site_id: "s2", site_name: "Variant", flow: [] }),
+  ]} />);
   expect(screen.getByRole("img", { name: "Page flow of the visits to Control" })).toBeTruthy();
   const route = screen.getByText("Busiest route:").parentElement!;
   expect(route.textContent).toBe("Busiest route:Home page→Product page→Order confirmed→Ordered");
@@ -96,4 +99,29 @@ it("draws the page flow with the busiest route and follows a page on hover", () 
   expect(screen.getByText("Visits: 3 · 100%")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Variant" }));
   expect(screen.getByRole("img", { name: "Page flow of the visits to Variant" })).toBeTruthy();
+});
+
+it("shows a recorded journey rather than combining unrelated shoppers' busiest links", () => {
+  const flow: online.FlowLink[] = [
+    { depth: 0, source: "home", target: "product", outcome: null, sessions: 4 },
+    { depth: 0, source: "search", target: "product", outcome: null, sessions: 3 },
+    { depth: 0, source: "category", target: "product", outcome: null, sessions: 3 },
+    { depth: 1, source: "product", target: "cart", outcome: null, sessions: 4 },
+    { depth: 1, source: "product", target: "checkout", outcome: null, sessions: 6 },
+    { depth: 2, source: "cart", target: null, outcome: "abandoned_cart", sessions: 4 },
+    { depth: 2, source: "checkout", target: null, outcome: "purchased", sessions: 6 },
+  ];
+  const variant = { ...summary({ flow, sessions: 10 }), flow_route: ["home", "product", "cart", "abandoned_cart"] as const };
+  render(<PageFlow variants={[{ ...variant, flow_route: [...variant.flow_route] }]} />);
+  const route = screen.getByText("Busiest route:").parentElement!;
+  expect(route.textContent).toContain("Home page→Product page→Cart");
+  expect(route.textContent).not.toContain("Checkout");
+});
+
+it("keeps older flow charts without inventing their most common complete route", () => {
+  render(<PageFlow variants={[summary({ flow: [
+    { depth: 0, source: "home", target: null, outcome: "bounced", sessions: 3 },
+  ] })]} />);
+  expect(screen.getByRole("img", { name: "Page flow of the visits to Control" })).toBeTruthy();
+  expect(screen.queryByText("Busiest route:")).toBeNull();
 });

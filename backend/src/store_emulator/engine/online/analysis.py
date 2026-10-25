@@ -122,6 +122,7 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
                 avg_steps=round(mean(_steps(s) for s in group), 2),
                 bounce_rate=_share(sum(s.outcome == "bounced" for s in group), len(group)),
             ))
+    flow, flow_route = page_flow(sessions)
     return VariantSummary(
         site_id=site.id, site_name=site.name, sessions=n, purchases=len(bought), conversion=_share(len(bought), n),
         revenue=revenue, aov=round(revenue / len(bought), 2) if bought else 0.0,
@@ -139,21 +140,26 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
         exits=[ExitRow(page=PageKind(page), sessions=count) for page, count in exits.most_common()],
         segments=segments, products=products, searches=searches, clicks=clicks,
         frictions=frictions(site, sessions), survey=survey_summary(sessions), ads=ad_rows(site, sessions),
-        recovery=recovery(site, sessions), rival=rival(sessions) if with_rival else None, flow=page_flow(sessions),
+        recovery=recovery(site, sessions), rival=rival(sessions) if with_rival else None, flow=flow, flow_route=flow_route,
     )
 
 
-def page_flow(sessions: list[SessionResult]) -> list[FlowLink]:
+def page_flow(sessions: list[SessionResult]) -> tuple[list[FlowLink], list[PageKind | SessionOutcome]]:
     """Each visit's first pages, step by step, then how it ended: the links of a page-flow (Sankey) chart."""
     links: Counter[tuple[int, PageKind, PageKind | None, SessionOutcome | None]] = Counter()
+    routes: Counter[tuple[PageKind | SessionOutcome, ...]] = Counter()
     for session in sessions:
         pages = [step.page for step in session.steps[:_FLOW_DEPTH]]
         for depth, (source, target) in enumerate(zip(pages, pages[1:])):
             links[depth, source, target, None] += 1
         if pages:
             links[len(pages) - 1, pages[-1], None, session.outcome] += 1
-    return [FlowLink(depth=depth, source=source, target=target, outcome=outcome, sessions=count)
-            for (depth, source, target, outcome), count in sorted(links.items(), key=lambda kv: (kv[0][0], -kv[1]))]
+            routes[(*pages, session.outcome)] += 1
+    # Choosing each most popular outgoing link can splice unrelated visitors
+    # into a route nobody took. Count complete observed prefixes instead.
+    route = list(routes.most_common(1)[0][0]) if routes else []
+    return ([FlowLink(depth=depth, source=source, target=target, outcome=outcome, sessions=count)
+             for (depth, source, target, outcome), count in sorted(links.items(), key=lambda kv: (kv[0][0], -kv[1]))], route)
 
 
 def rival(sessions: list[SessionResult]) -> RivalRow:

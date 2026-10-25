@@ -614,6 +614,7 @@ class VariantSummary(BaseModel):
     recovery: RecoveryRow | None = None  # stores that send the cart reminder
     rival: RivalRow | None = None  # runs with a rival shop
     flow: list[FlowLink] = []  # the first pages of each visit ([] in older runs)
+    flow_route: list[PageKind | SessionOutcome] = []  # most common observed page prefix and its final outcome
 
 
 class PairedDelta(BaseModel):

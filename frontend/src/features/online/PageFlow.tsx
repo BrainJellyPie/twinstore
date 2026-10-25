@@ -81,23 +81,6 @@ function layout(flow: FlowLink[], sessions: number) {
   return { nodes: [...nodes.values()], ribbons, columns, x };
 }
 
-/** The busiest route: from the busiest first page, always the widest ribbon on. */
-function topRoute(flow: FlowLink[]): (PageKind | SessionOutcome)[] {
-  const first = flow.filter((l) => l.depth === 0);
-  const starts = new Map<PageKind, number>();
-  for (const l of first) starts.set(l.source, (starts.get(l.source) ?? 0) + l.sessions);
-  let page = [...starts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const route: (PageKind | SessionOutcome)[] = [];
-  for (let depth = 0; page; depth++) {
-    route.push(page);
-    const best = flow.filter((l) => l.depth === depth && l.source === page).sort((a, b) => b.sessions - a.sessions)[0];
-    if (!best) break;
-    if (best.target === null) { if (best.outcome) route.push(best.outcome); break; }
-    page = best.target;
-  }
-  return route;
-}
-
 export function PageFlow({ variants }: { variants: VariantSummary[] }) {
   const { t } = useI18n();
   const [store, setStore] = useState(0);
@@ -109,7 +92,7 @@ export function PageFlow({ variants }: { variants: VariantSummary[] }) {
   const name = (n: Node) => (n.page ? t(PAGE_LABELS[n.page]) : t(OUTCOME_LABELS[n.outcome!]));
   const lit = (r: Ribbon) => !focus || focus.ribbon === r.key || focus.node === r.from.id || focus.node === r.to.id;
   const share = (n: number) => `${summary.sessions ? Math.round((n / summary.sessions) * 100) : 0}%`;
-  const route = topRoute(flow);
+  const route = summary.flow_route ?? [];
   const hovered = focus?.ribbon ? ribbons.find((r) => r.key === focus.ribbon) : null;
   const hoveredNode = focus?.node ? nodes.find((n) => n.id === focus.node) : null;
 
