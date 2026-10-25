@@ -84,6 +84,10 @@
   choice across navigation while preserving older saved visits' appearance.
 - Honor mobile-only online panels for every age group. Apply age preferences
   to device odds so both 0% and 100% mobile settings retain their meaning.
+- Validate explicit online model selections before starting: incomplete choices,
+  unavailable models and invalid ensemble weights no longer fall through to the
+  server default. Online ensembles offer their supported mixture mode; requests
+  for shelf voting are rejected before creating a run.
 
 - Add eyesight, friction and exit-survey research to online stores. Shoppers
   can have low vision, red–green colour blindness or older eyes (all, none or a

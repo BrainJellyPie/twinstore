@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlaskConical, Loader2, Play } from "lucide-react";
 
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
+import { useAvailableModels } from "@/features/runs/hooks";
 import {
   ACCESSIBILITY, copySite, getSite, MISSIONS, onlineKeys, startRun, type Accessibility, type ShopperMission, type ShopperPolicyKind,
   type SiteSummary,
@@ -50,6 +51,21 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
   const sessions = shoppers * (chosen.length + experiments.length);
+  const models = useAvailableModels(policy !== "rule");
+  const availableModels = models.data?.filter((m) => policy !== "vlm" || m.vision);
+  let modelError: string | null = null;
+  if (policy !== "rule" && model.kind !== "default") {
+    if (!availableModels) modelError = t(models.isError ? "onRunModelsFailed" : "loadingModels");
+    else if (model.kind === "single") {
+      modelError = !model.model ? t("onRunChooseModel")
+        : availableModels.some((m) => m.ref === model.model) ? null : t("onRunModelUnavailable");
+    } else {
+      const members = model.ensemble?.members ?? [];
+      if (!members.length) modelError = t("onRunNeedEnsemble");
+      else if (members.some((member) => !availableModels.some((m) => m.ref === member.model))) modelError = t("onRunModelUnavailable");
+      else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = t("invalidWeights");
+    }
+  }
 
   const start = useMutation({
     mutationFn: async () => {
@@ -190,7 +206,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
         </div>
         {policy !== "rule" && (
           <>
-            <ModelPicker engine={policy === "vlm" ? "vlm_glance" : "pattern_intent_impulse"} value={model} onChange={setModel} />
+            <ModelPicker engine={policy === "vlm" ? "vlm_glance" : "pattern_intent_impulse"} value={model} onChange={setModel} allowVote={false} />
+            {modelError && <p id="run-model-error" role="alert" className="text-xs text-destructive">{modelError}</p>}
             <div className="flex flex-wrap items-center gap-4 text-xs">
               {policy === "vlm" && (
                 <label className="flex items-center gap-2">{t("onRunImageWidth")}
@@ -212,7 +229,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
           </>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => start.mutate()} disabled={start.isPending || chosen.length === 0 || mixTotal === 0}>
+          <Button onClick={() => { if (!modelError) start.mutate(); }} disabled={start.isPending || chosen.length === 0 || mixTotal === 0 || modelError !== null}>
             {start.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
             {experiments.length ? t("onXpStart") : chosen.length > 1 ? t("onRunStartCompare", { count: chosen.length }) : t("onRunStart")}
           </Button>

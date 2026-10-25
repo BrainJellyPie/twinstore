@@ -25,11 +25,13 @@ export function ModelPicker({
   defaultModel,
   value,
   onChange,
+  allowVote = true,
 }: {
   engine: EngineType;
   defaultModel?: string;
   value: ModelChoice;
   onChange: (next: ModelChoice) => void;
+  allowVote?: boolean;
 }) {
   const { t } = useI18n();
   const query = useAvailableModels();
@@ -196,7 +198,7 @@ export function ModelPicker({
               {t("mixtureHint")}
             </label>
           </div>
-          {engine === "vlm_glance" && (
+          {engine === "vlm_glance" && allowVote && (
             <label className="flex items-center gap-1 pl-6 text-xs">
               <input
                 type="radio"
