@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- File pickers (CSV uploads in the marketing studio, run tools and elsewhere)
+  show their button as a rounded pill that matches the app instead of the
+  browser's bare grey button.
 - Both analysts know both channels: a store run's analyst now also reads how
   the same customers bought online (from the newest finished online run of
   the store's customers), as the online analyst already reads the store run,
