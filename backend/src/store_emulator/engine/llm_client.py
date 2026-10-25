@@ -265,6 +265,7 @@ class LiteLLMClient:
         self._api_key = config.api_key.get_secret_value() if config.api_key else None
         self.max_parallel = config.max_parallel
         self._chat_template_thinking = config.chat_template_thinking
+        self._structured_sdk_retries = config.structured_sdk_retries
         self._slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
         mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
         self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
@@ -367,10 +368,10 @@ class LiteLLMClient:
                 loopback = host in {"localhost", "localhost."} or bool(host and ipaddress.ip_address(host).is_loopback)
             except ValueError:
                 loopback = False
-            if structured and loopback:
-                # Instructor already owns this call's attempt budget. SDK retries
-                # otherwise multiply local-server failures/timeouts by three.
-                kwargs["num_retries"] = 0
+        if structured and (loopback or self._structured_sdk_retries is not None):
+            # Instructor already owns this call's attempt budget, including
+            # named self-hosted servers on another machine.
+            kwargs["num_retries"] = self._structured_sdk_retries if self._structured_sdk_retries is not None else 0
         if not _accepts(self.model, "max_tokens", self.api_base):
             kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
         if _accepts(self.model, "temperature", self.api_base):

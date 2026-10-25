@@ -64,6 +64,8 @@ class LLMConfig(BaseModel):
     max_parallel: int | None = Field(default=None, ge=1, exclude=True)
     # Resolved for servers with chat-template controls (llama.cpp/vLLM). Runtime only.
     chat_template_thinking: bool | None = Field(default=None, exclude=True)
+    # Named self-hosted providers let Instructor own structured attempts. Runtime only.
+    structured_sdk_retries: int | None = Field(default=None, ge=0, exclude=True)
 
 
 class DwellRange(BaseModel):

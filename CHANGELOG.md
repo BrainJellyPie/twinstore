@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep structured-call retry limits for named self-hosted servers on other
+  machines. A three-attempt local task no longer becomes nine HTTP requests
+  through nested SDK retries when its endpoint uses a LAN address or hostname.
+
 - Check for conflicting shelf offers before drafting a staff script. A SKU
   with different names, prices or promotions no longer supplies an arbitrary
   first offer to the model; identical repeat placements remain supported.

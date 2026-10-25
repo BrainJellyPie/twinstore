@@ -360,7 +360,7 @@ def resolve_model(
     base = base or LLMConfig()
     parsed = ModelRef.parse(ref)
     if parsed is None:
-        resolved = _on_local_server(base.model_copy(update={"model": ref}))
+        resolved = _on_local_server(base.model_copy(update={"model": ref, "structured_sdk_retries": None}))
         resolved = resolved.model_copy(update={"cache_namespace": _local_cache_namespace(resolved.api_base)})
         kind = _PLAIN_PREFIX.get(ref.partition("/")[0])
         if kind is None or base.api_base is not None or base.api_key is not None:
@@ -405,6 +405,7 @@ def resolve_model(
         "max_parallel": min(parallel, base.max_parallel) if parallel and base.max_parallel else parallel or base.max_parallel,
         "cache_namespace": _local_cache_namespace(api_base),
         "chat_template_thinking": False if parsed.provider in {ProviderKind.LLAMACPP, ProviderKind.VLLM} else None,
+        "structured_sdk_retries": 0 if preset.local else None,
     })
 
 
