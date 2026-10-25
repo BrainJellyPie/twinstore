@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve complete inputs on native Ollama requests. Explicit context-limit
+  rejections can now reach bounded starter/customer recovery even when the SDK
+  wraps HTTP 400 as a connection error; unrelated failures remain terminal.
+
 - Preserve Ollama's output-limit finish reason through the SDK. Truncated
   structured replies now reach bounded recovery instead of being accepted or
   retried as ordinary JSON errors; older native-response caches are excluded.

@@ -17,7 +17,7 @@ import instructor
 import litellm
 from instructor.core.exceptions import IncompleteOutputException, InstructorError
 from instructor.core.hooks import Hooks
-from litellm.exceptions import AuthenticationError, BadRequestError, ContextWindowExceededError
+from litellm.exceptions import APIConnectionError, AuthenticationError, BadRequestError, ContextWindowExceededError
 from pydantic import BaseModel, ValidationError
 
 from store_emulator.domain.config import LLMConfig
@@ -67,19 +67,30 @@ def _request_errors(error: BaseException) -> list[BaseException]:
 
 def is_context_overflow(error: BaseException) -> bool:
     """Recognize a terminal input-context rejection, preserving the original HTTP status."""
-    if not isinstance(error, BadRequestError):
+    causes = _request_errors(error)
+    if isinstance(error, APIConnectionError) and getattr(error, "llm_provider", None) == "ollama_chat":
+        # The native adapter can wrap a real HTTP 400 as a synthetic connection
+        # error with status 500. Require the original HTTP response as evidence.
+        causes = [cause for cause in causes if not (
+            isinstance(cause, APIConnectionError) and getattr(cause, "llm_provider", None) == "ollama_chat"
+            and getattr(cause, "response", None) is None)]
+        if not any(getattr(getattr(cause, "response", None), "status_code", None) == 400 for cause in causes):
+            return False
+    elif not isinstance(error, BadRequestError):
         return False
-    for cause in _request_errors(error):
+    for cause in causes:
         statuses = (getattr(cause, "status_code", None), getattr(getattr(cause, "response", None), "status_code", None))
         if any(isinstance(status, int) and status != 400 for status in statuses):
             return False
     if isinstance(error, ContextWindowExceededError):
         return True
-    # LiteLLM can discard llama.cpp's structured error type/body. Accept only
-    # its concrete token-count messages, not generated text mentioning context.
+    # LiteLLM can discard the server's structured error type/body. Accept only
+    # concrete llama.cpp/Ollama messages, not generated text mentioning context.
     return re.search(
         r"(?:request \(\d+ tokens\) exceeds the available context size \(\d+ tokens\)"
-        r"|input \(\d+ tokens\) is larger than the max context size \(\d+ tokens\))",
+        r"|input \(\d+ tokens\) is larger than the max context size \(\d+ tokens\)"
+        r"|the prompt is longer than the context length currently available to the model; "
+        r"shorten the prompt, adjust the context length in settings, or use a model with a longer context length)",
         str(error),
     ) is not None
 
@@ -381,6 +392,10 @@ class LiteLLMClient:
             # Self-hosted hybrid models otherwise spend short answer budgets on
             # reasoning before their JSON. Only known template-capable providers opt in.
             kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": self._chat_template_thinking}}
+        if self.model.startswith("ollama_chat/"):
+            # Native Ollama otherwise drops earlier input to fit its context.
+            # Keep requirements intact so oversized tasks can recover explicitly.
+            cast(dict[str, object], kwargs.setdefault("extra_body", {}))["truncate"] = False
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -440,6 +455,7 @@ class LiteLLMClient:
         if self.model.startswith("ollama_chat/"):
             # Older SDKs accepted native length cutoffs as successful replies.
             extra["ollama_finish_reason"] = "native-v1"
+            extra["ollama_context"] = "preserve-input-v1"
         if self._chat_template_thinking is not None:
             extra["chat_template_thinking"] = str(self._chat_template_thinking)
         if self.seed is None and seed is not None:
