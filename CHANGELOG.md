@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reject boolean answers in numeric model measurements: survey ratings and
+  prices, shelf badges and interest, storefront scores, and receipt quantities
+  and amounts. `true` and `false` can no longer become 1 and 0 through response
+  or cache validation. Numeric strings and explicit unknown receipt amounts
+  keep their existing handling; prompts now state the numeric requirement.
+
 - Give photographed products with no usable name or brand a capture-specific
   SKU per shelf position. Punctuation-only labels no longer collapse different
   goods into the same identity, even when their pack sizes match. Printed prices

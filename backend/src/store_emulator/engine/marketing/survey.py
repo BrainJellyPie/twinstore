@@ -88,6 +88,13 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per
     open_only = _only_open_question(questions, stimuli)
 
     class SurveyResponse(StudyResponse):
+        @field_validator("*", mode="before")
+        @classmethod
+        def numeric_answers(cls, value: object) -> object:
+            if isinstance(value, bool):
+                raise ValueError("Survey ratings and prices must be numbers, not true or false.")
+            return value
+
         @field_validator("preferred", mode="before", check_fields=False)
         @classmethod
         def canonical_choice(cls, value: object) -> object:
@@ -131,7 +138,8 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per
 SURVEY_PROMPT = """You answer a short shopper survey as the person described below, honestly and in character: your age,
 budget, habits and mood decide your answers, not what a marketer would like to hear. Look at the products in the image
 (labelled with letters). Answer every question. Scales run from 1 to 5; most people use the middle of the scale for
-ordinary products. Prices are finite, realistic amounts per product in the currency given, without symbols;
+ordinary products. Ratings and prices must be numbers, never true or false.
+Prices are finite, realistic amounts per product in the currency given, without symbols;
 do not repeat digits or exceed the schema's price limits. Price thresholds must be in this order:
 too_cheap <= cheap <= expensive <= too_expensive; equal thresholds are allowed. Write any text in English.
 If the questionnaire only asks for your opinion, give a nonblank answer in why.

@@ -8,10 +8,10 @@ import asyncio
 import random
 from store_emulator.engine.perception.product_images import ProductImageLoader
 from collections.abc import Callable, Sequence
-from typing import Literal, Protocol, Self
+from typing import Literal, Protocol, Self, cast
 
 import numpy as np
-from pydantic import BaseModel, Field, JsonValue, create_model, model_validator
+from pydantic import BaseModel, Field, JsonValue, create_model, field_validator, model_validator
 
 from store_emulator.domain.marketing import ShareComparison, ShelfChoice, SkuShare
 from store_emulator.domain.persona import Persona
@@ -30,7 +30,8 @@ class VisionLLM(Protocol):
 
 SHELF_TEST_PROMPT = """You are a shopper standing in front of one store shelf, as the person described below. Look at
 the shelf the way you would in a real store: you notice some products before others, and you take what suits you, or
-nothing. Each product has a number badge. Answer in character, with numbers from the badges. Write any text in English.
+nothing. Each product has a number badge. Answer in character, with numbers from the badges, never true or false.
+Write any text in English.
 Use an empty string, not null, when no explanation is given."""
 
 
@@ -38,6 +39,18 @@ class ShelfAnswer(StudyResponse):
     noticed: list[int] = Field(default_factory=list[int], max_length=3, description="badge numbers of the products that caught your eye first, in order")
     pick: int = Field(ge=0, description="badge number of the one product you would take, 0 = none")
     why: str = Field(default="", max_length=240)
+
+    @field_validator("pick", "noticed", mode="before")
+    @classmethod
+    def _numeric_badges(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("Product badges must be numbers, not true or false; use pick=0 or noticed=[] for none.")
+        if isinstance(value, list):
+            numbers = cast(list[object], value)
+            if any(isinstance(number, bool) for number in numbers):
+                raise ValueError("Noticed badges must be numbers, not true or false; use [] for none.")
+            return numbers
+        return value
 
 
 def render_arm(rack: Rack, face: Face, currency: str, seed: int, image_loader: ProductImageLoader | None = None) -> ShelfView:

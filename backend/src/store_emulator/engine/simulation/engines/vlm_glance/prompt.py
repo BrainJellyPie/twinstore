@@ -33,6 +33,7 @@ Reply in JSON:
 - interest: 0 to 10
 - reason: a few words
 Always include an integer interest score, including 0 when nothing tempts the shopper. Do not omit this measurement.
+Use numbers for interest and number, never true or false.
 A positive interest score must identify the product that caused it. If no product is chosen, interest must be 0.
 Use empty strings, not null, for absent text."""
 
@@ -79,6 +80,13 @@ class ShelfGlance(BaseModel):
     number: int = Field(default=0, ge=0, le=10000)
     interest: int = Field(default=0, ge=0, le=10)
     reason: str = Field(default="", max_length=80)
+
+    @field_validator("number", "interest", mode="before")
+    @classmethod
+    def _numeric_measurements(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("Interest and product badge must be numbers, not true or false.")
+        return value
 
     @field_validator("product", "reason", mode="before")
     @classmethod

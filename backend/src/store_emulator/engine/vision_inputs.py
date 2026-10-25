@@ -72,6 +72,13 @@ class _StorefrontRating(BaseModel):
     overall: int = Field(ge=0, le=10, description="how likely a passer-by is to walk in")
     reasons: str = Field(default="", max_length=240)
 
+    @field_validator("signage", "entrance", "window", "upkeep", "overall", mode="before")
+    @classmethod
+    def _numeric_ratings(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("Storefront ratings must be numbers from 0 to 10, not true or false.")
+        return value
+
     @field_validator("reasons", mode="before")
     @classmethod
     def _optional_reason(cls, value: object) -> object:
@@ -81,7 +88,8 @@ class _StorefrontRating(BaseModel):
 STOREFRONT_PROMPT = """You judge shop fronts the way passers-by do. Rate this storefront photo from 0 to 10 on:
 signage (a visible, legible shop sign), entrance (open, inviting, step-free), window (products or a lit interior
 visible from outside), upkeep (bright, clean, well kept), and overall: how likely a passer-by is to walk in.
-5 is an ordinary shop front. Give a short reason; use an empty string instead of null when no explanation is given."""
+5 is an ordinary shop front. Use numeric ratings, never true or false.
+Give a short reason; use an empty string instead of null when no explanation is given."""
 
 
 async def vlm_appeal(llm: VisionLLM, img: Image.Image, *, model: str = "vlm") -> StorefrontAppeal:
@@ -99,6 +107,13 @@ class _ReceiptLineVLM(BaseModel):
     unit_price: float | None = Field(default=None, allow_inf_nan=False)
     line_total: float | None = Field(default=None, allow_inf_nan=False)
 
+    @field_validator("quantity", "unit_price", "line_total", mode="before")
+    @classmethod
+    def _numeric_line(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("Receipt quantities and amounts must be numbers, not true or false.")
+        return value
+
 
 class _ReceiptVLM(BaseModel):
     store: str = Field(default="", max_length=80)
@@ -107,6 +122,13 @@ class _ReceiptVLM(BaseModel):
     currency: str = Field(default="", description="ISO 4217 code if you can tell, e.g. USD, KRW")
     lines: list[_ReceiptLineVLM] = []
     total: float | None = Field(default=None, allow_inf_nan=False)
+
+    @field_validator("total", mode="before")
+    @classmethod
+    def _numeric_total(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("Receipt total must be a number or null when unreadable, not true or false.")
+        return value
 
     @field_validator("store", "date", "time", "currency", mode="before")
     @classmethod
@@ -118,7 +140,7 @@ RECEIPT_PROMPT = """You transcribe shop receipts. List every purchased product l
 unit price and line total (numbers as printed, no currency symbols). Skip subtotals, tax, payment and change lines.
 Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed.
 For unreadable store, date, time or currency text use an empty string, not null. Do not invent missing text.
-Use finite numbers only. For unreadable or missing amounts use null, never NaN or Infinity.
+Use finite numbers only, never true or false. For unreadable or missing amounts use null, never NaN or Infinity.
 Copy only the printed amount; do not repeat digits. Amounts must fit within 9007199254740991 minor units
 (cents for USD, whole won for KRW, whole yen for JPY)."""
 
