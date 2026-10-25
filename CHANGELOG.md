@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Report ad lift only between stores with matching products, categories, design,
+  currency and unchanged shared campaigns. Keep ordinary paired store comparisons
+  and campaign attribution available when other changes confound the ad effect.
+
 - Compute other-product ad effects from actual order lines, keeping shipping,
   fees, add-ons and order discounts out of that merchandise measure while
   preserving the change in total paid revenue.

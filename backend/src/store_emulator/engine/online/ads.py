@@ -67,11 +67,18 @@ def ad_rows(site: OnlineSite, sessions: list[SessionResult]) -> list[AdRow]:
 
 def ad_lifts(control_site: OnlineSite, control: list[SessionResult], control_rows: list[AdRow],
              variant_site: OnlineSite, variant: list[SessionResult], variant_rows: list[AdRow]) -> list[AdLift]:
-    """Every ad running in only one of the two stores, against the other store on the same shoppers. An ad running in
-    both adds nothing between them. With several such ads, the change in total revenue belongs to all of them
-    together."""
+    """Ads unique to one otherwise comparable store, measured on the same shoppers. Changed products, design or
+    shared campaigns confound that effect; ordinary store comparisons and attribution still remain available.
+    With several unique ads, the change in total revenue belongs to all of them together."""
+    if (control_site.currency, control_site.tagline, control_site.categories, control_site.products, control_site.options) != (
+            variant_site.currency, variant_site.tagline, variant_site.categories, variant_site.products, variant_site.options):
+        return []
     control_running = {ad.id for ad in control_site.ads if ad.active}
     variant_running = {ad.id for ad in variant_site.ads if ad.active}
+    shared = control_running & variant_running
+    if ([ad for ad in control_site.ads if ad.active and ad.id in shared]
+            != [ad for ad in variant_site.ads if ad.active and ad.id in shared]):
+        return []
     lifts: list[AdLift] = []
     for site, with_ad, without, rows, elsewhere in ((variant_site, variant, control, variant_rows, control_running),
                                                     (control_site, control, variant, control_rows, variant_running)):
