@@ -136,7 +136,7 @@ export function PageFlow({ variants }: { variants: VariantSummary[] }) {
         onPointerLeave={() => { setPointer(null); setFocus(null); }}>
         <div className="pointer-events-none absolute inset-x-3 top-2 h-5 sm:inset-x-5" aria-hidden>
           {Array.from({ length: columns }, (_, c) => (
-            <span key={c} className={cn("absolute top-0 text-[0.65rem] font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase", c === columns - 1 ? "-translate-x-full" : c > 0 && "-translate-x-1/3")}
+            <span key={c} className={cn("absolute top-0 text-[0.7rem] font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase", c === columns - 1 ? "-translate-x-full" : c > 0 && "-translate-x-1/3")}
               style={{ left: `${((x(c) + (c === columns - 1 ? NODE : 0)) / W) * 100}%` }}>
               {c === columns - 1 ? t("onFlowEnd") : t("onFlowStep", { step: c + 1 })}
             </span>
@@ -176,7 +176,7 @@ export function PageFlow({ variants }: { variants: VariantSummary[] }) {
           {nodes.filter((n) => n.h >= 16).map((n) => {
             const right = n.column === columns - 1;
             return (
-              <span key={n.id} className={cn("pointer-events-none absolute z-[1] -translate-y-1/2 truncate rounded-md bg-card/80 px-1.5 py-px text-[0.65rem] leading-tight shadow-sm backdrop-blur",
+              <span key={n.id} className={cn("pointer-events-none absolute z-[1] -translate-y-1/2 truncate rounded-md bg-card/80 px-1.5 py-px text-[0.7rem] leading-tight shadow-sm backdrop-blur",
                 right ? "-translate-x-full" : "")}
                 style={{ left: right ? `calc(${(x(n.column) / W) * 100}% - 4px)` : `calc(${((x(n.column) + NODE) / W) * 100}% + 4px)`, top: n.y + n.h / 2, maxWidth: "9rem" }}>
                 <span className="font-medium">{name(n)}</span> <span className="tabular-nums text-muted-foreground">{n.value}</span>

@@ -735,6 +735,9 @@ export const onlineMessages = {
   onCardsWatch: ["Watch the visit of {shopper}", "{shopper}의 방문 보기", "观看 {shopper} 的访问", "{shopper} の訪問を見る", "Ver la visita de {shopper}", "Regarder la visite de {shopper}"],
   onCardsWatchShort: ["Watch", "보기", "观看", "見る", "Ver", "Regarder"],
   onCardsWatchStore: ["Watch the visit to {store}", "{store} 방문 보기", "观看在 {store} 的访问", "{store} への訪問を見る", "Ver la visita a {store}", "Regarder la visite chez {store}"],
+  onRunMissing: ["This run no longer exists.", "이 실행은 더 이상 없습니다.", "该运行已不存在。", "この実行はもう存在しません。", "Esta simulación ya no existe.", "Cette simulation n’existe plus."],
+  onRunMissingHint: ["It may have been deleted. Pick another run from the list.", "삭제되었을 수 있습니다. 목록에서 다른 실행을 고르세요.", "它可能已被删除。请从列表中选择其他运行。", "削除された可能性があります。一覧から別の実行を選んでください。", "Puede que se haya eliminado. Elige otra en la lista.", "Elle a peut-être été supprimée. Choisissez-en une autre dans la liste."],
+  onRunMissingClose: ["Back to the list", "목록으로", "返回列表", "一覧に戻る", "Volver a la lista", "Retour à la liste"],
   onOpenReport: ["Open the report to share or print", "공유하거나 인쇄할 보고서 열기", "打开可分享或打印的报告", "共有・印刷用のレポートを開く", "Abrir el informe para compartir o imprimir", "Ouvrir le rapport à partager ou imprimer"],
   // ── Screening quick changes ──────────────────────────────────────────────
   onQuickRead: ["Quick read on rule shoppers:", "규칙 기반 쇼핑객 간이 측정:", "规则购物者快速评估：", "ルールベースの買い物客での簡易測定：", "Lectura rápida con compradores por reglas:", "Lecture rapide sur des acheteurs à règles :"],

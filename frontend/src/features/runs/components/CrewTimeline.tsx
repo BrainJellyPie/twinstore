@@ -49,7 +49,7 @@ export function CrewTimeline({ report }: { report: OperationsReport }) {
           </div>
         ))}
       </div>
-      <div className="mt-0.5 flex justify-between pl-16 text-[0.65rem] tabular-nums text-muted-foreground">
+      <div className="mt-0.5 flex justify-between pl-16 text-[0.7rem] tabular-nums text-muted-foreground">
         {hours.filter((_, i) => i % Math.max(1, Math.ceil(hours.length / 6)) === 0).map((second) => <span key={second}>{clockLabel(second)}</span>)}
       </div>
       <div className="mt-1 flex gap-3 text-[0.72rem] text-muted-foreground">

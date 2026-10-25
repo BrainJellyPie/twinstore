@@ -73,3 +73,14 @@ it("finds stores and runs by name, opening the group of a matching variant", asy
   fireEvent.change(box, { target: { value: "zzz" } });
   expect(screen.getByText("Nothing matches.")).toBeTruthy();
 });
+
+it("keeps the open store in the address, dropping one-time hand-offs, so a reload comes back to it", async () => {
+  window.history.replaceState({ key: "kept" }, "", "/online/p1?site=a&compare=a1&shopper=s3&variant=1");
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><OnlinePage projectId="p1" initialSite="a" initialCompare="a1" /></QueryClientProvider>);
+  const stores = within(await screen.findByRole("region", { name: "Stores" }));
+  expect(window.location.search).toBe("?site=a");
+  fireEvent.click(await stores.findByRole("button", { name: /Shop B/ }));
+  expect(window.location.pathname + window.location.search).toBe("/online/p1?site=b");
+  expect(window.history.state).toEqual({ key: "kept" });  // the router's own entry data stays
+});

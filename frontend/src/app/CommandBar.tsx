@@ -18,11 +18,9 @@ import type { MessageKey } from "@/shared/i18n/messages";
 
 import { BrandMark } from "./BrandMark";
 import { MOD_KEY, useCommandPalette } from "./commandPalette";
-import { projectIdFromPath } from "./paths";
+import { LAST_STORE, projectIdFromPath } from "./paths";
 import { QuitButton } from "./QuitTwinStore";
 import { useTheme } from "./theme";
-
-const LAST_STORE = "twinstore.lastStore";
 
 const PAGE_TITLES: Record<string, MessageKey> = {
   "/projects/new": "newStore",
@@ -41,7 +39,7 @@ interface NavItem {
 function NavSegment({ items }: { items: NavItem[] }) {
   const { t } = useI18n();
   return (
-    <nav aria-label={t("main")} className="glass col-span-2 row-start-2 flex items-center justify-self-center gap-0.5 rounded-2xl p-1 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+    <nav aria-label={t("main")} className="glass col-span-2 row-start-2 flex items-center justify-self-center gap-0.5 rounded-2xl p-1 lg:col-span-1 lg:col-start-2 lg:row-start-1">
       {items.map(({ to, params, label, icon: Icon, active, disabled }) =>
         disabled ? (
           <span
@@ -53,7 +51,7 @@ function NavSegment({ items }: { items: NavItem[] }) {
             title={t("openStoreFirst")}
           >
             <Icon className="size-[1.05rem]" aria-hidden />
-            <span className="text-[0.6rem] leading-none sm:hidden lg:inline lg:text-sm lg:leading-normal">{label}</span>
+            <span className="text-[0.68rem] leading-none whitespace-nowrap sm:hidden sm:text-sm sm:leading-normal min-[52rem]:inline lg:hidden xl:inline">{label}</span>
           </span>
         ) : (
           <Link
@@ -71,7 +69,8 @@ function NavSegment({ items }: { items: NavItem[] }) {
             )}
           >
             <Icon className="size-[1.05rem]" aria-hidden />
-            <span className="text-[0.6rem] leading-none sm:hidden lg:inline lg:text-sm lg:leading-normal">{label}</span>
+            {/* Where the tabs share the top row with the store name (lg) only the current tab is named. */}
+            <span className={cn("text-[0.68rem] leading-none whitespace-nowrap sm:text-sm sm:leading-normal", !active && "sm:hidden min-[52rem]:inline lg:hidden xl:inline")}>{label}</span>
           </Link>
         ),
       )}
@@ -100,7 +99,7 @@ function BackendStatus() {
         )}
         aria-hidden
       />
-      <span className="num">{label}</span>
+      <span className="num sr-only 2xl:not-sr-only">{label}</span>
     </span>
   );
 }
@@ -150,7 +149,7 @@ export function CommandBar() {
   const storeId = pid ?? (projects?.some((p) => p.project_id === remembered) ? remembered
     : projects?.length === 1 ? projects[0]!.project_id : null);
 
-  const { data: project } = useQuery({
+  const { data: project, isError: projectMissing } = useQuery({
     queryKey: pid ? queryKeys.project(pid) : ["project", "disabled"],
     queryFn: ({ signal }) => api.getProject(pid!, signal),
     enabled: !!pid,
@@ -171,7 +170,7 @@ export function CommandBar() {
   ];
 
   return (
-    <header className="relative z-30 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2 sm:h-[4.25rem] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-4 sm:px-4 sm:py-0 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--border)_20%,var(--border)_80%,transparent)]">
+    <header className="relative z-30 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-4 lg:h-[4.25rem] lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:gap-4 lg:py-0 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--border)_20%,var(--border)_80%,transparent)]">
       <div className="flex min-w-0 items-center gap-3">
         <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label={t("home")}>
           <BrandMark />
@@ -180,7 +179,7 @@ export function CommandBar() {
             <span className="aurora-text">twin</span>store
           </span>
         </Link>
-        {(pid || pageTitle) && (
+        {((pid && !projectMissing) || pageTitle) && (
           <nav aria-label={t("breadcrumb")} className="flex min-w-0 items-center gap-2 text-sm">
             <span className="h-5 w-px rotate-[18deg] bg-foreground/15" aria-hidden />
             {pid ? (
@@ -189,14 +188,16 @@ export function CommandBar() {
                   to="/projects/$pid"
                   params={{ pid }}
                   className="truncate rounded-lg px-1.5 py-1 font-semibold tracking-[-0.02em] transition-colors hover:bg-foreground/[0.06]"
+                  title={project?.metadata.name}
                 >
                   {project?.metadata.name ?? "…"}
                 </Link>
+                {/* The page name repeats the highlighted tab, so it waits for a wide screen and the store name fits. */}
                 {sub && (
-                  <>
-                    <span className="h-5 w-px rotate-[18deg] bg-foreground/15" aria-hidden />
+                  <span className="hidden min-w-0 items-center gap-2 2xl:flex">
+                    <span className="h-5 w-px shrink-0 rotate-[18deg] bg-foreground/15" aria-hidden />
                     <span className="truncate text-muted-foreground">{sub}</span>
-                  </>
+                  </span>
                 )}
               </>
             ) : (
@@ -208,7 +209,7 @@ export function CommandBar() {
 
       <NavSegment items={items} />
 
-      <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 sm:col-start-3">
+      <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 lg:col-start-3">
         <button
           type="button"
           onClick={() => openPalette(true)}
@@ -216,7 +217,7 @@ export function CommandBar() {
           aria-label={t("searchCommands")}
         >
           <Search className="size-4 shrink-0" aria-hidden />
-          <span className="hidden truncate xl:inline">{t("jumpTo")}</span>
+          <span className="hidden truncate 2xl:inline">{t("jumpTo")}</span>
           <kbd className="num hidden rounded-md border bg-foreground/[0.04] px-1.5 py-0.5 text-[0.7rem] text-muted-foreground sm:inline">
             {MOD_KEY} K
           </kbd>

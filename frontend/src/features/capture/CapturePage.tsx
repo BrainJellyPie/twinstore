@@ -180,7 +180,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
               className={cn("flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-colors",
                 tab === id ? "bg-foreground/[0.08] text-foreground shadow-[inset_0_1px_0_var(--highlight)]" : "text-muted-foreground hover:text-foreground")}>
               <Icon className="hidden size-4 shrink-0 sm:block" /> {label}
-              {id === "lab" && <span className="hidden rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-bold text-primary-foreground sm:inline">{t("capNewBadge")}</span>}
+              {id === "lab" && <span className="hidden rounded-full bg-primary px-1.5 py-px text-[0.68rem] font-bold text-primary-foreground sm:inline">{t("capNewBadge")}</span>}
             </button>
           ))}
         </div>

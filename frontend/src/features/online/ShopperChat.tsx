@@ -75,7 +75,7 @@ export function ShopperChat({ projectId, runId, variant, shopper, outcome, onSte
                 <span className="mt-1 flex flex-wrap gap-1">
                   {m.steps.map((s) => (
                     <button key={s} type="button" onClick={() => onStep(s - 1)}
-                      className="rounded-full bg-foreground/[0.07] px-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground">
+                      className="rounded-full bg-foreground/[0.07] px-1.5 text-[0.7rem] text-muted-foreground hover:text-foreground">
                       {t("interviewStep", { step: s })}
                     </button>
                   ))}

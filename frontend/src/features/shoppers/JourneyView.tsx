@@ -145,7 +145,7 @@ function Step({ step: s, currency, active, onHover, shelf, onZoom }: {
         {s.product_name && (
           <div className="text-[0.78rem]">
             <b>{s.product_name}</b>{s.quantity > 1 ? ` ×${s.quantity}` : ""} · <span className="num">{formatMoney(s.price * s.quantity, currency)}</span>
-            {s.origin === "impulse" && <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--viz-2)_18%,transparent)] px-1.5 py-px text-[0.65rem] font-semibold">{t("journeyImpulse")}</span>}
+            {s.origin === "impulse" && <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--viz-2)_18%,transparent)] px-1.5 py-px text-[0.7rem] font-semibold">{t("journeyImpulse")}</span>}
           </div>
         )}
         {s.thought && <p className="mt-0.5 text-[0.76rem] leading-snug text-muted-foreground italic">“{s.thought}”</p>}

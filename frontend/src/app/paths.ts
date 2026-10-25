@@ -4,3 +4,6 @@ export function projectIdFromPath(pathname: string): string | null {
   const pid = pathname.match(/^\/(?:projects|town|capture|marketing|online)\/([^/]+)/)?.[1];
   return pid && pid !== "new" ? pid : null;
 }
+
+// localStorage key of the store opened last, which the nav tabs and the home page return to.
+export const LAST_STORE = "twinstore.lastStore";

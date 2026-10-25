@@ -87,7 +87,7 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
                       {personaLabel(sh.age_group, t)} · {personaLabel(sh.gender, t)} · {t(DEVICE_LABELS[sh.device])}
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-medium text-primary">{t(MISSION_LABELS[sh.mission])}</span>
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary">{t(MISSION_LABELS[sh.mission])}</span>
                 </div>
                 <p className="line-clamp-2 text-xs text-muted-foreground">{sh.goal}</p>
                 <ul className="space-y-1">
@@ -138,7 +138,7 @@ function Outcome({ brief, rival, money }: { brief: VisitBrief; rival: string; mo
       <span className={cn("size-2 rounded-full", OUTCOME_COLORS[brief.outcome])} aria-hidden />
       <span>{t(OUTCOME_LABELS[brief.outcome])}</span>
       {brief.order_total > 0 && <span className="text-muted-foreground tabular-nums">· {money(brief.order_total)}</span>}
-      {brief.rival && <span className="rounded bg-amber-500/15 px-1 text-[0.6rem]">→ {t(OUTCOME_LABELS[brief.rival])}</span>}
+      {brief.rival && <span className="rounded bg-amber-500/15 px-1 text-[0.68rem]">→ {t(OUTCOME_LABELS[brief.rival])}</span>}
     </span>
   );
 }

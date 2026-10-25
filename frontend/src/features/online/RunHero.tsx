@@ -191,7 +191,7 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
         <div className="absolute inset-0 grid place-items-center text-center">
           <div>
             <div className="text-2xl font-semibold tabular-nums tracking-tight" aria-hidden>{(shown * 100).toFixed(1)}%</div>
-            <div className="text-[0.6rem] tracking-wide text-white/55 uppercase" aria-hidden>{t("onKpiConversion")}</div>
+            <div className="text-[0.68rem] tracking-wide text-white/70 uppercase" aria-hidden>{t("onKpiConversion")}</div>
           </div>
         </div>
       </div>
@@ -201,10 +201,10 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
           <span className="truncate text-sm font-semibold">{name}</span>
           {winner && <Trophy className="size-3.5 shrink-0 text-amber-300" aria-label={t("onVerdictBest")} />}
         </div>
-        <div className="text-[0.7rem] text-white/50">{index === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + index) })}</div>
+        <div className="text-xs text-white/65">{index === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + index) })}</div>
         <span className="sr-only">{t("onKpiConversion")}: {(conversion * 100).toFixed(1)}%</span>
         <div className="mt-2 text-xl font-semibold tabular-nums tracking-tight">{formatMoney(Math.round(money), currencyCode(currency))}</div>
-        <div className="text-[0.7rem] text-white/55">{t("onKpiRevenue")} · {t("onHeroOrders", { count: orders })} · {t("onHeroOfVisits", { visits })}</div>
+        <div className="text-xs text-white/70">{t("onKpiRevenue")} · {t("onHeroOrders", { count: orders })} · {t("onHeroOfVisits", { visits })}</div>
         {delta && (
           <div className={cn("mt-2 inline-flex flex-wrap items-center gap-x-1 rounded-2xl px-2 py-0.5 text-xs font-semibold tabular-nums",
             !delta.sure ? "bg-white/10 text-white/75" : delta.up ? "bg-positive/20 text-positive" : "bg-negative/20 text-negative")}>

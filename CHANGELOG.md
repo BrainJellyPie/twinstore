@@ -8,6 +8,38 @@
   answers. A real CPU probe now saves shelf images, model outputs and purchases.
 
 
+- The online page remembers where you are: the address now carries the open
+  store and run, so a reload or a copied link comes back to the same store or
+  report (before, it fell back to the first store), and the store or run's
+  entry scrolls into view in the list when it opens. Saving the address keeps
+  the current designer, comparison and customer replay open; routed links still
+  load their incoming selection.
+- Old links say what happened: a page of a deleted store shows **This store
+  no longer exists** with the way back to the stores (the floor page showed
+  the router's bare "Something went wrong!", and the other store pages
+  opened empty), an address that matches no page explains itself instead of
+  a plain "Not Found", a page that fails keeps its technical details one
+  click away, and a deleted online run offers **Back to the list** instead of
+  the server's message.
+- Easier to read: no label in the app is smaller than about 11 px any more
+  (badges, chart axes, the shopper stream, the phone tab labels), and the
+  dark report header's secondary lines are brighter.
+- Back to work in one click: once there is a store, the home page opens with
+  a **Continue where you left off** card for the store used last (or the
+  latest changed), plus a **Your stores: N** link down to the list, so a
+  returning visitor no longer scrolls past the hero.
+- A top bar that fits: on mid-size screens (1024–1279 px) the tabs show
+  icons and only the current tab's name, and below that the tabs move to
+  their own row, so the store name stays readable instead of shrinking to a
+  letter; the search box and status shorten until a very wide screen.
+  Previously the tabs ran over the logo at 1024 px.
+- A long online report is easier to find your way around: its section strip
+  highlights the section you are reading, scrolls along with you, and fades
+  at an edge where more sections are hidden.
+- The marketing studio on a phone: its eleven tabs are one scrolling row
+  instead of a block that pushed the work below the fold, and an A/B result
+  notice puts its CSV button under the text. The neighborhood's area
+  description gets a full-width box with a character count.
 - Keep browsing customers' available budget in both live online decisions and
   post-visit interviews, separately from their lack of a purchase plan. An actual
   CPU VLM checkout probe exposed the missing amount; save the screenshot and raw

@@ -283,7 +283,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
     <div className="rounded-xl bg-foreground/[0.035] px-3 py-2">
       <div className="text-[0.7rem] text-muted-foreground">{label}</div>
       <div className="num truncate text-xl font-semibold" title={value}>{value}</div>
-      {sub && <div className="text-[0.65rem] text-muted-foreground">{sub}</div>}
+      {sub && <div className="text-[0.7rem] text-muted-foreground">{sub}</div>}
     </div>
   );
 }

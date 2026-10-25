@@ -85,7 +85,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
     <div className="space-y-4">
       <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3", winner ? "tone-good" : "bg-foreground/[0.03]")}>
         {winner ? <Trophy className="size-5 shrink-0" /> : <Info className="size-5 shrink-0 text-muted-foreground" />}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-[1_1_14rem]">
           {winner ? (
             <p className="text-sm">{richText(t("mkWinnerLead"), { name: <b>{winner.name}</b> })}
               {(() => {

@@ -67,7 +67,7 @@ export function StatTiles({ metrics, names }: { metrics: StatMetric[]; names: st
                     <div className="flex items-center gap-1.5 tabular-nums">
                       <span>{value === null ? "—" : m.format(value)}</span>
                       {i > 0 && value !== null && control !== null && control !== undefined && (
-                        <span className={cn("rounded px-1 text-[0.65rem]", good === true ? "tone-good" : good === false ? "tone-bad" : "bg-muted text-muted-foreground")}>
+                        <span className={cn("rounded px-1 text-[0.7rem]", good === true ? "tone-good" : good === false ? "tone-bad" : "bg-muted text-muted-foreground")}>
                           {m.delta(value, control)}
                         </span>
                       )}
@@ -155,7 +155,7 @@ export function FunnelChart({ variants }: { variants: VariantSummary[] }) {
         <div key={stage} className="grid grid-cols-[minmax(5.5rem,8rem)_minmax(0,1fr)] items-center gap-3">
           <div className="text-xs">
             <div className="font-medium">{t(FUNNEL_LABELS[stage])}</div>
-            <div className="text-[0.65rem] text-muted-foreground">{row + 1}/{stages.length}</div>
+            <div className="text-[0.7rem] text-muted-foreground">{row + 1}/{stages.length}</div>
           </div>
           <div className="space-y-[2px]">
             {variants.map((s, i) => {
@@ -202,7 +202,7 @@ export function OutcomeBars({ variants }: { variants: VariantSummary[] }) {
               const share = s.sessions ? n / s.sessions : 0;
               if (!n) return null;
               return (
-                <span key={o} className={cn("flex items-center justify-center text-[0.65rem] font-semibold", OUTCOME_INK[o], OUTCOME_COLORS[o])}
+                <span key={o} className={cn("flex items-center justify-center text-[0.7rem] font-semibold", OUTCOME_INK[o], OUTCOME_COLORS[o])}
                   style={{ width: `${share * 100}%` }} title={`${t(OUTCOME_LABELS[o])}: ${n} (${(share * 100).toFixed(1)}%)`}>
                   {share >= 0.09 ? `${Math.round(share * 100)}%` : ""}
                 </span>
@@ -239,7 +239,7 @@ export function SegmentHeat({ rows, columns, cells }: { rows: string[]; columns:
               <span key={ci} className="rounded-md px-2 py-1.5" title={cell.title}
                 style={{ background: cell.value === null ? "var(--muted)" : `color-mix(in oklab, var(--viz-1) ${Math.round(6 + (cell.value / max) * 52)}%, var(--card))` }}>
                 <span className="block text-sm font-semibold tabular-nums">{cell.label}</span>
-                <span className="block text-[0.65rem] tabular-nums text-foreground/70">{cell.sub}</span>
+                <span className="block text-[0.7rem] tabular-nums text-foreground/70">{cell.sub}</span>
               </span>
             ))}
           </div>
