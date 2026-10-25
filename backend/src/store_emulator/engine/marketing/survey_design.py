@@ -9,13 +9,13 @@ from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
 import re
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from store_emulator.domain.marketing import QuestionKind
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender
-from store_emulator.engine.prompting import relevant_first
+from store_emulator.engine.prompting import canonical_identifier, relevant_first
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 80
@@ -42,6 +42,15 @@ class _Draft(BaseModel):
     age_groups: list[AgeGroup] = Field(default_factory=list[AgeGroup], max_length=6)
     genders: list[Gender] = Field(default_factory=list[Gender], max_length=2)
     rationale: str = Field(default="", max_length=500)
+
+    @field_validator("questions", "age_groups", "genders", mode="before")
+    @classmethod
+    def _known_choices(cls, value: object, info: ValidationInfo) -> object:
+        choices = _KINDS if info.field_name == "questions" else AGE_GROUPS if info.field_name == "age_groups" else GENDERS
+        if isinstance(value, list):
+            return [canonical_identifier(item, choices) if isinstance(item, str) else item
+                    for item in cast(list[object], value)]
+        return value
 
     @field_validator("images", "age_groups", "genders", mode="before")
     @classmethod
@@ -83,6 +92,8 @@ images side by side (A to D) and answer a short standard questionnaire. From the
 - age_groups and genders: quotas only when the question names a group; otherwise leave them empty (everyone);
 - a short name and rationale.
 Use [] for unspecified images, age_groups and genders, and empty strings for unspecified context and rationale.
+Copy the lowercase question IDs exactly, including underscores. Use age labels 10s, 20s, 30s, 40s, 50s, 60s+
+and gender labels Male, Female exactly as written.
 Use null only when reference_price is not given.
 Write in English."""
 

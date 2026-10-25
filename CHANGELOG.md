@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover known question and demographic labels in automatic concept-test
+  drafts despite case or surrounding whitespace. Questionnaire ordering,
+  image selection, prices and the requested respondent quotas are preserved;
+  unknown labels and malformed list entries still fail.
+
 - Keep store-creation drafts usable when local models return known opening-day
   or currency codes with different case or surrounding whitespace. The prompt
   now spells out `7`, `weekday` and `weekend`; unknown codes still fail and

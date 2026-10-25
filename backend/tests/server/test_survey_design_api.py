@@ -43,10 +43,12 @@ DRAFT = {
 }
 
 
-def test_a_question_becomes_a_builder_ready_concept_test(client, monkeypatch):
+@pytest.mark.parametrize("spelling", ["exact", "mixed"])
+def test_a_question_becomes_a_builder_ready_concept_test(client, monkeypatch, spelling):
     from store_emulator.application import study_design
     _library(monkeypatch)
-    fake = _Designer(DRAFT)
+    fake = _Designer({**DRAFT, "questions": [f" {value.upper()} " for value in DRAFT["questions"]],
+                      "age_groups": [" 20S "]} if spelling == "mixed" else DRAFT)
     monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/surveys/design",
                     json={"question": "Which label looks more premium to people in their twenties?", "currency": "USD"})
