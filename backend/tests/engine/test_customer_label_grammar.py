@@ -84,13 +84,15 @@ def test_generated_population_uses_actual_labels_and_keeps_cache_separate(monkey
     asyncio.run(exercise())
 
 
-def test_non_enforcing_provider_labels_retain_existing_runtime_behavior():
+def test_non_enforcing_provider_labels_still_require_supplied_choices():
     class Model:
         async def generate_structured_async(self, schema, system, prompt, **kwargs):
             return schema(personas=[dict(identity="Provider label", purpose="Provider purpose", age_group="30s",
                                         gender="Female", description="Shopper", intent="Shop")])
 
+    tally = gen.BatchTally()
     people = asyncio.run(gen.generate_personas_for_day(Model(), "offline",
         gen.TradeAreaProfile(keywords=[], identities=["resident"], purposes=["groceries"]), gen.Weekday.MON,
-        [gen.HourlyProfile(hour=9, visitor_count=1, person_types=["resident"])]))
-    assert len(people) == 1 and people[0].identity == "Provider label" and people[0].purpose == "Provider purpose"
+        [gen.HourlyProfile(hour=9, visitor_count=1, person_types=["resident"])], tally=tally))
+    assert people == [] and tally.requested == tally.failed == 1
+    assert tally.first_error is not None and "Choose one supplied" in str(tally.first_error)

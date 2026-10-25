@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Normalize unique case and surrounding-whitespace variations of generated
+  customer age-group and gender labels before validation and caching. Values
+  such as `female` or `60S+` no longer fail an otherwise valid customer batch;
+  unknown labels and non-string values still require correction.
+
 - Recover oversized interview and study-theme requests by splitting answers
   after a model context rejection, then reconciling the resulting themes.
   Every selected respondent, repeated answer and group count is preserved;

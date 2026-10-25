@@ -17,7 +17,7 @@ from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.generators.traffic_profile import TrafficProfile, reshape_hourly_counts
 from store_emulator.engine.llm_client import is_context_overflow
-from store_emulator.engine.prompting import budget_example
+from store_emulator.engine.prompting import budget_example, canonical_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +150,13 @@ class GeneratedPersona(BaseModel):
     budget_min: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
     budget_max: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
     behavior_tendency: str = Field(default="", max_length=300)
+
+    @field_validator("age_group", "gender", mode="before")
+    @classmethod
+    def _canonical_demographic(cls, value: object, info: ValidationInfo) -> object:
+        if isinstance(value, str):
+            return canonical_identifier(value, AGE_GROUPS if info.field_name == "age_group" else GENDERS)
+        return value
 
     @field_validator("preferred_categories", mode="before")
     @classmethod
