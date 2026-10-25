@@ -8,7 +8,7 @@ from store_emulator.application.config import local_config
 
 _config: SimulationConfig | None = None
 _RESOURCE_ID = re.compile(RESOURCE_ID_PATTERN)
-_PATH_IDS = {"pid", "sid", "run_id", "gid", "cid", "eid", "aid", "jid", "job_id"}
+_PATH_IDS = {"pid", "sid", "run_id", "gid", "cid", "eid", "aid", "jid", "job_id", "site_id", "shopper_id"}
 
 
 async def validate_resource_paths(request: Request) -> None:

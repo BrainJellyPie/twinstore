@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Camera,
   CornerDownLeft,
+  Globe2,
   KeyRound,
   LayoutGrid,
   Map,
@@ -109,6 +110,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         localize({ id: "area", group: "commandThisStore", label: "neighborhood", hint: "commandAreaHint", icon: Map, run: go("/town/$pid", { pid }) }),
         localize({ id: "capture", group: "commandThisStore", label: "shelfCapture", hint: "commandCaptureHint", icon: Camera, run: go("/capture/$pid", { pid }) }),
         localize({ id: "marketing", group: "commandThisStore", label: "marketingStudio", hint: "commandMarketingHint", icon: Megaphone, run: go("/marketing/$pid", { pid }) }),
+        localize({ id: "online", group: "commandThisStore", label: "onlineStores", hint: "commandOnlineHint", icon: Globe2, run: go("/online/$pid", { pid }) }),
       );
     }
     list.push(
