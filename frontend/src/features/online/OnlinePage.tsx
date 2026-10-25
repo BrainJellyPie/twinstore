@@ -2,7 +2,7 @@
 // virtual shopper does — a screenshot with numbered options — tune their design, and run virtual shoppers with a
 // purchase, browsing or bargain-hunting mission through one store or several variants at once.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
@@ -12,6 +12,7 @@ import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus } 
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -44,6 +45,14 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const [gallery, setGallery] = useState(false);
   const [wide, setWide] = useState(false);
   const [compare, setCompare] = useState<string | null>(initialCompare ?? null);
+  // A design request typed in the command palette opens the designer, whose design chat takes it from there.
+  const designAsk = useAssistStore((s) => s.pending?.projectId === projectId && s.pending.destination === "online_design");
+  useEffect(() => {
+    if (!designAsk) return;
+    setRunId(null);
+    setGallery(false);
+    setTab("design");
+  }, [designAsk]);
 
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });

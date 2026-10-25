@@ -317,3 +317,16 @@ it("changes the design by asking, undoes a turn and tests the result against the
     name: "Control – AI design", note: "Go neon", options: { ...source.options, page_style: "neon" },
   });
 });
+
+it("sends a design request routed from the command palette once the designer opens", async () => {
+  const { useAssistStore } = await import("@/stores/assistStore");
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  vi.mocked(online.designChat).mockResolvedValue({
+    reply: "Playful it is.", model: "fake", options: { ...source.options, page_style: "playful" }, changed: ["page_style"],
+  });
+  useAssistStore.getState().send({ projectId: "p1", destination: "online_design", text: "Make the web shop playful for kids" });
+  mount();
+  expect(await screen.findByText("Playful it is.")).toBeTruthy();
+  expect(vi.mocked(online.designChat).mock.calls[0]![2].messages).toEqual([{ role: "owner", text: "Make the web shop playful for kids" }]);
+  expect(useAssistStore.getState().pending).toBeNull();
+});

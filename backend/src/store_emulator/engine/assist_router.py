@@ -1,7 +1,8 @@
 """Where a request typed in plain words belongs in the app.
 
 "Would a 1+1 on cola beat a 20 % cut?" is an A/B test; "what would people pay for zero sugar?" a conjoint study;
-"why does the freezer sell so little?" a question about the last run. The model only picks the place; the page it
+"why does the freezer sell so little?" a question about the last run; "make the web shop look premium" a change to
+the online store's design. The model only picks the place; the page it
 opens drafts the rest from the same words.
 """
 
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 Destination = Literal[
     "ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "layout_edit", "area", "run_question",
-    "find_shoppers", "optimize", "none",
+    "find_shoppers", "optimize", "online_design", "none",
 ]
 
 
@@ -53,6 +54,8 @@ ROUTER_PROMPT = """You route a store manager's request to the right tool of a st
 - find_shoppers: show or list particular shoppers of the last simulated day (e.g. "students who left empty-handed");
 - optimize: let the optimizer search for a better layout towards a goal (more sales, conversion or impulse buys,
   shorter walks), possibly with limits on what may change;
+- online_design: change how the online store (the web shop) looks or works: its style, colours, banner, product
+  cards, popups, delivery fee or checkout;
 - none: anything else.
 {run_note}Copy one lowercase destination ID exactly, including underscores, and give a few words on why.
 Use an empty string, not null, when no reason is given."""

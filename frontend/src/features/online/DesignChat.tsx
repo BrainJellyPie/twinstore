@@ -11,6 +11,8 @@ import { designChat, draftPreview, onlineKeys, sitePreviewUrl, type DesignMessag
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
+import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -66,6 +68,15 @@ export function DesignChat({ projectId, site, options, onOptions, onTest, testin
     const owner = said.trim();
     if (owner && !ask.isPending) ask.mutate(owner);
   };
+  // A request typed in the command palette and routed here is sent once the designer is open.
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const queueSend = useQueuedStart((said: string) => send(said));
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["online_design"]);
+    if (routed) queueSend(Array.from(routed.text).slice(0, 1200).join(""));
+  }, [pendingAsk, projectId, takeAsk, queueSend]);
   const undo = (index: number) => {
     const turn = turns[index];
     if (!turn?.before) return;

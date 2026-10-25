@@ -1464,7 +1464,7 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
  * about the last run, or none of these. */
 export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
   destination: "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question"
-    | "find_shoppers" | "optimize" | "none";
+    | "find_shoppers" | "optimize" | "online_design" | "none";
   reason: string;
 }> {
   return fetchJson(`/api/assist/route`, { method: "POST", ...json(req) });

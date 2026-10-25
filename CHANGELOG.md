@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Ask for a web shop change from the command bar: a request such as "make the
+  web shop look premium" now opens the online store's designer, where **Design
+  with AI** takes it as its first message.
 - See the same customer in both twins: a store shopper's page lists the online
   visits of the shoppers made from that customer (runs that drew shoppers from
   the store's customers), and each opens that run with the visit playing.

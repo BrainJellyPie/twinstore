@@ -186,7 +186,8 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       if (route.destination === "find_shoppers") setActiveTab("shoppers");
       onDone();
       const onFloor = ["run_question", "layout_edit", "find_shoppers", "optimize"].includes(route.destination);
-      const to = route.destination === "area" ? "/town/$pid" : onFloor ? "/projects/$pid" : "/marketing/$pid";
+      const to = route.destination === "area" ? "/town/$pid" : route.destination === "online_design" ? "/online/$pid"
+        : onFloor ? "/projects/$pid" : "/marketing/$pid";
       void navigate({ to, params: { pid } });
     } catch (e) {
       if (id === requestId.current) setAskNote(e instanceof Error ? e.message : String(e));
