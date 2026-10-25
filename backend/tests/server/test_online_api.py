@@ -134,6 +134,8 @@ def test_run_requests_are_validated(client: TestClient) -> None:
     assert client.post(base, json={"site_ids": ["missing"]}).status_code == 404
     assert client.post(base, json={"site_ids": [site["id"]], "missions": {"browse": 0}}).status_code == 400
     assert client.post(base, json={"site_ids": [site["id"]], "missions": {"browse": -1}}).status_code == 422
+    assert client.post(base, json={"site_ids": [site["id"]], "arrivals": {"email": 0}}).status_code == 400
+    assert client.post(base, json={"site_ids": [site["id"]], "arrivals": {"billboard": 1}}).status_code == 422
     assert client.post(base, json={"site_ids": ["../x"]}).status_code == 422
     assert client.get(f"/api/projects/{PID}/online/sites/bad.id").status_code == 400
     with_customers = client.post(base, json={"site_ids": [site["id"]], "shoppers": 6, "source": "project"}).json()

@@ -27,6 +27,7 @@ import { WhoChanged } from "./WhoChanged";
 const DIMENSIONS: { id: SegmentRow["dimension"]; label: MessageKey }[] = [
   { id: "mission", label: "onSegMission" }, { id: "device", label: "onSegDevice" },
   { id: "age_group", label: "onSegAge" }, { id: "gender", label: "onSegGender" }, { id: "vision", label: "onSegVision" },
+  { id: "arrival", label: "onSegArrival" },
 ];
 const SESSION_ROWS = 80;
 
@@ -510,7 +511,10 @@ function Segments({ result, money, pct }: { result: OnlineRunResult; money: (x: 
                   const row = s.segments.find((r) => r.dimension === dimension && r.value === value);
                   return (
                     <td key={s.site_id} className="py-1 pr-2 tabular-nums">
-                      {row ? t("onSegmentCell", { sessions: row.sessions, conversion: pct(row.conversion), revenue: money(row.revenue_per_session) }) : "—"}
+                      {row ? t("onSegmentCell", {
+                        sessions: row.sessions, conversion: pct(row.conversion), revenue: money(row.revenue_per_session),
+                        bounce: row.bounce_rate == null ? "—" : pct(row.bounce_rate),
+                      }) : "—"}
                     </td>
                   );
                 })}

@@ -1,7 +1,7 @@
 // Display names of the online-store codes the server sends. Codes stay unchanged; only these labels are translated.
 
 import type {
-  Accessibility, ActionKind, AdPlacement, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
+  Accessibility, ActionKind, AdPlacement, Arrival, DeltaMetric, Device, FrictionCode, FunnelStage, HomeSection, PageKind, PaymentMethod,
   SegmentDimension, SessionOutcome, ShopperMission, ShopperPolicyKind, SortKey, TemplateHighlight, Vision,
 } from "@/shared/api/online";
 import { messages, type MessageKey } from "@/shared/i18n/messages";
@@ -127,5 +127,14 @@ export function segmentValueLabel(dimension: SegmentDimension, value: string, t:
   if (dimension === "mission" && value in MISSION_LABELS) return t(MISSION_LABELS[value as ShopperMission]);
   if (dimension === "device" && value in DEVICE_LABELS) return t(DEVICE_LABELS[value as Device]);
   if (dimension === "vision" && value in VISION_LABELS) return t(VISION_LABELS[value as Vision]);
+  if (dimension === "arrival" && value in ARRIVAL_LABELS) return t(ARRIVAL_LABELS[value as Arrival]);
   return personaLabel(value, t);
 }
+
+export const ARRIVAL_LABELS: Record<Arrival, MessageKey> = {
+  direct: "onArrDirect", search_engine: "onArrSearch", social: "onArrSocial", email: "onArrEmail",
+};
+
+export const ARRIVAL_HINTS: Record<Arrival, MessageKey> = {
+  direct: "onArrDirectHint", search_engine: "onArrSearchHint", social: "onArrSocialHint", email: "onArrEmailHint",
+};

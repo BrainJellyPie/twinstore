@@ -8,7 +8,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
-from store_emulator.domain.online import ExitSurvey, OnlineShopper, OnlineSite, Vision
+from store_emulator.domain.online import Arrival, ExitSurvey, OnlineShopper, OnlineSite, Vision
 from store_emulator.engine.prompting import display_price
 
 SYSTEM_PROMPT = """You role-play one online shopper using a web browser.
@@ -76,7 +76,7 @@ def user_prompt(
         start = max(0, len(history) - _HISTORY)
         lines += [f"{start + i + 1}. {text}" for i, text in enumerate(history[start:])]
     else:
-        lines.append("This is the first page they see on this site.")
+        lines.append("This is the first page they see on this site." + ARRIVED[shopper.arrival])
     lines += ["", f"Current page: {page_title}"]
     if outline is not None:
         lines += outline
@@ -94,6 +94,10 @@ EYESIGHT: dict[Vision, str] = {
     "typical": "",
 }
 _EYESIGHT_IMAGE = "The screenshot shows the page the way they see it."
+ARRIVED: dict[Arrival, str] = {
+    "direct": "", "search_engine": " They came from a search engine result.",
+    "social": " They came from a social media post.", "email": " They came from the shop's email newsletter.",
+}
 
 _TEXT_LIMITS = {"search_text": 60, "thought": 200, "frustration": 200, "improvement": 200}
 

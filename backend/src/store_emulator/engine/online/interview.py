@@ -43,6 +43,10 @@ Rules:
 Write answer in English."""
 
 
+_FROM = {"direct": "its address or a bookmark", "search_engine": "a search engine result", "social": "a social media post",
+         "email": "the shop's email newsletter"}
+
+
 class InterviewReply(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -64,6 +68,7 @@ def visit_text(site: OnlineSite, shopper: OnlineShopper, session: SessionResult)
         EYESIGHT[shopper.vision],
         f"Why you went to {site.name}: {shopper.goal}.",
         f"Budget: {display_price(shopper.budget, money)}." if shopper.budget else "Budget: no fixed limit.",
+        f"You came to the site from {_FROM[shopper.arrival]}.",
         f"Your visit to {site.name}:",
     ]
     for step in session.steps:

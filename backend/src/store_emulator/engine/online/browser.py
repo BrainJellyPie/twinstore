@@ -879,11 +879,15 @@ def outline(page: Page, site: OnlineSite) -> list[str]:
 # ── actions ────────────────────────────────────────────────────────────────────
 
 
-def initial_state(site: OnlineSite, *, device: Literal["desktop", "mobile"] = "desktop", signed_in: bool = False) -> BrowserState:
-    """The landing page; a welcome popup (or else an ad popup) opens over it when the site has one."""
+def initial_state(site: OnlineSite, *, device: Literal["desktop", "mobile"] = "desktop", signed_in: bool = False,
+                  at: PageRef | None = None) -> BrowserState:
+    """The landing page (`at`, default home); a welcome popup (or else an ad popup) opens over it when the site has
+    one."""
     popup = site.options.welcome_popup != "none"
     promo = bool(active_ads(site, "popup"))
-    return BrowserState(device=device, overlay="welcome" if popup else "promo" if promo else "none", welcome_seen=popup,
+    ref = at or PageRef()
+    return BrowserState(at=ref, viewed=[ref.product_id] if ref.page == PageKind.PRODUCT else [], device=device,
+                        overlay="welcome" if popup else "promo" if promo else "none", welcome_seen=popup,
                         signed_in=signed_in)
 
 

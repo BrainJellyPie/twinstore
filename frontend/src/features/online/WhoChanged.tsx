@@ -14,6 +14,7 @@ import { OUTCOME_LABELS, PAGE_LABELS, segmentValueLabel } from "./labels";
 const DIMENSIONS: { id: SegmentDimension; label: MessageKey }[] = [
   { id: "mission", label: "onSegMission" }, { id: "device", label: "onSegDevice" },
   { id: "age_group", label: "onSegAge" }, { id: "gender", label: "onSegGender" }, { id: "vision", label: "onSegVision" },
+  { id: "arrival", label: "onSegArrival" },
 ];
 const FIRST_SWITCHES = 12;
 

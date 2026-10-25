@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add traffic sources to online runs. Set where visitors come from (direct to
+  the home page, a search engine to the product page that fits what they look
+  for, social media to a popular product, the shop's email to its deals); each
+  source starts the visit on its own page, model shoppers are told where they
+  came from, and reports break results down by source with bounce rates. The
+  clickstream CSV gains an `arrival` column. Runs default to direct visits as
+  before.
 - Add price tests to the online quick experiments (all prices 10 % lower or
   higher, 20 % off the five best sellers, rounded the way the store's currency
   is), and say under every unclear paired difference about how many shoppers per

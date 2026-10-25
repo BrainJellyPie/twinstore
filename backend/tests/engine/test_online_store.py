@@ -277,7 +277,7 @@ def test_analysis_and_paired_deltas() -> None:
     shares = [row.sessions for row in summary.funnel]
     assert shares == sorted(shares, reverse=True) and shares[0] == 40
     assert summary.purchases == sum(s.outcome == "purchased" for s in sessions)
-    assert {row.dimension for row in summary.segments} == {"mission", "device", "age_group", "gender", "vision"}
+    assert {row.dimension for row in summary.segments} == {"mission", "device", "age_group", "gender", "vision", "arrival"}
     slow = site.model_copy(update={"options": site.options.model_copy(update={"page_load_ms": 6000})})
     slow_sessions = _run(slow, shoppers)
     deltas = {d.metric: d for d in paired_deltas(sessions, slow_sessions)}
