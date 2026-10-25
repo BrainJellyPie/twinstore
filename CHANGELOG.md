@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Search recent llama.cpp releases for a compatible GPU build before falling
+  back to CPU. A partially uploaded newest release no longer forces a smaller
+  CPU model when an earlier complete CUDA or Vulkan build is available.
+
 - Match CUDA runtime libraries to the local server's operating system,
   architecture and version. Incomplete GPU pairs are skipped, and cached
   installs recorded with a foreign runtime are repaired on an authorized start.

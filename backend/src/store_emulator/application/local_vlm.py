@@ -119,8 +119,9 @@ def pick_runtime_assets(names: list[str], *, os_name: str, arch: str, backend: s
 def pick_release(
     releases: list[dict[str, object]], *, os_name: str, arch: str, backend: str, cuda: str = "",
 ) -> tuple[str, list[str], dict[str, str]] | None:
-    """(tag, asset names to download, every asset's download URL) of the newest release with a build for this
-    machine; drafts and releases without one (a versioned release without binaries) are skipped."""
+    """The newest compatible build, preferring the requested GPU across recent releases before CPU fallback.
+    Return (tag, asset names to download, every asset's URL); skip drafts and releases without binaries."""
+    fallback: tuple[str, list[str], dict[str, str]] | None = None
     for release in releases:
         if release.get("draft"):
             continue
@@ -134,8 +135,14 @@ def pick_release(
                     assets[name] = url
         names = pick_runtime_assets(list(assets), os_name=os_name, arch=arch, backend=backend, cuda=cuda)
         if names:
-            return str(release.get("tag_name", "")), names, assets
-    return None
+            chosen = str(release.get("tag_name", "")), names, assets
+            if backend in ("cuda", "vulkan") and f"-{backend}-" not in names[0]:
+                # Assets arrive separately: a new CPU archive must not hide an older usable GPU build.
+                if fallback is None:
+                    fallback = chosen
+                continue
+            return chosen
+    return fallback
 
 
 def _safe_extract(archive: Path, dest: Path) -> None:
