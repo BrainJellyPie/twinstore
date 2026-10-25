@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Ask local models for one category per rack key and one product list per category
+  key. Fixed-key JSON schemas avoid duplicate groups and reordered positional
+  recovery in automatic starter filling; existing validation and cache records
+  still use canonical rack IDs and catalog SKUs.
+
 - Reduce local-model starter-selection retries and truncated responses: bound category
   groups by the actual task and use short product codes that resolve to exact catalog
   SKUs. Catalog identity changes invalidate cached code mappings. Add a real local-model
