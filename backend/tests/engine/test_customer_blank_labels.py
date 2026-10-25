@@ -17,14 +17,15 @@ from store_emulator.engine.generators import persona as gen
 
 
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
-@pytest.mark.parametrize("pool", ["empty", "blank", "unicode", "mixed"])
-@pytest.mark.parametrize("traffic", ["blank", "mixed"])
+@pytest.mark.parametrize("pool", ["empty", "blank", "unicode", "mixed", "repeated"])
+@pytest.mark.parametrize("traffic", ["blank", "mixed", "repeated"])
 def test_blank_labels_preserve_customer_counts_and_use_valid_choices(monkeypatch, tmp_path, mode, pool, traffic):
     original = llm_client.litellm.acompletion
     calls = []
     blanks = {"empty": [], "blank": [""], "unicode": [" \t", "\u3000", "\n\r"],
-              "mixed": ["", "\u3000"]}[pool]
-    identity, purpose = ("동네 주민", "茶와 간식") if pool == "mixed" else ("shopper", "shopping")
+              "mixed": ["", "\u3000"], "repeated": ["", "\u3000"]}[pool]
+    identity, purpose = ("동네 주민", "茶와 간식") if pool in {"mixed", "repeated"} else ("shopper", "shopping")
+    repeats = 3 if pool == "repeated" else 1
 
     def labels(section):
         return re.findall(r"^  - ([^\n]*)$", section, re.MULTILINE)
@@ -35,7 +36,7 @@ def test_blank_labels_preserve_customer_counts_and_use_valid_choices(monkeypatch
         system = body["messages"][0]["content"]
         user = next(m["content"] for m in body["messages"] if m["role"] == "user")
         if "hourly_profiles" in system:
-            types = ["", "\u3000"] + ([f"  {identity}\t"] if traffic == "mixed" else [])
+            types = ["", "\u3000"] + ([f"  {identity}\t"] * (3 if traffic == "repeated" else 1) if traffic != "blank" else [])
             payload = {"hourly_profiles": [{"visitor_count": 3, "person_types": types}]}
         elif "personas" in system:
             ids, purposes = user.split("## purpose 목록", 1)
@@ -44,9 +45,9 @@ def test_blank_labels_preserve_customer_counts_and_use_valid_choices(monkeypatch
                 age_group="30s", gender="Female", description=f"Shopper {i}", intent="Groceries")
                 for i in range(count)]}
         else:
-            payload = {"keywords": blanks + (["  住宅街\t"] if pool == "mixed" else []),
-                       "identities": blanks + ([f"  {identity}\t"] if pool == "mixed" else []),
-                       "purposes": blanks + ([f"\u3000{purpose}  "] if pool == "mixed" else [])}
+            payload = {"keywords": blanks + (["  住宅街\t"] * repeats if pool in {"mixed", "repeated"} else []),
+                       "identities": blanks + ([f"  {identity}\t"] * repeats if pool in {"mixed", "repeated"} else []),
+                       "purposes": blanks + ([f"\u3000{purpose}  "] * repeats if pool in {"mixed", "repeated"} else [])}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
                 "message": {"role": "assistant", "content": json.dumps(payload)}}]})
@@ -81,7 +82,7 @@ def test_blank_labels_preserve_customer_counts_and_use_valid_choices(monkeypatch
                     specs = re.findall(r"^\[\d+\] 9시, (.*?), 키워드: (.*)$", user, re.MULTILINE)
                     assert len(specs) == 3
                     assert all(types == identity for types, _ in specs)
-                    assert all(keywords == ("住宅街" if pool == "mixed" else "") for _, keywords in specs)
+                    assert all(keywords == ("住宅街" if pool in {"mixed", "repeated"} else "") for _, keywords in specs)
                     if mode == "json_schema":
                         schema = body["response_format"]["json_schema"]["schema"]
                         choices = schema["$defs"]["LabelledPersona"]["properties"]

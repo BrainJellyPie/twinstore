@@ -36,7 +36,8 @@ class TradeAreaProfile(BaseModel):
     def _usable_labels(cls, values: list[str]) -> list[str]:
         # A truthy list of blanks otherwise bypasses the empty-pool fallbacks
         # and becomes an impossible vocabulary for later customer prompts.
-        return [label.strip() for label in values if label.strip()]
+        # These are label pools, not weights: repeats must not bias random sampling.
+        return list(dict.fromkeys(label.strip() for label in values if label.strip()))
 
 
 class HourlyProfile(BaseModel):
@@ -54,7 +55,7 @@ class HourlyProfile(BaseModel):
     def _usable_labels(cls, values: list[str]) -> list[str]:
         # _usable_hourly supplies trade-area types when positive traffic has
         # no usable labels; keep the visitor count so those customers survive.
-        return [label.strip() for label in values if label.strip()]
+        return list(dict.fromkeys(label.strip() for label in values if label.strip()))
 
 
 class DailyTrafficResult(BaseModel):

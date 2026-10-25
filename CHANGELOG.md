@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Deduplicate model-generated customer keywords, identity/purpose pools and hourly
+  customer types after trimming whitespace. Repeated labels no longer act as extra
+  sampling weight or repeat in later prompts. Preserve visitor estimates and add
+  real CPU customer-generation probes for Korean/KRW and Japanese/JPY inputs.
+
 - Keep AI design conversations usable after twenty replies. Send recent complete
   exchanges within the API limit and bound older model context by UTF-8 bytes,
   retaining the complete latest request and current design. Add a real CPU probe
