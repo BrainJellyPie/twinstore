@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject question echoes in physical-store interviews before caching or saving
+  them, and exclude failed answers from group interview themes.
+
 - Serialize photo-applied layouts with source operating settings, capture links
   and deletion. Preserve both concurrent applications and avoid orphaned drafts
   when a selected photo disappears during preparation.

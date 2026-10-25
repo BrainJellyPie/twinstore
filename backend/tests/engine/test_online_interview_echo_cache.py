@@ -7,18 +7,27 @@ import httpx
 import pytest
 
 from store_emulator.domain.config import LLMConfig
-from store_emulator.domain.interview import InterviewMessage
+from store_emulator.domain.interview import InterviewMessage, Journey, JourneyStep
+from store_emulator.domain.types import Action
+from store_emulator.engine.interview import ask_shopper as ask_store_shopper
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.interview import ask_shopper
 from tests.engine.test_online_interview import _visit
+from tests.engine.test_llm_engine_offline import _persona
+from tests.engine.test_llm_impulse_exposure import fixture
 
 
 @pytest.mark.parametrize("provider", ["openai", "ollama"])
+@pytest.mark.parametrize("surface", ["online", "physical"])
 @pytest.mark.parametrize("structured", ["json", "json_schema"])
 @pytest.mark.parametrize("seed", [None, 0])
 @pytest.mark.parametrize("kind", ["once", "current", "earlier", "punctuation"])
-def test_actual_sdk_retries_echoes_without_caching_them(monkeypatch, tmp_path, provider, structured, seed, kind):
+def test_actual_sdk_retries_echoes_without_caching_them(monkeypatch, tmp_path, provider, surface, structured, seed, kind):
     site, shopper, session = _visit()
+    store, _ = fixture()
+    journey = Journey(run_id="r1", persona=_persona(), day=1, arrival_time="12:00:00", leave_time="12:01:00",
+        engine_type="rule_based", currency="USD", total_spent=0, units=0, path=[],
+        steps=[JourneyStep(index=1, time="12:00:00", elapsed_sec=0, action=Action.BROWSE)])
     history = [InterviewMessage(role="interviewer", text="Would a coupon have helped?"),
                InterviewMessage(role="shopper", text="Perhaps.")]
     question = "Why did you leave?"
@@ -49,10 +58,12 @@ def test_actual_sdk_retries_echoes_without_caching_them(monkeypatch, tmp_path, p
     monkeypatch.setattr(httpx.AsyncClient, "send", asend)
     config = LLMConfig(model="ollama_chat/echo-test" if provider == "ollama" else "openai/echo-test",
         api_base="http://127.0.0.1:11434" if provider == "ollama" else "http://127.0.0.1:8081/v1",
-        structured_output=structured, structured_sdk_retries=0, cache_dir=str(tmp_path), seed=seed)
+        structured_output=structured, structured_sdk_retries=0, cache_dir=str(tmp_path), seed=seed, max_tokens=700)
     client = LiteLLMClient(config)
 
     def ask(model):
+        if surface == "physical":
+            return asyncio.run(ask_store_shopper(model, journey, store, history, question))
         return asyncio.run(ask_shopper(model, site, shopper, session, history, question, run_id="r1"))
 
     if kind != "once":
