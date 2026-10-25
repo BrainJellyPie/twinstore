@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- On narrow screens, opening an online store or run from the list scrolls to
+  it, the report's floating replay dock waits until its header has scrolled
+  past, and a variant's difference chip no longer splits its figure.
 - Keep the stores chosen for an online run in sight: they are listed together
   above the store list, which now scrolls on its own when a project has many
   stores, so a comparison opened from another tab shows what it compares.

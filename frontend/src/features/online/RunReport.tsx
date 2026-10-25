@@ -47,7 +47,8 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
   // Once the hero's buttons scroll away, a dock keeps the shopper replay one click away.
   const watchHero = (el: HTMLElement | null) => {
     if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setHeroGone(entry ? !entry.isIntersecting : false));
+    // Only once it has scrolled up out of view: a hero still below the fold (narrow screens) needs no dock yet.
+    const io = new IntersectionObserver(([entry]) => setHeroGone(entry ? !entry.isIntersecting && entry.boundingClientRect.top < 0 : false));
     io.observe(el);
     return () => io.disconnect();
   };
@@ -177,7 +178,7 @@ function Report({ result, onJourney }: { result: OnlineRunResult; onJourney: (jo
 
   return (
     <>
-      <nav aria-label={t("onNavLabel")} className="sticky top-0 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-2xl border bg-background/80 p-1 text-xs shadow-sm backdrop-blur-xl">
+      <nav aria-label={t("onNavLabel")} className="sticky top-0 z-20 flex gap-1 overflow-x-auto rounded-2xl border bg-background/80 p-1 text-xs shadow-sm backdrop-blur-xl">
         {sections.filter((x) => x.show).map((x) => (
           <a key={x.id} href={`#${x.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(x.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
             className="shrink-0 rounded-xl px-3 py-1.5 whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">{x.label}</a>
