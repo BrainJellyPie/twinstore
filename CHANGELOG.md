@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The online page remembers where you are: the address now carries the open
+  store and run, so a reload or a copied link comes back to the same store or
+  report (before, it fell back to the first store), and the store or run's
+  entry scrolls into view in the list when it opens.
 - Old links say what happened: a page of a deleted store shows **This store
   no longer exists** with the way back to the stores (the floor page showed
   the router's bare "Something went wrong!", and the other store pages

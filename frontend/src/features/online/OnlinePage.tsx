@@ -55,6 +55,16 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
     setTab("design");
   }, [designAsk]);
 
+  // The address keeps the open store and run, so a reload or a copied link comes back to them. It is rewritten in
+  // place: telling the router would rebuild this page, and its search only carries links in from other pages.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    for (const key of ["site", "compare", "run", "shopper", "variant"]) url.searchParams.delete(key);
+    if (siteId) url.searchParams.set("site", siteId);
+    if (runId) url.searchParams.set("run", runId);
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
+  }, [siteId, runId]);
+
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });
   const runs = useQuery({
@@ -99,11 +109,21 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   }
   const roots = list.filter((s) => rootOf(s) === s.id && (found(s.name, s.note) || family.has(s.id)));
   const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
+  // The open store or run's entry is scrolled into the list's view when it opens (a link, a reload, a new store).
+  const aside = useRef<HTMLElement>(null);
+  const listsReady = sites.isSuccess && runs.isSuccess;
+  useEffect(() => {
+    const box = aside.current;
+    const entry = box?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!box || !entry || !listsReady || box.scrollHeight <= box.clientHeight) return;
+    const top = entry.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    if (top < box.scrollTop || top + entry.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTo?.({ top: top - box.clientHeight / 3 });
+  }, [siteId, runId, listsReady, list.length]);
   const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); setListOpen(false); reveal(); };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-      <aside hidden={wide && !!runId} className="panel m-3 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mr-0 lg:w-[320px] lg:overflow-y-auto">
+      <aside ref={aside} hidden={wide && !!runId} className="panel m-3 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mr-0 lg:w-[320px] lg:overflow-y-auto">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3" aria-hidden /> {t("areaBackToStore")}
         </Link>
