@@ -53,7 +53,16 @@ class RepairModel:
             ids = groups[0]["rack_ids"]
             if len(ids) > 1: ids[-1] = ids[0]
             else: ids.append(ids[0])
-        elif fault in {"duplicate_category", "duplicate_product_category"}: groups.append(groups[0].copy())
+        elif fault in {"duplicate_category", "duplicate_product_category"}:
+            # A repeated category within the schema's bounds (at most one group per rack and category, 100 racks a
+            # group): the second group takes the first one's category. With a single group the repeat goes into
+            # its rack list instead, replacing its last rack so the list stays within its limit.
+            if len(groups) > 1: groups[1]["category"] = groups[0]["category"]
+            elif stage == "category":
+                ids = groups[0]["rack_ids"]
+                if len(ids) > 1: ids[-1] = ids[0]
+                else: ids.append(ids[0])
+            else: groups.append(groups[0].copy())
         elif fault == "unknown_category": groups[0]["category"] = "not_in_catalog"
         elif fault == "missing_products": groups[0]["category"] = "not_requested"
         elif fault == "unknown_sku": groups[0]["skus"] = ["invented_sku"]
