@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Require report evidence before caching or storing numerical online-analyst answers.
+  Constrain citations to at most three actual report lines, bound follow-up question
+  lengths and label overall conversion and interval uncertainty explicitly. Add
+  real CPU probes for comparison questions and unsupported real-world forecasts;
+  the tiny model's remaining interpretation errors are recorded as probe failures.
+
 - Deduplicate model-generated customer keywords, identity/purpose pools and hourly
   customer types after trimming whitespace. Repeated labels no longer act as extra
   sampling weight or repeat in later prompts. Preserve visitor estimates and add
@@ -12,13 +18,20 @@
   retaining the complete latest request and current design. Add a real CPU probe
   for long Korean conversations that previously exceeded the local context window.
 
+- Ask about an online run: the report has an **Ask about this run** section
+  (also on the floating dock) where a model answers questions from the run's
+  report — each store's funnel, money, friction, survey, ads, segments and the
+  paired differences with their intervals — and lists the report lines it
+  used; figures not in the report are dropped. Follow-up suggestions that
+  repeat the answer or an earlier question are dropped too, here and in the
+  store's run analyst.
+
 - Harden AI design edits for small local models with typed, sparse option updates;
   reject duplicate, unknown, null and invalid changes. Keep the editor locked while
   a model reply is pending, refresh changed money inputs on apply/undo without losing
   unrelated unfinished edits, and round model-proposed amounts consistently with the
   designer. Add reproducible CPU probes, including a broad request that still exposes
   the 0.8B model's instruction-following limits.
-
 - Try a tested package online: a concept test whose package image is linked to
   a store product can turn it into a variant of an online store with that
   product's picture replaced, ready to compare with the store.

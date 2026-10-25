@@ -23,7 +23,13 @@ from PIL import Image, ImageDraw
 from pydantic import BaseModel, Field, TypeAdapter
 
 from store_emulator.domain.config import EngineType, SimulationConfig
-from store_emulator.domain.interview import InterviewMessage, InterviewQuestion
+from store_emulator.domain.interview import (
+    AnalystMessage,
+    AnalystQuestion,
+    AnalystThread,
+    InterviewMessage,
+    InterviewQuestion,
+)
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.online import (
     FUNNEL_STAGES,
@@ -61,6 +67,7 @@ from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.layout_edit import ZERO_DECIMAL
+from store_emulator.engine.online.analyst import answer_online_question, online_facts
 from store_emulator.engine.online.design_chat import apply_design, chat_design
 from store_emulator.engine.online.store_changes import apply_store_changes
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
@@ -822,6 +829,77 @@ def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> Session
         shopper = at_rival(stores[variant], shopper, sites[0]) or shopper
     return SessionView(variant=variant, site_id=stores[variant].id, site_name=stores[variant].name, shopper=shopper,
                        session=session)
+
+
+def _analyst_path(pid: str, run_id: str) -> Path:
+    return _run_dir(pid, run_id) / "analyst.json"
+
+
+def get_analyst(pid: str, run_id: str) -> AnalystThread:
+    """Questions asked about this online run and the analyst's answers."""
+    get_run(pid, run_id)
+    path = _analyst_path(pid, run_id)
+    return AnalystThread.model_validate(read_json(path)) if path.exists() else AnalystThread(run_id=run_id)
+
+
+@contextmanager
+def _analyst_lock(pid: str, run_id: str) -> Iterator[None]:
+    digest = hashlib.sha256(run_id.encode()).hexdigest()
+    lock = FileLock(setup_lock_path(pid, "online-analyst").with_name(f"online-analyst_{digest}.lock"), timeout=0)
+    try:
+        lock.acquire()
+    except Timeout as e:
+        raise AppError("The previous question is still being answered. Try again in a moment.", 409) from e
+    try:
+        yield
+    finally:
+        lock.release()
+
+
+def ask_analyst(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> AnalystThread:
+    """The question and the analyst's answer, read off the run's report, added to the run's analyst thread."""
+    with _analyst_lock(pid, run_id):
+        with _write_transaction(pid):
+            result = get_run(pid, run_id).result
+            if result is None:
+                raise AppError("This run has no results yet", 409)
+            thread = get_analyst(pid, run_id)
+        llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1600})
+        try:
+            model = assistive_model(q.model, llm_config)
+            llm = assistive_client(model, llm_config)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+        try:
+            answer = asyncio.run(answer_online_question(llm, result, q.question, thread.messages,
+                                                        seed=stable_seed("online-analyst", run_id, len(thread.messages))))
+        except Exception as e:  # provider errors reach the user as advice
+            logger.warning(f"[online analyst] {pid}/{run_id}: {type(e).__name__}: {e}")
+            raise AppError(model_failure(e, "The question could not be answered"), 502) from e
+        thread.model = answered_by(llm, model)
+        thread.messages += [
+            AnalystMessage(role="user", text=q.question, created_at=now_iso()),
+            AnalystMessage(role="analyst", text=answer.answer, figures=answer.figures, follow_ups=answer.follow_ups,
+                           created_at=now_iso()),
+        ]
+        with _write_transaction(pid):
+            if not (_run_dir(pid, run_id) / "status.json").is_file():
+                raise AppError(f"online run not found: {run_id}", 404)
+            write_json(_analyst_path(pid, run_id), thread.model_dump(mode="json"))
+        return thread
+
+
+def clear_analyst(pid: str, run_id: str) -> None:
+    with _analyst_lock(pid, run_id), _write_transaction(pid):
+        get_run(pid, run_id)
+        _analyst_path(pid, run_id).unlink(missing_ok=True)
+
+
+def analyst_facts(pid: str, run_id: str) -> str:
+    result = get_run(pid, run_id).result
+    if result is None:
+        raise AppError("This run has no results yet", 409)
+    return online_facts(result)
 
 
 def _interview_path(pid: str, run_id: str, variant: int, shopper_id: str) -> Path:

@@ -1,4 +1,4 @@
-"""Run production starter selection, package reading, customer generation or design chat on a real loopback model.
+"""Run production starter selection, package reading, customer generation, design chat or analysis on a real local model.
 
 From the repository root:
   PYTHONPATH=backend/src backend/.venv/bin/python verification/local-model-probe.py --case compact
@@ -22,14 +22,19 @@ from pydantic import SecretStr
 from store_emulator.application import template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.layout_options import TemplateLayoutRequest
-from store_emulator.domain.online import DesignMessage
+from store_emulator.domain.online import DesignMessage, OnlineRunResult, VariantComparison
 from store_emulator.domain.store import DaySchedule
 from store_emulator.domain.types import Weekday
 from store_emulator.engine.generators.persona import Pace, generate_batched
 from store_emulator.engine.layout_gen import generate_store
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.catalog import build_site
+from store_emulator.engine.online.analysis import paired_deltas, segment_deltas, summarize, switches
+from store_emulator.engine.online.analyst import answer_online_question, online_facts
 from store_emulator.engine.online.design_chat import apply_design, chat_design
+from store_emulator.engine.online.policies import RulePolicy
+from store_emulator.engine.online.session import run_session
+from store_emulator.engine.online.shoppers import sample_shoppers
 from store_emulator.engine.package_reader import read_pack
 from store_emulator.engine.perception.product_images import bundled_product_image
 from store_emulator.engine.perception.shelf_render import load_font
@@ -45,7 +50,7 @@ design_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
-    "persona-neighborhood", "persona-cafe", *design_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", *design_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
@@ -67,8 +72,8 @@ elif args.case == "book":
         products_per_category=2, requirements="Books and stationery for local residents; no food or drinks.")
     description = "Petite librairie de quartier, livres et papeterie."
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
-    temperature=.2 if args.case in design_requests else 0, seed=0,
-    max_tokens=900 if args.case in design_requests else 400 if args.case.startswith("pack-") else 4096 if args.case.startswith("persona-") else 5000,
+    temperature=.2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
+    max_tokens=900 if args.case in design_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output="json_schema", structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
@@ -126,6 +131,43 @@ try:
         result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
             reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
             characters=sum(len(message.text) for message in messages))
+    elif args.case.startswith("analyst-"):
+        control = build_site("fashion", site_id="control", currency="USD")
+        control.name = "Control"
+        variant = control.model_copy(deep=True)
+        variant.id, variant.name = "variant", "Quick add without popup"
+        variant.options.quick_add, variant.options.welcome_popup = True, "none"
+        shoppers = sample_shoppers(control, 8, seed=4, missions={"purchase": .5, "browse": .5}, mobile_share=.5)
+        by_id = {shopper.id: shopper for shopper in shoppers}
+
+        async def visits(site):
+            return [await run_session(site, shopper, RulePolicy(), seed=4, max_steps=20, render=False) for shopper in shoppers]
+
+        a, b = asyncio.run(visits(control)), asyncio.run(visits(variant))
+        won, lost, changed, rows = switches(a, b)
+        report = OnlineRunResult(run_id="cpu-analyst", name="Two design changes", policy="rule", currency="USD",
+            shoppers=shoppers, variants=[summarize(control, by_id, a), summarize(variant, by_id, b)],
+            comparisons=[VariantComparison(site_id=variant.id, site_name=variant.name, deltas=paired_deltas(a, b, seed=4),
+                segments=segment_deltas(a, b, by_id, seed=4), won=won, lost=lost, changed=changed, switches=rows)])
+        question = ("What exact real-world sales uplift will this store achieve next year?" if args.case == "analyst-forecast"
+                    else "Did the variant improve conversion? Quote both overall conversion rates and say whether the difference is clear.")
+        (output / "run.json").write_text(report.model_dump_json(indent=2))
+        (output / "facts.txt").write_text(online_facts(report))
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            reply = asyncio.run(answer_online_question(client, report, question, [], seed=0))
+        issues = []
+        if args.case == "analyst-forecast":
+            if "does not show" not in reply.answer.casefold() or any(c.isdigit() for c in reply.answer):
+                issues.append("Expected an explicit refusal to invent a future real-world forecast")
+        else:
+            if not reply.figures or "25" not in reply.answer or "12.5" not in reply.answer:
+                issues.append("Expected cited overall conversion rates of 25% and 12.5%")
+            if not any(word in reply.answer.casefold() for word in ["not clear", "includes zero", "includes 0", "not statistically significant"]):
+                issues.append("Expected the interval including zero to be recognized as inconclusive")
+            if any(word in reply.answer.casefold() for word in ["is statistically significant", "is significant", "significant increase", "significant improvement"]):
+                issues.append("Contradicts this fixture's interval including zero")
+        result.update(success=not issues, question=question, reply=reply.model_dump(mode="json"), issues=issues,
+            expected_conversion=[summary.conversion for summary in report.variants])
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."

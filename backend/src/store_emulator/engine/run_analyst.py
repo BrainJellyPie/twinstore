@@ -7,11 +7,11 @@ sheet cannot answer gets "the run does not show that" and a pointer to the analy
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Protocol
+from typing import Annotated, Protocol, Self
 from unicodedata import normalize
 
 from instructor.core.exceptions import InstructorRetryException
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from store_emulator.domain.customer import CustomerResult
@@ -37,7 +37,8 @@ class RunAnswer(BaseModel):
     answer: str = Field(min_length=1, max_length=1500, description="the answer in two to five plain sentences")
     figures: list[str] = Field(default_factory=list[str], max_length=8,
                                description="the fact-sheet lines the answer rests on, copied as written")
-    follow_ups: list[str] = Field(default_factory=list[str], max_length=3, description="up to three next questions")
+    follow_ups: list[Annotated[str, Field(max_length=200)]] = Field(
+        default_factory=list[str], max_length=3, description="up to three short next questions; use [] if none")
 
     @field_validator("figures", "follow_ups", mode="before")
     @classmethod
@@ -147,13 +148,30 @@ def run_facts(customers: Sequence[CustomerResult], personas: Mapping[str, Person
 
 async def answer_run_question(
     llm: StructuredLLM, facts: str, question: str, history: Sequence[AnalystMessage], seed: int = 0,
+    prompt: str = ANALYST_PROMPT,
+    require_numerical_evidence: bool = False,
 ) -> RunAnswer:
     convo = "\n".join(f"{'Manager' if m.role == 'user' else 'Analyst'}: {m.text}" for m in history[-8:])
     user = f"Fact sheet:\n{facts}\n\n{'Conversation so far:' + chr(10) + convo + chr(10) + chr(10) if convo else ''}Manager: {question.strip()}"
     questions = [question, *(m.text for m in history[-8:] if m.role == "user")]
     asked = {"".join(c for c in normalize("NFKC", text).casefold() if c.isalnum()) for text in questions}
+    source_lines = list(dict.fromkeys(line.strip() for line in facts.splitlines() if line.strip()))
+    fact_lines = {line.casefold() for line in source_lines}
+    citation_choices: list[JsonValue] = [*source_lines]
+    citation_schema: dict[str, JsonValue] = {"items": {"type": "string", "enum": citation_choices}}
 
     class AnalystAnswer(RunAnswer):
+        figures: list[str] = (
+            Field(max_length=3, json_schema_extra=citation_schema,
+                  description="the fact-sheet lines the answer rests on, copied as written; use [] if the report cannot answer")
+            if require_numerical_evidence else Field(default_factory=list[str], max_length=8,
+                description="the fact-sheet lines the answer rests on, copied as written"))
+
+        @field_validator("figures")
+        @classmethod
+        def unique_sources(cls, value: list[str]) -> list[str]:
+            return list(dict.fromkeys(value)) if require_numerical_evidence else value
+
         @field_validator("answer")
         @classmethod
         def answer_the_question(cls, value: str) -> str:
@@ -162,17 +180,36 @@ async def answer_run_question(
                                           "Answer the manager's latest question using the supplied fact sheet.")
             return value
 
+        @model_validator(mode="after")
+        def numerical_evidence(self) -> Self:
+            if (require_numerical_evidence and any(c.isdigit() for c in self.answer)
+                    and not any(f.strip().casefold() in fact_lines for f in self.figures)):
+                raise PydanticCustomError("analyst_no_figures", "Numerical claims need at least one supporting report "
+                    "line copied exactly into figures. Do not invent a forecast. If the report cannot answer the "
+                    "question, say what is missing without inventing numerical claims.")
+            return self
+
     try:
-        answer = await llm.generate_structured_async(AnalystAnswer, ANALYST_PROMPT, user, max_retries=2, seed=seed)
+        answer = await llm.generate_structured_async(AnalystAnswer, prompt, user, max_retries=2, seed=seed)
     except Exception as error:
         cause = (error.failed_attempts[-1].exception
                  if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
         if isinstance(cause, ValidationError) and any(e["type"] == "analyst_echo" for e in cause.errors()):
             raise ValueError("the model repeated the question instead of answering") from error
+        if isinstance(cause, ValidationError) and any(e["type"] == "analyst_no_figures" for e in cause.errors()):
+            raise ValueError("the model gave numerical claims without verifiable report figures") from error
         raise
     sheet = facts.casefold()
     figures = [f.strip() for f in answer.figures if f.strip() and f.strip().casefold() in sheet]
-    return answer.model_copy(update={"figures": figures[:8], "follow_ups": [q.strip() for q in answer.follow_ups if q.strip()][:3]})
+    # Small models repeat the answer or a question as every follow-up; keep only new questions, once each.
+    seen = {*asked, "".join(c for c in normalize("NFKC", answer.answer).casefold() if c.isalnum()), ""}
+    follow_ups: list[str] = []
+    for q in answer.follow_ups:
+        folded = "".join(c for c in normalize("NFKC", q).casefold() if c.isalnum())
+        if folded not in seen:
+            seen.add(folded)
+            follow_ups.append(q.strip())
+    return answer.model_copy(update={"figures": figures[:8], "follow_ups": follow_ups[:3]})
 
 
 class _Starters(BaseModel):

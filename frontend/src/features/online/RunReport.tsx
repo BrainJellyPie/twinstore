@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, Columns2, Filter, GitCompareArrows, Play, Route, ShoppingBag, Users, Waves } from "lucide-react";
+import { BarChart3, Columns2, Filter, GitCompareArrows, MessageSquareText, Play, Route, ShoppingBag, Users, Waves } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import {
@@ -18,6 +18,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 
 import { DiffForest, FunnelChart, OutcomeBars, SegmentHeat, StatTiles, StoreKey, Swatch, type HeatCell, type StatMetric } from "./charts";
 import { JourneyViewer } from "./JourneyViewer";
+import { OnlineAnalyst } from "./OnlineAnalyst";
 import {
   AD_PLACEMENT_LABELS, DELTA_LABELS, FRICTION_HARMS, FRICTION_LABELS, PAGE_LABELS, segmentValueLabel, storeColor,
 } from "./labels";
@@ -94,7 +95,7 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
         </section>
       )}
       {status.status === "failed" && <section role="alert" className="panel rounded-[1.4rem] p-4 text-sm text-destructive">{status.error}</section>}
-      {result && <Report result={result} onJourney={setJourney} />}
+      {result && <Report projectId={projectId} result={result} onJourney={setJourney} />}
       {result && heroGone && !journey && (watch || compare) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
           <div className="dark pointer-events-auto flex items-center gap-1 rounded-full border border-white/15 bg-[#0b0c14]/90 p-1.5 text-white shadow-[0_20px_60px_-15px_rgb(40_20_110/0.9)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4"
@@ -114,6 +115,10 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
               className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm hover:bg-white/10">
               <Users className="size-4" aria-hidden /> {t("onRiverTitle")}
             </a>
+            <a href="#online-ask" onClick={(e) => { e.preventDefault(); document.getElementById("online-ask")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+              className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm hover:bg-white/10">
+              <MessageSquareText className="size-4" aria-hidden /> {t("analystAsk")}
+            </a>
           </div>
         </div>
       )}
@@ -129,7 +134,7 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
 
 export interface Journey { variant: number; shopper: string; play?: boolean; compare?: boolean }
 
-function Report({ result, onJourney }: { result: OnlineRunResult; onJourney: (journey: Journey) => void }) {
+function Report({ projectId, result, onJourney }: { projectId: string; result: OnlineRunResult; onJourney: (journey: Journey) => void }) {
   const { t } = useI18n();
   const code = currencyCode(result.currency);
   const money = (x: number) => formatMoney(Math.round(x), code);
@@ -165,6 +170,7 @@ function Report({ result, onJourney }: { result: OnlineRunResult; onJourney: (jo
     { id: "online-shoppers", label: t("onCardsTitle"), show: true },
     { id: "online-kpis", label: t("onKpis"), show: true },
     { id: "online-compare", label: t("onCompareTitle"), show: result.comparisons.length > 0 },
+    { id: "online-ask", label: t("analystTitle"), show: true },
     { id: "online-funnel", label: t("onFunnel"), show: true },
     { id: "online-flow", label: t("onFlowTitle"), show: v.some((s) => (s.flow ?? []).length > 0) },
     { id: "online-ads", label: t("onAds"), show: v.some((s) => s.ads.length > 0) },
@@ -252,6 +258,10 @@ function Report({ result, onJourney }: { result: OnlineRunResult; onJourney: (jo
 
       <WhoChanged result={result} money={money} onReplay={(variant, shopper) => onJourney({ variant, shopper })}
         onCompare={(variant, shopper) => onJourney({ variant, shopper, compare: true })} />
+
+      <Section id="online-ask" icon={MessageSquareText} title={t("analystTitle")} hint={t("onAnalystHint")}>
+        <OnlineAnalyst projectId={projectId} runId={result.run_id} compared={result.comparisons.length > 0} />
+      </Section>
 
       <div id="online-funnel" className="grid scroll-mt-16 gap-3 xl:grid-cols-2">
         <Section icon={Filter} title={t("onFunnel")}>

@@ -90,9 +90,9 @@ def test_automatic_starter_selection_transmits_its_dynamic_grammars(monkeypatch,
         body = json.loads(request.content)
         context = json.loads(body["messages"][-1]["content"])
         if "racks" in context:
-            answer = {"groups": [{"category": "home_coffee_tea", "rack_ids": ids}]}
+            answer = {"assignments": {rid: "home_coffee_tea" for rid in ids}}
         else:
-            answer = {"groups": [{"category": key, "skus": [products[0]["sku"]]} for key, products in context["categories"].items()]}
+            answer = {"selections": {key: [products[0]["sku"]] for key, products in context["categories"].items()}}
         requests.append((body, answer))
         return ollama_response(request, answer)
 
@@ -118,10 +118,10 @@ def test_automatic_starter_selection_transmits_its_dynamic_grammars(monkeypatch,
         validator = Draft202012Validator(body["format"])
         assert validator.is_valid(answer)
         invalid = json.loads(json.dumps(answer))
-        if "rack_ids" in invalid["groups"][0]:
-            invalid["groups"][0]["rack_ids"] = ["section_999"]
+        if "assignments" in invalid:
+            invalid["assignments"]["section_999"] = "home_coffee_tea"
         else:
-            invalid["groups"][0]["skus"] = ["invented-sku"]
+            invalid["selections"]["home_coffee_tea"] = ["invented-sku"]
         assert not validator.is_valid(invalid)
     assert store.model_dump_json() == before
 

@@ -20,7 +20,7 @@ from store_emulator.application.online import (
     SessionView,
     SiteSummary,
 )
-from store_emulator.domain.interview import InterviewQuestion
+from store_emulator.domain.interview import AnalystQuestion, AnalystThread, InterviewQuestion
 from store_emulator.domain.online import (
     DesignChatReply,
     DesignChatRequest,
@@ -191,6 +191,33 @@ async def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, ques
 def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> dict[str, str]:
     _call(lambda: online_service.clear_interview(pid, run_id, variant, shopper_id))
     return {"status": "deleted"}
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/analyst", summary="Questions asked about this online run",
+            response_model=AnalystThread)
+def get_analyst(pid: str, run_id: str) -> AnalystThread:
+    return _call(lambda: online_service.get_analyst(pid, run_id))
+
+
+@router.post("/projects/{pid}/online/runs/{run_id}/analyst", summary="Ask a question about this online run",
+             response_model=AnalystThread)
+async def ask_analyst(pid: str, run_id: str, q: AnalystQuestion) -> AnalystThread:
+    """The model answers from the run's report (each store's funnel, money, friction, survey, ads, segments and the
+    paired differences with their intervals) and lists the figures it used. Returns the whole thread."""
+    config = get_config()
+    return await run_in_threadpool(_call, lambda: online_service.ask_analyst(pid, run_id, q, config))
+
+
+@router.delete("/projects/{pid}/online/runs/{run_id}/analyst", summary="Clear the questions about this online run")
+def clear_analyst(pid: str, run_id: str) -> dict[str, str]:
+    _call(lambda: online_service.clear_analyst(pid, run_id))
+    return {"status": "deleted"}
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/analyst/facts", summary="The fact sheet answers are read from",
+            response_class=PlainTextResponse)
+def analyst_facts(pid: str, run_id: str) -> str:
+    return _call(lambda: online_service.analyst_facts(pid, run_id))
 
 
 @router.get("/projects/{pid}/online/runs/{run_id}/sessions/{variant}/{shopper_id}/replay.gif",
