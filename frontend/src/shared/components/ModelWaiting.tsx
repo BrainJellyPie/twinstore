@@ -19,7 +19,7 @@ export function ModelWaiting({ label }: { label: string }) {
       <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> {label}
       {seconds >= 15 && (
         <span className="text-[0.7rem] text-muted-foreground">
-          {t("slowModelHint")} <span className="num" aria-hidden>({t("elapsedSeconds", { seconds })})</span>
+          {t("slowModelHint")} <span className="tabular-nums" aria-hidden>({t("elapsedSeconds", { seconds })})</span>
         </span>
       )}
     </span>

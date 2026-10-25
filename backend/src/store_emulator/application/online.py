@@ -69,7 +69,7 @@ from store_emulator.engine.online.browser import apply, build_page, initial_stat
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.layout_edit import MAX_LAYOUT_EDIT_CHANGES, ZERO_DECIMAL
 from store_emulator.engine.online.analyst import answer_online_question, online_facts, suggest_online_questions
-from store_emulator.engine.online.design_chat import apply_design, chat_design
+from store_emulator.engine.online.design_chat import apply_design, chat_design, unapplied_mentions
 from store_emulator.engine.online.store_changes import apply_store_changes, price_changes
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
@@ -531,7 +531,10 @@ def design_chat(pid: str, site_id: str, req: DesignChatRequest, config: Simulati
     except Exception as e:  # provider errors and unusable proposals reach the owner as a message, not a 500
         logger.warning(f"[online design chat] {pid}/{site_id}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The design could not be changed"), 502) from e
-    return DesignChatReply(reply=reply.reply, options=edited, changed=changed, model=answered_by(llm, model))
+    # A reply must not claim changes its updates do not hold: say which mentioned ones were not applied.
+    unset = unapplied_mentions(reply.reply, [*changed, *reply.changes.model_dump(exclude_none=True)])
+    text = f"{reply.reply} (Not applied: {', '.join(unset)}.)" if unset else reply.reply
+    return DesignChatReply(reply=text, options=edited, changed=changed, model=answered_by(llm, model))
 
 
 class DraftPreviewRequest(BaseModel):

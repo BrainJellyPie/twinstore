@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The store designer no longer lets a reply claim changes it did not make: a
+  real 450M local model set only the colour and the home sections while its
+  reply also described a coupon, removing the popup, a chat widget, a delivery
+  fee, guest checkout and page speed. Such replies now end with "(Not
+  applied: …)", naming each kind of change they mention without setting;
+  questions are left as they are.
 - Waiting on a model is easier to read: the store designer shows your request
   in the conversation at once, and every model wait (designer, both analysts,
   shopper interviews) adds after 15 seconds that a small local model can take
