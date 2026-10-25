@@ -44,7 +44,7 @@ def test_repetitive_model_labels_are_corrected_before_customer_batches(field, ch
                     description='Offline shopper', intent='Buy groceries', purpose='groceries').model_dump()
                     for _ in range(prompt.count('\n['))])
             for attempt in range(kwargs['max_retries']):
-                value = character * 500 if attempt == 0 else 'nearby'
+                value = character * 500 if attempt == 0 else ('nearby' if field == 'keywords' else 'resident')
                 data = ({'keywords': [value if field == 'keywords' else 'nearby'],
                          'identities': ['resident'], 'purposes': ['groceries']} if schema is gen.TradeAreaProfile
                         else {'hourly_profiles': [{'hour': 9, 'visitor_count': 5,
