@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve local model request limits across equivalent endpoint spellings.
+  A trailing slash or host-name casing change no longer disables the known
+  llama.cpp slot limit and sends the whole request batch at once.
+
 - Reject a named custom model with no configured server address before creating
   a run. Stale model selections now show unavailable and explain where to set
   the endpoint instead of falling through to the SDK's default host.

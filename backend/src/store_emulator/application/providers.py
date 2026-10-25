@@ -436,7 +436,8 @@ def _local_slots(api_base: str | None) -> int | None:
     from .local_vlm import manager  # late import: local_vlm imports this module
 
     status = manager().status()
-    if status.state == "ready" and status.slots > 0 and api_base and status.api_base == api_base:
+    if (status.state == "ready" and status.slots > 0 and api_base and status.api_base
+            and _same_local_endpoint(status.api_base, api_base)):
         return status.slots
     return None
 
