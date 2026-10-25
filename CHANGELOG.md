@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include the entered reference price in every survey questionnaire, even
+  without a price-sensitivity question. Changing that price now reaches
+  respondents and no longer reuses answers cached for a different price.
+
 - Clear a drafted survey's reference price when its first image cannot be
   identified, instead of assigning that price to the next remaining product.
   The draft reports the omission and preserves the remaining questionnaire.

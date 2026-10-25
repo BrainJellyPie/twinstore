@@ -195,6 +195,8 @@ async def survey_panel(
     url, _ = image_data_url(board, max_side=1280, fmt="JPEG")
     ref = f" (it is sold for {reference_price})" if reference_price else ""
     asks = _questions_text(questions, stimuli, currency, ref)
+    if reference_price and "price_vw" not in questions:
+        asks = f"Product A is sold for {reference_price}.\n{asks}"
     sem = asyncio.Semaphore(max_concurrent)
 
     async def ask(p: Persona) -> SurveyAnswer:
