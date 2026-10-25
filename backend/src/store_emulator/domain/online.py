@@ -97,6 +97,16 @@ type ShopperMission = Literal["purchase", "browse", "compare", "deal_hunt", "gif
 # the page outline (no image), e.g. to see what the picture adds.
 type ShopperPolicyKind = Literal["rule", "vlm", "text"]
 type ShopperSource = Literal["panel", "project"]
+# What the shopper's eyes make of a screen. The screenshot a vision model gets is filtered to match.
+type Vision = Literal["typical", "low_vision", "color_blind", "aging_eyes"]
+# Eyesight of a run's shoppers: all typical, a realistic mix by age and gender, or everyone with one condition
+# (a stress test of the design).
+type Accessibility = Literal["typical", "realistic", "low_vision", "color_blind", "aging_eyes"]
+type FrictionCode = Literal[
+    "popup_shown", "popup_left", "popup_accepted", "signin_reached", "signin_left", "account_created",
+    "fee_seen", "fee_left", "addon_seen", "addon_removed", "addon_paid", "coupon_failed", "zero_results",
+    "sold_out_seen", "slow_exit", "cookies_rejected",
+]
 type StepSource = Literal["rule", "model", "fallback"]
 type SessionOutcome = Literal["purchased", "abandoned_cart", "left", "bounced", "timed_out", "step_limit"]
 type FunnelStage = Literal["visit", "product_view", "add_to_cart", "checkout", "payment", "purchase"]
@@ -307,6 +317,7 @@ class OnlineShopper(BaseModel):
     has_account: bool = False
     description: str = ""
     persona_id: str = ""  # project customer this shopper was made from ("" = panel)
+    vision: Vision = "typical"
 
 
 class SearchRecord(BaseModel):
@@ -340,6 +351,17 @@ class SessionStep(BaseModel):
     screen: tuple[int, int] | None = None  # (width, height) of the screenshot, when one was drawn
 
 
+class ExitSurvey(BaseModel):
+    """What the shopper says right after the visit (model runs). Scales: satisfaction and ease 1–7 (ease is the
+    single ease question, SEQ), recommend 0–10 (net promoter question)."""
+    satisfaction: int = Field(ge=1, le=7)
+    ease: int = Field(ge=1, le=7)
+    recommend: int = Field(ge=0, le=10)
+    would_return: bool
+    frustration: str = Field(default="", max_length=200)
+    improvement: str = Field(default="", max_length=200)
+
+
 class SessionResult(BaseModel):
     shopper_id: str
     site_id: str
@@ -356,6 +378,8 @@ class SessionResult(BaseModel):
     exit_thought: str = ""
     model_requests: int = 0
     fallbacks: int = 0
+    survey: ExitSurvey | None = None
+    addon_paid: int = 0  # what a pre-ticked add-on the shopper left ticked cost them
 
 
 class OnlineRunRequest(BaseModel):
@@ -376,6 +400,8 @@ class OnlineRunRequest(BaseModel):
     source: ShopperSource = "panel"
     image_width: int = Field(default=896, ge=480, le=1600)
     shuffle_marks: bool = True  # number badges drawn at random, so a model's liking for low numbers is noise
+    accessibility: Accessibility = "typical"
+    exit_survey: bool = True  # model runs: each shopper answers a short survey after the visit (one more call)
 
 
 class FunnelRow(BaseModel):
@@ -385,7 +411,7 @@ class FunnelRow(BaseModel):
 
 
 class SegmentRow(BaseModel):
-    dimension: Literal["mission", "device", "age_group", "gender"]
+    dimension: Literal["mission", "device", "age_group", "gender", "vision"]
     value: str
     sessions: int
     conversion: float
@@ -423,6 +449,24 @@ class ClickPoint(BaseModel):
     y: float
 
 
+class FrictionRow(BaseModel):
+    """How often one known friction point (or dark pattern) came up, and how many sessions ended right there."""
+    code: FrictionCode
+    sessions: int  # sessions where it happened
+    share: float  # of all sessions
+    amount: int = 0  # money involved, e.g. add-on revenue from shoppers who never unticked it
+
+
+class SurveySummary(BaseModel):
+    responses: int
+    satisfaction: float  # mean, 1–7
+    ease: float  # mean, 1–7
+    nps: float  # % promoters (9–10) minus % detractors (0–6), −100…100
+    would_return: float  # share
+    frustrations: list[str]  # a sample, most common first
+    improvements: list[str]
+
+
 class VariantSummary(BaseModel):
     site_id: str
     site_name: str
@@ -447,10 +491,12 @@ class VariantSummary(BaseModel):
     products: list[ProductRow]
     searches: list[SearchTermRow]
     clicks: list[ClickPoint]
+    frictions: list[FrictionRow] = []
+    survey: SurveySummary | None = None
 
 
 class PairedDelta(BaseModel):
-    metric: Literal["conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds"]
+    metric: Literal["conversion", "revenue_per_session", "add_to_cart_rate", "steps", "seconds", "satisfaction", "recommend"]
     control: float
     variant: float
     diff: float

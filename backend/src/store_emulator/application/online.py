@@ -34,6 +34,7 @@ from store_emulator.domain.online import (
     OnlineSite,
     OnlineTemplate,
     PageOption,
+    Vision,
     PageView,
     SessionResult,
     SiteOptions,
@@ -47,7 +48,7 @@ from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy
-from store_emulator.engine.online.render import ProductPicture, render_page
+from store_emulator.engine.online.render import ProductPicture, render_page, see_as
 from store_emulator.engine.online.session import run_session
 from store_emulator.engine.online.shoppers import sample_shoppers
 from store_emulator.engine.perception.product_images import bundled_product_image
@@ -109,6 +110,7 @@ class BrowseRequest(BaseModel):
     mark_seed: int = Field(default=0, ge=0)
     has_account: bool = False
     device: Device = "desktop"  # of a new visit
+    vision: Vision = "typical"  # see the page as a shopper with this eyesight does
 
 
 class OnlineRunView(BaseModel):
@@ -305,10 +307,10 @@ def _bundled_picture(product: OnlineProduct) -> Image.Image | None:
 
 
 def page_view(site: OnlineSite, state: BrowserState, *, mark_seed: int = 0, picture: ProductPicture | None = None,
-              render: bool = True) -> PageView:
+              render: bool = True, vision: Vision = "typical") -> PageView:
     page = build_page(site, state)
     numbers = numbering(page, mark_seed)
-    shot = render_page(page, site, numbers, picture) if render else None
+    shot = see_as(render_page(page, site, numbers, picture), vision, large_text=page.large_text) if render else None
     options = sorted((PageOption(kind=c.action.kind, target=c.action.target, label=c.action.label,
                                  number=numbers[c.index], box=shot.boxes.get(c.index) if shot else None)
                       for c in page.active), key=lambda o: o.number)
@@ -334,7 +336,7 @@ def browse(pid: str, site_id: str, request: BrowseRequest) -> PageView:
             state = initial_state(site, device=state.device).model_copy(update={"notice": "You left the site. This is a new visit."})
         else:
             state = apply(site, state, action, query=request.query, has_account=request.has_account)
-    return page_view(site, state, mark_seed=request.mark_seed, picture=_picture(pid))
+    return page_view(site, state, mark_seed=request.mark_seed, picture=_picture(pid), vision=request.vision)
 
 
 @lru_cache(maxsize=64)
@@ -396,7 +398,8 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
         if request.source == "project" and not personas:
             raise AppError("This project has no customers yet: generate them, or use the built-in panel", 400)
         shoppers = sample_shoppers(sites[0], request.shoppers, seed=request.seed, missions=request.missions,
-                                   mobile_share=request.mobile_share, personas=personas)
+                                   mobile_share=request.mobile_share, personas=personas,
+                                   accessibility=request.accessibility)
         status = OnlineRunStatus(
             run_id=run_id, name=request.name or " vs ".join(s.name for s in sites)[:80], site_ids=[s.id for s in sites],
             site_names=[s.name for s in sites], status="pending", total=len(shoppers) * len(sites), request=request,
@@ -477,6 +480,7 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
                     request: OnlineRunRequest, picture: ProductPicture,
                     progress: Callable[[str], None]) -> list[list[SessionResult]]:
     render = request.policy == "vlm"
+    surveyor = policy.survey if isinstance(policy, ModelPolicy) and request.exit_survey else None
     slots = asyncio.Semaphore(_MODEL_CONCURRENCY if request.policy != "rule" else 1)
     out: list[list[SessionResult]] = []
     for index, site in enumerate(sites):
@@ -486,7 +490,7 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
             async with slots:
                 result = await run_session(site, shopper, policy, seed=request.seed, max_steps=request.max_steps,
                                            render=render, shuffle_marks=request.shuffle_marks,
-                                           image_width=request.image_width, picture=picture)
+                                           image_width=request.image_width, picture=picture, surveyor=surveyor)
             progress(phase)
             return result
 

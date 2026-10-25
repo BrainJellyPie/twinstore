@@ -12,9 +12,9 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
-from store_emulator.domain.online import OnlineProduct, OnlineSite, PageKind
+from store_emulator.domain.online import OnlineProduct, OnlineSite, PageKind, Vision
 from store_emulator.engine.perception.shelf_render import load_font, wrap_text
 
 from .browser import Card, Control, Grid, Line, Page, Panel, money
@@ -827,3 +827,30 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
     usable = {index: box for index, box in p.boxes.items() if index in numbers}
     return Screenshot(out.getvalue(), width, height, usable)
 
+
+
+# Red–green colour blindness (deuteranopia) in sRGB, after Viénot, Brettel & Mollon (1999); an approximation for
+# showing a model what such a shopper can tell apart, not a clinical simulation.
+_DEUTERANOPIA = (0.625, 0.375, 0.0, 0.0, 0.7, 0.3, 0.0, 0.0, 0.0, 0.3, 0.7, 0.0)
+
+
+def see_as(shot: Screenshot, vision: Vision, *, large_text: bool = False) -> Screenshot:
+    """The screenshot as a shopper with this eyesight sees it: blurred and flatter for low vision (less so with large
+    text switched on), slightly blurred and yellowed for older eyes, red–green shifted for colour blindness."""
+    if vision == "typical":
+        return shot
+    with Image.open(io.BytesIO(shot.png)) as source:
+        image = source.convert("RGB")
+    if vision == "color_blind":
+        image = image.convert("RGB", _DEUTERANOPIA)
+    elif vision == "low_vision":
+        image = image.filter(ImageFilter.GaussianBlur(1.6 if large_text else 2.8))
+        image = ImageEnhance.Contrast(image).enhance(0.72)
+    else:
+        image = image.filter(ImageFilter.GaussianBlur(0.8 if large_text else 1.4))
+        image = ImageEnhance.Contrast(image).enhance(0.85)
+        r, g, b = image.split()
+        image = Image.merge("RGB", (r, g, b.point([round(v * 0.82) for v in range(256)])))
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return Screenshot(out.getvalue(), shot.width, shot.height, shot.boxes)

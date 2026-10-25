@@ -19,12 +19,13 @@ import { personaLabel } from "@/shared/i18n/personaLabels";
 
 import { JourneyViewer } from "./JourneyViewer";
 import {
-  DELTA_LABELS, DEVICE_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_COLORS, OUTCOME_LABELS, PAGE_LABELS, POLICY_LABELS,
+  DELTA_LABELS, DEVICE_LABELS, FRICTION_HARMS, FRICTION_LABELS, FUNNEL_LABELS, MISSION_LABELS, OUTCOME_COLORS, OUTCOME_LABELS,
+  PAGE_LABELS, POLICY_LABELS, VISION_LABELS,
 } from "./labels";
 
 const DIMENSIONS: { id: SegmentRow["dimension"]; label: MessageKey }[] = [
   { id: "mission", label: "onSegMission" }, { id: "device", label: "onSegDevice" },
-  { id: "age_group", label: "onSegAge" }, { id: "gender", label: "onSegGender" },
+  { id: "age_group", label: "onSegAge" }, { id: "gender", label: "onSegGender" }, { id: "vision", label: "onSegVision" },
 ];
 const SESSION_ROWS = 80;
 
@@ -137,7 +138,7 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
           {result.comparisons.map((c) => (
             <div key={c.site_id} className="space-y-1">
               <div className="text-xs font-medium">{t("onCompareVs", { variant: c.site_name, control: v[0]?.site_name ?? "" })}</div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {c.deltas.map((d) => {
                   const isMoney = d.metric === "revenue_per_session";
                   const isRate = d.metric === "conversion" || d.metric === "add_to_cart_rate";
@@ -197,6 +198,8 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
         </Section>
       </div>
 
+      <Frictions variants={v} money={money} pct={pct} />
+      <Surveys variants={v} pct={pct} />
       <Segments result={result} money={money} pct={pct} />
 
       <div className="grid gap-3 xl:grid-cols-2">
@@ -279,12 +282,87 @@ function Report({ projectId, result }: { projectId: string; result: OnlineRunRes
   );
 }
 
+function Frictions({ variants, money, pct }: { variants: VariantSummary[]; money: (x: number) => string; pct: (x: number) => string }) {
+  const { t } = useI18n();
+  const codes = [...new Set(variants.flatMap((s) => s.frictions.map((f) => f.code)))];
+  return (
+    <Section title={t("onFrictions")} hint={t("onFrictionsHint")}>
+      {codes.length === 0 ? <p className="text-xs text-muted-foreground">{t("onFrictionsNone")}</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-xs">
+            <thead><tr className="text-left text-muted-foreground">
+              <th className="font-medium" />
+              {variants.map((s) => <th key={s.site_id} className="font-medium">{s.site_name}</th>)}
+            </tr></thead>
+            <tbody>
+              {codes.map((code) => (
+                <tr key={code} className="border-t">
+                  <td className={cn("py-1 pr-2", FRICTION_HARMS.has(code) && "font-medium text-destructive")}>{t(FRICTION_LABELS[code])}</td>
+                  {variants.map((s) => {
+                    const row = s.frictions.find((f) => f.code === code);
+                    return (
+                      <td key={s.site_id} className="py-1 pr-2 tabular-nums">
+                        {row ? `${row.sessions} · ${pct(row.share)}${row.amount ? ` · ${money(row.amount)}` : ""}` : "—"}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function Surveys({ variants, pct }: { variants: VariantSummary[]; pct: (x: number) => string }) {
+  const { t } = useI18n();
+  if (variants.every((s) => !s.survey)) return null;
+  return (
+    <Section title={t("onSurveys")} hint={t("onSurveysHint")}>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {variants.map((s) => s.survey && (
+          <div key={s.site_id} className="space-y-2 rounded-xl border p-3 text-xs">
+            {variants.length > 1 && <div className="font-medium">{s.site_name}</div>}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Stat label={t("onSurveySatisfaction")} value={`${s.survey.satisfaction.toFixed(1)} / 7`} />
+              <Stat label={t("onSurveyEase")} value={`${s.survey.ease.toFixed(1)} / 7`} />
+              <Stat label={t("onSurveyNps")} value={`${s.survey.nps >= 0 ? "+" : ""}${s.survey.nps.toFixed(0)}`} />
+              <Stat label={t("onSurveyReturn")} value={pct(s.survey.would_return)} />
+            </div>
+            <div className="text-muted-foreground">{t("onSurveyResponses", { count: s.survey.responses })}</div>
+            {s.survey.frustrations.length > 0 && (
+              <div><div className="font-medium">{t("onSurveyFrustrations")}</div>
+                <ul className="list-disc pl-4">{s.survey.frustrations.map((f) => <li key={f}>{f}</li>)}</ul></div>
+            )}
+            {s.survey.improvements.length > 0 && (
+              <div><div className="font-medium">{t("onSurveyImprovements")}</div>
+                <ul className="list-disc pl-4">{s.survey.improvements.map((f) => <li key={f}>{f}</li>)}</ul></div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border px-2 py-1.5">
+      <div className="text-muted-foreground">{label}</div>
+      <div className="text-base font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
 function Segments({ result, money, pct }: { result: OnlineRunResult; money: (x: number) => string; pct: (x: number) => string }) {
   const { t } = useI18n();
   const [dimension, setDimension] = useState<SegmentRow["dimension"]>("mission");
   const label = (value: string) => {
     if (dimension === "mission" && value in MISSION_LABELS) return t(MISSION_LABELS[value as keyof typeof MISSION_LABELS]);
     if (dimension === "device" && value in DEVICE_LABELS) return t(DEVICE_LABELS[value as Device]);
+    if (dimension === "vision" && value in VISION_LABELS) return t(VISION_LABELS[value as keyof typeof VISION_LABELS]);
     return personaLabel(value, t);
   };
   const values = [...new Set(result.variants.flatMap((s) => s.segments.filter((r) => r.dimension === dimension).map((r) => r.value)))];

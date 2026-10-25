@@ -15,6 +15,8 @@ from store_emulator.domain.online import (
     PAYMENT_METHODS,
     ActionKind,
     BrowserState,
+    ExitSurvey,
+    SessionOutcome,
     OnlineProduct,
     OnlineShopper,
     OnlineSite,
@@ -27,7 +29,7 @@ from store_emulator.engine.llm_router import SimLLM
 from store_emulator.engine.prompting import display_price
 
 from .browser import Control, Page, cart_totals, query_terms
-from .prompt import choice_model, system_prompt, user_prompt
+from .prompt import SURVEY_PROMPT, SurveyAnswer, choice_model, survey_prompt, system_prompt, user_prompt
 from .shoppers import product_terms
 
 
@@ -44,6 +46,7 @@ class Memory:
     last_load: float = 0.0
     want_views: int = 0  # products a browser or comparer looks at before deciding
     looked: bool = False  # the landing page made its first impression
+    tried_large_text: bool = False
 
 
 @dataclass(frozen=True)
@@ -73,6 +76,20 @@ class StepView:
 class ShopperPolicy(Protocol):
     async def choose(self, site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Memory,
                      rng: random.Random) -> Choice: ...
+
+
+class Surveyor(Protocol):
+    """Asks the shopper the exit survey; None when no valid answer came back."""
+    async def __call__(self, site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: SessionOutcome,
+                       seconds: float, paid: int, seed: int) -> ExitSurvey | None: ...
+
+
+OUTCOME_WORDS: dict[SessionOutcome, str] = {
+    "purchased": "they placed an order", "abandoned_cart": "they left with items still in the cart",
+    "left": "they closed the tab without buying", "bounced": "they left right after landing",
+    "timed_out": "they gave up because it was taking too long",
+    "step_limit": "they were still browsing when the visit was cut off",
+}
 
 
 def _find(page: Page, kind: ActionKind, target: str | None = None) -> Control | None:
@@ -108,6 +125,11 @@ def relevance(shopper: OnlineShopper, product: OnlineProduct, site: OnlineSite) 
     return min(1.0, score)
 
 
+def _seen_discount(shopper: OnlineShopper, product: OnlineProduct) -> float:
+    """A discount as it registers: red sale tags stand out less for a red–green colour-blind shopper."""
+    return product.discount_percent * (0.5 if shopper.vision == "color_blind" else 1.0)
+
+
 def _rating_factor(rating: float) -> float:
     return min(1.0, max(0.4, 0.85 + 0.15 * (rating - 4)))
 
@@ -126,7 +148,7 @@ def _appeal(site: OnlineSite, shopper: OnlineShopper, product: OnlineProduct, vi
     if left is not None and product.price > left:
         score *= 0.25
     score *= _rating_factor(product.rating)
-    score *= 1 + shopper.price_sensitivity * product.discount_percent / 60
+    score *= 1 + shopper.price_sensitivity * _seen_discount(shopper, product) / 60
     if "bestseller" in product.badges:
         score *= 1.08
     return score * rng.uniform(0.85, 1.15)
@@ -216,6 +238,20 @@ def decide(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory: Mem
     if page.cookie is not None and not memory.steps and rng.random() < 0.7:
         accept, reject = page.cookie
         return Choice(accept if rng.random() < 0.72 else reject, thought="Get this banner out of the way.")
+
+    # Eyesight: shoppers who struggle to read look for a bigger text setting, and some give up.
+    straining = shopper.vision in ("low_vision", "aging_eyes") and not page.large_text
+    if page.kind == PageKind.SETTINGS:
+        toggle = _find(page, ActionKind.TOGGLE_LARGE_TEXT)
+        if toggle is not None and straining:
+            return Choice(toggle, thought="Bigger text, finally.")
+        return Choice(page.back or page.header.home, thought="Back to shopping.")
+    if straining and not memory.tried_large_text and page.overlay is None:
+        memory.tried_large_text = True
+        if rng.random() < (0.4 if shopper.vision == "low_vision" else 0.12) * (0.5 + shopper.tech_savvy):
+            return Choice(page.header.settings, thought="I can barely read this. Is there a bigger text option?")
+    if straining and shopper.vision == "low_vision" and rng.random() < 0.05:
+        return Choice(leave, thought="I can't read any of this.")
 
     if page.kind == PageKind.PRODUCT and page.detail is not None:
         return _on_product(site, shopper, view, memory, rng)
@@ -323,7 +359,7 @@ def _on_product(site: OnlineSite, shopper: OnlineShopper, view: StepView, memory
     if o.social_proof and product.weekly_sales > 50:
         pressure += 0.1
     p_buy = min(0.97, base * fit ** 2 * (1.0 if shopper.mission == "replenish" else _rating_factor(product.rating))
-                * (1 + pressure) * (1 + shopper.price_sensitivity * product.discount_percent / 80))
+                * (1 + pressure) * (1 + shopper.price_sensitivity * _seen_discount(shopper, product) / 80))
     if not affordable:
         p_buy *= 0.05
     if add is not None and rng.random() < p_buy:
@@ -466,3 +502,14 @@ class ModelPolicy:
         control = by_number[answer.option]
         query = answer.search_text.strip() if control.action.kind == ActionKind.SEARCH else ""
         return Choice(control, query=query, thought=answer.thought.strip(), source="model")
+
+    async def survey(self, site: OnlineSite, shopper: OnlineShopper, *, history: list[str], outcome: SessionOutcome,
+                     seconds: float, paid: int, seed: int) -> ExitSurvey | None:
+        prompt = survey_prompt(site, shopper, history=history, outcome=OUTCOME_WORDS[outcome], seconds=seconds, paid=paid)
+        try:
+            answer = await self.llm.generate_structured_async(
+                SurveyAnswer, SURVEY_PROMPT, prompt, max_retries=self.max_retries, seed=seed, route=shopper.id,
+                max_tokens=self.max_tokens)
+        except Exception:  # noqa: BLE001 — a survey without an answer is left out, the visit still counts
+            return None
+        return answer.survey()

@@ -26,8 +26,8 @@ from store_emulator.domain.online import (
 from store_emulator.domain.types import stable_seed
 
 from .browser import Page, apply, build_page, cart_totals, initial_state, numbering, outline, search_products
-from .policies import Choice, Memory, ShopperPolicy, StepView
-from .render import ProductPicture, render_page
+from .policies import Choice, Memory, ShopperPolicy, StepView, Surveyor
+from .render import ProductPicture, render_page, see_as
 
 _EXTRA_SECONDS: dict[ActionKind, float] = {
     ActionKind.SEARCH: 3.0, ActionKind.ADD_ADDRESS: 38.0, ActionKind.ADD_PAYMENT: 32.0, ActionKind.CREATE_ACCOUNT: 45.0,
@@ -50,6 +50,10 @@ def read_seconds(page: Page, shopper: OnlineShopper, choice: Choice, rng: random
         base += 2
     if shopper.device == "mobile":
         base *= 1.15
+    if shopper.vision == "low_vision":
+        base *= 1.25 if page.large_text else 1.8
+    elif shopper.vision == "aging_eyes":
+        base *= 1.1 if page.large_text else 1.3
     base *= 1.35 - 0.5 * shopper.tech_savvy
     base += _EXTRA_SECONDS.get(choice.control.action.kind, 0.0) + 0.25 * len(choice.query)
     return base * rng.lognormvariate(0, 0.3)
@@ -84,8 +88,10 @@ def _cart_view(site: OnlineSite, state: BrowserState) -> tuple[int, int, tuple[s
 async def run_session(
     site: OnlineSite, shopper: OnlineShopper, policy: ShopperPolicy, *, seed: int, max_steps: int, render: bool,
     shuffle_marks: bool = True, image_width: int = 896, picture: ProductPicture | None = None,
+    surveyor: Surveyor | None = None,
 ) -> SessionResult:
-    """`render`: draw a screenshot of every page (vision models need it; rules and text models do not)."""
+    """`render`: draw a screenshot of every page (vision models need it; rules and text models do not). The
+    screenshot is filtered to the shopper's eyesight. `surveyor`: asks the exit survey when the visit is over."""
     state = initial_state(site, device=shopper.device)
     rng = random.Random(stable_seed(seed, "online-session", shopper.id))
     memory = Memory(want_views=_want_views(shopper, rng))
@@ -96,7 +102,7 @@ async def run_session(
     viewed: list[str] = []
     outcome: SessionOutcome = "step_limit"
     exit_thought = ""
-    requests = fallbacks = 0
+    requests = fallbacks = addon_paid = 0
     for index in range(max_steps):
         page = build_page(site, state)
         pages_seen.add(page.url)
@@ -107,7 +113,7 @@ async def run_session(
         numbers = numbering(page, mark_seed)
         image_url, boxes, screen = "", dict[int, tuple[int, int, int, int]](), None
         if render:
-            shot = render_page(page, site, numbers, picture)
+            shot = see_as(render_page(page, site, numbers, picture), shopper.vision, large_text=page.large_text)
             image_url, boxes, screen = shot.scaled_data_url(image_width), shot.boxes, (shot.width, shot.height)
         count, subtotal, names = _cart_view(site, state)
         view = StepView(page, state, numbers, outline(page, site), count, subtotal, names, image_url,
@@ -136,6 +142,8 @@ async def run_session(
             outcome = "abandoned_cart" if state.cart else "bounced" if len(pages_seen) <= 1 else "left"
             break
         new_state = apply(site, state, action, query=choice.query, has_account=shopper.has_account)
+        if action.kind == ActionKind.PLACE_ORDER and new_state.order_id:
+            addon_paid = cart_totals(site, state.cart, state, at_review=True).addon
         if action.kind == ActionKind.SEARCH and new_state.at.page == PageKind.SEARCH:
             query = new_state.at.query
             searches.append(SearchRecord(query=query, results=len(search_products(site, query)), step=index))
@@ -172,10 +180,15 @@ async def run_session(
                                    quantity=line.quantity, price=product.price))
     if outcome == "step_limit" and state.cart:
         outcome = "abandoned_cart"
+    survey = None
+    if surveyor is not None:
+        requests += 1
+        survey = await surveyor(site, shopper, history=memory.steps, outcome=outcome, seconds=memory.elapsed,
+                                paid=state.order_total, seed=stable_seed(seed, "online-survey", shopper.id) % _SEED_MOD)
     return SessionResult(
         shopper_id=shopper.id, site_id=site.id, outcome=outcome, steps=steps, order=order,
         subtotal=sum(line.price * line.quantity for line in order), order_total=state.order_total,
         seconds=round(memory.elapsed, 1), reached=[s for s in FUNNEL_STAGES if s in reached], viewed_products=viewed,
         searches=searches, exit_page=steps[-1].page if steps else PageKind.HOME, exit_thought=exit_thought[:240],
-        model_requests=requests, fallbacks=fallbacks,
+        model_requests=requests, fallbacks=fallbacks, survey=survey, addon_paid=addon_paid,
     )

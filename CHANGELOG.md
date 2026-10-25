@@ -20,6 +20,16 @@
   funnel, cart abandonment, exits, segments, search terms with no results,
   products, click maps, step-by-step replays and a clickstream CSV.
 
+- Add eyesight, friction and exit-survey research to online stores. Shoppers
+  can have low vision, red–green colour blindness or older eyes (all, none or a
+  realistic mix by age and gender); vision shoppers then see blurred, yellowed
+  or colour-shifted screenshots, and anyone can preview a store that way. Run
+  reports audit friction points and dark patterns (popups, forced sign-in,
+  last-step fees, pre-ticked add-ons paid without unticking, failed coupons,
+  empty searches, sold-out pages, slow exits). Model shoppers answer a short
+  exit survey (satisfaction, ease, recommendation, would return, biggest
+  annoyance); reports show NPS and paired survey differences between variants.
+
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
 - Exclude staff-script ratings with blank required replies or reasons. Spaces

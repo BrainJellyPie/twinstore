@@ -10,7 +10,15 @@ import random
 import re
 from statistics import median
 
-from store_emulator.domain.online import SHOPPER_MISSIONS, OnlineProduct, OnlineShopper, OnlineSite, ShopperMission
+from store_emulator.domain.online import (
+    SHOPPER_MISSIONS,
+    Accessibility,
+    OnlineProduct,
+    OnlineShopper,
+    OnlineSite,
+    ShopperMission,
+    Vision,
+)
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Persona
 from store_emulator.domain.types import stable_seed
 from store_emulator.engine.prompting import display_price
@@ -36,9 +44,14 @@ _SENSITIVITY: dict[ShopperMission, float] = {
 _UNIT = re.compile(r"^\d|^(ml|l|g|kg|pk|pc|pcs|cm|mm|ct|oz|x)$", re.IGNORECASE)
 
 
+_FILLER = frozenset({"pair", "pairs", "set", "pack", "duo", "trio", "kit", "refill", "with", "and", "for", "the", "of",
+                     "over", "in", "on", "to"})
+
+
 def product_terms(name: str) -> str:
-    """The words a shopper would search a product by: its kind, without sizes and pack counts."""
-    words = [w for w in re.findall(r"[^\s/,()]+", name) if not _UNIT.match(w) and len(w) > 1]
+    """The words a shopper would search a product by: its kind, without sizes, pack counts and packaging words."""
+    words = [w for w in re.findall(r"[^\s/,()]+", name)
+             if not _UNIT.match(w) and len(w) > 1 and w.lower() not in _FILLER]
     return " ".join(words[-2:]).lower() if words else name.lower()
 
 
@@ -127,12 +140,30 @@ def _shopper(
     )
 
 
+# Shares used by the "realistic" eyesight mix. Red–green colour vision deficiency affects about 8 % of men and 0.5 %
+# of women of northern European descent; presbyopia ("older eyes") is near-universal after 50; low vision rises
+# with age. Rounded literature figures, not a calibrated population.
+_LOW_VISION: dict[AgeGroup, float] = {"10s": 0.01, "20s": 0.01, "30s": 0.015, "40s": 0.02, "50s": 0.03, "60s+": 0.07}
+_OLDER_EYES: dict[AgeGroup, float] = {"10s": 0.0, "20s": 0.0, "30s": 0.0, "40s": 0.25, "50s": 0.6, "60s+": 0.8}
+
+
+def _vision(accessibility: Accessibility, shopper: OnlineShopper, rng: random.Random) -> Vision:
+    if accessibility != "realistic":
+        return accessibility
+    if rng.random() < _LOW_VISION[shopper.age_group]:
+        return "low_vision"
+    if rng.random() < (0.08 if shopper.gender == "Male" else 0.005):
+        return "color_blind"
+    return "aging_eyes" if rng.random() < _OLDER_EYES[shopper.age_group] else "typical"
+
+
 def sample_shoppers(
     site: OnlineSite, count: int, *, seed: int, missions: dict[ShopperMission, float], mobile_share: float,
-    personas: list[Persona] | None = None,
+    personas: list[Persona] | None = None, accessibility: Accessibility = "typical",
 ) -> list[OnlineShopper]:
     """`count` shoppers for `site`. With `personas`, each shopper is one of them (drawn without repeats while there
-    are enough) given an online mission; otherwise the panel's own people."""
+    are enough) given an online mission; otherwise the panel's own people. Eyesight is drawn from its own random
+    stream, so changing `accessibility` keeps everything else about the shoppers the same."""
     pool: list[Persona] = []
     if personas:
         order = list(personas)
@@ -142,5 +173,7 @@ def sample_shoppers(
     for i in range(count):
         rng = random.Random(stable_seed(seed, "online-shopper", i))
         persona = pool[i % len(pool)] if pool else None
-        shoppers.append(_shopper(site, i, rng, missions=missions, mobile_share=mobile_share, persona=persona))
+        shopper = _shopper(site, i, rng, missions=missions, mobile_share=mobile_share, persona=persona)
+        eyes = _vision(accessibility, shopper, random.Random(stable_seed(seed, "online-vision", i)))
+        shoppers.append(shopper.model_copy(update={"vision": eyes}))
     return shoppers

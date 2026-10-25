@@ -5,13 +5,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Play } from "lucide-react";
 
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
-import { MISSIONS, onlineKeys, startRun, type ShopperMission, type ShopperPolicyKind, type SiteSummary } from "@/shared/api/online";
+import {
+  ACCESSIBILITY, MISSIONS, onlineKeys, startRun, type Accessibility, type ShopperMission, type ShopperPolicyKind, type SiteSummary,
+} from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
-import { MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
+import { ACCESSIBILITY_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
 const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, compare: 15, deal_hunt: 10, gift: 7, replenish: 8 };
@@ -34,6 +36,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [source, setSource] = useState<"panel" | "project">("panel");
   const [imageWidth, setImageWidth] = useState(896);
   const [shuffle, setShuffle] = useState(true);
+  const [accessibility, setAccessibility] = useState<Accessibility>("typical");
+  const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
   const sessions = shoppers * chosen.length;
@@ -42,7 +46,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
     mutationFn: () => startRun(projectId, {
       site_ids: chosen, name: name.trim() || undefined, shoppers, policy, seed, max_steps: maxSteps,
       missions: Object.fromEntries(MISSIONS.map((m) => [m, mix[m] / 100])) as Record<ShopperMission, number>,
-      mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle,
+      mobile_share: mobile / 100, source, image_width: imageWidth, shuffle_marks: shuffle, accessibility,
+      exit_survey: survey,
       model: policy !== "rule" && model.kind === "single" ? model.model ?? null : null,
       ensemble: policy !== "rule" && model.kind === "ensemble" && model.ensemble?.members.length ? model.ensemble : null,
     }),
@@ -111,6 +116,13 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
           <input type="range" min={0} max={100} value={mobile} onChange={(e) => setMobile(Number(e.target.value))} aria-label={t("onRunMobile")} />
           <span className="text-right tabular-nums">{mobile}%</span>
         </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="font-medium">{t("onRunEyesight")}</span>
+          <select className="h-8 rounded-md border bg-background px-2" value={accessibility} onChange={(e) => setAccessibility(e.target.value as Accessibility)}>
+            {ACCESSIBILITY.map((a) => <option key={a} value={a}>{t(ACCESSIBILITY_LABELS[a])}</option>)}
+          </select>
+          <span className="text-[0.7rem] text-muted-foreground">{t("onRunEyesightHint")}</span>
+        </label>
         <fieldset className="flex flex-wrap gap-3 text-xs">
           <legend className="mb-1 w-full font-medium">{t("onRunSource")}</legend>
           <label className="flex items-center gap-1"><input type="radio" checked={source === "panel"} onChange={() => setSource("panel")} /> {t("onRunSourcePanel")}</label>
@@ -145,8 +157,13 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
               <label className="flex items-center gap-1.5" title={t("onShuffleHint")}>
                 <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} /> {t("onShuffle")}
               </label>
+              <label className="flex items-center gap-1.5" title={t("onRunSurveyHint")}>
+                <input type="checkbox" checked={survey} onChange={(e) => setSurvey(e.target.checked)} /> {t("onRunSurvey")}
+              </label>
             </div>
-            <p className="text-xs text-muted-foreground">{t("onRunCalls", { calls: sessions * TYPICAL_STEPS, max: sessions * maxSteps })}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("onRunCalls", { calls: sessions * (TYPICAL_STEPS + (survey ? 1 : 0)), max: sessions * (maxSteps + (survey ? 1 : 0)) })}
+            </p>
           </>
         )}
         <div className="flex flex-wrap items-center gap-3">
