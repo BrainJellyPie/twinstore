@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require the requested sign text in automatic layout and A/B promotions.
+  Missing or blank text now enters the model's correction attempt instead of
+  silently replacing the requested promotion with a generic `SALE` sign.
+
 - Allow complete multi-product A/B proposals to fit the automatic draft's
   output budget. Four price combinations no longer hit a 1,500-token ceiling
   merely because the model formats the valid JSON with indentation.

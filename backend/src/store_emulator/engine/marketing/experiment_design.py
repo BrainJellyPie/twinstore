@@ -114,6 +114,7 @@ rationale. Return at least one change that can be applied to a listed product or
 negative percent. Prices must be finite and positive after currency rounding.
 Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
+A promo operation must include its nonblank sign text; do not omit it or leave it empty.
 Use the exact lowercase operation kinds above, including the underscore in category_price.
 Use "" for an absent rationale and [] for unspecified focus_products, not null.
 If a listed product, shelf or image name exceeds its field's character limit, copy its prefix up to that limit.
@@ -199,7 +200,9 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                         continue
                     changes.append(VariantChange(kind="discount", sku=sku, percent=c.percent))
                 case "promo":
-                    changes.append(VariantChange(kind="promo", sku=sku, promo=c.promo.strip() or "SALE"))
+                    if not c.promo.strip():
+                        raise ValueError("A promo operation needs explicit, nonblank sign text; do not invent a default promotion.")
+                    changes.append(VariantChange(kind="promo", sku=sku, promo=c.promo.strip()))
                 case "move":
                     rack = _bounded_target(c.shelf, shelf_ids, 80)
                     if not rack:
