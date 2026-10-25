@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include the saved respondent brief and product A reference price when a
+  model interprets survey results. Readings retain the conditions under which
+  ratings were collected, including an explicitly shown zero price.
+
 - Honor a model-selected shelf when drafting tests for products sold in
   several locations. Prompts retain shelf names/IDs and distinct placements;
   unknown, ambiguous or non-selling shelves are corrected before caching.

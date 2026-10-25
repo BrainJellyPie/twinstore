@@ -14,6 +14,7 @@ from store_emulator.engine.marketing.reading import (
     compact_report,
     read_study,
 )
+from store_emulator.engine.prompting import display_price
 
 from .errors import AppError, model_failure
 from .marketing import (
@@ -49,9 +50,18 @@ def _material(pid: str, kind: StudyKind, jid: str) -> tuple[str, str, list[Reaso
     """The study's report as compact JSON, the open question, and the open answers (with their arm)."""
     match kind:
         case "survey":
-            survey = get_survey(pid, jid).report
+            view = get_survey(pid, jid)
+            survey = view.report
             if survey is None:
                 raise AppError(_EMPTY[kind], 409)
+            notes = list(survey.notes)
+            if view.request is not None:
+                if view.request.context:
+                    notes.append(f"Respondent brief: {view.request.context}")
+                if view.request.reference_price is not None:
+                    price = display_price(view.request.reference_price, view.request.currency)
+                    notes.append(f"Reference price shown for product A: {price}.")
+            survey = survey.model_copy(update={"notes": notes})
             return (compact_report(survey, {"answers"}), "In one sentence: why did you answer that way?",
                     [Reason(text=a.why) for a in survey.answers if a.why and not a.error])
         case "shelf":
