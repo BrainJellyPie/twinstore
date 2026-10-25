@@ -106,7 +106,7 @@ server messages are still in English.
 <table>
 <tr>
 <td width="50%"><a href="./.github/assets/twinstore/twinstore-promo.mp4"><img src="./.github/assets/twinstore/twinstore-promo-poster.jpg" alt="TwinStore film"></a><br>
-<b>The film</b> · 55 s · what TwinStore is, in motion (<a href="./.github/assets/twinstore/twinstore-promo.mp4">MP4</a>)</td>
+<b>The film</b> · 61 s · what TwinStore is, in motion, online stores included (<a href="./.github/assets/twinstore/twinstore-promo.mp4">MP4</a>)</td>
 <td width="50%"><a href="./.github/assets/twinstore/twinstore-demo.mp4"><img src="./.github/assets/twinstore/twinstore-demo-poster.jpg" alt="TwinStore running"></a><br>
 <b>The app, running</b> · 75 s real recording: home, ⌘K palette, 3D playback, heatmap, shopper's eye, one shopper's journey, marketing studio, conjoint, shelf capture, neighborhood, night theme (<a href="./.github/assets/twinstore/twinstore-demo.mp4">MP4</a>)</td>
 </tr>
