@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Serialize report commentary generation, replacement and removal per study,
+  preventing late model replies from restoring cleared or overwritten content.
+
 - Preserve complete study statistics and caveats in model commentary input by
   compacting repeated table keys instead of cutting large reports mid-JSON.
 

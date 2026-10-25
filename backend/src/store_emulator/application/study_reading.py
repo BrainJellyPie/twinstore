@@ -20,6 +20,7 @@ from .errors import AppError, model_failure
 from .marketing import (
     _job_dir,  # pyright: ignore[reportPrivateUsage]
     _status,  # pyright: ignore[reportPrivateUsage]
+    commentary_transaction,
     get_conjoint,
     get_shelf_test,
     get_survey,
@@ -92,25 +93,28 @@ def get_reading(pid: str, kind: StudyKind, jid: str) -> StudyReading | None:
 
 def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: SimulationConfig) -> StudyReading:
     """Code the open answers into themes and write a commentary on the numbers; replaces an earlier reading."""
-    with setup_tree_transaction(pid):
-        report_json, question, reasons = _material(pid, kind, jid)
-    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 2000})
-    model = assistive_model(model, llm_config)
-    try:
-        llm = assistive_client(model, llm_config)
-    except ValueError as e:
-        raise AppError(str(e), 400) from e
-    try:
-        reading = asyncio.run(read_study(llm, _STUDY[kind], report_json, question, reasons))
-    except Exception as e:  # provider errors reach the user as advice
-        logger.warning(f"[reading] {kind} {jid}: {type(e).__name__}: {e}")
-        raise AppError(model_failure(e, "The reading could not be written"), 502) from e
-    reading = reading.model_copy(update={"model": answered_by(llm, model), "created_at": now_iso()})
-    with setup_tree_transaction(pid):
-        _status(pid, kind, jid)
-        write_json(_job_dir(pid, kind, jid) / "reading.json", reading.model_dump(mode="json"))
-    return reading
+    with commentary_transaction(pid, kind, jid):
+        with setup_tree_transaction(pid):
+            report_json, question, reasons = _material(pid, kind, jid)
+        llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 2000})
+        model = assistive_model(model, llm_config)
+        try:
+            llm = assistive_client(model, llm_config)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+        try:
+            reading = asyncio.run(read_study(llm, _STUDY[kind], report_json, question, reasons))
+        except Exception as e:  # provider errors reach the user as advice
+            logger.warning(f"[reading] {kind} {jid}: {type(e).__name__}: {e}")
+            raise AppError(model_failure(e, "The reading could not be written"), 502) from e
+        reading = reading.model_copy(update={"model": answered_by(llm, model), "created_at": now_iso()})
+        with setup_tree_transaction(pid):
+            _status(pid, kind, jid)
+            write_json(_job_dir(pid, kind, jid) / "reading.json", reading.model_dump(mode="json"))
+        return reading
 
 
 def delete_reading(pid: str, kind: StudyKind, jid: str) -> None:
-    (_job_dir(pid, kind, jid) / "reading.json").unlink(missing_ok=True)
+    with commentary_transaction(pid, kind, jid), setup_tree_transaction(pid):
+        _status(pid, kind, jid)
+        (_job_dir(pid, kind, jid) / "reading.json").unlink(missing_ok=True)
