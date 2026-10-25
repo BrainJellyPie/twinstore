@@ -153,6 +153,8 @@ LABEL_PROMPT = (
     "shampoo, detergent. price_text: the text on the price tag in the bottom strip, exactly as printed, "
     "or \"\". price: that price as a number, or null. confidence: 0-10 for how sure you are of the name.\n"
     "For any unreadable text field, use an empty string, not null. Do not invent missing text.\n"
+    "Copy any printed currency symbol or code unchanged, even if it differs from the store currency. "
+    "Do not convert the amount.\n"
     "Prices in this store are in {currency}. Keep names in the language printed on the package."
 )
 

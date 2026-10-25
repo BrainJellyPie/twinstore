@@ -183,6 +183,16 @@ def typical_price(category: str, name: str, currency: str) -> tuple[int | None, 
 
 
 _NUMBER_RE = re.compile(r"(?:\d|[.,](?=\d))[\d,.\s']*")
+# Only compare recognized currencies. Shared symbols do not identify an ISO code:
+# an unqualified dollar/yen sign still uses the store's currency as before.
+_PRICE_CURRENCY_SYMBOLS = {
+    "USD": "$", "KRW": "₩원", "JPY": "¥円", "EUR": "€", "GBP": "£", "CNY": "¥",
+    "CAD": "$", "AUD": "$", "NZD": "$", "SGD": "$", "HKD": "$", "TWD": "$", "CLP": "$",
+    "VND": "", "IDR": "", "ISK": "", "HUF": "", "CHF": "", "INR": "",
+}
+_PRICE_CURRENCY_CODE_RE = re.compile(
+    rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
+)
 
 
 def _integer_digits(raw: str, separators: str) -> str | None:
@@ -249,6 +259,13 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     reading is kept unless it is more than 6× off.
     """
     code = currency.upper()
+    printed = unicodedata.normalize("NFKC", label.price_text)
+    if any(match.upper() != code for match in _PRICE_CURRENCY_CODE_RE.findall(printed)):
+        return None
+    if code in _PRICE_CURRENCY_SYMBOLS and any(
+        symbol in printed and symbol not in _PRICE_CURRENCY_SYMBOLS[code] for symbol in "$€£¥₩원円"
+    ):
+        return None
     zero_decimal = code in ZERO_DECIMAL
     parsed = _parse_number(label.price_text) if label.price_text else None
     if parsed is None and any(character.isdigit() for character in label.price_text):
@@ -262,7 +279,6 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     value, has_decimals = parsed
     if not math.isfinite(value) or value <= 0:
         return None
-    printed = unicodedata.normalize("NFKC", label.price_text)
     cents = "¢" in printed or re.search(r"\bcents?\b", printed, re.IGNORECASE) is not None
     major_symbol = any(symbol in printed for symbol in "$€£¥₩원円")
     major_unit = major_symbol or re.search(rf"(?<![A-Za-z]){re.escape(code)}(?![A-Za-z])", printed, re.IGNORECASE) is not None

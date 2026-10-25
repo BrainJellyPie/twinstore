@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Treat recognized foreign currency marks on captured shelf tags as unreadable
+  prices instead of silently interpreting their amounts in the store's currency.
+  Keep the product and original tag text with the existing estimated-price flag;
+  matching currencies and shared dollar/yen symbols retain their normal handling.
+
 - Ask the A/B commentary model only for report text. Null or malformed values
   in an unsolicited `model` metadata field no longer discard valid commentary;
   the application continues recording the actual answering provider itself.
