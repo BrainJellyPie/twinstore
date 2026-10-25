@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve each online shopper’s eyesight transform in journey screenshots,
+  including large-text adjustments, before highlighting the selected control.
+
 - Report ad lift only between stores with matching products, categories, design,
   currency and unchanged shared campaigns. Keep ordinary paired store comparisons
   and campaign attribution available when other changes confound the ad effect.
