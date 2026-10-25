@@ -202,6 +202,17 @@ def online_report_html(result: OnlineRunResult, created_at: str = "", thread: An
             [f.code.replace("_", " ").capitalize(), str(f.sessions), f"{f.share:.0%}", display_price(f.amount, cur) if f.amount else "–"]
             for f in s.frictions[:8]])
         for s in v if s.frictions)
+    ads = _table(["Store", "Ad", "Placement", "Impressions", "Clicks", "Orders after a click", "Cost", "ROAS"], [
+        [s.site_name, a.name, a.placement.replace("_", " "), str(a.impressions), f"{a.clicks} ({a.ctr:.1%})", str(a.click_conversions),
+         display_price(a.cost, cur), f"{a.roas:.2f}" if a.roas is not None else "–"]
+        for s in v for a in s.ads], numeric_from=3) if any(s.ads for s in v) else ""
+    recovery = _table(["Store", "Reminder emails", "Came back", "Recovered orders", "Recovered revenue", "Discount given"], [
+        [s.site_name, str(s.recovery.emails), str(s.recovery.returned), str(s.recovery.recovered),
+         display_price(s.recovery.revenue, cur), display_price(s.recovery.discount, cur)]
+        for s in v if s.recovery]) if any(s.recovery for s in v) else ""
+    rival = _table(["Store", "Left without buying", "Tried the rival", "Bought there", "Rival's revenue"], [
+        [s.site_name, str(s.rival.left), str(s.rival.went), str(s.rival.bought), display_price(s.rival.revenue, cur)]
+        for s in v if s.rival]) if any(s.rival for s in v) else ""
     survey = _table(["Store", "Answers", "Satisfaction", "Ease", "NPS", "Would return", "Top annoyance"], [
         [s.site_name, str(s.survey.responses), f"{s.survey.satisfaction:.1f}/7", f"{s.survey.ease:.1f}/7", f"{s.survey.nps:+.0f}",
          f"{s.survey.would_return:.0%}", s.survey.frustrations[0] if s.survey.frustrations else "–"]
@@ -244,6 +255,9 @@ def online_report_html(result: OnlineRunResult, created_at: str = "", thread: An
 {f'<h2>Variants against the control</h2><p class="note">Dot = paired difference on the same shoppers; bar = 95 % bootstrap interval. A bar that crosses the line is within noise.</p>{compare}' if compare else ''}
 <h2>Funnel</h2><div class="key">{key}</div>{_funnel(v)}
 <h2>How visits ended</h2><div class="key">{outcome_key}</div>{outcomes}
+{f'<h2>Ads</h2>{ads}' if ads else ''}
+{f'<h2>Cart reminder emails</h2>{recovery}' if recovery else ''}
+{f'<h2>Where lost shoppers went: {e(result.rival_name)}</h2>{rival}' if rival else ''}
 {f'<h2>Friction and dark patterns</h2>{friction}' if friction else ''}
 {f'<h2>Exit survey</h2>{survey}' if survey else ''}
 {f'<h2>Who converted</h2>{segments}' if segments else ''}
