@@ -33,6 +33,7 @@ def test_http_glance_uses_the_current_badges_and_caches_valid_choices(monkeypatc
         calls.append(body)
         schema = body["response_format"]["json_schema"]["schema"]
         assert schema["properties"]["number"]["enum"] == [0, *marks]
+        assert schema["properties"]["product"]["enum"] == sorted({"", *(item.item.name for item in view.items)})
         finish = "length" if truncated and routing != "vote" and len(calls) == 1 else "stop"
         answer = {"product": "", "number": marks[-1] if marks else 0, "interest": 7 if marks else 0}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
@@ -116,3 +117,20 @@ def test_photo_panel_uses_zero_only_for_unmarked_photos(shelf, raw_numeric_only)
     assert model.calls == 3
     assert [answer.sku for answer in answers] == ["B", "B", "" if raw_numeric_only else "B"]
     assert [bool(answer.error) for answer in answers] == [False, False, raw_numeric_only]
+
+
+@pytest.mark.parametrize("prefix", ["Organic drink " * 8, "신선한유기농음료" * 10, "新鮮なオーガニック飲料" * 8])
+def test_long_duplicate_printed_prefixes_keep_badge_resolution_and_raw_photo_names(shelf, prefix):
+    _, view = shelf
+    for index, marked in enumerate(view.items):
+        marked.item.name = prefix + str(index)
+    schema = shelf_glance_model(view)
+    product = schema.model_json_schema()["properties"]["product"]
+    assert product["enum"] == ["", prefix[:60]]
+    assert len(product["enum"][1]) == product["maxLength"] == 60
+    glance = schema.model_validate({"product": prefix[:60], "number": 2, "interest": 8})
+    selected, how = resolve(view, glance)
+    assert selected is not None and selected.item.sku == "B" and how == "number"
+    # A raw photo may show a shortened or different label; preserve name resolution.
+    raw = shelf_glance_model(view, numbered=False)
+    assert "enum" not in raw.model_json_schema()["properties"]["product"]

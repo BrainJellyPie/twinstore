@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Constrain local VLM shelf answers to product names visible in that shelf chart,
+  preventing unrelated names from being attached to a valid shelf badge. Keep raw
+  photo label reading and legacy name/number fallback compatible.
 - Automatic products on large generated stores can keep every department instead
   of rejecting valid model answers and collapsing the assortment to 16 categories.
   Smaller fallback tasks use the same limit; manual shelf refill retains its cap.
