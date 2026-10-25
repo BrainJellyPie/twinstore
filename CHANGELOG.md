@@ -44,7 +44,9 @@
   Previously the tabs ran over the logo at 1024 px.
 - A long online report is easier to find your way around: its section strip
   highlights the section you are reading, scrolls along with you, and fades
-  at an edge where more sections are hidden.
+  at an edge where more sections are hidden, and every section now carries an
+  icon and the same title style, so they are easy to tell apart while
+  scrolling.
 - The marketing studio on a phone: its eleven tabs are one scrolling row
   instead of a block that pushed the work below the fold, and an A/B result
   notice puts its CSV button under the text. The neighborhood's area

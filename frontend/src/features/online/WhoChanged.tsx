@@ -2,7 +2,7 @@
 // the shoppers whose visit ended differently in the two stores, with where and why each visit ended.
 
 import { useState } from "react";
-import { Columns2 } from "lucide-react";
+import { ArrowLeftRight, Columns2 } from "lucide-react";
 
 import type { OnlineRunResult, SegmentDimension, SwitchRow } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -35,10 +35,15 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
   // Older saved reports have default zero counts but no measured segment analysis.
   if (result.comparisons.every((comparison) => comparison.segments.length === 0)) return null;
   return (
-    <section className="panel space-y-3 rounded-[1.4rem] p-4">
-      <div>
-        <h3 className="text-sm font-semibold">{t("onWho")}</h3>
-        <p className="text-xs text-muted-foreground">{t("onWhoHint")}</p>
+    <section className="reveal panel space-y-3 rounded-[1.6rem] p-4 text-sm sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
+          <ArrowLeftRight className="size-4.5" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="font-display text-lg leading-tight tracking-[-0.02em]">{t("onWho")}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("onWhoHint")}</p>
+        </div>
       </div>
       <div className="inline-flex flex-wrap rounded-md border p-0.5 text-xs" role="group" aria-label={t("onWhoBy")}>
         {DIMENSIONS.map((d) => (
