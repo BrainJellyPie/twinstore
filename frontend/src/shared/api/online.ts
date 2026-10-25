@@ -202,7 +202,7 @@ export function saveSite(pid: string, site: OnlineSite): Promise<OnlineSite> {
   return fetchJson(`/api/projects/${pid}/online/sites/${site.id}`, { method: "PUT", ...json(site) });
 }
 
-export function copySite(pid: string, siteId: string, body: { name?: string; note?: string; options?: SiteOptions | null }): Promise<OnlineSite> {
+export function copySite(pid: string, siteId: string, body: { name?: string; note?: string; options?: SiteOptions | null; products?: OnlineProduct[] | null }): Promise<OnlineSite> {
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/copy`, { method: "POST", ...json(body) });
 }
 

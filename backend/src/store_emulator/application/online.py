@@ -84,6 +84,7 @@ class CopySiteRequest(BaseModel):
     name: str = Field(default="", max_length=60)
     note: str = Field(default="", max_length=400)
     options: SiteOptions | None = None  # the variant's options (default: the original's)
+    products: list[OnlineProduct] | None = Field(default=None, min_length=1)
 
 
 class SiteSummary(BaseModel):
@@ -270,6 +271,7 @@ def copy_site(pid: str, site_id: str, request: CopySiteRequest) -> OnlineSite:
         copy = source.model_copy(update={
             "id": f"site_{uuid.uuid4().hex[:12]}", "name": request.name or f"{source.name} B"[:60],
             "variant_of": source.id, "note": request.note, "options": request.options or source.options,
+            "products": request.products if request.products is not None else source.products,
             "created_at": now, "updated_at": now,
         })
         _check(copy)

@@ -34,6 +34,8 @@
   several times on the same rack, preserving its first placement's price and photo.
 - Paginate online wishlists so saved products and their numbered controls remain
   visible in mobile screenshots; reuse the store's listing size and navigation.
+- Save an online variant's edited products and design together. Reject invalid
+  product drafts before creating a copy, preserving the original store.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 

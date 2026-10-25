@@ -49,10 +49,10 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
   };
   const save = useMutation({ mutationFn: () => saveSite(projectId, draft), onSuccess: refresh });
   const variant = useMutation({
-    mutationFn: async () => {
-      const copy = await copySite(projectId, site.id, { name: name.trim() && name.trim() !== site.name ? name.trim() : undefined, note, options });
-      return products === site.products ? copy : saveSite(projectId, { ...copy, products });
-    },
+    mutationFn: () => copySite(projectId, site.id, {
+      name: name.trim() && name.trim() !== site.name ? name.trim() : undefined, note, options,
+      products: products === site.products ? undefined : products,
+    }),
     onSuccess: (copy) => { refresh(); onCopied(copy.id); },
   });
   const remove = useMutation({ mutationFn: () => deleteSite(projectId, site.id), onSuccess: () => { refresh(); onDeleted(); } });
