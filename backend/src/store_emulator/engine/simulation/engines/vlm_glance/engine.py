@@ -360,6 +360,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
             answers = await self._llm.ask_all_with_image(
                 schema, system, prompt, image, seed=seed, route=route, max_retries=1, max_tokens=max_tokens,
+                retry_max_tokens=2 * max_tokens,
             )
             ok = [(a.member, a.answer) for a in answers if a.answer is not None]
             if not ok:
@@ -503,6 +504,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
             answers = await self._llm.ask_all_with_image(
                 response_model, system, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+                retry_max_tokens=2 * self._config.engines.vlm_glance.llm.max_tokens,
             )
             votes = tuple((a.member, a.answer.product if a.answer else "", a.answer.interest if a.answer else -1)
                           for a in answers)

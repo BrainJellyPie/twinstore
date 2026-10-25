@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover truncated entry plans and shelf glances from individual voting-model
+  members with one larger output budget, matching single-model behavior.
+  Successful members are reused; unrelated failures and persistent truncation
+  retain bounded failure handling instead of retrying the whole ensemble.
+
 - Keep distinct shelf offers separate when voting on vision-shopper entry
   plans. Shared SKUs at different locations no longer let the first model's
   minority choice override the majority's shelf, price or quantity. Structured

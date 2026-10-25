@@ -14,6 +14,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Protocol
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from pydantic import BaseModel
 
 from store_emulator.domain.providers import EnsembleMode
@@ -111,24 +112,33 @@ class EnsembleLLMClient:
     async def ask_all_with_image[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str | None,
         *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
+        retry_max_tokens: int | None = None,
     ) -> list[MemberAnswer[T]]:
         """Every member answers (concurrently); failures are returned, not raised.
-        With `image_url` None the question is asked as text only."""
+        With `image_url` None the question is asked as text only. An optional second
+        output budget retries only a member whose terminal completion was truncated."""
         async def one(member: _Member) -> MemberAnswer[T]:
-            try:
-                if image_url is None:
-                    answer = await member.client.generate_structured_async(
-                        response_model, system_prompt, user_prompt,
-                        max_retries=max_retries, seed=seed, route=route, **_cap(max_tokens),
-                    )
-                else:
-                    answer = await member.client.generate_structured_with_image_async(
-                        response_model, system_prompt, user_prompt, image_url,
-                        max_retries=max_retries, seed=seed, route=route, **_cap(max_tokens),
-                    )
-                return MemberAnswer(member.name, answer)
-            except Exception as e:  # noqa: BLE001 — one member failing must not sink the vote
-                return MemberAnswer(member.name, None, f"{type(e).__name__}: {e}"[:300])
+            budgets = (max_tokens,) if retry_max_tokens is None else (max_tokens, retry_max_tokens)
+            for attempt, budget in enumerate(budgets):
+                try:
+                    if image_url is None:
+                        answer = await member.client.generate_structured_async(
+                            response_model, system_prompt, user_prompt,
+                            max_retries=max_retries, seed=seed, route=route, **_cap(budget),
+                        )
+                    else:
+                        answer = await member.client.generate_structured_with_image_async(
+                            response_model, system_prompt, user_prompt, image_url,
+                            max_retries=max_retries, seed=seed, route=route, **_cap(budget),
+                        )
+                    return MemberAnswer(member.name, answer)
+                except Exception as e:  # noqa: BLE001 — one member failing must not sink the vote
+                    cause = (e.failed_attempts[-1].exception
+                             if isinstance(e, InstructorRetryException) and e.failed_attempts else e)
+                    if attempt == 0 and retry_max_tokens is not None and isinstance(cause, IncompleteOutputException):
+                        continue
+                    return MemberAnswer(member.name, None, f"{type(e).__name__}: {e}"[:300])
+            raise AssertionError("unreachable")
 
         return list(await asyncio.gather(*(one(m) for m in self._members)))
 

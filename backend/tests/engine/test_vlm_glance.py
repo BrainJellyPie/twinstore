@@ -163,7 +163,9 @@ def test_nothing_noticed_means_no_impulse_and_failures_do_not_fail_customers():
         if vlm.fail:
             assert meta["errors"] == meta["glances"] > 0
         if vlm.answer == "garbage":
-            assert meta["resolved_by"] == {"invalid": meta["glances"]}
+            # The visible-product schema now rejects this answer before resolution.
+            assert meta["errors"] == meta["glances"] > 0
+            assert meta["resolved_by"] == {"error": meta["glances"]}
 
 
 def test_gated_policy_asks_less_often_and_is_reproducible():
