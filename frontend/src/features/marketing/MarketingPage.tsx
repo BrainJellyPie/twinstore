@@ -363,7 +363,7 @@ function ShelfJob({ projectId, id, onDuplicate }: { projectId: string; id: strin
   return (
     <>
       {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
-      {view.data.report ? <ShelfTestReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
+      {view.data.report ? <ShelfTestReportView projectId={projectId} report={view.data.report} changes={request?.changes} /> : <JobState job={view.data} />}
     </>
   );
 }

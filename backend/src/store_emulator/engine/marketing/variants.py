@@ -11,6 +11,7 @@ from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
+from store_emulator.engine.prompting import display_price
 from store_emulator.engine.validation import list_blocked_faces
 
 MAX_ITEMS_PER_SLOT = 4
@@ -131,6 +132,7 @@ def apply_changes(
     package_uris: Mapping[str, str] | None = None,
     minor_per_major: int = 100,
     remember_old_prices: bool = True,
+    currency: str = "",
 ) -> tuple[Store, list[str], list[str]]:
     """The control with `changes` applied in order, what changed (in words) and warnings.
 
@@ -139,6 +141,8 @@ def apply_changes(
 
     `package_uris` maps product image ids to the URI stored on the slot item (`image_url`), which the
     vision shoppers' shelf renderer draws instead of the plain package.
+
+    `currency` writes prices in the words as on a tag ($4.29); without it they are minor units (429).
     """
     store = control.model_copy(deep=True)
     applied: list[str] = []
@@ -195,7 +199,8 @@ def apply_changes(
                 for item in items:
                     reference = (item.regular_price or item.price) if change.keep_reference else 0
                     item.price, item.regular_price = change.price, reference
-                applied.append(f"{name}: price {old} → {change.price}{' (shoppers remember ' + str(old) + ')' if change.keep_reference else ''}")
+                was, now = (display_price(old, currency), display_price(change.price, currency)) if currency else (str(old), str(change.price))
+                applied.append(f"{name}: price {was} → {now}{' (shoppers remember ' + was + ')' if change.keep_reference else ''}")
             case "discount":
                 if change.percent is None or change.percent >= 0:
                     warnings.append(f"discount: give a negative percentage for {name}")

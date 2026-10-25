@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
+import { listRuns, onlineKeys } from "@/shared/api/online";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import { LOCALES, type MessageKey } from "@/shared/i18n/messages";
@@ -169,6 +170,16 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         setAskNote(t("commandAskNone"));
         return;
       }
+      let onlineRun: string | undefined;
+      if (route.destination === "online_question") {
+        const runs = await qc.fetchQuery({ queryKey: onlineKeys.runs(pid), queryFn: ({ signal }) => listRuns(pid, signal) });
+        if (id !== requestId.current) return;
+        onlineRun = runs.filter((r) => r.status === "completed").sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.run_id;
+        if (!onlineRun) {
+          setAskNote(t("commandAskNoOnlineRun"));
+          return;
+        }
+      }
       if (route.destination === "run_question") {
         const layouts = await qc.ensureQueryData({ queryKey: queryKeys.setups(pid), queryFn: ({ signal }) => api.getSetups(pid, signal) });
         if (id !== requestId.current) return;
@@ -186,9 +197,9 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       if (route.destination === "find_shoppers") setActiveTab("shoppers");
       onDone();
       const onFloor = ["run_question", "layout_edit", "find_shoppers", "optimize"].includes(route.destination);
-      const to = route.destination === "area" ? "/town/$pid" : route.destination === "online_design" ? "/online/$pid"
-        : onFloor ? "/projects/$pid" : "/marketing/$pid";
-      void navigate({ to, params: { pid } });
+      const online = route.destination === "online_design" || route.destination === "online_question";
+      const to = route.destination === "area" ? "/town/$pid" : online ? "/online/$pid" : onFloor ? "/projects/$pid" : "/marketing/$pid";
+      void navigate({ to, params: { pid }, search: onlineRun ? { run: onlineRun } : undefined });
     } catch (e) {
       if (id === requestId.current) setAskNote(e instanceof Error ? e.message : String(e));
     } finally {

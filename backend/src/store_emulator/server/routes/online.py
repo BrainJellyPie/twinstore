@@ -17,6 +17,7 @@ from store_emulator.application.online import (
     OnlineInterview,
     OnlineRunView,
     PlaybackFrame,
+    RunStoreChanges,
     SessionView,
     SiteSummary,
 )
@@ -191,6 +192,14 @@ async def ask_shopper(pid: str, run_id: str, variant: int, shopper_id: str, ques
 def clear_interview(pid: str, run_id: str, variant: int, shopper_id: str) -> dict[str, str]:
     _call(lambda: online_service.clear_interview(pid, run_id, variant, shopper_id))
     return {"status": "deleted"}
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/variants/{variant}/store-changes",
+            summary="A variant's prices, as changes for a store layout", response_model=RunStoreChanges)
+def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
+    """The prices of the run's copy of this variant that differ from its control, matched to layout products by SKU
+    (review them with POST /setups/{sid}/edit/check). Design, pictures and ads stay online and are listed as skipped."""
+    return _call(lambda: online_service.run_store_changes(pid, run_id, variant))
 
 
 @router.get("/projects/{pid}/online/runs/{run_id}/analyst", summary="Questions asked about this online run",

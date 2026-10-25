@@ -2,22 +2,38 @@
 
 ## Unreleased
 
+- Give local layout-edit models an operation-specific grammar: moves require a
+  shelf, discounts require a negative percentage, and unrelated fields are omitted.
+  Clarify combined edits and whole-shelf price changes. Real CPU probes now check
+  prices, reference prices, signs, placements and untouched products, including an
+  unrelated discounted product whose reference price previously disappeared.
+
 - Require report evidence before caching or storing numerical online-analyst answers.
   Constrain citations to at most three actual report lines, bound follow-up question
   lengths and label overall conversion and interval uncertainty explicitly. Add
   real CPU probes for comparison questions and unsupported real-world forecasts;
   the tiny model's remaining interpretation errors are recorded as probe failures.
 
-- Deduplicate model-generated customer keywords, identity/purpose pools and hourly
-  customer types after trimming whitespace. Repeated labels no longer act as extra
-  sampling weight or repeat in later prompts. Preserve visitor estimates and add
-  real CPU customer-generation probes for Korean/KRW and Japanese/JPY inputs.
+## 0.6.0 — Online stores you can see, style and design by asking
 
-- Keep AI design conversations usable after twenty replies. Send recent complete
-  exchanges within the API limit and bound older model context by UTF-8 bytes,
-  retaining the complete latest request and current design. Add a real CPU probe
-  for long Korean conversations that previously exceeded the local context window.
-
+- Ask about the web shop from the command bar: a question such as "did the
+  web shop's new checkout win?" opens the latest finished online run, where
+  **Ask about this run** answers it; with no finished online run the command
+  bar says so instead.
+- Try a shelf test online: a shelf test's report can make a variant of an
+  online store from its changes, like an A/B variant. A move to another shelf
+  height now has a web counterpart: an eye-level (or higher) shelf puts the
+  product first in its category, as the Featured order shows it, and a lower
+  shelf puts it last; a move along the same shelf is still listed as not
+  carried over.
+- Bring an online variant's prices to the store: under each variant of an
+  online run's comparison, **Keep it in the store** reviews the prices the
+  variant changed (the run's own copy, matched by SKU) on a chosen layout in
+  the same currency and keeps them as a new layout; the page design, pictures
+  and ads are listed as staying online. Products of two unrelated stores are
+  never matched by their internal ids.
+- Price changes in A/B variant notes and layout reviews read as on a tag
+  ($4.29 → $3.65) instead of in cents.
 - Ask about an online run: the report has an **Ask about this run** section
   (also on the floating dock) where a model answers questions from the run's
   report — each store's funnel, money, friction, survey, ads, segments and the
@@ -25,7 +41,14 @@
   used; figures not in the report are dropped. Follow-up suggestions that
   repeat the answer or an earlier question are dropped too, here and in the
   store's run analyst.
-
+- Deduplicate model-generated customer keywords, identity/purpose pools and hourly
+  customer types after trimming whitespace. Repeated labels no longer act as extra
+  sampling weight or repeat in later prompts. Preserve visitor estimates and add
+  real CPU customer-generation probes for Korean/KRW and Japanese/JPY inputs.
+- Keep AI design conversations usable after twenty replies. Send recent complete
+  exchanges within the API limit and bound older model context by UTF-8 bytes,
+  retaining the complete latest request and current design. Add a real CPU probe
+  for long Korean conversations that previously exceeded the local context window.
 - Harden AI design edits for small local models with typed, sparse option updates;
   reject duplicate, unknown, null and invalid changes. Keep the editor locked while
   a model reply is pending, refresh changed money inputs on apply/undo without losing
@@ -41,8 +64,6 @@
 - Keep the stores chosen for an online run in sight: they are listed together
   above the store list, which now scrolls on its own when a project has many
   stores, so a comparison opened from another tab shows what it compares.
-
-## 0.6.0 — Online stores you can see, style and design by asking
 
 - Ask for a web shop change from the command bar: a request such as "make the
   web shop look premium" now opens the online store's designer, where **Design

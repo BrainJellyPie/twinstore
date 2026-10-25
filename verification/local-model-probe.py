@@ -23,10 +23,12 @@ from store_emulator.application import template_assortment
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.domain.online import DesignMessage, OnlineRunResult, VariantComparison
-from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.rack import Rack, Slot, SlotItem
+from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
 from store_emulator.engine.generators.persona import Pace, generate_batched
 from store_emulator.engine.layout_gen import generate_store
+from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.catalog import build_site
 from store_emulator.engine.online.analysis import paired_deltas, segment_deltas, summarize, switches
@@ -48,9 +50,15 @@ design_requests = {
     "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
     "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
 }
+layout_requests = {
+    "layout-price-krw": "Green Tea 가격만 3,000원으로 바꿔 주세요. 다른 상품이나 설정은 그대로 유지해 주세요.",
+    "layout-discount-promo": "Discount Green Tea by 10 percent and put a SALE sign on Potato Chips. Change nothing else.",
+    "layout-category": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
+    "layout-move": "Move Green Tea to eye level on its current Drinks shelf. Keep its price and other products unchanged.",
+}
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
-    "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", *design_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
@@ -73,7 +81,7 @@ elif args.case == "book":
     description = "Petite librairie de quartier, livres et papeterie."
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
     temperature=.2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
-    max_tokens=900 if args.case in design_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
+    max_tokens=900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output="json_schema", structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
@@ -131,6 +139,43 @@ try:
         result.update(success=not issues, request=design_requests[args.case], before=before, after=after,
             reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
             characters=sum(len(message.text) for message in messages))
+    elif args.case in layout_requests:
+        currency = "KRW" if args.case == "layout-price-krw" else "USD"
+        scale = 10 if currency == "KRW" else 1
+        store = Store(id="cpu-layout", name="Corner shop", type="convenience", currency=currency, grid_size=(8, 8), racks=[
+            Rack(id="drinks", rack_name="Drinks", type="shelf", shape=[[1]], position=(3, 3), slots=[
+                Slot(block=0, face="N", level=1, items=[SlotItem(sku="tea", name="Green Tea", price=500 * scale)]),
+                Slot(block=0, face="N", level=2, items=[SlotItem(sku="water", name="Mineral Water", price=100 * scale)]),
+                Slot(block=0, face="N", level=3, items=[])]),
+            Rack(id="snacks", rack_name="Snacks", type="shelf", shape=[[1]], position=(5, 3), slots=[
+                Slot(block=0, face="N", level=1, items=[SlotItem(sku="chips", name="Potato Chips",
+                    price=200 * scale, regular_price=300 * scale)])])])
+
+        def products(layout):
+            return {item.sku: {"rack": rack.id, "level": slot.level, **item.model_dump(mode="json")}
+                    for rack in layout.racks for slot in rack.slots for item in slot.items}
+
+        expected = products(store)
+        if args.case == "layout-price-krw":
+            expected["tea"]["price"] = 3000
+        elif args.case == "layout-discount-promo":
+            expected["tea"].update(price=450, regular_price=500)
+            expected["chips"]["promo"] = "SALE"
+        elif args.case == "layout-category":
+            expected["tea"]["price"], expected["water"]["price"] = 450, 90
+        else:
+            expected["tea"]["level"] = 3
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            reply = asyncio.run(draft_layout_edit(client, layout_requests[args.case], store, currency))
+        edited, applied, warnings = apply_layout_edit(store, reply.changes, currency)
+        after = products(edited)
+        issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
+        if set(after) != set(expected):
+            issues.append("Product identities changed")
+        result.update(success=not issues and not warnings, request=layout_requests[args.case],
+            reply=reply.model_dump(mode="json"), applied=applied, warnings=warnings, issues=issues)
+        (output / "before.json").write_text(store.model_dump_json(indent=2))
+        (output / "after.json").write_text(edited.model_dump_json(indent=2))
     elif args.case.startswith("analyst-"):
         control = build_site("fashion", site_id="control", currency="USD")
         control.name = "Control"

@@ -6,6 +6,7 @@ import * as api from "@/shared/api/client";
 import * as online from "@/shared/api/online";
 import type { AnalystThread } from "@/shared/api/interview";
 import { useLocale } from "@/shared/i18n/i18n";
+import { useAssistStore } from "@/stores/assistStore";
 import { OnlineAnalyst } from "../OnlineAnalyst";
 
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof api>(), getModels: vi.fn() }));
@@ -27,7 +28,7 @@ beforeEach(() => {
   vi.mocked(api.getModels).mockResolvedValue([]);
   vi.mocked(online.getOnlineAnalyst).mockResolvedValue(empty);
 });
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); vi.resetAllMocks(); useAssistStore.setState({ pending: null }); });
 
 function mount(compared: boolean) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -68,4 +69,12 @@ it("clears the thread", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Clear" }));
   expect(await screen.findByRole("button", { name: winner })).toBeTruthy();
   expect(online.clearOnlineAnalyst).toHaveBeenCalledWith("p1", "r");
+});
+
+it("asks a question routed from the command palette as soon as the run is open", async () => {
+  vi.mocked(online.askOnlineAnalyst).mockResolvedValue(answered);
+  useAssistStore.getState().send({ projectId: "p1", destination: "online_question", text: "Did quick add help?" });
+  mount(true);
+  await waitFor(() => expect(online.askOnlineAnalyst).toHaveBeenCalledWith("p1", "r", "Did quick add help?", ""));
+  expect(useAssistStore.getState().pending).toBeNull();
 });

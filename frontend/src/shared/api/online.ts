@@ -280,6 +280,7 @@ export const onlineKeys = {
   interview: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId, "interview"] as const,
   analyst: (pid: string, runId: string) => ["projects", pid, "online", "runs", runId, "analyst"] as const,
+  storeChanges: (pid: string, runId: string, variant: number) => ["projects", pid, "online", "runs", runId, "store-changes", variant] as const,
 };
 
 export function listTemplates(signal?: AbortSignal): Promise<OnlineTemplate[]> {
@@ -410,6 +411,13 @@ export function askOnlineShopper(pid: string, runId: string, variant: number, sh
 
 export function clearShopperInterview(pid: string, runId: string, variant: number, shopperId: string): Promise<void> {
   return fetchJson(interviewUrl(pid, runId, variant, shopperId), { method: "DELETE" });
+}
+
+/** A variant's prices from a run, as changes for a store layout (matched by SKU), and what stays online. */
+export interface RunStoreChanges { name: string; currency: string; changes: VariantChange[]; skipped: string[] }
+
+export function getRunStoreChanges(pid: string, runId: string, variant: number, signal?: AbortSignal): Promise<RunStoreChanges> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/variants/${variant}/store-changes`, { signal });
 }
 
 // Questions about an online run, answered from its report; each answer lists the report lines it used.

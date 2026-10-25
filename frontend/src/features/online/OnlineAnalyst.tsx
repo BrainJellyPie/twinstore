@@ -1,15 +1,17 @@
 // Ask about an online run: a model answers from the run's report (each store's funnel, money, friction, survey, ads,
 // segments and the paired differences) and lists the report lines it used; lines not in the report are dropped.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DoorOpen, Loader2, RotateCcw, Scale, Send, Sparkles, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { askOnlineAnalyst, clearOnlineAnalyst, getOnlineAnalyst, onlineKeys } from "@/shared/api/online";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
+import { useAssistStore } from "@/stores/assistStore";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 export function OnlineAnalyst({ projectId, runId, compared }: { projectId: string; runId: string; compared: boolean }) {
@@ -43,6 +45,18 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
       ask.reset();
     },
   });
+  // A question about the web shop typed in the command palette is asked as soon as the run is open.
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const root = useRef<HTMLDivElement>(null);
+  const queueAsk = useQueuedStart(ask.mutate);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["online_question"]);
+    if (!routed) return;
+    root.current?.scrollIntoView?.({ block: "center" });
+    queueAsk(routed.text);
+  }, [pendingAsk, projectId, takeAsk, queueAsk]);
   const busy = ask.isPending || clear.isPending;
   const messages = thread.data?.messages ?? [];
   const last = [...messages].reverse().find((m) => m.role === "analyst");
@@ -57,7 +71,7 @@ export function OnlineAnalyst({ projectId, runId, compared }: { projectId: strin
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={root} className="flex flex-col gap-3">
       {thread.error && (
         <p role="alert" className="text-xs text-destructive">
           {thread.error.message}

@@ -468,7 +468,7 @@ export interface LayoutEditDraft { name: string; source_sha256: string; summary:
 export const draftLayoutEdit = (pid: string, sid: string, text: string) =>
   fetchJson<LayoutEditDraft>(`/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/edit/draft`, { method: "POST", body: JSON.stringify({ text }) });
 /** Edits made elsewhere (a tested variant) applied to a copy of the layout, to review before keeping them. */
-export const checkLayoutEdit = (pid: string, sid: string, req: { name: string; changes: VariantChange[] }) =>
+export const checkLayoutEdit = (pid: string, sid: string, req: { name: string; changes: VariantChange[]; currency?: string }) =>
   fetchJson<LayoutEditDraft>(`/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/edit/check`, { method: "POST", body: JSON.stringify(req) });
 /** Saves the reviewed edits as a new, active layout; the original stays as it is. */
 export const applyLayoutEdit = (pid: string, sid: string, req: { name: string; changes: VariantChange[]; source_sha256: string; request_id: string }) =>

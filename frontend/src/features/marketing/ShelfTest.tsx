@@ -34,6 +34,7 @@ import { usePackages } from "./hooks";
 import { AGE_GROUPS as AGES, personaLabel } from "@/shared/i18n/personaLabels";
 import { toMinor } from "./products";
 import { StudyReading } from "./StudyReading";
+import { TestOnline } from "./TestOnline";
 
 const PROMOS = ["", "NEW", "SALE", "1+1", "-20%"];
 const ARM_LABEL: Record<"control" | "test", MessageKey> = { control: "mkArmControl", test: "mkArmTest" };
@@ -269,7 +270,11 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
 
 const METRIC: Record<string, MessageKey> = { pick: "mkMetricPick", noticed: "mkMetricNoticed", noticed_first: "mkMetricNoticedFirst" };
 
-export function ShelfTestReportView({ projectId, report: r }: { projectId: string; report: Report }) {
+export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
+  projectId: string; report: Report;
+  /** The tested changes (from the request), to try in an online store. */
+  changes?: VariantChange[];
+}) {
   const { t } = useI18n();
   const pick = r.comparisons.find((c) => c.metric === "pick");
   const pctf = (v: number) => `${(v * 100).toFixed(0)}%`;
@@ -297,6 +302,8 @@ export function ShelfTestReportView({ projectId, report: r }: { projectId: strin
           </figure>
         ))}
       </div>
+      {changes.length > 0 && <TestOnline projectId={projectId} testName={r.name} currency={r.currency}
+        variant={{ name: r.target_name || r.name, changes }} />}
       <StudyReading projectId={projectId} study="shelf-tests" jobId={r.test_id} answers={r.choices.filter((c) => c.why && !c.error).length} />
       <section className="rounded-2xl border bg-card p-4">
         <h3 className="text-sm font-semibold">{t("mkTestVsControl", { name: r.target_name })}</h3>
