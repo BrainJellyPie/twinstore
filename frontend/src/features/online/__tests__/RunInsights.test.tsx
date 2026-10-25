@@ -40,10 +40,17 @@ function result(diff: number, low: number, high: number): online.OnlineRunResult
 const status = { run_id: "r1", name: "Study", site_ids: ["s1", "s2"], site_names: ["Control", "Variant"], status: "completed",
   phase: "", done: 6, total: 6, error: "", created_at: "", finished_at: "", request: { policy: "rule", shoppers: 3 } } as online.OnlineRunStatus;
 
-function hero(r: online.OnlineRunResult) {
-  return render(<RunHero status={status} result={r} wide={false} onWide={vi.fn()} onWatch={vi.fn()} onCompare={null} csvUrl={null}
+function hero(r: online.OnlineRunResult, reportUrl: string | null = null) {
+  return render(<RunHero status={status} result={r} wide={false} onWide={vi.fn()} onWatch={vi.fn()} onCompare={null} csvUrl={null} reportUrl={reportUrl}
     onDelete={null} deleting={false} deleteError="" />);
 }
+
+it("opens the run's shareable report in a new tab", () => {
+  hero(result(0.33, 0.1, 0.5), "/api/projects/p/online/runs/r1/report.html");
+  const link = screen.getByRole("link", { name: "Open the report to share or print" });
+  expect(link.getAttribute("href")).toBe("/api/projects/p/online/runs/r1/report.html");
+  expect(link.getAttribute("target")).toBe("_blank");
+});
 
 it("names a variant that clearly converts better as the winner, and calls a close run too close", () => {
   hero(result(0.33, 0.1, 0.5));

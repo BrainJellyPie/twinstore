@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import online as online_service
@@ -200,6 +200,15 @@ def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
     """The prices of the run's copy of this variant that differ from its control, matched to layout products by SKU
     (review them with POST /setups/{sid}/edit/check). Design, pictures and ads stay online and are listed as skipped."""
     return _call(lambda: online_service.run_store_changes(pid, run_id, variant))
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/report.html", summary="Online run report (print-ready HTML)",
+            response_class=HTMLResponse)
+def run_report_html(pid: str, run_id: str, download: bool = False) -> HTMLResponse:
+    """The run's numbers, charts and the questions asked about it on one self-contained page; `download` saves it."""
+    html = _call(lambda: online_service.run_report_html(pid, run_id))
+    headers = {"Content-Disposition": f'attachment; filename="{run_id}-report.html"'} if download else None
+    return HTMLResponse(html, headers=headers)
 
 
 @router.get("/projects/{pid}/online/runs/{run_id}/analyst", summary="Questions asked about this online run",

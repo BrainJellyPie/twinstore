@@ -450,6 +450,10 @@ export function journeyGifUrl(pid: string, runId: string, variant: number, shopp
   return `${BASE}/api/projects/${pid}/online/runs/${runId}/sessions/${variant}/${shopperId}/replay.gif`;
 }
 
+export function runReportUrl(pid: string, runId: string): string {
+  return `${BASE}/api/projects/${pid}/online/runs/${runId}/report.html`;
+}
+
 export function clickstreamUrl(pid: string, runId: string): string {
   return `${BASE}/api/projects/${pid}/online/runs/${runId}/clickstream.csv`;
 }

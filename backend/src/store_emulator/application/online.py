@@ -73,6 +73,7 @@ from store_emulator.engine.online.store_changes import apply_store_changes, pric
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
 from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
+from store_emulator.engine.online.report import online_report_html
 from store_emulator.engine.online.session import run_session
 from store_emulator.engine.online.shoppers import at_rival, sample_shoppers
 from store_emulator.engine.perception.product_images import bundled_product_image
@@ -913,6 +914,14 @@ def clear_analyst(pid: str, run_id: str) -> None:
     with _analyst_lock(pid, run_id), _write_transaction(pid):
         get_run(pid, run_id)
         _analyst_path(pid, run_id).unlink(missing_ok=True)
+
+
+def run_report_html(pid: str, run_id: str) -> str:
+    """The run's report as one page to share or print, with the questions asked about it."""
+    view = get_run(pid, run_id)
+    if view.result is None:
+        raise AppError("This run has no results yet", 409)
+    return online_report_html(view.result, view.status.created_at, get_analyst(pid, run_id))
 
 
 def analyst_facts(pid: str, run_id: str) -> str:
