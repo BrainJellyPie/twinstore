@@ -65,12 +65,12 @@ def match_plan_item(item: PlannedItem, catalog: list[CatalogEntry]) -> PlanMatch
         clipped = len(item.product) == PLAN_PRODUCT_LIMIT
         said_name = product.casefold()
         for pool in (in_category, catalog):
-            literal = [e for e in pool if e[2].name.casefold() == said_name
-                       or (clipped and e[2].name.casefold().startswith(said_name))]
+            literal = [e for e in pool if e[2].name.strip().casefold() == said_name
+                       or (clipped and e[2].name.strip().casefold().startswith(said_name))]
             if literal:
                 # A short exact name can also be the clipped prefix of a longer
                 # item. Keep every matching offer instead of inventing certainty.
-                how = "exact" if all(e[2].name.casefold() == said_name for e in literal) else "prefix"
+                how = "exact" if all(e[2].name.strip().casefold() == said_name for e in literal) else "prefix"
                 return PlanMatch(how, tuple(literal))
         said = tokenize(product) - _FILLER
         if said:

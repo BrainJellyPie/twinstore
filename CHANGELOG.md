@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve a vision shopper's named category when stored product names have
+  surrounding whitespace. Exact and bounded-prefix matches now compare trimmed
+  names, preventing a padded product from redirecting purchases to a different
+  shelf's identically named product or differently priced offer.
+
 - Further reduce failed starter-category recovery batches, down to one rack
   when needed. Models that cannot complete an eight-row request can now finish
   all assignments. The smaller size carries forward, while category limits,
