@@ -68,3 +68,61 @@ def test_the_online_analyst_reads_the_channel_mix(client: TestClient) -> None:
     assert "Store and online by age:" in facts and "Store and online by gender:" in facts
     panel = _run(client, "panel")["result"]["run_id"]
     assert "Store and online" not in client.get(f"/api/projects/{PID}/online/runs/{panel}/analyst/facts").text
+
+
+@pytest.mark.parametrize("kind", ["running_partial", "running_complete", "failed_complete", "completed_partial",
+                                  "damaged_json", "missing_identity", "wrong_shape", "wrong_personas", "wrong_summary"])
+def test_unusable_newer_store_run_does_not_hide_channels_or_analyst_facts(client, kind):
+    import json
+    from pathlib import Path
+    from store_emulator.application import channels
+
+    view = _run(client, "project")
+    run_id = view["result"]["run_id"]
+    url = f"/api/projects/{PID}/online/runs/{run_id}"
+    expected = client.get(url + "/channels").json()
+    base = Path(channels.DATA_DIR) / PID / "runs"
+    newer = base / "run_partial"
+    (newer / "output").mkdir(parents=True)
+    (newer / "input").mkdir()
+    if not kind.endswith("partial"):
+        for name in ["output/timeline.json", "output/personas.json", "input/store.json", "output/summary.json"]:
+            (newer / name).write_bytes((base / STORE_RUN / name).read_bytes())
+    else:
+        (newer / "output/timeline.json").write_text("[]")
+    if kind == "damaged_json":
+        (newer / "output/timeline.json").write_text("{")
+    elif kind == "missing_identity":
+        (newer / "output/timeline.json").write_text("[{}]")
+    elif kind == "wrong_shape":
+        (newer / "output/timeline.json").write_text("null")
+    elif kind == "wrong_personas":
+        (newer / "output/personas.json").write_text("[]")
+    elif kind == "wrong_summary":
+        (newer / "output/summary.json").write_text("[]")
+    state = "running" if kind.startswith("running") else "failed" if kind.startswith("failed") else "completed"
+    (newer / "status.json").write_text(json.dumps({"status": state, "created_at": "9999-01-01"}))
+    assert client.get(url + "/channels").json() == expected
+    facts = client.get(url + "/analyst/facts")
+    assert facts.status_code == 200 and STORE_RUN in facts.text
+    explicit = client.get(url + "/channels", params={"store_run": "run_partial"})
+    assert explicit.status_code in {404, 409}
+
+
+@pytest.mark.parametrize("status_text", [None, "{"])
+def test_complete_legacy_store_run_remains_readable_without_good_status(client, status_text):
+    from pathlib import Path
+    from store_emulator.application import channels
+
+    view = _run(client, "project")
+    run_id = view["result"]["run_id"]
+    url = f"/api/projects/{PID}/online/runs/{run_id}/channels"
+    expected = client.get(url).json()
+    status = Path(channels.DATA_DIR) / PID / "runs" / STORE_RUN / "status.json"
+    if status_text is None:
+        status.unlink()
+    else:
+        status.write_text(status_text)
+    result = client.get(url, params={"store_run": STORE_RUN})
+    assert result.status_code == 200
+    assert result.json() == {**expected, "store_run_at": ""}

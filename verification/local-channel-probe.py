@@ -26,6 +26,7 @@ from store_emulator.engine.routing.route_builder import JourneyStep
 from store_emulator.engine.routing.timeline_builder import build_timeline
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
+parser.add_argument('--unfinished-neighbor', action='store_true', help='Place a newer, partially written store run beside the completed fixture')
 args = parser.parse_args()
 root = args.output.resolve() / f'channels-{time.time_ns()}'
 root.mkdir(parents=True)
@@ -62,6 +63,11 @@ folder = data / 'proj_cpu' / 'runs' / 'run_cpu'
 (folder / 'output' / 'timeline.json').write_text(json.dumps([customer.model_dump(mode='json')]))
 (folder / 'output' / 'personas.json').write_text(json.dumps({persona.id: persona.model_dump(mode='json')}))
 (folder / 'output' / 'summary.json').write_text(json.dumps({'currency': 'USD'}))
+if args.unfinished_neighbor:
+    partial = data / 'proj_cpu' / 'runs' / 'run_new'
+    (partial / 'output').mkdir(parents=True)
+    (partial / 'output' / 'timeline.json').write_text('[]')
+    (partial / 'status.json').write_text(json.dumps({'created_at': '2026-10-26', 'status': 'running'}))
 rows = []
 with patch.object(channels, 'DATA_DIR', str(data)), patch.object(interview, 'DATA_DIR', str(data)), patch.object(channels, 'get_run', return_value=view):
     for buyers_first in [True, False]:

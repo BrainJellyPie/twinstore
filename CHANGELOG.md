@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep channel comparisons and online analyst facts available while another
+  store run is being saved. Choose a completed, readable run; skip incomplete
+  or damaged candidates and give an explicit error for a requested unreadable
+  run. Complete legacy results remain usable without valid status metadata.
+
 - Count free physical purchases in the store/online comparison and accumulate
   all online visits for each shared customer. A later non-purchase no longer
   erases an earlier order or its spending; changing customer-list order leaves

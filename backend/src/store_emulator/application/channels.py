@@ -3,6 +3,7 @@ store run of those customers — who bought in the store, online, in both or in 
 how that splits by age and gender. Both runs are simulations of the same people, not observed channel choices."""
 
 from pathlib import Path
+from typing import cast
 
 from pydantic import BaseModel
 
@@ -47,10 +48,14 @@ def _store_runs(pid: str) -> list[tuple[str, str]]:
     folders: list[Path] = sorted(runs.iterdir()) if runs.is_dir() else []
     found: list[tuple[str, str]] = []
     for folder in folders:
-        if not (folder / "output" / "timeline.json").is_file():
+        if not all((folder / name).is_file() for name in ("output/timeline.json", "output/personas.json", "input/store.json")):
             continue
         try:
-            created = str(read_json(folder / "status.json").get("created_at", ""))
+            raw: object = read_json(folder / "status.json")
+            status = cast(dict[str, object], raw) if isinstance(raw, dict) else {}
+            if status.get("status") not in (None, "", "completed"):
+                continue
+            created = str(status.get("created_at", ""))
         except (OSError, ValueError, AttributeError):  # missing or damaged: still a finished run
             created = ""
         found.append((folder.name, created))
@@ -76,7 +81,13 @@ def channel_mix(pid: str, online_run_id: str, store_run_id: str | None = None) -
     if store_run_id is not None and not candidates:
         raise AppError(f"store run not found: {store_run_id}", 404)
     for run_id, created in candidates:
-        customers, personas, _store, currency = _load(pid, run_id)
+        try:
+            customers, personas, _store, currency = _load(pid, run_id)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            # The default comparison must survive interrupted writes or damaged older outputs.
+            if store_run_id is not None:
+                raise AppError(f"Store run cannot be read: {run_id} ({type(error).__name__})", 409) from error
+            continue
         shared = sorted(set(customers) & set(online))
         if not shared:
             continue
