@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include specifically requested products from beyond the first 200 catalog
+  entries in automatic shopper searches. The context stays bounded and uses
+  the full catalog to prioritize the question's products.
+
 - Prioritize specifically named products in bounded model catalogs, so a large
   assortment sharing a generic word cannot crowd out the requested product.
   Layout edits, promotions and study drafts retain the selected target while

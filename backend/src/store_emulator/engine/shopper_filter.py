@@ -17,7 +17,7 @@ from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action
-from store_emulator.engine.prompting import canonical_identifier, display_price, resolve_listed
+from store_emulator.engine.prompting import canonical_identifier, display_price, relevant_first, resolve_listed
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 type ShopperSort = Literal["spent", "nothing", "impulse", "longest"]
@@ -97,10 +97,15 @@ def _clock(text: str) -> int | None:
     return h * 3600 + m * 60 + s
 
 
-def _listing(store: Store, currency: str) -> str:
+def _listing(store: Store, currency: str, text: str = "") -> str:
     shelves = list(dict.fromkeys(r.rack_name for r in store.product_racks if r.rack_name))
-    products = list(dict.fromkeys(i.name for r in store.product_racks for s in r.slots for i in s.items))
-    return (f"Shelves: {', '.join(shelves)}\nProducts: {'; '.join(products[:200])}\n"
+    products: dict[str, tuple[str, str, str]] = {}
+    for rack in store.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                products.setdefault(item.name, (rack.rack_name, item.name, item.name))
+    shown = relevant_first(list(products.values()), text, 200)
+    return (f"Shelves: {', '.join(shelves)}\nProducts: {'; '.join(shown)}\n"
             f"Prices are in {currency.upper()}; e.g. {display_price(500 if currency.upper() not in ZERO_DECIMAL else 5000, currency)}.")
 
 
@@ -273,6 +278,6 @@ async def find_shoppers(
 
     f = await llm.generate_structured_async(
         TimedFilter, FILTER_PROMPT.format(currency=currency.upper()),
-        f"{_listing(store, currency)}\n\nShoppers wanted: {text.strip()}", max_retries=2, seed=0,
+        f"{_listing(store, currency, text)}\n\nShoppers wanted: {text.strip()}", max_retries=2, seed=0,
     )
     return apply_filter(f, customers, personas, store, currency)
