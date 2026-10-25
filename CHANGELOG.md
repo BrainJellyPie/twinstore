@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject blank model-generated customer descriptions and visit intents before caching or population creation. Bounded retries can recover usable narratives while preserving browsing-only visits and optional preference defaults.
+
 - Add online stores. Each project can build browser-style web shops from 42
   ready-made templates (2,500+ catalog products, most with photos) or from a
   layout's own shelves, and tune their design: layout, search quality,
