@@ -98,7 +98,7 @@ async def run_session(
     screenshot is filtered to the shopper's eyesight. `surveyor`: asks the exit survey when the visit is over."""
     state = initial_state(site, device=shopper.device, at=landing(site, shopper))
     rng = random.Random(stable_seed(seed, "online-session", shopper.id))
-    memory = Memory(want_views=_want_views(shopper, rng))
+    memory = Memory(want_views=_want_views(shopper, rng), views=len(state.viewed))
     steps: list[SessionStep] = []
     reached: set[FunnelStage] = {"visit", "product_view"} if state.at.page == PageKind.PRODUCT else {"visit"}
     searches: list[SearchRecord] = []

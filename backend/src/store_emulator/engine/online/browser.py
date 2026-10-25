@@ -24,6 +24,7 @@ from store_emulator.domain.online import (
     PageKind,
     PageRef,
     PaymentMethod,
+    SearchMode,
     SortKey,
 )
 from store_emulator.engine.prompting import display_price
@@ -241,10 +242,10 @@ def query_terms(query: str) -> list[str]:
     return [w for w in _words(query) if w not in _STOP_WORDS]
 
 
-def search_products(site: OnlineSite, query: str) -> list[OnlineProduct]:
+def search_products(site: OnlineSite, query: str, *, mode: SearchMode | None = None) -> list[OnlineProduct]:
     """Products a search finds, best match first. "smart" matches words and word beginnings anywhere in the name,
     category and tags; "exact" only finds names containing the whole query, as a basic shop search does."""
-    mode = site.options.search
+    mode = site.options.search if mode is None else mode
     text = query.strip().lower()
     if mode == "off" or not text:
         return []

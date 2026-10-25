@@ -515,7 +515,7 @@ class AdLift(BaseModel):
     units_with: int
     units_diff: int
     revenue_diff: int  # total revenue, with the ad minus without
-    other_revenue_diff: int  # revenue from every other product (negative: cannibalization)
+    other_revenue_diff: int  # other product line revenue, before order discounts/fees (negative: cannibalization)
     cost: int
     iroas: float | None  # revenue_diff / cost
 

@@ -366,10 +366,10 @@ function Needed({ delta }: { delta: PairedDelta }) {
   const { t } = useI18n();
   if (delta.ci_low === null || delta.ci_high === null || delta.diff === 0 || delta.n < 2) return null;
   const half = (delta.ci_high - delta.ci_low) / 2;
-  const needed = Math.ceil(delta.n * (half / Math.abs(delta.diff)) ** 2);
+  const needed = Math.max(Math.ceil(delta.n * (half / Math.abs(delta.diff)) ** 2), delta.n + 1);
   return (
     <div className="mt-1 text-[0.7rem] text-muted-foreground" title={t("onNeedHint")}>
-      {needed > MAX_SHOPPERS ? t("onNeedMany", { max: MAX_SHOPPERS }) : t("onNeedShoppers", { count: Math.max(needed, delta.n + 1) })}
+      {needed > MAX_SHOPPERS ? t("onNeedMany", { max: MAX_SHOPPERS }) : t("onNeedShoppers", { count: needed })}
     </div>
   );
 }

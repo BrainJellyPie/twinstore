@@ -672,7 +672,7 @@ def step_screenshot(pid: str, run_id: str, variant: int, shopper_id: str, step: 
     site = sites[variant]
     page = build_page(site, found.state)
     numbers = numbering(page, found.mark_seed)
-    shot = render_page(page, site, numbers, _picture(pid))
+    shot = see_as(render_page(page, site, numbers, _picture(pid)), view.shopper.vision, large_text=page.large_text)
     chosen = next((i for i, n in numbers.items() if found.choice is not None and n == found.choice.number), None)
     box = shot.boxes.get(chosen) if chosen is not None else None
     if box is None:

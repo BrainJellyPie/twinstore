@@ -4,6 +4,16 @@
 
 ## 0.5.0 — Online stores shopped by vision shoppers
 
+- Preserve each online shopper’s eyesight transform in journey screenshots,
+  including large-text adjustments, before highlighting the selected control.
+
+- Report ad lift only between stores with matching products, categories, design,
+  currency and unchanged shared campaigns. Keep ordinary paired store comparisons
+  and campaign attribution available when other changes confound the ad effect.
+
+- Compute other-product ad effects from actual order lines, keeping shipping,
+  fees, add-ons and order discounts out of that merchandise measure while
+  preserving the change in total paid revenue.
 - End an online model run when the model answers none of its first six
   decisions (stopped, unreachable or refusing every request) with the reason,
   instead of finishing it as a rule run. A model that has answered keeps
@@ -18,35 +28,45 @@
   came from, and reports break results down by source with bounce rates. The
   clickstream CSV gains an `arrival` column. Runs default to direct visits as
   before.
+
 - Add price tests to the online quick experiments (all prices 10 % lower or
   higher, 20 % off the five best sellers, rounded the way the store's currency
-  is), and say under every unclear paired difference about how many shoppers per
-  store would confirm a difference of that size, or that it needs more than a
-  run allows.
+  is). Preserve free and fine-unit prices, omit variants with no actual price
+  change, and show rough planning estimates for unclear paired differences
+  without recommending more shoppers than a run allows or dismissing business
+  importance from statistical uncertainty.
+
 - Recover a terminal output cutoff in online shopper interviews once with a
   larger answer budget, keeping ordinary errors within the original retry limit.
+
 - Prevent late online interview answers and lock acquisition from recreating
   deleted projects or runs. Serialize the final save with deletion while keeping
   model inference outside the project lock.
+
 - Ask an online shopper about their visit. In a replay, a model answers a
   researcher's questions in the shopper's voice from who they are and what they
   saw and did on the site only (pages, clicks, thoughts, outcome, exit survey),
   points at the steps it means and keeps the conversation per store and shopper.
   Suggested first questions follow how the visit ended; a cited step opens that
   page of the replay.
+
 - Include possible cart-reminder visits in online model-work estimates, bound
   the typical estimate by small click limits, and distinguish decisions/surveys
   from extra retry calls. Label the click limit per visit in all six languages.
+
 - Count sponsored listing tiles within the first page's product limit so large
   text and cookie controls remain visible. Continue later pages without skipping
   or repeating organic results.
+
 - Omit new shopper-switch claims from older saved reports that have no segment
   analysis, instead of presenting their compatibility defaults as measured zeros.
+
 - Show who an online change won and lost. Each comparison breaks the paired
   conversion difference down by mission, device, age, gender and eyesight with
   95 % intervals and revenue per visit, counts orders won and lost, and lists the
   shoppers whose visit ended differently with where each visit ended, the
   shopper's last thought and a replay in either store.
+
 - Reuse confirmed quick-experiment variants after a copy or run-start failure.
   Keep them visible and selected for retry, and lock comparison choices while
   creation is pending.

@@ -26,6 +26,8 @@ from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Persona
 from store_emulator.domain.types import stable_seed
 from store_emulator.engine.prompting import display_price
 
+from .browser import search_products
+
 _AGE_WEIGHTS: dict[AgeGroup, float] = {"10s": 0.08, "20s": 0.24, "30s": 0.24, "40s": 0.19, "50s": 0.14, "60s+": 0.11}
 _SAVVY: dict[AgeGroup, float] = {"10s": 0.85, "20s": 0.85, "30s": 0.75, "40s": 0.65, "50s": 0.5, "60s+": 0.35}
 _MOBILE: dict[AgeGroup, float] = {"10s": 1.35, "20s": 1.25, "30s": 1.05, "40s": 0.95, "50s": 0.8, "60s+": 0.6}
@@ -198,6 +200,10 @@ def landing(site: OnlineSite, shopper: OnlineShopper) -> PageRef:
     to its deals (or the home page when nothing is discounted)."""
     if shopper.arrival == "search_engine":
         product = site.product(shopper.target_product) if shopper.target_product else None
+        if product is None and shopper.target_terms:
+            # An external search engine is independent of the shop's own search configuration.
+            matches = search_products(site, " ".join(shopper.target_terms), mode="smart")
+            product = matches[0] if matches else None
         if product is None:
             pool = [p for p in site.products if p.category_id == shopper.target_category] or site.products
             product = max(pool, key=lambda p: (p.weekly_sales, p.id))

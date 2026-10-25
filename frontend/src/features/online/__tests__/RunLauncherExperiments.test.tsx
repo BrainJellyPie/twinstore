@@ -135,3 +135,17 @@ it("includes reminder experiments and an unknown selected store in the upper est
   fireEvent.click(screen.getByRole("radio", { name: /^Text model/ }));
   expect(screen.getByText(/^Model (calls|decisions)/).textContent).toContain("at most 3,690.");
 });
+
+it("creates a price experiment with the repriced catalog in the same copy request", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("checkbox", { name: "All prices 10% lower" }));
+  fireEvent.click(start());
+  await screen.findByRole("alert");
+  expect(online.copySite).toHaveBeenCalledExactlyOnceWith("p1", "s1", expect.objectContaining({
+    options: source.options, products: [{ ...source.products[0], price: 1169 }],
+  }));
+  expect(source.products[0]?.price).toBe(1299);
+  fireEvent.click(start());
+  await waitFor(() => expect(online.startRun).toHaveBeenCalledTimes(2));
+  expect(online.copySite).toHaveBeenCalledTimes(1);
+});

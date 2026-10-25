@@ -17,16 +17,20 @@ const BEST_SELLERS = 5;
 
 /** A price times `factor`, rounded the way the store's prices are (cents, or 10 yen / 100 won steps). */
 function scaled(price: number, factor: number, currency: string): number {
-  const step = minorUnitDivisor(currency) === 100 ? 1 : currency === "KRW" ? 100 : 10;
-  return Math.max(step, Math.round((price * factor) / step) * step);
+  if (price === 0) return 0;
+  const usualStep = minorUnitDivisor(currency) === 100 ? 1 : currency === "KRW" ? 100 : 10;
+  // Preserve finer original prices instead of rounding a discount above the original price.
+  const step = price % usualStep === 0 ? usualStep : 1;
+  return Math.max(1, Math.round((price * factor) / step) * step);
 }
 
 function repriced(products: OnlineProduct[], factor: number, currency: string): OnlineProduct[] | null {
   if (!products.length) return null;
-  return products.map((p) => {
+  const changed = products.map((p) => {
     const price = scaled(p.price, factor, currency);
-    return { ...p, price, list_price: p.list_price > price ? p.list_price : 0 };
+    return price === p.price ? p : { ...p, price, list_price: p.list_price > price ? p.list_price : 0 };
   });
+  return changed.some((p, i) => p !== products[i]) ? changed : null;
 }
 
 export const QUICK_EXPERIMENTS: QuickExperiment[] = [
@@ -78,9 +82,12 @@ export const QUICK_EXPERIMENTS: QuickExperiment[] = [
       const top = new Set([...products].filter((p) => p.stock !== 0).sort((a, b) => b.weekly_sales - a.weekly_sales)
         .slice(0, BEST_SELLERS).map((p) => p.id));
       if (!top.size) return null;
-      return products.map((p) => (top.has(p.id)
-        ? { ...p, price: scaled(p.price, 0.8, currency), list_price: Math.max(p.list_price, p.price) }
-        : p));
+      const changed = products.map((p) => {
+        if (!top.has(p.id)) return p;
+        const price = scaled(p.price, 0.8, currency);
+        return price < p.price ? { ...p, price, list_price: Math.max(p.list_price, p.price) } : p;
+      });
+      return changed.some((p, i) => p !== products[i]) ? changed : null;
     },
   },
 ];

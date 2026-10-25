@@ -29,6 +29,44 @@ function site(options: SiteOptions = OPTIONS, currency = "USD", products = PRODU
 }
 
 describe("quick experiments", () => {
+  it.each([
+    ["USD", [0, 1, 17, 100], [0, 1, 15, 90], [0, 1, 19, 110], [0, 1, 14, 80]],
+    ["KRW", [0, 50, 170, 1000], [0, 45, 153, 900], [0, 55, 187, 1100], [0, 40, 136, 800]],
+    ["JPY", [0, 3, 17, 100], [0, 3, 15, 90], [0, 3, 19, 110], [0, 2, 14, 80]],
+  ] as const)("preserves free products and existing fine %s prices", (currency, prices, down, up, deals) => {
+    const products = prices.map((price, i) => product(`p${i}`, price, 10 - i));
+    const before = structuredClone(products);
+    const found = Object.fromEntries(experimentsFor(site(OPTIONS, currency, products)).map((x) => [x.id, x.products]));
+    expect(found.prices_down?.map((p) => p.price)).toEqual(down);
+    expect(found.prices_up?.map((p) => p.price)).toEqual(up);
+    expect(found.best_seller_deals?.map((p) => p.price)).toEqual(deals);
+    expect(products).toEqual(before);
+  });
+
+  it.each(["USD", "KRW", "JPY"])("omits %s price experiments that would change no price", (currency) => {
+    for (const price of [0, 1]) {
+      const products = [product("p", price, 10)];
+      const found = experimentsFor(site(OPTIONS, currency, products));
+      expect(found.map((x) => x.id)).not.toContain("prices_down");
+      expect(found.map((x) => x.id)).not.toContain("prices_up");
+      expect(found.map((x) => x.id)).not.toContain("best_seller_deals");
+      expect(products[0]?.list_price).toBe(0);
+    }
+  });
+
+  it.each(["USD", "KRW", "JPY"])("keeps %s price changes in the requested direction across rounding boundaries", (currency) => {
+    for (const price of [0, 1, 3, 9, 10, 17, 50, 99, 100, 149, 170, 500, 999, 1000]) {
+      const products = [product("p", price, 10)];
+      for (const x of experimentsFor(site(OPTIONS, currency, products)).filter((x) => x.products)) {
+        const after = x.products![0]!.price;
+        expect(Number.isInteger(after)).toBe(true);
+        expect(after).toBeGreaterThanOrEqual(0);
+        if (x.id === "prices_up") expect(after).toBeGreaterThan(price);
+        else expect(after).toBeLessThan(price);
+      }
+    }
+  });
+
   it("each changes the store it applies to, and has a label", () => {
     const found = experimentsFor(site());
     expect(found.map((x) => x.id)).not.toContain("pressure"); // urgency is already on
