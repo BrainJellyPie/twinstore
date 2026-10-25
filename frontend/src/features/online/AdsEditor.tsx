@@ -17,11 +17,13 @@ function newAdId(): string {
   return `ad_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 }
 
-export function AdsEditor({ ads, products, currency, onChange, onCompareWithout }: {
+export function AdsEditor({ ads, products, currency, onChange, costText, onCostText, onCompareWithout }: {
   ads: AdCampaign[];
   products: OnlineProduct[];
   currency: string;
   onChange: (ads: AdCampaign[]) => void;
+  costText: (id: string) => string | undefined; // what is typed in a cost box, until it is a valid amount
+  onCostText: (id: string, text: string) => void;
   onCompareWithout?: () => void;
 }) {
   const { t } = useI18n();
@@ -78,7 +80,8 @@ export function AdsEditor({ ads, products, currency, onChange, onCompareWithout 
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-muted-foreground">{ad.pricing === "cpc" ? t("onAdCostClick") : t("onAdCostThousand")}</span>
-                <CostInput key={`${ad.id}:${ad.pricing}`} value={ad.cost} currency={currency} label={t("onAdCostClick")} onChange={(cost) => update(ad.id, { cost })} />
+                <CostInput value={ad.cost} currency={currency} label={ad.pricing === "cpc" ? t("onAdCostClick") : t("onAdCostThousand")}
+                  text={costText(ad.id)} onTextChange={(text) => onCostText(ad.id, text)} onChange={(cost) => update(ad.id, { cost })} />
               </label>
             </div>
             <p className="text-[0.7rem] text-muted-foreground">{t(AD_PLACEMENT_HINTS[ad.placement])}</p>
@@ -97,16 +100,23 @@ export function AdsEditor({ ads, products, currency, onChange, onCompareWithout 
   );
 }
 
-function CostInput({ value, currency, label, onChange }: { value: number; currency: string; label: string; onChange: (v: number) => void }) {
+function CostInput({ value, currency, label, text, onTextChange, onChange }: {
+  value: number; currency: string; label: string; text: string | undefined; onTextChange: (text: string) => void;
+  onChange: (v: number) => void;
+}) {
   const { t } = useI18n();
+  const displayed = text ?? majorUnitText(value, currency);
+  const invalid = toMinor(displayed, minorUnitDivisor(currency)) === null;
   return (
-    <span className="flex items-center gap-1">
-      <Input className="h-8 w-24" inputMode="decimal" defaultValue={majorUnitText(value, currency)} aria-label={label}
+    <span className="flex flex-wrap items-center gap-1">
+      <Input className="h-8 w-24" inputMode="decimal" value={displayed} aria-label={label} aria-invalid={invalid || undefined}
         onChange={(e) => {
+          onTextChange(e.target.value);
           const minor = toMinor(e.target.value, minorUnitDivisor(currency));
           if (minor !== null) onChange(minor);
         }} />
       <span className="text-[0.7rem] text-muted-foreground">{currency}</span>
+      {invalid && <span className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
       <span className="sr-only">{t("onAdCostHint")}</span>
     </span>
   );

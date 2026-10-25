@@ -40,9 +40,9 @@ def test_ads_are_saved_validated_and_measured_against_the_store_without_them(cli
     page = client.post(f"{url}/browse", json={}).json()
     assert any(o["ad_id"] == "ad_banner" and o["label"].startswith("Ad · ") for o in page["options"])
 
-    plain = client.post(f"{url}/copy", json={"name": "No ads"}).json()
-    plain = client.put(f"/api/projects/{PID}/online/sites/{plain['id']}",
-                       json={**plain, "ads": [{**ad, "active": False}]}).json()
+    assert client.post(f"{url}/copy", json={"ads": [{**ad, "product_id": "nope"}]}).status_code == 422
+    plain = client.post(f"{url}/copy", json={"name": "No ads", "ads": [{**ad, "active": False}]}).json()
+    assert plain["ads"][0]["active"] is False and client.get(url).json()["ads"][0]["active"] is True
     status = client.post(f"/api/projects/{PID}/online/runs",
                          json={"site_ids": [site["id"], plain["id"]], "shoppers": 30, "seed": 5}).json()
     view = _wait(client, status["run_id"])

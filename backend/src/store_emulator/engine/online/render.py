@@ -732,14 +732,14 @@ def _shade(img: Image.Image, top: int) -> None:
     img.paste(veil, (0, top), veil)
 
 
-def _overlay(p: _Paint, page: Page, height: int, picture: ProductPicture | None) -> None:
+def _overlay(p: _Paint, page: Page, height: int, picture: ProductPicture | None) -> int:
     overlay = page.overlay
     if overlay is None:
-        return
+        return height
     _shade(p.img, _CHROME)
     if overlay.kind == "menu":
         w = min(320, round(p.w * 0.82))
-        p.d.rectangle((0, _CHROME, w, height), fill=PAPER)
+        p.d.rectangle((0, _CHROME, w, p.img.height), fill=PAPER)
         y = p.text(20, _CHROME + 16, overlay.title, 20, INK, True) + 8
         for line in overlay.lines:
             if line.control is None:
@@ -752,7 +752,7 @@ def _overlay(p: _Paint, page: Page, height: int, picture: ProductPicture | None)
             p.mark(line.control, (10, y, w - 10, y + h))
             p.d.line((20, y + h, w - 20, y + h), fill=RULE)
             y += h + 2
-        return
+        return max(height, y + 16)
     w = min(460, p.w - 2 * p.pad)
     x0 = (p.w - w) // 2
     probe_lines = [line for line in overlay.lines if line.control is None]
@@ -778,6 +778,7 @@ def _overlay(p: _Paint, page: Page, height: int, picture: ProductPicture | None)
         else:
             box = p.button(line.control, x0 + 24, y, line.text, w=w - 48, h=round(34 * p.k), style="link", size=14)
         y = box[3] + 6
+    return max(height, y0 + h + 16, y + 16)
 
 
 def _badges(p: _Paint, numbers: dict[int, int]) -> None:
@@ -830,10 +831,9 @@ def render_page(page: Page, site: OnlineSite, numbers: dict[int, int], picture: 
         p.d.text((p.w - p.pad - 26, y - 36), "?", font=load_font(24, True), fill=PAPER, anchor="mm")
     y = _footer(p, page, y)
     y = _cookie(p, page, y)
-    height = min(y, _MAX_HEIGHT)
+    height = min(_overlay(p, page, y, picture), _MAX_HEIGHT)
     p.img = p.img.crop((0, 0, width, height))
     p.d = ImageDraw.Draw(p.img)
-    _overlay(p, page, height, picture)
     _badges(p, numbers)
     out = io.BytesIO()
     p.img.save(out, format="PNG", compress_level=6)

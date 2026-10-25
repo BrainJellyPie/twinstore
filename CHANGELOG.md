@@ -62,6 +62,16 @@
   several times on the same rack, preserving its first placement's price and photo.
 - Paginate online wishlists so saved products and their numbered controls remain
   visible in mobile screenshots; reuse the store's listing size and navigation.
+- Save an online variant's edited products and design together. Reject invalid
+  product drafts before creating a copy, preserving the original store.
+- Block online store and variant saves while any entered amount is invalid.
+  Keep unfinished price text and its validation when a product filter hides a row.
+- Keep online preview numbers and device selection aligned with the displayed
+  page when a transition fails, and prevent overlapping page transitions.
+- Paginate large online carts so quantity, removal and checkout controls stay
+  visible to vision shoppers. Keep totals and orders based on the complete cart.
+- Include open menus and welcome dialogs when sizing online screenshots, keeping
+  menu actions and the close control visible above short or empty pages.
 
 - Add eyesight, friction and exit-survey research to online stores. Shoppers
   can have low vision, red–green colour blindness or older eyes (all, none or a

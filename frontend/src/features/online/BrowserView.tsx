@@ -31,17 +31,19 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
       state: step.state, option: step.option ?? null, query: step.query ?? "", mark_seed: step.markSeed,
       has_account: hasAccount, device: step.device, vision: step.vision,
     }),
-    onSuccess: (next) => { setView(next); setSearching(null); setQuery(""); },
+    onSuccess: (next, step) => {
+      setView(next); setMarkSeed(step.markSeed); setDevice(step.device); setVision(step.vision); setSearching(null); setQuery("");
+      if (step.state === null) setClicks([]);
+    },
   });
   const start = go.mutate;
   useEffect(() => { start({ state: null, markSeed: 0, device: "desktop", vision: "typical" }); }, [start]);
-  const newVisit = (next: Device) => { setDevice(next); setClicks([]); go.mutate({ state: null, markSeed, device: next, vision }); };
+  const newVisit = (next: Device) => go.mutate({ state: null, markSeed, device: next, vision });
   const renumber = (on: boolean) => {
     const seed = on ? 1 + Math.floor(Math.random() * 1e6) : 0;
-    setMarkSeed(seed);
     go.mutate({ state: view?.state ?? null, markSeed: seed, device, vision });
   };
-  const seeAs = (next: Vision) => { setVision(next); go.mutate({ state: view?.state ?? null, markSeed, device, vision: next }); };
+  const seeAs = (next: Vision) => go.mutate({ state: view?.state ?? null, markSeed, device, vision: next });
   useEffect(() => { if (searching) searchRef.current?.focus(); }, [searching]);
 
   const use = (option: PageOption) => {
@@ -54,7 +56,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
     go.mutate({ state: view.state, option: option.number, markSeed, device, vision });
   };
   const submitSearch = () => {
-    if (!view || !searching || !query.trim()) return;
+    if (!view || !searching || !query.trim() || go.isPending) return;
     setClicks((c) => [...c.slice(-30), `${t(PAGE_LABELS[view.page])} → [${searching.number}] “${query.trim()}”`]);
     go.mutate({ state: view.state, option: searching.number, query: query.trim(), markSeed, device, vision });
   };
@@ -65,7 +67,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="inline-flex rounded-md border p-0.5" role="group" aria-label={t("onDevice")}>
             {(["desktop", "mobile"] as Device[]).map((d) => (
-              <button key={d} type="button" aria-pressed={device === d} onClick={() => newVisit(d)}
+              <button key={d} type="button" aria-pressed={device === d} onClick={() => newVisit(d)} disabled={go.isPending}
                 className={cn("flex items-center gap-1 rounded px-2 py-1", device === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
                 {d === "desktop" ? <Monitor className="size-3.5" aria-hidden /> : <Smartphone className="size-3.5" aria-hidden />}
                 {t(d === "desktop" ? "onDeviceDesktop" : "onDeviceMobile")}
@@ -77,16 +79,17 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
             <UserCheck className="size-3.5" aria-hidden /> {t("onHasAccount")}
           </label>
           <label className="flex items-center gap-1.5" title={t("onShuffleHint")}>
-            <input type="checkbox" checked={markSeed !== 0} onChange={(e) => renumber(e.target.checked)} />
+            <input type="checkbox" checked={markSeed !== 0} onChange={(e) => renumber(e.target.checked)} disabled={go.isPending} />
             <Shuffle className="size-3.5" aria-hidden /> {t("onShuffle")}
           </label>
           <label className="flex items-center gap-1.5" title={t("onSeeAsHint")}>
             {t("onSeeAs")}
-            <select className="h-7 rounded-md border bg-background px-1.5" value={vision} onChange={(e) => seeAs(e.target.value as Vision)}>
+            <select className="h-7 rounded-md border bg-background px-1.5" value={vision} disabled={go.isPending}
+              onChange={(e) => seeAs(e.target.value as Vision)}>
               {VISIONS.map((v) => <option key={v} value={v}>{t(VISION_LABELS[v])}</option>)}
             </select>
           </label>
-          <Button variant="outline" size="xs" className="ml-auto" onClick={() => newVisit(device)}>
+          <Button variant="outline" size="xs" className="ml-auto" onClick={() => newVisit(device)} disabled={go.isPending}>
             <RotateCcw aria-hidden /> {t("onNewVisit")}
           </Button>
         </div>
