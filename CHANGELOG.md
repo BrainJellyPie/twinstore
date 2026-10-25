@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Treat `null` as no extra candidates only in the optional impulse shortlist.
+  Context recovery can now retain an already planned purchase instead of failing
+  the entire visit. Required primary shortlists still reject missing or null
+  answers, and malformed non-null choices remain invalid.
+
 - Accept unique case and surrounding-whitespace variants in compact candidate
   code lists used to recover oversized shopper prompts. A lowercase `@p1` can
   now select the supplied `@P1` offer without aborting the visit. Exact SKU and

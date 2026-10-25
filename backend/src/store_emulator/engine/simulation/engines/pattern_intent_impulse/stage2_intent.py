@@ -102,6 +102,11 @@ def catalog_selection_model(records: dict[str, SlotItem], maximum: int, *, requi
     class BoundedCatalogSelection(CatalogSelection):
         model_config = ConfigDict(json_schema_extra={"$comment": f"catalog-sku-map:{digest}"})
 
+        @field_validator("codes", mode="before")
+        @classmethod
+        def _absent_optional_codes(cls, value: object) -> object:
+            return [] if value is None and not required else value
+
         @field_validator("codes")
         @classmethod
         def _known_codes(cls, values: list[str]) -> list[str]:
