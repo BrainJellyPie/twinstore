@@ -15,6 +15,12 @@
   a few minutes, with the seconds so far. A real CPU run of the 450M model
   took over three minutes to redesign a store, with nothing but "Redesigning…"
   on screen.
+- The marketing A/B report uses its width: a test with one variant shows that
+  variant's changes full width with **Keep it in the store** and **Test it
+  online** side by side, and the price × sign analysis is one line saying what
+  it answers until it is opened, instead of a lone button in a wide card.
+- The top bar no longer marks **Floor** (or another store tab) as the current
+  page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
   visible colour dot in dark mode: the dots' outline is stronger there.
 - Check a drafted store layout against a separate, short business-type choice.

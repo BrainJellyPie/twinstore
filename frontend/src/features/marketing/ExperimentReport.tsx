@@ -188,7 +188,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
 
       <SegmentTable report={r} />
 
-      <section className="grid gap-3 lg:grid-cols-2">
+      <section className={cn("grid gap-3", r.variants.length > 1 && "lg:grid-cols-2")}>
         {r.variants.map((v) => (
           <div key={v.name} className="rounded-2xl border bg-card p-4 text-sm">
             <div className="mb-1.5 font-semibold">{t("mkChanged", { name: v.name })}</div>
@@ -197,10 +197,10 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
             {(() => {
               const asked = variants?.find((x) => x.name === v.name);
               return asked && (
-                <>
+                <div className={cn("mt-3 grid items-start gap-3 [&>*]:mt-0", r.variants.length === 1 && "lg:grid-cols-2")}>
                   <KeepAsLayout projectId={projectId} setupId={r.setup_id} variant={asked} />
                   <TestOnline projectId={projectId} testName={r.name} variant={asked} currency={r.currency} />
-                </>
+                </div>
               );
             })()}
           </div>
