@@ -372,10 +372,14 @@ def _popular(site: OnlineSite, exclude: set[str] | None = None, limit: int = _HO
     return ranked[:limit]
 
 
-def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str) -> Grid:
+def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str,
+                  products: list[OnlineProduct] | None = None) -> Grid:
     ref = state.at
-    products = listing(site, ref)
-    products, ads = _with_sponsored(site, products)
+    if products is None:
+        products, ads = _with_sponsored(site, listing(site, ref))
+    else:
+        products = sort_products(products, ref.sort or site.options.default_sort)
+        ads = set[str]()
     per = site.options.products_per_page
     pages = page_count(site, len(products))
     index = min(ref.page_index, pages - 1)
@@ -710,7 +714,8 @@ def build_page(site: OnlineSite, state: BrowserState) -> Page:
     elif ref.page == PageKind.WISHLIST:
         title = "Wishlist"
         saved = [p for p in (site.product(pid) for pid in state.wishlist) if p is not None]
-        grids = [Grid("Your wishlist", _cards(site, state, saved, ctl), (), "" if saved else "Nothing saved yet.")]
+        grids = ([_listing_grid(site, state, ctl, "Your wishlist", saved)] if saved else
+                 [Grid("Your wishlist", (), (), "Nothing saved yet.")])
     else:
         title = {PageKind.ORDER_COMPLETE: "Order confirmed", PageKind.HELP: "Delivery and returns"}.get(ref.page, "Settings")
         panels = _info(site, state, ctl)

@@ -32,6 +32,8 @@
   simultaneous run-start/delete request. Completed runs still allow deletion.
 - Import each physical-store SKU once into an online catalog even when it appears
   several times on the same rack, preserving its first placement's price and photo.
+- Paginate online wishlists so saved products and their numbered controls remain
+  visible in mobile screenshots; reuse the store's listing size and navigation.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
