@@ -13,6 +13,16 @@
   95 % intervals and revenue per visit, counts orders won and lost, and lists the
   shoppers whose visit ended differently with where each visit ended, the
   shopper's last thought and a replay in either store.
+- Reuse confirmed quick-experiment variants after a copy or run-start failure.
+  Keep them visible and selected for retry, and lock comparison choices while
+  creation is pending.
+- Keep a better coupon available after a cart-reminder discount, and avoid
+  repeatedly offering an already applied coupon whose rounded discount is zero.
+- Keep impressions, clicks and costs attached to the selected ad campaign when
+  multiple sponsored tiles promote the same product.
+- Recover an online exit survey once when a local model explicitly cuts its
+  answer off at the output limit. Keep invalid answers and ordinary service
+  errors within their original attempt budget, and exclude unanswered surveys.
 - Add cart reminder emails to online stores. Visits that leave items in the cart
   get a reminder, optionally with a discount (the better of it and a coupon
   applies); some shoppers, more of the price-sensitive ones when there is a
@@ -21,11 +31,6 @@
   email; replays mark where the second visit starts and the clickstream CSV
   gains a `visit` column. Quick experiments offer a plain reminder and one with
   10 % off.
-- Keep impressions, clicks and costs attached to the selected ad campaign when
-  multiple sponsored tiles promote the same product.
-- Recover an online exit survey once when a local model explicitly cuts its
-  answer off at the output limit. Keep invalid answers and ordinary service
-  errors within their original attempt budget, and exclude unanswered surveys.
 - Add quick experiments to online runs. Tick up to three one-click changes to the
   first store (drop the last-step fee, allow guest checkout, untick the add-on,
   remove the welcome popup or offer a welcome coupon, halve or double page load

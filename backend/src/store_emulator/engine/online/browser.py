@@ -592,7 +592,7 @@ def _cart(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[Panel]:
     summary = [Line(f"Subtotal: {money(t.subtotal, site)}")]
     if t.discount:
         summary.append(Line(f"{_discount_label(site, state)}: -{money(t.discount, site)}", "good"))
-    elif o.coupon_code and o.coupon_percent:
+    if o.coupon_code and not state.coupon_applied and o.coupon_percent > state.reminder_percent:
         summary.append(Line("Have a coupon code?", "muted", ctl(ActionKind.APPLY_COUPON, "Apply a coupon code")))
     summary.append(Line("Delivery: free" if t.shipping == 0 else f"Delivery: {money(t.shipping, site)}"))
     if t.shipping and o.free_shipping_threshold:
@@ -630,7 +630,7 @@ def _review_lines(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[
     lines = [Line(f"Items: {money(t.subtotal, site)}")]
     if t.discount:
         lines.append(Line(f"{_discount_label(site, state)}: -{money(t.discount, site)}", "good"))
-    elif o.coupon_code and o.coupon_percent:
+    if o.coupon_code and not state.coupon_applied and o.coupon_percent > state.reminder_percent:
         lines.append(Line("Have a coupon code?", "muted", ctl(ActionKind.APPLY_COUPON, "Apply a coupon code")))
     lines.append(Line("Delivery: free" if t.shipping == 0 else f"Delivery: {money(t.shipping, site)}"))
     if t.service_fee:
