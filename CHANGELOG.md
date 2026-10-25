@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Base model-failure advice on the final attempt and the native HTTP response.
+  Ollama request, access, missing-model, rate-limit and server failures no longer
+  all suggest starting an unreachable server; generated validation text cannot
+  falsely tell users to replace a valid API key.
+
 - Reject output-limited free-text summaries before using them as customer
   evidence. CSV/XLSX analysis now omits a cutoff summary through its existing
   failure path, while retaining usage accounting and complete summaries.

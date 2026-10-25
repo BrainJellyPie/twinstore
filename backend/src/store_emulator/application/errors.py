@@ -1,4 +1,11 @@
+import json
 from typing import overload
+
+from instructor.core.exceptions import IncompleteOutputException, InstructorError
+from litellm.exceptions import APIConnectionError
+from pydantic import ValidationError
+
+from store_emulator.engine.llm_client import is_context_overflow
 
 
 class AppError(Exception):
@@ -81,7 +88,41 @@ _MODEL_FAILURES: tuple[tuple[tuple[str, ...], str], ...] = (
 
 def model_failure(error: BaseException, what: str) -> str:
     """A failed model call in words a user can act on; the raw error belongs in the server log."""
-    text = f"{type(error).__name__}: {error}".casefold()
+    seen: set[int] = set()
+    while isinstance(error, InstructorError) and not isinstance(error, IncompleteOutputException) and id(error) not in seen:
+        seen.add(id(error))
+        if error.failed_attempts:
+            error = error.failed_attempts[-1].exception
+        elif error.__cause__ is not None:
+            error = error.__cause__
+        else:
+            break
+    if is_context_overflow(error):
+        return f"{what}: the request exceeds the model's context limit. Shorten the input or use a model with a larger context."
+    if isinstance(error, IncompleteOutputException):
+        text = "output is incomplete"
+    elif isinstance(error, (ValidationError, json.JSONDecodeError, InstructorError)):
+        # Validation inputs and prior completions are model output, not evidence
+        # that the server rejected a key or lost its connection.
+        text = "validation error"
+    else:
+        text = f"{type(error).__name__}: {error}".casefold()
+    if isinstance(error, APIConnectionError) and getattr(error, "llm_provider", None) == "ollama_chat":
+        # This SDK adapter wraps native HTTP errors as connection failures.
+        original = error.__cause__ or error.__context__
+        status = getattr(getattr(original, "response", None), "status_code", None)
+        if status == 401:
+            text = "authenticationerror"
+        elif status == 429:
+            text = "ratelimiterror"
+        elif status == 403:
+            return f"{what}: the server denied access. Check this model's access permissions and credentials."
+        elif status == 404:
+            return f"{what}: the model or endpoint was not found. Check the server address and that the model is installed."
+        elif status == 400:
+            return f"{what}: the server rejected the request. Check that this model supports the requested input and settings."
+        elif isinstance(status, int) and status >= 500:
+            return f"{what}: the model server could not complete the request. Check its status and available resources, then try again."
     for needles, hint in _MODEL_FAILURES:
         if any(n in text for n in needles):
             return f"{what}: {hint}"
