@@ -81,7 +81,12 @@ def test_an_unloaded_or_external_servers_recommendation_is_not_its_cache_identit
     monkeypatch.setattr(local_vlm, 'manager', lambda: SimpleNamespace(status=lambda: status))
     base = LLMConfig(model='openai/local-model', api_base=status.api_base, cache_dir=str(tmp_path))
     resolved = providers.resolve_model('llamacpp:local', base=base, settings={})
-    assert LiteLLMClient(resolved)._cache_path(Answer, [], None) == LiteLLMClient(base)._cache_path(Answer, [], None)
+    assert resolved.cache_namespace == ''
+    original = LiteLLMClient(resolved)._cache_path(Answer, [], None)
+    status.plan = plan.model_copy(update={'model': plan.model.model_copy(update={'file': 'different-model.gguf'})})
+    changed = providers.resolve_model('llamacpp:local', base=base, settings={})
+    assert changed.cache_namespace == ''
+    assert LiteLLMClient(changed)._cache_path(Answer, [], None) == original
 
 
 def test_reusing_a_config_for_another_endpoint_clears_the_managed_identity(tmp_path, monkeypatch):
