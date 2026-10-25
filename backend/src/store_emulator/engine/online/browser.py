@@ -233,12 +233,15 @@ def search_products(site: OnlineSite, query: str) -> list[OnlineProduct]:
         name_words = set(_words(product.name))
         other_words = set(_words(" ".join([category.name if category else "", *product.tags])))
         score = 0.0
+        matched = 0
         for term in terms:
             if term in name_words or any(len(term) >= 3 and w.startswith(term) for w in name_words):
                 score += 1.0
+                matched += 1
             elif term in other_words or any(len(term) >= 3 and w.startswith(term) for w in other_words):
                 score += 0.6
-        if score >= max(1.0, len(terms) / 2):
+                matched += 1
+        if matched >= max(1, len(terms) / 2):
             scored.append((score, order, product))
     scored.sort(key=lambda s: (-s[0], s[1]))
     return [p for _, _, p in scored]

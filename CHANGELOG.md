@@ -26,6 +26,8 @@
 - Retry an online model shopper's explicitly truncated answer once with twice the
   output budget before falling back to rules; keep ordinary errors and invalid
   answers within their existing attempt budget.
+- Find online products by category and tag in smart search. Metadata matches use
+  the same required word coverage as names while name matches still rank first.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
