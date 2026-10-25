@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, Columns2, Filter, GitCompareArrows, MessageSquareText, Play, Route, ShoppingBag, Users, Waves } from "lucide-react";
+import { BarChart3, Columns2, Filter, GitCompareArrows, MessageSquareText, Play, Route, ShoppingBag, Store, Users, Waves } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import {
@@ -16,6 +16,7 @@ import { currencyCode, formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
+import { ChannelMix } from "./ChannelMix";
 import { DiffForest, FunnelChart, OutcomeBars, SegmentHeat, StatTiles, StoreKey, Swatch, type HeatCell, type StatMetric } from "./charts";
 import { JourneyViewer } from "./JourneyViewer";
 import { OnlineAnalyst } from "./OnlineAnalyst";
@@ -99,7 +100,8 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
         </section>
       )}
       {status.status === "failed" && <section role="alert" className="panel rounded-[1.4rem] p-4 text-sm text-destructive">{status.error}</section>}
-      {result && <Report projectId={projectId} result={result} onJourney={setJourney} onTry={onTry} />}
+      {result && <Report projectId={projectId} result={result} onJourney={setJourney} onTry={onTry}
+        customers={status.request.source === "project"} />}
       {result && heroGone && !journey && (watch || compare) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
           <div className="dark pointer-events-auto flex items-center gap-1 rounded-full border border-white/15 bg-[#0b0c14]/90 p-1.5 text-white shadow-[0_20px_60px_-15px_rgb(40_20_110/0.9)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4"
@@ -138,9 +140,11 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
 
 export interface Journey { variant: number; shopper: string; play?: boolean; compare?: boolean }
 
-function Report({ projectId, result, onJourney, onTry }: {
+function Report({ projectId, result, onJourney, onTry, customers }: {
   projectId: string; result: OnlineRunResult; onJourney: (journey: Journey) => void;
   onTry?: (siteId: string, experiments: string[]) => void;
+  /** The shoppers are the store's own customers, so they can be read next to a store run. */
+  customers: boolean;
 }) {
   const { t } = useI18n();
   const code = currencyCode(result.currency);
@@ -178,6 +182,7 @@ function Report({ projectId, result, onJourney, onTry }: {
     { id: "online-kpis", label: t("onKpis"), show: true },
     { id: "online-compare", label: t("onCompareTitle"), show: result.comparisons.length > 0 },
     { id: "online-ask", label: t("analystTitle"), show: true },
+    { id: "online-channels", label: t("onChNav"), show: customers },
     { id: "online-funnel", label: t("onFunnel"), show: true },
     { id: "online-flow", label: t("onFlowTitle"), show: v.some((s) => (s.flow ?? []).length > 0) },
     { id: "online-ads", label: t("onAds"), show: v.some((s) => s.ads.length > 0) },
@@ -266,6 +271,12 @@ function Report({ projectId, result, onJourney, onTry }: {
 
       <div id="online-changed" className="scroll-mt-16 empty:hidden"><WhoChanged result={result} money={money} onReplay={(variant, shopper) => onJourney({ variant, shopper })}
         onCompare={(variant, shopper) => onJourney({ variant, shopper, compare: true })} /></div>
+
+      {customers && (
+        <Section id="online-channels" icon={Store} title={t("onChTitle")} hint={t("onChHint")}>
+          <ChannelMix projectId={projectId} runId={result.run_id} />
+        </Section>
+      )}
 
       <Section id="online-ask" icon={MessageSquareText} title={t("analystTitle")} hint={t("onAnalystHint")}>
         <OnlineAnalyst projectId={projectId} runId={result.run_id} compared={result.comparisons.length > 0}

@@ -280,6 +280,7 @@ export const onlineKeys = {
   interview: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId, "interview"] as const,
   analyst: (pid: string, runId: string) => ["projects", pid, "online", "runs", runId, "analyst"] as const,
+  channels: (pid: string, runId: string) => ["projects", pid, "online", "runs", runId, "channels"] as const,
   storeChanges: (pid: string, runId: string, variant: number) => ["projects", pid, "online", "runs", runId, "store-changes", variant] as const,
 };
 
@@ -421,6 +422,19 @@ export function askOnlineShopper(pid: string, runId: string, variant: number, sh
 
 export function clearShopperInterview(pid: string, runId: string, variant: number, shopperId: string): Promise<void> {
   return fetchJson(interviewUrl(pid, runId, variant, shopperId), { method: "DELETE" });
+}
+
+/** The run's customers in a store run of the same customers and online (mirrors application/channels.py). */
+export interface ChannelGroup { group: string; customers: number; both: number; store_only: number; online_only: number; neither: number }
+export interface ChannelMix {
+  store_run_id: string; store_run_at: string; online_store: string; customers: number;
+  both: number; store_only: number; online_only: number; neither: number;
+  store_spend: number; online_spend: number; store_currency: string; online_currency: string;
+  by_age: ChannelGroup[]; by_gender: ChannelGroup[];
+}
+
+export function getChannelMix(pid: string, runId: string, signal?: AbortSignal): Promise<ChannelMix | null> {
+  return fetchJson(`/api/projects/${pid}/online/runs/${runId}/channels`, { signal });
 }
 
 /** A variant's prices from a run, as changes for a store layout (matched by SKU), and what stays online. */

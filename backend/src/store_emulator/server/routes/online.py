@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import online as online_service
+from store_emulator.application.channels import ChannelMix, channel_mix
 from store_emulator.application.errors import AppError
 from store_emulator.application.online import (
     BrowseRequest,
@@ -210,6 +211,15 @@ def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
     """The prices of the run's copy of this variant that differ from its control, matched to layout products by SKU
     (review them with POST /setups/{sid}/edit/check). Design, pictures and ads stay online and are listed as skipped."""
     return _call(lambda: online_service.run_store_changes(pid, run_id, variant))
+
+
+@router.get("/projects/{pid}/online/runs/{run_id}/channels", summary="The run's customers in the store and online",
+            response_model=ChannelMix | None)
+def run_channels(pid: str, run_id: str, store_run: str | None = None) -> ChannelMix | None:
+    """For a run whose shoppers are the project's customers: who bought in a store run of the same customers (the
+    newest by default), online, in both or in neither, what they spent in each, by age and gender. null when no
+    store run shares customers with it yet."""
+    return _call(lambda: channel_mix(pid, run_id, store_run))
 
 
 @router.get("/projects/{pid}/online/runs/{run_id}/report.html", summary="Online run report (print-ready HTML)",
