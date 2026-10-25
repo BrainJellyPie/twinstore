@@ -20,10 +20,10 @@ import { projectIdFromPath, rememberedStore } from "./paths";
 
 const running = (run: { status: string }) => run.status === "pending" || run.status === "running";
 
-interface Finished { storeId: string; online: boolean; runId: string; setupId: string; name: string; failed: boolean }
+interface Finished { storeId: string; online: boolean; runId: string; setupId: string; name: string; createdAt: string; failed: boolean }
 
 export function RunNotice() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -58,10 +58,9 @@ export function RunNotice() {
       // The run's own view is on screen and shows the result itself: its report, or the store's floor page.
       if (online ? pathname.startsWith("/online/") && new URLSearchParams(search).get("run") === finished.run_id
         : pathname.replace(/\/$/, "") === `/projects/${storeId}`) return;
-      const name = "site_names" in finished ? finished.name || finished.site_names.join(" vs ")
-        : new Date(finished.created_at).toLocaleString();
+      const name = "site_names" in finished ? finished.name || finished.site_names.join(" vs ") : "";
       setDone({ storeId, online, runId: finished.run_id, setupId: "setup_id" in finished ? finished.setup_id : "",
-        name, failed: finished.status === "failed" });
+        name, createdAt: finished.created_at, failed: finished.status === "failed" });
     });
   }, [qc, storeId]);
   useEffect(() => {
@@ -92,7 +91,10 @@ export function RunNotice() {
       <div className="min-w-0 flex-1 space-y-2">
         <div>
           <p className="font-medium">{t(done.online ? (failed ? "onRunNoticeFailed" : "onRunNoticeDone") : (failed ? "storeRunNoticeFailed" : "storeRunNoticeDone"))}</p>
-          <p className="truncate text-xs text-muted-foreground">{done.name}</p>
+          {/* A store run has no name: it is told apart by when it started, in the app's language. */}
+          <p className="truncate text-xs text-muted-foreground">
+            {done.name || new Date(done.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
+          </p>
         </div>
         <Button size="sm" onClick={open}>{t(done.online ? "onRunNoticeOpen" : "storeRunNoticeOpen")}</Button>
       </div>

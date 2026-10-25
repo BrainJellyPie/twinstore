@@ -71,6 +71,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
+    "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "persona-neighborhood", "persona-cafe", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
@@ -326,31 +327,49 @@ try:
             "setup-night": "서울 마포구의 '밤샘 편의점'입니다. 매일 오후 8시부터 다음 날 오전 2시까지만 영업합니다. 24시간 영업은 아닙니다.",
             "setup-24h": "서울 마포구의 '우리 편의점'입니다. 매일 24시간 영업하고 동네 주민이 방문합니다.",
             "setup-pharmacy": "서울 마포구의 '동네 약국'입니다. 토요일과 일요일만 오전 10시부터 오후 6시까지 영업하고 의약품과 생활용품을 판매합니다.",
+            "setup-unspecified-ko": "동네 주민을 위한 작은 빵집입니다.",
+            "setup-hours-only": "A pet shop open from 9 to 17.",
+            "setup-days-only": "A bakery open on Saturdays and Sundays.",
+            "setup-location-only": "A cafe in Kyoto, Japan.",
         }
-        expected_hours = {"setup-unspecified": (None, None), "setup-night": (None, None), "setup-24h": (0, 24), "setup-pharmacy": (10, 18)}[args.case]
+        # Separate omitted facts from stated facts: a partly specified description
+        # must neither lose its supplied values nor acquire plausible defaults.
+        expectations = {
+            "setup-unspecified": ("books", (None, None), None, None, []),
+            "setup-night": ("convenience", (None, None), "7", "KRW", ["서울", "마포"]),
+            "setup-24h": ("convenience", (0, 24), "7", "KRW", ["서울", "마포"]),
+            "setup-pharmacy": ("pharmacy", (10, 18), "weekend", "KRW", ["서울", "마포"]),
+            "setup-unspecified-ko": ("bakery", (None, None), None, None, []),
+            "setup-hours-only": ("pets", (9, 17), None, None, []),
+            "setup-days-only": ("bakery", (None, None), "weekend", None, []),
+            "setup-location-only": ("cafe", (None, None), None, "JPY", ["Kyoto", "Japan"]),
+        }
+        expected_type, expected_hours, expected_days, expected_currency, place_parts = expectations[args.case]
+        locale = "ko" if args.case in {"setup-night", "setup-24h", "setup-pharmacy", "setup-unspecified-ko"} else "en"
         with patch.object(httpx.AsyncClient, "send", traced_send):
             draft = asyncio.run(draft_store_setup(client, descriptions[args.case],
-                [(t.id, t.name, t.store_type, t.description) for t in TEMPLATES], "en" if args.case == "setup-unspecified" else "ko"))
+                [(t.id, t.name, t.store_type, t.description) for t in TEMPLATES], locale))
         format_issues = []
-        expected_type = "books" if args.case == "setup-unspecified" else "pharmacy" if args.case == "setup-pharmacy" else "convenience"
         if draft.store_type != expected_type:
             format_issues.append(f"Expected store type {expected_type}, received {draft.store_type}")
         if draft.template_id not in {template.id for template in TEMPLATES}:
             format_issues.append("No known starting format selected")
+        if args.case == "setup-night" and draft.template_id not in {"compact_cvs", "urban_cvs"}:
+            format_issues.append("A plain night convenience store acquired an unrelated specialized setting")
         issues = list(format_issues)
         if (draft.open_hour, draft.close_hour) != expected_hours:
             issues.append(f"Expected hours {expected_hours}, received {(draft.open_hour, draft.close_hour)}")
         if args.case == "setup-night" and not draft.warnings:
             issues.append("Unsupported overnight hours must be shown for user correction")
-        if draft.open_days != (None if args.case == "setup-unspecified" else "weekend" if args.case == "setup-pharmacy" else "7"):
+        if draft.open_days != expected_days:
             issues.append("Opening days differ from the owner's description")
-        if draft.currency != (None if args.case == "setup-unspecified" else "KRW"):
+        if draft.currency != expected_currency:
             issues.append("Currency differs from the supplied location or invents an unspecified one")
-        if args.case == "setup-unspecified" and draft.address:
+        if not place_parts and draft.address:
             issues.append("Invented an unspecified location")
-        if args.case != "setup-unspecified" and ("서울" not in draft.address or "마포" not in draft.address):
-            issues.append("Supplied Seoul/Mapo location was not retained")
-        if args.case == "setup-unspecified" and "campus" in (draft.name + draft.description).casefold():
+        if place_parts and not all(part.casefold() in draft.address.casefold() for part in place_parts):
+            issues.append("Supplied location was not retained")
+        if not place_parts and any(word in (draft.name + draft.description).casefold() for word in ["campus", "캠퍼스"]):
             issues.append("Invented a campus location in the name or description")
         result.update(success=not issues, format_ok=not format_issues, facts_ok=len(issues) == len(format_issues), description=descriptions[args.case], draft=draft.model_dump(mode="json"), issues=issues)
     elif args.case.startswith("persona-"):

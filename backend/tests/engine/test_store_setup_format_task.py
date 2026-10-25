@@ -22,6 +22,8 @@ def test_format_task_preserves_supplied_and_unspecified_facts(previous, supplied
             calls.append((schema, system, user, kwargs))
             if len(calls) == 1:
                 return schema.model_validate(facts)
+            if "store_type" in schema.model_fields:
+                return schema.model_validate({"store_type": "pharmacy"})
             wire = schema.model_json_schema()
             assert set(wire["properties"]) == {"format"}
             assert wire["required"] == ["format"]
@@ -35,7 +37,7 @@ def test_format_task_preserves_supplied_and_unspecified_facts(previous, supplied
     result = asyncio.run(draft_store_setup(Model(), "A pharmacy selling household goods",
         [("urban", "Convenience store", "convenience", "Long template description"),
          ("drugstore", "Pharmacy", "pharmacy", "Long template description")]))
-    assert len(calls) == 2
+    assert len(calls) == 3
     assert (result.template_id, result.store_type) == ("drugstore", "pharmacy")
     assert all(getattr(result, key) == value for key, value in facts.items() if key != "format")
     assert not result.warnings

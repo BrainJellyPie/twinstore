@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Check a drafted store layout against a separate, short business-type choice.
+  If they disagree, choose again within that business so a bakery or café is not
+  silently started as a convenience store or the wrong retail category.
 - Keep valid automatic-product selections when another category needs repair,
   and ask the model only for missing or invalid categories. This avoids repeating
   the full catalog and discarding otherwise valid choices on small local models.
