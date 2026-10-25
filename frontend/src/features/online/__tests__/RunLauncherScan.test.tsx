@@ -53,3 +53,12 @@ it("screens every applicable change and ticks the clear winners", async () => {
   expect((boxes[0] as HTMLInputElement).checked).toBe(true);
   expect(screen.getAllByRole("checkbox", { checked: true }).filter((b) => b.closest("fieldset"))).toHaveLength(1);
 });
+
+it("starts with the quick experiments the run analyst suggested ticked", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <RunLauncher projectId="p1" sites={[summary]} firstSiteId="s1" initialPicked={["no_service_fee"]} hasCustomers onStarted={vi.fn()} />
+  </QueryClientProvider>);
+  const box = await screen.findByRole("checkbox", { name: "Drop the last-step service fee" }) as HTMLInputElement;
+  expect(box.checked).toBe(true);
+});

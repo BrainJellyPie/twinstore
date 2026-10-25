@@ -72,7 +72,8 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const reveal = () => {
     if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
-  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); reveal(); };
+  const [picks, setPicks] = useState<string[]>([]);
+  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); reveal(); };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -143,7 +144,11 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         {runId ? (
           <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
             wide={wide} onWide={() => setWide((w) => !w)}
-            initialJourney={runId === initialRun && initialShopper ? { ...initialShopper, play: true } : undefined} />
+            initialJourney={runId === initialRun && initialShopper ? { ...initialShopper, play: true } : undefined}
+            onTry={list.length ? (id, experiments) => {
+              if (!list.some((s) => s.id === id)) return;
+              openSite(id); setPicks(experiments); setTab("simulate");
+            } : undefined} />
         ) : showGallery ? (
           <TemplateGallery
             projectId={projectId} currency={currency} templates={templates.data ?? []} loading={templates.isPending}
@@ -169,7 +174,8 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
                 onTest={(id) => { setCompare(id); setTab("simulate"); }} />
             )}
             {tab === "simulate" && (
-              <RunLauncher key={`${projectId}:${selected.id}:${compare ?? ""}`} projectId={projectId} sites={list} firstSiteId={selected.id}
+              <RunLauncher key={`${projectId}:${selected.id}:${compare ?? ""}:${picks.join()}`} projectId={projectId} sites={list} firstSiteId={selected.id}
+                initialPicked={picks}
                 compareWith={compare && list.some((s) => s.id === compare) ? compare : undefined}
                 hasCustomers={(project.data?.personas.length ?? 0) > 0}
                 onStarted={(id) => { setRunId(id); }} />

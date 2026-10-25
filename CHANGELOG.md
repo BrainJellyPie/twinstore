@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- From an answer to a test: when the online analyst's answer (or the report
+  lines it cites) points at something a quick experiment can change — a
+  popup, fees, a forced sign-in, empty searches, slow pages, delivery costs,
+  abandoned carts, prices — **Test it** chips offer those experiments that
+  apply to the run's first store; one click opens its run form with the
+  change already ticked.
 - Screen every quick change at once: **Scan these changes** in an online
   store's run form sends rule shoppers (150 of them) through the store and
   through a copy for each applicable quick experiment, in memory and in about

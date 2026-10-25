@@ -27,10 +27,12 @@ const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, 
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
 const TYPICAL_STEPS = 11;
 
-export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCustomers, onStarted }: {
+export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initialPicked, hasCustomers, onStarted }: {
   projectId: string; sites: SiteSummary[]; firstSiteId: string;
   /** A variant to compare with the first store from the start (made by the design chat). */
   compareWith?: string;
+  /** Quick experiments ticked from the start (suggested by the run analyst). */
+  initialPicked?: string[];
   hasCustomers: boolean; onStarted: (runId: string) => void;
 }) {
   const { t } = useI18n();
@@ -50,7 +52,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCus
   const [accessibility, setAccessibility] = useState<Accessibility>("typical");
   const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(initialPicked ?? []);
   const [rival, setRival] = useState("");
   const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color" | "cart_reminder" | "currency">[]>([]);
   const listedSites = [...sites, ...createdSites.filter((copy) => !sites.some((site) => site.id === copy.id))];

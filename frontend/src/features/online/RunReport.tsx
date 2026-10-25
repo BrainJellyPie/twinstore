@@ -35,12 +35,14 @@ const DIMENSIONS: { id: SegmentRow["dimension"]; label: MessageKey }[] = [
   { id: "arrival", label: "onSegArrival" },
 ];
 
-export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = () => {}, initialJourney }: {
+export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = () => {}, initialJourney, onTry }: {
   projectId: string; runId: string; onDeleted: () => void;
   /** The report fills the page (the store list is hidden). */
   wide?: boolean; onWide?: () => void;
   /** A shopper's visit to play as soon as the report opens (a link from another tab). */
   initialJourney?: Journey;
+  /** Open a store's run form with these quick experiments ticked (suggested by the analyst). */
+  onTry?: (siteId: string, experiments: string[]) => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -97,7 +99,7 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
         </section>
       )}
       {status.status === "failed" && <section role="alert" className="panel rounded-[1.4rem] p-4 text-sm text-destructive">{status.error}</section>}
-      {result && <Report projectId={projectId} result={result} onJourney={setJourney} />}
+      {result && <Report projectId={projectId} result={result} onJourney={setJourney} onTry={onTry} />}
       {result && heroGone && !journey && (watch || compare) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
           <div className="dark pointer-events-auto flex items-center gap-1 rounded-full border border-white/15 bg-[#0b0c14]/90 p-1.5 text-white shadow-[0_20px_60px_-15px_rgb(40_20_110/0.9)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4"
@@ -136,7 +138,10 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
 
 export interface Journey { variant: number; shopper: string; play?: boolean; compare?: boolean }
 
-function Report({ projectId, result, onJourney }: { projectId: string; result: OnlineRunResult; onJourney: (journey: Journey) => void }) {
+function Report({ projectId, result, onJourney, onTry }: {
+  projectId: string; result: OnlineRunResult; onJourney: (journey: Journey) => void;
+  onTry?: (siteId: string, experiments: string[]) => void;
+}) {
   const { t } = useI18n();
   const code = currencyCode(result.currency);
   const money = (x: number) => formatMoney(Math.round(x), code);
@@ -263,7 +268,8 @@ function Report({ projectId, result, onJourney }: { projectId: string; result: O
         onCompare={(variant, shopper) => onJourney({ variant, shopper, compare: true })} /></div>
 
       <Section id="online-ask" icon={MessageSquareText} title={t("analystTitle")} hint={t("onAnalystHint")}>
-        <OnlineAnalyst projectId={projectId} runId={result.run_id} compared={result.comparisons.length > 0} />
+        <OnlineAnalyst projectId={projectId} runId={result.run_id} compared={result.comparisons.length > 0}
+          controlSiteId={result.variants[0]?.site_id} onTry={onTry} />
       </Section>
 
       <div id="online-funnel" className="grid scroll-mt-16 gap-3 xl:grid-cols-2">
