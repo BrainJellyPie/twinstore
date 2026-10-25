@@ -43,7 +43,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const [survey, setSurvey] = useState(true);
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color">[]>([]);
+  const [createdSites, setCreatedSites] = useState<Pick<SiteSummary, "id" | "name" | "theme_color" | "cart_reminder">[]>([]);
   const listedSites = [...sites, ...createdSites.filter((copy) => !sites.some((site) => site.id === copy.id))];
   const controlId = chosen[0] ?? "";
   const control = useQuery({ queryKey: onlineKeys.site(projectId, controlId), queryFn: () => getSite(projectId, controlId), enabled: !!controlId });
@@ -53,6 +53,10 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
   const experiments = available.filter((x) => picked.includes(x.id)).slice(0, Math.max(0, room));
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0);
   const sessions = shoppers * (chosen.length + experiments.length);
+  // Unknown summaries reserve a possible return visit until refreshed by a current server.
+  const maxVisits = chosen.reduce((sum, id) => sum + (listedSites.find((site) => site.id === id)?.cart_reminder === false ? 1 : 2), 0)
+    + experiments.reduce((sum, experiment) => sum + (experiment.options.cart_reminder ? 2 : 1), 0);
+  const maxResponses = shoppers * maxVisits * maxSteps + (survey ? sessions : 0);
   const models = useAvailableModels(policy !== "rule");
   const availableModels = models.data?.filter((m) => policy !== "vlm" || m.vision);
   let modelError: string | null = null;
@@ -81,7 +85,9 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
         });
         created.push(copy.id);
         // Keep confirmed copies selected if a later copy or the run start fails.
-        setCreatedSites((previous) => [...previous, { id: copy.id, name: copy.name, theme_color: copy.options.theme_color }]);
+        setCreatedSites((previous) => [...previous, {
+          id: copy.id, name: copy.name, theme_color: copy.options.theme_color, cart_reminder: copy.options.cart_reminder,
+        }]);
         setChosen((previous) => [...previous, copy.id]);
         setPicked((previous) => previous.filter((id) => id !== x.id));
         qc.setQueryData(onlineKeys.site(projectId, copy.id), copy);
@@ -232,7 +238,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onSta
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              {t("onRunCalls", { calls: sessions * (TYPICAL_STEPS + (survey ? 1 : 0)), max: sessions * (maxSteps + (survey ? 1 : 0)) })}
+              {t("onRunCalls", { calls: sessions * (Math.min(TYPICAL_STEPS, maxSteps) + (survey ? 1 : 0)), max: maxResponses })}
             </p>
           </>
         )}

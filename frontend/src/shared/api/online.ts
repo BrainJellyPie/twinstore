@@ -96,6 +96,7 @@ export interface OnlineSite {
 export interface SiteSummary {
   id: string; name: string; template_id: string; currency: string; categories: number; products: number;
   photos: number; theme_color: string; device: Device | null; variant_of: string; note: string;
+  cart_reminder?: boolean;
   created_at: string; updated_at: string;
 }
 

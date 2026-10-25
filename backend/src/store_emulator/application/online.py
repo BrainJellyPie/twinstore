@@ -103,6 +103,7 @@ class SiteSummary(BaseModel):
     photos: int
     theme_color: str
     device: Device | None
+    cart_reminder: bool = False
     variant_of: str
     note: str
     created_at: str
@@ -179,7 +180,7 @@ def _summary(site: OnlineSite) -> SiteSummary:
         categories=len(site.categories), products=len(site.products),
         photos=sum(1 for p in site.products if p.image_url), theme_color=site.options.theme_color,
         device=site.options.device, variant_of=site.variant_of, note=site.note, created_at=site.created_at,
-        updated_at=site.updated_at,
+        updated_at=site.updated_at, cart_reminder=site.options.cart_reminder,
     )
 
 

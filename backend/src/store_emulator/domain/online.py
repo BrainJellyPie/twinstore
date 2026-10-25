@@ -417,7 +417,8 @@ class OnlineRunRequest(BaseModel):
     model: str | None = Field(default=None, description='Model reference, e.g. "llamacpp:local" (None = default)')
     ensemble: EnsembleConfig | None = None  # several models as one population: each shopper gets one of them
     seed: int = 0
-    max_steps: int = Field(default=24, ge=3, le=80)
+    max_steps: int = Field(default=24, ge=3, le=80,
+                           description="Maximum decisions per visit; a cart reminder can add one return visit")
     missions: dict[ShopperMission, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {
         "purchase": 0.25, "browse": 0.35, "compare": 0.15, "deal_hunt": 0.1, "gift": 0.07, "replenish": 0.08,
     })
