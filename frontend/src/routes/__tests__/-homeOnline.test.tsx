@@ -8,14 +8,14 @@ import type { ProjectListItem } from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
 
 const navigate = vi.fn();
-const projects = vi.hoisted(() => ({ list: [] as ProjectListItem[] }));
+const projects = vi.hoisted(() => ({ list: [] as ProjectListItem[], loading: false, error: null as Error | null }));
 vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(),
   createFileRoute: () => (options: { component: () => ReactNode }) => ({ options }),
   useNavigate: () => navigate,
 }));
 vi.mock("@/shared/queries/useProjects", () => ({
-  useProjects: () => ({ data: projects.list, isLoading: false, isFetching: false, error: null, refetch: vi.fn() }),
+  useProjects: () => ({ data: projects.list, isLoading: projects.loading, isFetching: false, error: projects.error, refetch: vi.fn() }),
 }));
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getStoreTemplates: vi.fn(async () => []), getScenarios: vi.fn(async () => []),
@@ -26,7 +26,11 @@ vi.mock("@/features/home/StoreGallery", () => ({ StoreGallery: () => null }));
 const { Route } = await import("../index");
 const Home = (Route as unknown as { options: { component: () => ReactNode } }).options.component;
 
-beforeEach(() => useLocale.getState().setLocale("en"));
+beforeEach(() => {
+  useLocale.getState().setLocale("en");
+  projects.loading = false;
+  projects.error = null;
+});
 afterEach(() => { cleanup(); navigate.mockReset(); });
 
 async function mount() {
@@ -54,4 +58,15 @@ it("asks for a store first when there is none", async () => {
   await mount();
   fireEvent.click(await screen.findByRole("button", { name: "Online stores" }));
   expect(navigate).toHaveBeenCalledWith({ to: "/projects/new" });
+});
+
+it.each(["loading", "failed"])("does not treat a %s store list as a confirmed empty account", async (state) => {
+  projects.list = [];
+  projects.loading = state === "loading";
+  projects.error = state === "failed" ? new Error("Offline") : null;
+  await mount();
+  const button = await screen.findByRole("button", { name: "Online stores" });
+  expect(button.hasAttribute("disabled")).toBe(true);
+  fireEvent.click(button);
+  expect(navigate).not.toHaveBeenCalled();
 });

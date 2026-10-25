@@ -75,6 +75,7 @@ function HomePage() {
                 <ArrowRight className="size-4 transition-transform group-hover/button:translate-x-0.5" aria-hidden />
               </Button>
               <Button size="lg" variant="outline" className="h-12 gap-2 rounded-2xl px-5 text-base" onClick={openOnline}
+                disabled={isLoading || (!latest && !!error)}
                 title={latest ? t("homeOnlineHint", { store: latest.name }) : t("homeOnlineNoStore")}>
                 <Globe2 className="size-4" aria-hidden />
                 {t("onlineStores")}
