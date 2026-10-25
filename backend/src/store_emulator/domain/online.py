@@ -566,6 +566,15 @@ class SurveySummary(BaseModel):
     improvements: list[str]
 
 
+class FlowLink(BaseModel):
+    """Visits that went from one page to the next at one step, or ended after it: a link of the page-flow chart."""
+    depth: int  # the source page's step in the visit, from 0
+    source: PageKind
+    target: PageKind | None = None  # the next page; None when the chart stops following the visit here
+    outcome: SessionOutcome | None = None  # set when target is None: how the visit ended, maybe after more pages
+    sessions: int
+
+
 class VariantSummary(BaseModel):
     site_id: str
     site_name: str
@@ -595,6 +604,7 @@ class VariantSummary(BaseModel):
     ads: list[AdRow] = []
     recovery: RecoveryRow | None = None  # stores that send the cart reminder
     rival: RivalRow | None = None  # runs with a rival shop
+    flow: list[FlowLink] = []  # the first pages of each visit ([] in older runs)
 
 
 class PairedDelta(BaseModel):
@@ -646,6 +656,15 @@ class VariantComparison(BaseModel):
     switches: list[SwitchRow] = []  # some of them: orders won or lost first, the largest amounts first
 
 
+class VisitBrief(BaseModel):
+    """How one shopper's visit to one store of a run ended, for picking whom to watch without loading every visit."""
+    outcome: SessionOutcome
+    order_total: int = 0
+    clicks: int = 0
+    rival: SessionOutcome | None = None  # where a visit that ended without an order went on at the rival shop
+    furthest: FunnelStage = "visit"  # the last funnel stage the visit reached
+
+
 class OnlineRunResult(BaseModel):
     run_id: str
     name: str = ""
@@ -660,6 +679,7 @@ class OnlineRunResult(BaseModel):
     seconds: float = 0.0
     notes: list[str] = []
     rival_name: str = ""  # the rival shop of the run, if any; its sessions are the store after the variants
+    visits: dict[str, list[VisitBrief]] = {}  # shopper id → their visit to each store, in store order ({} in older runs)
 
 
 class OnlineRunStatus(BaseModel):

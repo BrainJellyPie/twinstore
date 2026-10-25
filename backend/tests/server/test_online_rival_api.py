@@ -121,3 +121,41 @@ def test_a_rival_visit_is_a_new_visit_not_a_replay_of_the_one_left(client: TestC
         pick = lambda s: [(step["url"], step["choice"] and step["choice"]["label"]) for step in s["steps"]]  # noqa: E731
         replayed += pick(here) == pick(there.json()["session"])
     assert replayed < row["went"] / 2
+
+
+def test_a_run_lists_how_each_shoppers_visits_ended(client: TestClient) -> None:
+    control, worse, rival = _site(client, "pet_store"), _site(client, "pet_store", service_fee=900), _site(client, "pet_store")
+    runs = f"/api/projects/{PID}/online/runs"
+    status = client.post(runs, json={"site_ids": [control["id"], worse["id"]], "rival_site_id": rival["id"], "shoppers": 12,
+                                      "seed": 2, "max_steps": 30}).json()
+    result = _wait(client, status["run_id"])["result"]
+    assert set(result["visits"]) == {s["id"] for s in result["shoppers"]}
+    for shopper in result["shoppers"]:
+        briefs = result["visits"][shopper["id"]]
+        assert len(briefs) == 2
+        for variant, brief in enumerate(briefs):
+            session = client.get(f"{runs}/{status['run_id']}/sessions/{variant}/{shopper['id']}").json()["session"]
+            assert brief["outcome"] == session["outcome"] and brief["order_total"] == session["order_total"]
+            assert brief["clicks"] == sum(1 for step in session["steps"] if step["choice"])
+            assert brief["rival"] == (session["rival"]["outcome"] if session["rival"] else None)
+            stages = ["visit", "product_view", "add_to_cart", "checkout", "payment", "purchase"]
+            assert brief["furthest"] == max(session["reached"], key=stages.index)
+
+
+def test_the_page_flow_follows_every_visit_to_its_end(client: TestClient) -> None:
+    store = _site(client, "pet_store")
+    runs = f"/api/projects/{PID}/online/runs"
+    status = client.post(runs, json={"site_ids": [store["id"]], "shoppers": 15, "seed": 4, "max_steps": 30}).json()
+    summary = _wait(client, status["run_id"])["result"]["variants"][0]
+    flow = summary["flow"]
+    ends = [link for link in flow if link["target"] is None]
+    assert sum(link["sessions"] for link in ends) == summary["sessions"]
+    for outcome, count in summary["outcomes"].items():
+        assert sum(link["sessions"] for link in ends if link["outcome"] == outcome) == count
+    # Visits flow on: what enters a page at one step leaves it at that step, to the next page or the end.
+    for depth in range(1, 6):
+        for page in {link["source"] for link in flow if link["depth"] == depth}:
+            into = sum(link["sessions"] for link in flow if link["depth"] == depth - 1 and link["target"] == page)
+            out = sum(link["sessions"] for link in flow if link["depth"] == depth and link["source"] == page)
+            assert into == out
+    assert max(link["depth"] for link in flow) <= 5

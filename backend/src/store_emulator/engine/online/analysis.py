@@ -17,6 +17,7 @@ from store_emulator.domain.online import (
     ActionKind,
     ClickPoint,
     ExitRow,
+    FlowLink,
     FrictionCode,
     FrictionRow,
     FunnelRow,
@@ -31,6 +32,7 @@ from store_emulator.domain.online import (
     SegmentDelta,
     SegmentDimension,
     SegmentRow,
+    SessionOutcome,
     SessionResult,
     SwitchRow,
     SurveySummary,
@@ -42,6 +44,7 @@ from .ads import ad_rows
 _TOP_PRODUCTS = 20
 _TOP_SEARCHES = 25
 _MAX_CLICKS = 1500
+_FLOW_DEPTH = 6  # pages the page-flow chart follows each visit through
 _BOOTSTRAP = 2000
 _MAX_SWITCHES = 60
 _SEGMENT_DIMENSIONS: tuple[SegmentDimension, ...] = ("mission", "device", "age_group", "gender", "vision", "arrival")
@@ -136,8 +139,21 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
         exits=[ExitRow(page=PageKind(page), sessions=count) for page, count in exits.most_common()],
         segments=segments, products=products, searches=searches, clicks=clicks,
         frictions=frictions(site, sessions), survey=survey_summary(sessions), ads=ad_rows(site, sessions),
-        recovery=recovery(site, sessions), rival=rival(sessions) if with_rival else None,
+        recovery=recovery(site, sessions), rival=rival(sessions) if with_rival else None, flow=page_flow(sessions),
     )
+
+
+def page_flow(sessions: list[SessionResult]) -> list[FlowLink]:
+    """Each visit's first pages, step by step, then how it ended: the links of a page-flow (Sankey) chart."""
+    links: Counter[tuple[int, PageKind, PageKind | None, SessionOutcome | None]] = Counter()
+    for session in sessions:
+        pages = [step.page for step in session.steps[:_FLOW_DEPTH]]
+        for depth, (source, target) in enumerate(zip(pages, pages[1:])):
+            links[depth, source, target, None] += 1
+        if pages:
+            links[len(pages) - 1, pages[-1], None, session.outcome] += 1
+    return [FlowLink(depth=depth, source=source, target=target, outcome=outcome, sessions=count)
+            for (depth, source, target, outcome), count in sorted(links.items(), key=lambda kv: (kv[0][0], -kv[1]))]
 
 
 def rival(sessions: list[SessionResult]) -> RivalRow:

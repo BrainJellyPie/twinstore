@@ -36,6 +36,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
   const [runId, setRunId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("browse");
   const [gallery, setGallery] = useState(false);
+  const [wide, setWide] = useState(false);
 
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });
@@ -54,7 +55,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-      <aside className="panel m-3 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mr-0 lg:w-[320px] lg:overflow-y-auto">
+      <aside hidden={wide && !!runId} className="panel m-3 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mr-0 lg:w-[320px] lg:overflow-y-auto">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3" aria-hidden /> {t("areaBackToStore")}
         </Link>
@@ -119,7 +120,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
 
       <main className="m-3 flex min-h-[32rem] min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
         {runId ? (
-          <RunReport projectId={projectId} runId={runId} onDeleted={() => setRunId(null)} />
+          <RunReport projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }} wide={wide} onWide={() => setWide((w) => !w)} />
         ) : showGallery ? (
           <TemplateGallery
             projectId={projectId} currency={currency} templates={templates.data ?? []} loading={templates.isPending}

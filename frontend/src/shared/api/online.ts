@@ -203,6 +203,7 @@ export interface VariantSummary {
   searches: SearchTermRow[]; clicks: ClickPoint[]; frictions: FrictionRow[]; survey: SurveySummary | null; ads: AdRow[];
   recovery: RecoveryRow | null;
   rival?: RivalRow | null;
+  flow?: FlowLink[];
 }
 
 export type DeltaMetric =
@@ -233,7 +234,17 @@ export interface OnlineRunResult {
   shoppers: OnlineShopper[]; model_requests: number; fallbacks: number; seconds: number; notes: string[];
   /** The run's rival shop ("" without one); replays of its visits use the store index after the variants. */
   rival_name?: string;
+  /** Shopper id → how their visit to each store ended, in store order (absent in older runs). */
+  visits?: Record<string, VisitBrief[]>;
 }
+
+export interface VisitBrief {
+  outcome: SessionOutcome; order_total: number; clicks: number; rival: SessionOutcome | null;
+  furthest?: FunnelStage;  // missing in runs saved before it was recorded
+}
+
+/** Visits that went from one page to the next at one step (target), or ended after it (outcome). */
+export interface FlowLink { depth: number; source: PageKind; target: PageKind | null; outcome: SessionOutcome | null; sessions: number }
 
 export interface OnlineRunStatus {
   run_id: string; name: string; site_ids: string[]; site_names: string[];

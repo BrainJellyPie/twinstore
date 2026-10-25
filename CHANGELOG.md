@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Redesign the online run report. A dark stage opens it with the run's verdict
+  (a clear winner, a control that holds, or too close to call), each store's
+  conversion as a glowing ring with counting figures, and large **Watch a
+  shopper** / **Side by side** buttons that follow you down the page in a dock.
+  A new **Shopper stream** animates every virtual shopper as a dot that enters
+  each store at the same moment, travels the funnel and settles under the stage
+  where the visit stopped (hover to find the same shopper in the other stores,
+  click to watch the visit). A **Page flow** chart shows the first six pages of
+  every visit and how it ended, with the busiest route spelled out. Shopper
+  cards with filters, per-measure tiles, an interval chart per variant, outcome
+  bars, a segment heat map and sticky section links replace the plain tables,
+  and a full-width button hides the store list. Runs record each visit's
+  furthest funnel stage and the page flow; older runs show the rest of the report.
+
 - Stop refetching a deleted online store or run (and the run's replays) into
   “not found” errors right after deleting it; only the lists refresh.
 - Validate automatically drafted event hours before caching: empty or reversed

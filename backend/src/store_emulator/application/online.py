@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.interview import InterviewMessage, InterviewQuestion
 from store_emulator.domain.online import (
+    FUNNEL_STAGES,
     ActionKind,
     AdCampaign,
     BrowserState,
@@ -44,6 +45,7 @@ from store_emulator.domain.online import (
     SessionStep,
     SiteOptions,
     VariantComparison,
+    VisitBrief,
 )
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
@@ -542,6 +544,12 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
             variants=summaries, comparisons=comparisons, shoppers=shoppers, model_requests=requests,
             fallbacks=fallbacks, seconds=round(time.monotonic() - started, 1), notes=notes,
             rival_name=rival.name if rival is not None else "",
+            visits={shopper.id: [VisitBrief(outcome=sessions[i].outcome, order_total=sessions[i].order_total,
+                                            clicks=sum(1 for step in sessions[i].steps if step.choice is not None),
+                                            rival=r.outcome if (r := sessions[i].rival) else None,
+                                            furthest=max(sessions[i].reached, key=FUNNEL_STAGES.index))
+                                 for sessions in variants]
+                    for i, shopper in enumerate(shoppers)},
         )
         write_json(_run_dir(pid, status.run_id) / "result.json", json.loads(result.model_dump_json()))
         status.status, status.phase, status.finished_at = "completed", "done", now_iso()
