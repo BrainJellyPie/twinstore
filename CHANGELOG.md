@@ -9,6 +9,8 @@
 - Export a rival shop's visits in the clickstream CSV with the traffic source
   they actually had (a search engine) instead of the one each shopper came to
   the compared stores from.
+- Preserve explicit free prices in automatically drafted shelf and A/B tests,
+  including price-only offers, while still rejecting positive prices that round to zero.
 
 - Give rival-shop visits their own random draws. On the run's seed, a shopper who
   reached the store from a search engine replayed at a rival like it, page for

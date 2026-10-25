@@ -18,9 +18,9 @@ def store():
     *[(c, 2.5, 3) for c in ('KRW', 'JPY', 'VND', 'CLP', 'ISK', 'HUF', 'TWD', 'IDR')],
     ('usd', 1.005, 101), ('USD', float('inf'), None), ('USD', 1e308, None), ('JPY', 1e308, None),
     ('USD', 90071992547409.92, None), ('JPY', 9007199254740992., None),
-    ('JPY', 9007199254740991., 9007199254740991), ('USD', 0, None), ('USD', None, None),
+    ('JPY', 9007199254740991., 9007199254740991), ('USD', 0, 0), ('USD', None, None),
 ])
-def test_shelf_prices_use_half_up_rounding_and_safe_positive_minor_units(currency, price, expected):
+def test_shelf_prices_use_half_up_rounding_and_safe_nonnegative_minor_units(currency, price, expected):
     original = store(); before = original.model_dump()
     result = to_design(_Draft(name='Price test', product='Tea', price=price), original, currency, [])
     changes = [c for c in result.changes if c.kind == 'price']
