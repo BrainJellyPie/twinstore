@@ -77,6 +77,9 @@ def ad_lifts(control_site: OnlineSite, control: list[SessionResult], control_row
                                                     (control_site, control, variant, control_rows, variant_running)):
         total_with = sum(s.order_total for s in with_ad)
         total_without = sum(s.order_total for s in without)
+        # Match product revenue's basis: checkout discounts, shipping and add-ons are not other products.
+        items_with = sum(line.price * line.quantity for s in with_ad for line in s.order)
+        items_without = sum(line.price * line.quantity for s in without for line in s.order)
         cost_of = {row.ad_id: row.cost for row in rows}
         for ad in site.ads:
             if not ad.active or ad.id in elsewhere:
@@ -88,7 +91,7 @@ def ad_lifts(control_site: OnlineSite, control: list[SessionResult], control_row
             lifts.append(AdLift(
                 ad_id=ad.id, name=ad.name, site_id=site.id, product_id=ad.product_id, units_without=units_without,
                 units_with=units_with, units_diff=units_with - units_without, revenue_diff=revenue_diff,
-                other_revenue_diff=(total_with - revenue_with) - (total_without - revenue_without), cost=cost,
+                other_revenue_diff=(items_with - revenue_with) - (items_without - revenue_without), cost=cost,
                 iroas=round(revenue_diff / cost, 2) if cost else None,
             ))
     return lifts

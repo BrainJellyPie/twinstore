@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Compute other-product ad effects from actual order lines, keeping shipping,
+  fees, add-ons and order discounts out of that merchandise measure while
+  preserving the change in total paid revenue.
+
 - Add traffic sources to online runs. Set where visitors come from (direct to
   the home page, a search engine to the product page that fits what they look
   for, social media to a popular product, the shop's email to its deals); each
