@@ -45,6 +45,7 @@ from store_emulator.domain.online import (
     Vision,
     PageView,
     RivalVisit,
+    SessionOutcome,
     SessionResult,
     SessionStep,
     SiteOptions,
@@ -741,6 +742,41 @@ def get_run(pid: str, run_id: str) -> OnlineRunView:
     result_path = _run_dir(pid, run_id) / "result.json"
     result = OnlineRunResult.model_validate(read_json(result_path)) if result_path.exists() else None
     return OnlineRunView(status=status, result=result)
+
+
+class PersonaVisit(BaseModel):
+    """One online visit of a project customer: a run's shopper made from them, at one store of the run."""
+    run_id: str
+    run_name: str
+    created_at: str
+    variant: int
+    site_name: str
+    shopper_id: str
+    outcome: SessionOutcome
+    order_total: int
+    currency: str
+
+
+def persona_visits(pid: str, persona_id: str) -> list[PersonaVisit]:
+    """Where this customer shopped online: every finished run that drew shoppers from the project's customers, newest
+    first, one row per store they visited (runs saved before visits were recorded are left out)."""
+    visits: list[PersonaVisit] = []
+    for status in list_runs(pid):
+        if status.status != "completed" or status.request.source != "project":
+            continue
+        result = get_run(pid, status.run_id).result
+        if result is None:
+            continue
+        for shopper in result.shoppers:
+            if shopper.persona_id != persona_id:
+                continue
+            for variant, brief in enumerate((result.visits or {}).get(shopper.id, [])):
+                if variant < len(result.variants):
+                    visits.append(PersonaVisit(
+                        run_id=status.run_id, run_name=status.name or " vs ".join(status.site_names),
+                        created_at=status.created_at, variant=variant, site_name=result.variants[variant].site_name,
+                        shopper_id=shopper.id, outcome=brief.outcome, order_total=brief.order_total, currency=result.currency))
+    return visits[:60]
 
 
 def delete_run(pid: str, run_id: str) -> None:

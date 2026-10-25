@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- See the same customer in both twins: a store shopper's page lists the online
+  visits of the shoppers made from that customer (runs that drew shoppers from
+  the store's customers), and each opens that run with the visit playing.
+  Online links can now open a run and play a shopper's visit directly.
 - Keep a tested marketing variant in the store: **Keep it in the store** in an
   A/B report reviews the variant's edits on the tested layout as it is now (a
   tested price becomes the everyday price; a test-only package is not kept)

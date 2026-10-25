@@ -99,6 +99,14 @@ async def site_preview(pid: str, site_id: str, device: Literal["desktop", "mobil
     return Response(png, media_type="image/png", headers=_PNG_CACHE)
 
 
+@router.get("/projects/{pid}/online/personas/{persona_id}/visits", summary="A project customer's online visits",
+            response_model=list[online_service.PersonaVisit])
+async def persona_visits(pid: str, persona_id: str) -> list[online_service.PersonaVisit]:
+    """Every store visit of the online shoppers made from this project customer, in finished runs that drew shoppers
+    from the project's customers: the physical twin's shopper and the same person online, newest run first."""
+    return await run_in_threadpool(_call, lambda: online_service.persona_visits(pid, persona_id))
+
+
 @router.post("/projects/{pid}/online/sites/{site_id}/from-test", summary="Make a variant from a marketing test's changes",
              response_model=online_service.StoreChangesResult)
 async def variant_from_test(pid: str, site_id: str, req: online_service.StoreChangesRequest) -> online_service.StoreChangesResult:

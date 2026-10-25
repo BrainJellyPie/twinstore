@@ -274,6 +274,7 @@ export const onlineKeys = {
     ["projects", pid, "online", "runs", runId, "playback", variant, shopperId] as const,
   session: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId] as const,
+  personaVisits: (pid: string, personaId: string) => ["projects", pid, "online", "persona-visits", personaId] as const,
   draftPreview: (pid: string, siteId: string, options: SiteOptions, device: Device) =>
     ["projects", pid, "online", "sites", siteId, "draft-preview", device, JSON.stringify(options)] as const,
   interview: (pid: string, runId: string, variant: number, shopperId: string) =>
@@ -312,6 +313,16 @@ export function copySite(pid: string, siteId: string, body: {
 
 export function deleteSite(pid: string, siteId: string): Promise<{ status: string }> {
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}`, { method: "DELETE" });
+}
+
+/** One online visit of a project customer: a run's shopper made from them, at one store of the run. */
+export interface PersonaVisit {
+  run_id: string; run_name: string; created_at: string; variant: number; site_name: string; shopper_id: string;
+  outcome: SessionOutcome; order_total: number; currency: string;
+}
+
+export function getPersonaVisits(pid: string, personaId: string, signal?: AbortSignal): Promise<PersonaVisit[]> {
+  return fetchJson(`/api/projects/${pid}/online/personas/${encodeURIComponent(personaId)}/visits`, { signal });
 }
 
 /** A variant of an online store made from a marketing A/B variant's changes (matched to products by SKU). */

@@ -113,3 +113,15 @@ it("opens a store's run form already comparing it with a variant from a link", a
   fireEvent.click(screen.getByRole("button", { name: "Compare stores: 2" }));
   await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({ site_ids: ["site_B", "site_A"] })));
 });
+
+it("opens a run and plays a shopper's visit from a link", async () => {
+  mount();
+  cleanup();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+  clients.push(client);
+  client.setQueryData(online.onlineKeys.run("p1", first.status.run_id), first);
+  render(<QueryClientProvider client={client}>
+    <OnlinePage projectId="p1" initialRun={first.status.run_id} initialShopper={{ shopper: "old_2", variant: 1 }} />
+  </QueryClientProvider>);
+  expect((await screen.findByRole("dialog")).textContent).toBe("Old study:1:old_2");
+});

@@ -30,14 +30,16 @@ const TABS: { id: Tab; label: MessageKey; icon: typeof Globe2 }[] = [
 
 const busy = (run: OnlineRunStatus) => run.status === "pending" || run.status === "running";
 
-export function OnlinePage({ projectId, initialSite, initialCompare }: {
+export function OnlinePage({ projectId, initialSite, initialCompare, initialRun, initialShopper }: {
   projectId: string;
   /** A store to open, and a variant of it to start a comparison with (links from the marketing studio). */
   initialSite?: string; initialCompare?: string;
+  /** A run's report to open, and a shopper's visit in it to play (links from a store's shopper page). */
+  initialRun?: string; initialShopper?: { shopper: string; variant: number };
 }) {
   const { t, locale } = useI18n();
   const [siteId, setSiteId] = useState<string | null>(initialSite ?? null);
-  const [runId, setRunId] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(initialRun ?? null);
   const [tab, setTab] = useState<Tab>(initialSite && initialCompare ? "simulate" : "browse");
   const [gallery, setGallery] = useState(false);
   const [wide, setWide] = useState(false);
@@ -126,7 +128,8 @@ export function OnlinePage({ projectId, initialSite, initialCompare }: {
       <main className="m-3 flex min-h-[32rem] min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
         {runId ? (
           <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
-            wide={wide} onWide={() => setWide((w) => !w)} />
+            wide={wide} onWide={() => setWide((w) => !w)}
+            initialJourney={runId === initialRun && initialShopper ? { ...initialShopper, play: true } : undefined} />
         ) : showGallery ? (
           <TemplateGallery
             projectId={projectId} currency={currency} templates={templates.data ?? []} loading={templates.isPending}

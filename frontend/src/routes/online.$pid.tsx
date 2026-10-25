@@ -2,19 +2,23 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { OnlinePage } from "@/features/online/OnlinePage";
 
-// `site` opens a store; with `compare`, its run form starts comparing it with that variant (links from other tabs).
-interface OnlineSearch { site?: string; compare?: string }
+// Links from other tabs: `site` opens a store (with `compare`, its run form starts comparing it with that variant);
+// `run` opens a run's report, and `shopper` with `variant` plays that shopper's visit to that store.
+interface OnlineSearch { site?: string; compare?: string; run?: string; shopper?: string; variant?: number }
+
+const text = (value: unknown) => (typeof value === "string" && value ? value : undefined);
 
 export const Route = createFileRoute("/online/$pid")({
   validateSearch: (search: Record<string, unknown>): OnlineSearch => ({
-    site: typeof search.site === "string" && search.site ? search.site : undefined,
-    compare: typeof search.compare === "string" && search.compare ? search.compare : undefined,
+    site: text(search.site), compare: text(search.compare), run: text(search.run), shopper: text(search.shopper),
+    variant: typeof search.variant === "number" && Number.isInteger(search.variant) && search.variant >= 0 ? search.variant : undefined,
   }),
   component: OnlineRoute,
 });
 
 function OnlineRoute() {
   const { pid } = Route.useParams();
-  const { site, compare } = Route.useSearch();
-  return <OnlinePage key={`${pid}:${site ?? ""}:${compare ?? ""}`} projectId={pid} initialSite={site} initialCompare={compare} />;
+  const { site, compare, run, shopper, variant } = Route.useSearch();
+  return <OnlinePage key={JSON.stringify([pid, site, compare, run, shopper, variant])} projectId={pid} initialSite={site}
+    initialCompare={compare} initialRun={run} initialShopper={shopper ? { shopper, variant: variant ?? 0 } : undefined} />;
 }
