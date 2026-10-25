@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add price tests to the online quick experiments (all prices 10 % lower or
+  higher, 20 % off the five best sellers, rounded the way the store's currency
+  is). Preserve free and fine-unit prices, omit variants with no actual price
+  change, and show rough planning estimates for unclear paired differences
+  without recommending more shoppers than a run allows or dismissing business
+  importance from statistical uncertainty.
+
 - Recover a terminal output cutoff in online shopper interviews once with a
   larger answer budget, keeping ordinary errors within the original retry limit.
 
