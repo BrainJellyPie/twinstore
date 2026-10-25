@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Restore unique product or shelf names when a generated promotion target reaches
+  its 80-character limit. A clipped name no longer falls through to broad keyword
+  matching and discounts unrelated products. Ambiguous prefixes are omitted with
+  a warning; explicit SKU precedence and ordinary keyword targets are preserved.
+
 - Recover unique case and surrounding-whitespace variants of model-generated
   action, navigation and shelf-face values. Normalize the action before applying
   non-purchase defaults so a differently cased BUY still rejects null quantity

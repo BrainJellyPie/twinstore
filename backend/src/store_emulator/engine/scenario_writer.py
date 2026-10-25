@@ -28,6 +28,7 @@ from store_emulator.engine.prompting import relevant_first
 from store_emulator.engine.scenario import apply_to_store
 
 MAX_LISTED_PRODUCTS = 150
+MAX_PROMOTION_TARGET_CHARS = 80
 
 
 class StructuredLLM(Protocol):
@@ -51,7 +52,7 @@ class _Event(BaseModel):
 
 
 class _Promotion(BaseModel):
-    target: str = Field(min_length=1, max_length=80,
+    target: str = Field(min_length=1, max_length=MAX_PROMOTION_TARGET_CHARS,
                         description="a product name, a word from product names, or a shelf name, as listed")
     kind: PromotionKind = PromotionKind.DISCOUNT
     discount_pct: float = Field(default=20.0, ge=0.0, le=90.0)
@@ -106,6 +107,8 @@ stock-outs the description does not mention.
 - Events: pick the closest kind, with hours when the description gives a time of day (evening is about 17 to 22).
 - Promotions and stock-outs must point at products or shelves from the store's list below; use the listed name or a
   word that appears in it. A deal like "1+1" or "buy one get one" is kind "1+1"; "20 % off" is a discount of 20.
+  For a promotion name longer than 80 characters, copy its first 80 characters only when that prefix identifies one
+  listed product or shelf. Omit an ambiguous promotion instead of guessing. Short keywords intentionally target all matches.
 - Put anything else that matters to shoppers (a nearby office lunch rush, a heat advisory) into notes.
 Use empty strings, not null, for unspecified notes, event notes and promotion labels.
 Write in English."""
@@ -142,11 +145,27 @@ def _reaches(store: Store, target: str, what: str, warnings: list[str]) -> bool:
 def to_scenario(draft: ScenarioDraft, description: str, store: Store | None) -> DescribedScenario:
     """The draft as a custom `Scenario`; targets that reach no product of this store are dropped and reported."""
     warnings: list[str] = []
+    names: set[str] = set()
+    sku_keys: set[str] = set()
+    if store is not None:
+        names = {rack.rack_name for rack in store.racks if rack.rack_name}
+        names.update(item.name for rack in store.racks for slot in rack.slots for item in slot.items if item.name)
+        sku_keys = {item.sku.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
     promotions: list[Promotion] = []
     for p in draft.promotions:
-        if store is not None and not _reaches(store, p.target, "promotion target", warnings):
+        target = p.target
+        # Runtime matching gives SKU identifiers precedence over product/shelf names.
+        if len(target) == MAX_PROMOTION_TARGET_CHARS and target.strip().lower() not in sku_keys:
+            prefix = target.strip().casefold()
+            matches = [name for name in names if prefix and name.casefold().startswith(prefix)]
+            if len(matches) > 1:
+                warnings.append(f'The promotion target "{target}" is an ambiguous truncated name; it was left out.')
+                continue
+            if matches:
+                target = matches[0]
+        if store is not None and not _reaches(store, target, "promotion target", warnings):
             continue
-        promotions.append(Promotion(target=p.target, kind=p.kind, discount_pct=p.discount_pct, label=p.label))
+        promotions.append(Promotion(target=target, kind=p.kind, discount_pct=p.discount_pct, label=p.label))
     stockouts: list[str] = []
     for target in dict.fromkeys(t.strip() for t in draft.stockouts if t.strip()):
         if store is not None and not _reaches(store, target, "stock-out", warnings):
