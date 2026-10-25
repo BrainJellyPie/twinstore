@@ -8,7 +8,7 @@ price, a sign. Names that point at nothing are dropped and reported; nothing run
 from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
-from typing import Protocol, Self
+from typing import Protocol, Self, cast
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -16,6 +16,7 @@ from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.persona import AGE_GROUPS, AgeGroup
 from store_emulator.domain.store import Store
 from store_emulator.engine.prompting import (
+    canonical_identifier,
     display_price,
     relevant_first,
     resolve_listed,
@@ -51,7 +52,12 @@ class _Draft(BaseModel):
     @field_validator("age_groups", mode="before")
     @classmethod
     def _optional_ages(cls, value: object) -> object:
-        return [] if value is None else value
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [canonical_identifier(item, AGE_GROUPS) if isinstance(item, str) else item
+                    for item in cast(list[object], value)]
+        return value
 
 
 class ShelfTestDesign(BaseModel):
@@ -75,6 +81,7 @@ manager's question, draft one test:
   listed, shown instead of the product's pack), price (a new shelf price in major units of {currency}), promo (a short
   sign such as NEW, SALE, 1+1 or -20%); at least one of them;
 - age_groups only when the question names an age group; otherwise leave it empty (everyone);
+  copy the exact labels 10s, 20s, 30s, 40s, 50s, 60s+;
 - a short name and rationale.
 If a listed product, shelf or image name exceeds 160 characters, copy its first 160 characters.
 That prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.

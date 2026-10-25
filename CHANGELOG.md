@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recover known age-group labels in shelf-test drafts when model replies add
+  spaces or change letter case. Requested customer quotas remain intact;
+  unknown ages and malformed values still fail validation.
+
 - Include the saved respondent brief and product A reference price when a
   model interprets survey results. Readings retain the conditions under which
   ratings were collected, including an explicitly shown zero price.

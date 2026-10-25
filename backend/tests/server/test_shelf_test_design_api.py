@@ -39,13 +39,14 @@ def _layout_product():
     return rack, rack.slots[0].items[0]
 
 
-def test_a_question_becomes_a_builder_ready_shelf_test(client, monkeypatch):
+@pytest.mark.parametrize("age", ["20s", " 20S "])
+def test_a_question_becomes_a_builder_ready_shelf_test(client, monkeypatch, age):
     from store_emulator.application import shelf_lab, study_design
     rack, item = _layout_product()
     monkeypatch.setattr(shelf_lab, "list_packages", lambda pid: [
         shelf_lab.PackageAsset(asset_id="pkg_gold", name="Gold label", width=10, height=10)])
     fake = _Designer({"name": "Gold label on the shelf", "product": f"{item.name} ($9.99, somewhere)", "package": "gold label",
-                      "price": 1.49, "promo": "sale", "age_groups": ["20s"], "rationale": "Pack, price and sign."})
+                      "price": 1.49, "promo": "sale", "age_groups": [age], "rationale": "Pack, price and sign."})
     monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/shelf-tests/design", json={"question": "Would a gold label stand out?", "setup_id": SETUP})
     assert r.status_code == 200, r.text
