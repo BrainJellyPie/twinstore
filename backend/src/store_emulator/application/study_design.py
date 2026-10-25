@@ -100,7 +100,8 @@ def design_ab(pid: str, req: ExperimentDesignRequest, config: SimulationConfig) 
         raise AppError("this layout has no store yet", 400)
     currency = (store.currency or project_currency(pid, config.currency)).upper()
     packages = [(p.name, p.asset_id) for p in list_packages(pid)]
-    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1500})
+    # Several variants can each contain six operations with repeated target names.
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 6144})
     try:
         llm = assistive_client(req.model, llm_config)
     except ValueError as e:

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Allow complete multi-product A/B proposals to fit the automatic draft's
+  output budget. Four price combinations no longer hit a 1,500-token ceiling
+  merely because the model formats the valid JSON with indentation.
+
 - Retain distinct product placements and prices in automatic A/B study drafts.
   The prompt no longer collapses every offer to the first matching product name,
   and repeated placements explicitly share the SKU's total sales figure.
