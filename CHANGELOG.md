@@ -19,6 +19,10 @@
   variant's changes full width with **Keep it in the store** and **Test it
   online** side by side, and the price × sign analysis is one line saying what
   it answers until it is opened, instead of a lone button in a wide card.
+- Lift charts in the marketing studio (A/B, shelf, concept and the other paired
+  tests) read on a phone: the interval used to shrink to a dot with its axis
+  labels printed over each other at 390 px; the label and value now share a
+  line with the interval full width below, and an A/B test's arm cards stack.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a

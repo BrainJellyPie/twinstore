@@ -42,13 +42,13 @@ export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format
             onPointerLeave={() => setHover(null)}
             onFocus={() => setHover(r.key)}
             onBlur={() => setHover(null)}
-            className="group grid grid-cols-[minmax(7rem,11rem)_1fr_6.5rem] items-center gap-3 rounded-lg px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:grid-cols-[minmax(7rem,11rem)_1fr_6.5rem]"
           >
             <div className="min-w-0">
               <div className="truncate text-sm font-medium">{r.label}</div>
               {r.sub && <div className="truncate text-[0.7rem] text-muted-foreground">{r.sub}</div>}
             </div>
-            <div className="relative h-7">
+            <div className="relative order-last col-span-2 h-7 sm:order-none sm:col-span-1">
               <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/25" aria-hidden />
               <div
                 className={cn("absolute top-1/2 h-2 -translate-y-1/2 rounded-full transition-opacity", active ? "opacity-60" : "opacity-35")}
@@ -75,14 +75,14 @@ export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format
           </div>
         );
       })}
-      <div className="grid grid-cols-[minmax(7rem,11rem)_1fr_6.5rem] gap-3 px-1.5 text-[0.68rem] text-muted-foreground">
-        <span />
-        <div className="relative h-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-1.5 text-[0.68rem] text-muted-foreground sm:grid-cols-[minmax(7rem,11rem)_1fr_6.5rem]">
+        <span className="hidden sm:block" />
+        <div className="relative col-span-2 h-4 sm:col-span-1">
           <span className="absolute left-0">{format(-span)}</span>
           <span className="absolute left-1/2 -translate-x-1/2">{t("mkZeroControl")}</span>
           <span className="absolute right-0">{format(span)}</span>
         </div>
-        <span className="text-right">{axisLabel}</span>
+        <span className="col-span-2 text-right sm:col-span-1">{axisLabel}</span>
       </div>
     </div>
   );
