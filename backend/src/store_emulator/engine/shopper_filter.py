@@ -9,9 +9,9 @@ run's own records, so every shopper listed really fits it.
 from collections.abc import Callable, Mapping, Sequence
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import re
-from typing import Literal, Protocol
+from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import AgeGroup, Gender, Persona
@@ -78,6 +78,8 @@ trading day. Set only what the description asks for and leave the rest empty:
   shelves), yes for those who bought there;
 - arrived_after and arrived_before as HH:MM; min_spent and max_spent in major units of {currency}; min_minutes and
   max_minutes for the length of the visit;
+  numeric minimums must not exceed their maximums. Equal bounds select an exact value. Use null for an unspecified
+  numeric limit; zero is a real limit, not an unspecified one;
   use valid 24-hour clocks, from 00:00 through 23:59 (24:00 means the end of the day); leave unspecified times empty;
 - sort: spent (biggest spenders first), nothing (longest browsing without buying), impulse, or longest (visit);
 - a short label for the group.
@@ -237,6 +239,15 @@ async def find_shoppers(
     store: Store, currency: str,
 ) -> ShopperMatch:
     class TimedFilter(_Filter):
+        @model_validator(mode="after")
+        def ordered_ranges(self) -> Self:
+            for field, low, high in (("spent", self.min_spent, self.max_spent),
+                                     ("minutes", self.min_minutes, self.max_minutes)):
+                if low is not None and high is not None and low > high:
+                    raise ValueError(f"min_{field} must not exceed max_{field}. Correct the requested range; "
+                                     "use null only when that limit was not requested.")
+            return self
+
         @field_validator("arrived_after", "arrived_before")
         @classmethod
         def valid_clock(cls, value: str) -> str:

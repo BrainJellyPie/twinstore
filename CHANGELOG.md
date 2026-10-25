@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retry model-written shopper searches whose minimum spend or visit duration
+  exceeds the maximum. Contradictory ranges no longer become cached empty
+  results; equal, zero and one-sided bounds retain their existing meanings.
+
 - Resolve generated shopping categories against both catalog label languages.
   English preferences such as `Fresh Produce` now find Korean shelves carrying
   the `fresh_produce` category, and Korean preferences find English shelves.
