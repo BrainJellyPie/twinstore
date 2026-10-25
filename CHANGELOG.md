@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Give small local models a separate, constrained starting-layout choice so a
+  pharmacy or bookshop is not left without a format or treated as a convenience
+  store. The other drafted form fields remain available for user review.
+
 ## 0.7.0 — The same customers in both twins, and answers that become tests
 
 - Nothing is cut off on a 360 px phone: the tab row fits in English and

@@ -49,7 +49,7 @@ def test_optional_null_or_omitted_text_preserves_the_draft_and_cache(monkeypatch
                 structured_output=mode, cache_dir=str(tmp_path)))
             args = (client, "A small store in Seoul, weekdays nine to twenty-two", [("campus", "Campus", "convenience", "A campus shop")])
             first = await draft_store_setup(*args)
-            assert first == await draft_store_setup(*args) and client.get_usage().cached_requests == 1
+            assert first == await draft_store_setup(*args) and client.get_usage().cached_requests == 2
             assert (first.open_days, first.open_hour, first.close_hour, first.currency) == ("weekday", 9, 22, "KRW")
             assert first.template_id == ("" if field == "format" else "campus")
             for key in FIELDS:
@@ -58,7 +58,7 @@ def test_optional_null_or_omitted_text_preserves_the_draft_and_cache(monkeypatch
             assert not first.warnings
 
     asyncio.run(exercise())
-    assert len(calls) == 1
+    assert len(calls) == 2
 
 
 @pytest.mark.parametrize("field", FIELDS)

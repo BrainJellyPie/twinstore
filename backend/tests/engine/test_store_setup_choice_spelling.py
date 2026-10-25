@@ -46,7 +46,7 @@ def test_http_known_choices_keep_localized_form_fields_hours_and_cache(monkeypat
                 assert (result.open_days, result.currency, result.open_hour, result.close_hour) == (days, currency, 0, 24)
                 assert (result.template_id, result.store_type) == ("tea", "cafe") and not result.warnings
                 assert all(getattr(result, key) == value for key, value in text.items() if key != "format")
-                assert len(calls) == 1 and client.get_usage().cached_requests == repeat
+                assert len(calls) == 2 and client.get_usage().cached_requests == 2 * repeat
 
     asyncio.run(exercise())
 
