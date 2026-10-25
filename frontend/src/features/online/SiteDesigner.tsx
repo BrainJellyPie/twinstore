@@ -54,10 +54,10 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
   };
   const set = <K extends keyof SiteOptions>(key: K, value: SiteOptions[K]) => setOptions((o) => ({ ...o, [key]: value }));
   const draft: OnlineSite = { ...site, name: name.trim() || site.name, note, options, products, ads };
-  const refresh = () => {
-    void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId) });
-    void qc.invalidateQueries({ queryKey: onlineKeys.site(projectId, site.id) });
-  };
+  const refresh = () => Promise.all([
+    qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId), exact: true }),
+    qc.invalidateQueries({ queryKey: onlineKeys.site(projectId, site.id), exact: true }),
+  ]);
   const save = useMutation({ mutationFn: () => saveSite(projectId, draft), onSuccess: refresh });
   const variant = useMutation({
     mutationFn: () => copySite(projectId, site.id, {
@@ -65,7 +65,7 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
       products: products === site.products ? undefined : products,
       ads: ads === site.ads ? undefined : ads,
     }),
-    onSuccess: (copy) => { refresh(); onCopied(copy.id); },
+    onSuccess: async (copy) => { await refresh(); onCopied(copy.id); },
   });
   const withoutAds = useMutation({
     // This store is saved first, so the copy differs from it only in its ads.
@@ -76,7 +76,7 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
         ads: ads.map((ad) => ({ ...ad, active: false })),
       });
     },
-    onSuccess: (copy) => { refresh(); onCopied(copy.id); },
+    onSuccess: async (copy) => { await refresh(); onCopied(copy.id); },
   });
   const remove = useMutation({
     mutationFn: () => deleteSite(projectId, site.id),
@@ -88,6 +88,7 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
     },
   });
   const error = save.error ?? variant.error ?? remove.error ?? withoutAds.error;
+  const writing = save.isPending || variant.isPending || remove.isPending || withoutAds.isPending;
 
   const shown = useMemo(() => {
     const words = searchText(filter);
@@ -100,7 +101,7 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
   );
 
   return (
-    <div className="grid gap-3 xl:grid-cols-2">
+    <fieldset disabled={writing} className="grid min-w-0 gap-3 xl:grid-cols-2">
       <Card title={t("onDesignStore")}>
         <Field label={t("onStoreName")}><Input aria-label={t("onStoreName")} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label={t("onVariantNote")} hint={t("onVariantNoteHint")}>
@@ -285,7 +286,7 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
         </div>
         {products.length > shown.length && !filter && <p className="text-xs text-muted-foreground">{t("onProductsMore", { count: products.length - shown.length })}</p>}
       </Card>
-    </div>
+    </fieldset>
   );
 }
 

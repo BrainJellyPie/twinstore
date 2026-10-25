@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep online-store editing and conflicting writes locked until a save and its
+  refreshed snapshot finish; failed writes preserve the draft for correction or retry.
+
 - Reset online run forms and report selections when switching stores or runs,
   preventing starts against the previous store and replays with the previous run’s shoppers.
 
