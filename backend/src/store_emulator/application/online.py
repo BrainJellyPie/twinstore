@@ -524,6 +524,44 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
     out: list[list[SessionResult]] = []
     for index, site in enumerate(sites):
         phase = f"variant {index + 1} of {len(sites)}"
+        visiting: list[OnlineShopper] = shoppers
+        if index:
+            # Product/category IDs belong to one catalog. Match the original intent before
+            # visiting another store, where the same ID may describe an unrelated item.
+            category_ids: dict[str, str] = {}
+            for category in sites[0].categories:
+                matches = [c.id for c in site.categories if c.name.strip().casefold() == category.name.strip().casefold()]
+                category_ids[category.id] = (category.id if category.id in matches
+                                             else matches[0] if len(matches) == 1 else "")
+            product_ids: dict[str, str] = {}
+            local_ids = {p.id for p in site.products}
+            for product in sites[0].products:
+                if product.sku:
+                    matches = [p.id for p in site.products if p.sku == product.sku]
+                else:
+                    matches = [p.id for p in site.products
+                               if p.name.strip().casefold() == product.name.strip().casefold()
+                               and p.category_id == category_ids.get(product.category_id)]
+                if product.id in matches:
+                    target = product.id
+                elif len(matches) == 1:
+                    target = matches[0]
+                else:
+                    # A nonempty, absent target retains the rule shopper's preference for
+                    # a specific unavailable product, instead of turning it into a generic goal.
+                    target = product.id
+                    while target in local_ids:
+                        target = f"missing:{target}"
+                product_ids[product.id] = target
+            visiting = []
+            for shopper in shoppers:
+                target_id = product_ids.get(shopper.target_product, shopper.target_product)
+                target_product = site.product(target_id) if target_id else None
+                visiting.append(shopper.model_copy(update={
+                    "target_product": target_id,
+                    "target_category": (target_product.category_id if target_product is not None
+                                        else category_ids.get(shopper.target_category, "")),
+                }))
 
         async def one(shopper: OnlineShopper, site: OnlineSite = site, phase: str = phase) -> SessionResult:
             async with slots:
@@ -533,7 +571,7 @@ async def _simulate(sites: list[OnlineSite], shoppers: list[OnlineShopper], poli
             progress(phase)
             return result
 
-        out.append(list(await asyncio.gather(*(one(s) for s in shoppers))))
+        out.append(list(await asyncio.gather(*(one(s) for s in visiting))))
     return out
 
 

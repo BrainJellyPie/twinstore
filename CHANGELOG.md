@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve shopper intent across online catalogs that reuse local product and
+  category IDs. Match variant targets by SKU or product/category identity;
+  keep unavailable or ambiguous products from becoming unrelated exact matches.
+
 - Include direct product landings from search engines and social media in
   product-view reports, using recorded views without double-counting clicks.
 
