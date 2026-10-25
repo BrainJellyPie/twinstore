@@ -160,6 +160,8 @@ it("starts with a variant made to be tested already compared with its store", as
   render(<QueryClientProvider client={client}><RunLauncher projectId="p1" sites={sites} firstSiteId="s1" compareWith="s2"
     hasCustomers onStarted={vi.fn()} /></QueryClientProvider>);
   expect((screen.getByRole("checkbox", { name: /AI design/ }) as HTMLInputElement).checked).toBe(true);
+  // The chosen stores are listed together above the full list.
+  expect(screen.getByRole("list", { name: "Chosen stores" }).textContent).toBe("ShopControlAI designVariant B");
   fireEvent.click(screen.getByRole("button", { name: "Compare stores: 2" }));
   await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({ site_ids: ["s1", "s2"] })));
 });

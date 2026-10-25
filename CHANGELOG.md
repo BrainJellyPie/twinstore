@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep the stores chosen for an online run in sight: they are listed together
+  above the store list, which now scrolls on its own when a project has many
+  stores, so a comparison opened from another tab shows what it compares.
+
 ## 0.6.0 — Online stores you can see, style and design by asking
 
 - Ask for a web shop change from the command bar: a request such as "make the

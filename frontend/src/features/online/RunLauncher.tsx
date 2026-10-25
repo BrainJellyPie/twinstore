@@ -133,7 +133,20 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCus
       <section className="panel flex flex-col gap-3 rounded-[1.4rem] p-4 text-sm">
         <h3 className="font-semibold">{t("onRunStores")}</h3>
         <p className="text-xs text-muted-foreground">{t("onRunStoresHint", { max: MAX_VARIANTS })}</p>
-        <ul className="space-y-1">
+        {/* The chosen stores stay in sight however long the list is. */}
+        <ul className="flex flex-wrap gap-1.5" aria-label={t("onRunChosen")}>
+          {chosen.map((id, i) => {
+            const s = listedSites.find((x) => x.id === id);
+            return s && (
+              <li key={id} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-2.5 py-1 text-xs">
+                <span className="size-2.5 shrink-0 rounded-full ring-1 ring-foreground/25" style={{ background: s.theme_color }} aria-hidden />
+                <span className="truncate font-medium">{s.name}</span>
+                <span className="shrink-0 text-muted-foreground">{i === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + i) })}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <ul className="max-h-[22rem] space-y-1 overflow-y-auto pr-1">
           {listedSites.map((s) => {
             const index = chosen.indexOf(s.id);
             return (
