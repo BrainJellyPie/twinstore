@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include possible cart-reminder visits in online model-work estimates, bound
+  the typical estimate by small click limits, and distinguish decisions/surveys
+  from extra retry calls. Label the click limit per visit in all six languages.
+
 - Count sponsored listing tiles within the first page's product limit so large
   text and cookie controls remain visible. Continue later pages without skipping
   or repeating organic results.

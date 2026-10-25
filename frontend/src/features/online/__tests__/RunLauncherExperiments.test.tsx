@@ -45,13 +45,13 @@ beforeEach(() => {
   vi.mocked(online.startRun).mockRejectedValue(new Error("Local model is unavailable"));
 });
 afterEach(() => { cleanup(); clients.splice(0).forEach((c) => c.clear()); vi.resetAllMocks(); });
-function mount() {
+function mount(initialSites: online.SiteSummary[] = [summary]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   clients.push(client);
   const view = (sites: online.SiteSummary[]) => <QueryClientProvider client={client}>
     <RunLauncher projectId="p1" sites={sites} firstSiteId="s1" hasCustomers onStarted={vi.fn()} />
   </QueryClientProvider>;
-  const rendered = render(view([summary]));
+  const rendered = render(view(initialSites));
   return (sites: online.SiteSummary[]) => rendered.rerender(view(sites));
 }
 function start() {
@@ -110,4 +110,28 @@ it("locks the compared stores and experiments while a variant is being created",
   await screen.findByRole("alert");
   await waitFor(() => expect(start().disabled).toBe(false));
   expect((screen.getByRole("checkbox", { name: /^Shop/ }) as HTMLInputElement).disabled).toBe(false);
+});
+
+it.each([
+  [false, 3, false], [false, 3, true], [true, 3, false], [true, 3, true],
+  [false, 24, false], [false, 24, true], [true, 24, false], [true, 24, true],
+] as const)("bounds model work for reminder=%s, steps=%s, survey=%s", async (reminder, steps, survey) => {
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, options: { ...source.options, cart_reminder: reminder } });
+  mount([{ ...summary, cart_reminder: reminder }]);
+  await screen.findByRole("checkbox", { name: "Drop the last-step service fee" });
+  fireEvent.click(screen.getByRole("radio", { name: /^Text model/ }));
+  fireEvent.change(screen.getByLabelText(/^Max clicks/), { target: { value: String(steps) } });
+  if (!survey) fireEvent.click(screen.getByRole("checkbox", { name: "Exit survey" }));
+  const estimate = screen.getByText(/^Model (calls|decisions)/).textContent;
+  const responses = survey ? 1 : 0;
+  expect(estimate).toContain(`about ${(30 * (Math.min(11, steps) + responses)).toLocaleString("en")},`);
+  expect(estimate).toContain(`at most ${(30 * (steps * (reminder ? 2 : 1) + responses)).toLocaleString("en")}.`);
+});
+
+it("includes reminder experiments and an unknown selected store in the upper estimate", async () => {
+  mount([{ ...summary, cart_reminder: false }, { ...summary, id: "s2", name: "Other store" }]);
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Send a cart reminder email" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Other store" }));
+  fireEvent.click(screen.getByRole("radio", { name: /^Text model/ }));
+  expect(screen.getByText(/^Model (calls|decisions)/).textContent).toContain("at most 3,690.");
 });
