@@ -2,8 +2,8 @@
 
 "Would a 1+1 on cola beat a 20 % cut?" is an A/B test; "what would people pay for zero sugar?" a conjoint study;
 "why does the freezer sell so little?" a question about the last run; "make the web shop look premium" a change to
-the online store's design. The model only picks the place; the page it
-opens drafts the rest from the same words.
+the online store's design; "did the web shop's new checkout win?" a question about the last online run. The model
+only picks the place; the page it opens drafts the rest from the same words.
 """
 
 from typing import Literal, Protocol
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 Destination = Literal[
     "ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "layout_edit", "area", "run_question",
-    "find_shoppers", "optimize", "online_design", "none",
+    "find_shoppers", "optimize", "online_design", "online_question", "none",
 ]
 
 
@@ -56,6 +56,8 @@ ROUTER_PROMPT = """You route a store manager's request to the right tool of a st
   shorter walks), possibly with limits on what may change;
 - online_design: change how the online store (the web shop) looks or works: its style, colours, banner, product
   cards, popups, delivery fee or checkout;
+- online_question: a question about what happened in the last simulated online store (web shop) run: its visits,
+  orders, funnel, where people left, or which version of the web shop did better;
 - none: anything else.
 {run_note}Copy one lowercase destination ID exactly, including underscores, and give a few words on why.
 Use an empty string, not null, when no reason is given."""

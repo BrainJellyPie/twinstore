@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testin
 import type { ReactElement, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
+import * as online from "@/shared/api/online";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
@@ -20,6 +21,7 @@ vi.mock("@/shared/queries/useProjects", () => ({ useProjects: () => ({ data: sta
 vi.mock("../theme", () => ({ useTheme: () => ({ theme: "dark", setTheme: vi.fn() }) }));
 vi.mock("../launcher", () => ({ useLauncher: () => false, quitLauncher: vi.fn() }));
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), routeAssist: vi.fn() }));
+vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof import("@/shared/api/online")>(), listRuns: vi.fn() }));
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 
 const queryClient = new QueryClient();
@@ -123,4 +125,27 @@ it("keeps the palette open with a note when no layout has a finished run", async
   expect(useAssistStore.getState().pending).toBeNull();
   expect(useSimulationStore.getState().selectedSetupId).toBe("draft");
   expect(useCommandPalette.getState().open).toBe(true);
+});
+
+const onlineRun = (run_id: string, status: online.OnlineRunStatus["status"], created_at: string) =>
+  ({ run_id, status, created_at }) as online.OnlineRunStatus;
+
+it("opens the latest finished online run before handing over a question about the web shop", async () => {
+  vi.mocked(api.routeAssist).mockResolvedValue({ destination: "online_question", reason: "" });
+  vi.mocked(online.listRuns).mockResolvedValue([
+    onlineRun("orun_old", "completed", "2026-10-01T10:00:00"), onlineRun("orun_busy", "running", "2026-10-03T10:00:00"),
+    onlineRun("orun_new", "completed", "2026-10-02T10:00:00"),
+  ]);
+  fireEvent.keyDown(type("Did the web shop's new checkout win?"), { key: "Enter" });
+  await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to: "/online/$pid", params: { pid: "proj_cafe" }, search: { run: "orun_new" } }));
+  expect(useAssistStore.getState().pending).toMatchObject({ destination: "online_question", text: "Did the web shop's new checkout win?" });
+});
+
+it("keeps the palette open with a note when no online run has finished", async () => {
+  vi.mocked(api.routeAssist).mockResolvedValue({ destination: "online_question", reason: "" });
+  vi.mocked(online.listRuns).mockResolvedValue([onlineRun("orun_busy", "running", "2026-10-03T10:00:00")]);
+  fireEvent.keyDown(type("Did the web shop's new checkout win?"), { key: "Enter" });
+  expect(await screen.findByText(translate("en", "commandAskNoOnlineRun"))).toBeTruthy();
+  expect(state.navigate).not.toHaveBeenCalled();
+  expect(useAssistStore.getState().pending).toBeNull();
 });

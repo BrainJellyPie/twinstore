@@ -18,7 +18,7 @@ from tests.engine.test_scenario_target_matching import target_store
 
 CHOICES = {
     "route": ("ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "layout_edit", "area",
-              "run_question", "find_shoppers", "optimize", "online_design", "none"),
+              "run_question", "find_shoppers", "optimize", "online_design", "online_question", "none"),
     "objective": tuple(OptimizeObjective), "scope": tuple(OptimizeScope),
     "hypothesis": ("ab_test", "shelf_test", "concept_test"),
 }

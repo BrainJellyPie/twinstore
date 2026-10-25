@@ -553,6 +553,7 @@ export const messages = {
   readinessNoExit: ["Place at least one exit", "출구를 하나 이상 배치하세요", "请至少放置一个出口", "出口を1つ以上配置してください", "Coloca al menos una salida", "Placez au moins une sortie"],
   readinessNoCounter: ["Place at least one checkout counter", "계산대를 하나 이상 배치하세요", "请至少放置一个收银台", "レジを1台以上配置してください", "Coloca al menos una caja de pago", "Placez au moins une caisse"],
   commandAskNoRun: ["No layout of this store has a finished simulation yet. Run one, then ask again.", "이 매장에는 아직 완료된 시뮬레이션이 있는 배치가 없습니다. 시뮬레이션을 실행한 뒤 다시 질문해 주세요.", "该门店还没有完成模拟的布局。请先运行一次模拟，然后再提问。", "この店舗には完了したシミュレーションのあるレイアウトがまだありません。実行してから、もう一度質問してください。", "Ningún plano de esta tienda tiene aún una simulación terminada. Ejecuta una y vuelve a preguntar.", "Aucun plan de ce magasin n’a encore de simulation terminée. Lancez-en une, puis reposez la question."],
+  commandAskNoOnlineRun: ["No online store has a finished run yet. Run one on the Online page, then ask again.", "아직 완료된 온라인 스토어 실행이 없습니다. 온라인 페이지에서 실행한 뒤 다시 질문해 주세요.", "还没有已完成的线上商店运行。请先在“线上”页面运行一次，再来提问。", "完了したオンラインストアの実行はまだありません。オンラインページで実行してから、もう一度質問してください。", "Ninguna tienda online tiene todavía una simulación terminada. Ejecuta una en la página Online y vuelve a preguntar.", "Aucune boutique en ligne n’a encore de simulation terminée. Lancez-en une sur la page En ligne, puis reposez la question."],
   ...storeMessages,
   ...studioMessages,
   ...bulkMessages,

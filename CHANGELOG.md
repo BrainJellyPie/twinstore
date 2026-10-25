@@ -4,6 +4,10 @@
 
 ## 0.6.0 — Online stores you can see, style and design by asking
 
+- Ask about the web shop from the command bar: a question such as "did the
+  web shop's new checkout win?" opens the latest finished online run, where
+  **Ask about this run** answers it; with no finished online run the command
+  bar says so instead.
 - Try a shelf test online: a shelf test's report can make a variant of an
   online store from its changes, like an A/B variant. A move to another shelf
   height now has a web counterpart: an eye-level (or higher) shelf puts the
