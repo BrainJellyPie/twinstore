@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Give photographed products with no usable name or brand a capture-specific
+  SKU per shelf position. Punctuation-only labels no longer collapse different
+  goods into the same identity, even when their pack sizes match. Printed prices
+  and raw labels are preserved.
+
 - Exclude empty normalized names from shelf-photo SKU matching. Cleared or
   punctuation-only labels can no longer inherit an unrelated existing SKU or
   its price, including through the generic Unknown product display name.

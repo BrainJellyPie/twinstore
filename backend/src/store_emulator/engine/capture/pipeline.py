@@ -18,7 +18,7 @@ from store_emulator.domain.capture import (
 )
 
 from .bands import Band, band_levels, deskewed_frame, detect_bands
-from .catalog_match import match_category, price_minor_units, typical_price
+from .catalog_match import match_category, normalize_text, price_minor_units, typical_price
 from .detect import (
     Detection,
     FacingDetector,
@@ -79,12 +79,17 @@ def build_items(
             category = match_category(label.category, f"{label.brand} {name}", rack_type=rack_type)
             typical, _ = typical_price(category, name, currency)
             price = price_minor_units(label, currency, typical)
+            sku = sku_for(name, label.brand, label.size)
+            if not normalize_text(f"{label.brand} {name}"):
+                # Punctuation and a pack size cannot identify a product across photos.
+                key = f"{salt}|{g.band}|{order}"
+                sku = "cap_u" + hashlib.sha1(key.encode()).hexdigest()[:9]
             item = item.model_copy(update={
                 "name": name, "brand": label.brand.strip(), "size": label.size.strip(), "category": category,
                 "raw_category": label.category.strip(), "price": price if price is not None else typical,
                 "price_estimated": price is None, "price_text": label.price_text.strip(),
                 "confidence": label.confidence, "labeled": True,
-                "sku": sku_for(name, label.brand, label.size),
+                "sku": sku,
             })
         items.append(item)
     weights: dict[str, int] = {}
