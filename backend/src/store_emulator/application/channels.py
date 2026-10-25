@@ -124,7 +124,7 @@ def channel_mix(pid: str, online_run_id: str, store_run_id: str | None = None) -
 def channel_lines(mix: ChannelMix) -> list[str]:
     """The mix as fact-sheet lines for the online analyst."""
     def split(groups: list[ChannelGroup]) -> str:
-        return "; ".join(f"{g.group} {g.customers} customers: both {g.both}, store only {g.store_only}, "
+        return "; ".join(f"{g.group} (customers: {g.customers}): both {g.both}, store only {g.store_only}, "
                          f"online only {g.online_only}, nowhere {g.neither}" for g in groups)
 
     lines = [f"Store and online (the same {mix.customers} customers in store run {mix.store_run_id} and online at "
