@@ -68,7 +68,10 @@ def test_actual_sdk_draft_cutoff_is_bounded_and_only_valid_output_is_cached(monk
     except Exception as exc:
         error = exc
     budgets = [b["options"]["num_predict"] if provider == "ollama" else b["max_tokens"] for b in calls]
-    assert set(budgets) == ({budget, 2 * budget} if kind in {"once", "always", "then_invalid"} else {budget})
+    expected = {budget, 2 * budget} if kind in {"once", "always", "then_invalid"} else {budget}
+    if surface == "store" and kind in {"valid", "once"}:
+        expected.add(160)
+    assert set(budgets) == expected
     assert budgets.count(budget) <= 2 and budgets.count(2 * budget) <= 2 and client.max_tokens == budget
     if kind in {"valid", "once"}:
         assert error is None and result is not None
@@ -78,11 +81,12 @@ def test_actual_sdk_draft_cutoff_is_bounded_and_only_valid_output_is_cached(monk
             assert (result.name, result.template_id, result.currency, result.open_hour, result.close_hour) == (
                 answer["name"], "corner", "KRW", 7, 23)
             assert not result.warnings
-        assert len(list(tmp_path.glob("*/*.json"))) == 1
+        assert len(list(tmp_path.glob("*/*.json"))) == (2 if surface == "store" else 1)
     else:
         assert error is not None and result is None and not list(tmp_path.glob("*/*.json"))
-    for call in calls:
-        assert call["messages"][:2] == calls[0]["messages"][:2]
+    for call, requested in zip(calls, budgets, strict=True):
+        if requested != 160:
+            assert call["messages"][:2] == calls[0]["messages"][:2]
         assert (call["options"]["seed"] if provider == "ollama" else call["seed"]) == 0
 
 
@@ -109,5 +113,7 @@ def test_only_terminal_typed_cutoff_retries_draft(surface, kind):
     else:
         assert asyncio.run(draft(model, surface))
     budget = 700 if surface == "profile" else 900
-    assert [kwargs.get("max_tokens") for _, kwargs in model.calls] == ([budget] if kind == "earlier_only" else [budget, 2 * budget])
-    assert all(args == model.calls[0][0] and kwargs["seed"] == 0 and kwargs["max_retries"] == 2 for args, kwargs in model.calls)
+    expected = [budget] if kind == "earlier_only" else [budget, 2 * budget] + ([160] if surface == "store" else [])
+    assert [kwargs.get("max_tokens") for _, kwargs in model.calls] == expected
+    assert all(args == model.calls[0][0] for args, kwargs in model.calls if kwargs["max_tokens"] != 160)
+    assert all(kwargs["seed"] == 0 and kwargs["max_retries"] == 2 for args, kwargs in model.calls)

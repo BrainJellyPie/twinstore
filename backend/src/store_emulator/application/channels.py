@@ -56,7 +56,9 @@ def _store_runs(pid: str) -> list[tuple[str, str, str]]:
             status = cast(dict[str, object], raw) if isinstance(raw, dict) else {}
             if status.get("status") not in (None, "", "completed"):
                 continue
-            created, setup = str(status.get("created_at", "")), str(status.get("setup_id", ""))
+            created = str(status.get("created_at", ""))
+            raw_setup = status.get("setup_id")
+            setup = raw_setup.strip() if isinstance(raw_setup, str) else ""
         except (OSError, ValueError, AttributeError):  # missing or damaged: still a finished run
             created, setup = "", ""
         found.append((folder.name, created, setup))

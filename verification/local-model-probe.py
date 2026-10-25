@@ -30,8 +30,9 @@ from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
 from store_emulator.engine.generators.persona import Pace, generate_batched
-from store_emulator.engine.layout_gen import generate_store
+from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
+from store_emulator.engine.generators.store_setup_writer import draft_store_setup
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.catalog import build_site, site_from_store
 from store_emulator.engine.online.analysis import paired_deltas, segment_deltas, summarize, switches
@@ -69,7 +70,7 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
     "persona-neighborhood", "persona-cafe", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
@@ -318,6 +319,39 @@ try:
                 issues.append("Contradicts this fixture's interval including zero")
         result.update(success=not issues, completed=True, question=question, reply=reply.model_dump(mode="json"), issues=issues,
             expected_conversion=[summary.conversion for summary in report.variants], history_characters=sum(len(message.text) for message in history))
+    elif args.case.startswith("setup-"):
+        descriptions = {
+            "setup-unspecified": "A small neighborhood bookshop.",
+            "setup-night": "서울 마포구의 '밤샘 편의점'입니다. 매일 오후 8시부터 다음 날 오전 2시까지만 영업합니다. 24시간 영업은 아닙니다.",
+            "setup-24h": "서울 마포구의 '우리 편의점'입니다. 매일 24시간 영업하고 동네 주민이 방문합니다.",
+            "setup-pharmacy": "서울 마포구의 '동네 약국'입니다. 토요일과 일요일만 오전 10시부터 오후 6시까지 영업하고 의약품과 생활용품을 판매합니다.",
+        }
+        expected_hours = {"setup-unspecified": (None, None), "setup-night": (None, None), "setup-24h": (0, 24), "setup-pharmacy": (10, 18)}[args.case]
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            draft = asyncio.run(draft_store_setup(client, descriptions[args.case],
+                [(t.id, t.name, t.store_type, t.description) for t in TEMPLATES], "en" if args.case == "setup-unspecified" else "ko"))
+        format_issues = []
+        expected_type = "books" if args.case == "setup-unspecified" else "pharmacy" if args.case == "setup-pharmacy" else "convenience"
+        if draft.store_type != expected_type:
+            format_issues.append(f"Expected store type {expected_type}, received {draft.store_type}")
+        if draft.template_id not in {template.id for template in TEMPLATES}:
+            format_issues.append("No known starting format selected")
+        issues = list(format_issues)
+        if (draft.open_hour, draft.close_hour) != expected_hours:
+            issues.append(f"Expected hours {expected_hours}, received {(draft.open_hour, draft.close_hour)}")
+        if args.case == "setup-night" and not draft.warnings:
+            issues.append("Unsupported overnight hours must be shown for user correction")
+        if draft.open_days != (None if args.case == "setup-unspecified" else "weekend" if args.case == "setup-pharmacy" else "7"):
+            issues.append("Opening days differ from the owner's description")
+        if draft.currency != (None if args.case == "setup-unspecified" else "KRW"):
+            issues.append("Currency differs from the supplied location or invents an unspecified one")
+        if args.case == "setup-unspecified" and draft.address:
+            issues.append("Invented an unspecified location")
+        if args.case != "setup-unspecified" and ("서울" not in draft.address or "마포" not in draft.address):
+            issues.append("Supplied Seoul/Mapo location was not retained")
+        if args.case == "setup-unspecified" and "campus" in (draft.name + draft.description).casefold():
+            issues.append("Invented a campus location in the name or description")
+        result.update(success=not issues, format_ok=not format_issues, facts_ok=len(issues) == len(format_issues), description=descriptions[args.case], draft=draft.model_dump(mode="json"), issues=issues)
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."

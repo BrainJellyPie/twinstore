@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import Literal, Protocol
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from store_emulator.engine.generators.profile_writer import LANGUAGES
 from store_emulator.engine.prompting import resolve_listed
@@ -120,4 +120,33 @@ async def draft_store_setup(
         if not isinstance(cause, IncompleteOutputException):
             raise
         draft = await llm.generate_structured_async(_Setup, system, user, max_retries=2, seed=0, max_tokens=1800)
-    return to_setup(draft, [(fid, name, store_type) for fid, name, store_type, _ in formats])
+    # A tiny model can omit the format or select a convenience store for a
+    # pharmacy while filling the other fields. Make this a separate small task.
+    format_ids: list[JsonValue] = [fid for fid in dict.fromkeys(fid for fid, _, _, _ in formats)] or [""]
+
+    class ListedFormat(BaseModel):
+        model_config = ConfigDict(json_schema_extra={"required": ["format"]})
+        format: str = Field(default="", max_length=80, json_schema_extra={"enum": format_ids})
+
+        @field_validator("format", mode="before")
+        @classmethod
+        def _optional_format(cls, value: object) -> object:
+            return "" if value is None else value
+
+    compact = "\n".join(f"{fid}: {name} ({store_type})" for fid, name, store_type, _ in formats)
+    format_prompt = ("Choose one store layout whose primary business matches the owner's description. "
+                     "Match the primary business, not secondary goods. Copy one supplied format ID. "
+                     "The opening schedule does not determine the business type.")
+    format_input = f"Store: {text.strip()}\nFormats:\n{compact}"
+    try:
+        chosen = await llm.generate_structured_async(ListedFormat, format_prompt, format_input,
+                                                     max_retries=2, seed=0, max_tokens=160)
+    except Exception as error:
+        cause = (error.failed_attempts[-1].exception
+                 if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+        if not isinstance(cause, IncompleteOutputException):
+            raise
+        chosen = await llm.generate_structured_async(ListedFormat, format_prompt, format_input,
+                                                     max_retries=2, seed=0, max_tokens=320)
+    return to_setup(draft.model_copy(update={"format": chosen.format}),
+                    [(fid, name, store_type) for fid, name, store_type, _ in formats])
