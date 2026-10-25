@@ -3,6 +3,7 @@
 // currency's minor unit.
 
 import { BASE, type EnsembleConfig } from "./client";
+import type { VariantChange } from "./marketing";
 import type { InterviewMessage } from "./interview";
 import { apiErrorMessage } from "./errors";
 
@@ -273,6 +274,9 @@ export const onlineKeys = {
     ["projects", pid, "online", "runs", runId, "playback", variant, shopperId] as const,
   session: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId] as const,
+  personaVisits: (pid: string, personaId: string) => ["projects", pid, "online", "persona-visits", personaId] as const,
+  draftPreview: (pid: string, siteId: string, options: SiteOptions, device: Device) =>
+    ["projects", pid, "online", "sites", siteId, "draft-preview", device, JSON.stringify(options)] as const,
   interview: (pid: string, runId: string, variant: number, shopperId: string) =>
     ["projects", pid, "online", "runs", runId, "sessions", variant, shopperId, "interview"] as const,
 };
@@ -309,6 +313,49 @@ export function copySite(pid: string, siteId: string, body: {
 
 export function deleteSite(pid: string, siteId: string): Promise<{ status: string }> {
   return fetchJson(`/api/projects/${pid}/online/sites/${siteId}`, { method: "DELETE" });
+}
+
+/** One online visit of a project customer: a run's shopper made from them, at one store of the run. */
+export interface PersonaVisit {
+  run_id: string; run_name: string; created_at: string; variant: number; site_name: string; shopper_id: string;
+  outcome: SessionOutcome; order_total: number; currency: string;
+}
+
+export function getPersonaVisits(pid: string, personaId: string, signal?: AbortSignal): Promise<PersonaVisit[]> {
+  return fetchJson(`/api/projects/${pid}/online/personas/${encodeURIComponent(personaId)}/visits`, { signal });
+}
+
+/** A variant of an online store made from a marketing A/B variant's changes (matched to products by SKU). */
+export interface StoreChangesResult { site: OnlineSite; applied: string[]; skipped: string[] }
+
+export function variantFromTest(pid: string, siteId: string, body: {
+  name?: string; note?: string; currency: string; changes: VariantChange[];
+}): Promise<StoreChangesResult> {
+  return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/from-test`, { method: "POST", ...json(body) });
+}
+
+/** One turn of a conversation about a store's design (see backend engine/online/design_chat.py). */
+export interface DesignMessage { role: "owner" | "designer"; text: string; changed?: string[] }
+export interface DesignChatReply { reply: string; options: SiteOptions; changed: string[]; model: string }
+
+export function designChat(pid: string, siteId: string, body: { messages: DesignMessage[]; options: SiteOptions; model?: string }):
+  Promise<DesignChatReply> {
+  return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/design-chat`, { method: "POST", ...json(body) });
+}
+
+/** The home page with a design that is not saved yet, as a data URL. */
+export async function draftPreview(pid: string, siteId: string, options: SiteOptions, device: Device, signal?: AbortSignal): Promise<string> {
+  const res = await fetch(`${BASE}/api/projects/${pid}/online/sites/${siteId}/preview.png`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options, device }), signal,
+  });
+  if (!res.ok) throw new Error(apiErrorMessage(await res.text().catch(() => ""), `${res.status} ${res.statusText}`));
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("The preview could not be read"));
+    reader.readAsDataURL(blob);
+  });
 }
 
 export function sitePreviewUrl(pid: string, siteId: string, device: Device, version: string, style?: PageStyle): string {

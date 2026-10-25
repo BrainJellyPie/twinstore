@@ -9,7 +9,7 @@ import * as api from "@/shared/api/client";
 import { experimentMarkdownUrl, experimentReportUrl, writeNarrative } from "@/shared/api/marketing";
 import { queryKeys } from "@/shared/queries/keys";
 
-import type { ExperimentReport as Report, FocusOutcome, VariantResult } from "@/shared/api/marketing";
+import type { ExperimentReport as Report, FocusOutcome, Variant, VariantResult } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
@@ -19,6 +19,8 @@ import { richText } from "@/shared/i18n/richText";
 
 import { DemandChart, LiftChart, type LiftRow } from "./charts";
 import { FactorialReview } from "./FactorialReview";
+import { KeepAsLayout } from "./KeepAsLayout";
+import { TestOnline } from "./TestOnline";
 import { segmentLabel } from "@/shared/i18n/personaLabels";
 
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)}%`;
@@ -39,7 +41,11 @@ function download(name: string, rows: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
-export function ExperimentReportView({ projectId, report: r, layoutName }: { projectId: string; report: Report; layoutName?: string }) {
+export function ExperimentReportView({ projectId, report: r, layoutName, variants }: {
+  projectId: string; report: Report; layoutName?: string;
+  /** What each variant changed, as requested (to carry a variant over to an online store). */
+  variants?: Variant[];
+}) {
   const { locale, t } = useI18n();
   const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}` });
   const money = (v: number) => formatMoney(v, r.currency);
@@ -155,6 +161,12 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
               ))}
             </tbody>
           </table>
+          {r.price_response.best_price != null && r.price_response.sku && (
+            <TestOnline projectId={projectId} testName={r.name} currency={r.currency} variant={{
+              name: t("mkBestPriceVariant", { price: money(r.price_response.best_price) }),
+              changes: [{ kind: "price", sku: r.price_response.sku, price: r.price_response.best_price }],
+            }} />
+          )}
         </section>
       )}
 
@@ -182,6 +194,15 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
             <div className="mb-1.5 font-semibold">{t("mkChanged", { name: v.name })}</div>
             <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{v.applied.map((a) => <li key={a}>{a}</li>)}</ul>
             {v.warnings.map((w) => <p key={w} className="mt-1.5 flex items-start gap-1.5 text-xs text-warn"><TriangleAlert className="mt-0.5 size-3.5 shrink-0" /> {w}</p>)}
+            {(() => {
+              const asked = variants?.find((x) => x.name === v.name);
+              return asked && (
+                <>
+                  <KeepAsLayout projectId={projectId} setupId={r.setup_id} variant={asked} />
+                  <TestOnline projectId={projectId} testName={r.name} variant={asked} currency={r.currency} />
+                </>
+              );
+            })()}
           </div>
         ))}
       </section>

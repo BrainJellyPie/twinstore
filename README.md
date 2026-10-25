@@ -393,6 +393,12 @@ the page they land on (home, a product found by search, a popular product from s
 email), a device, a budget, patience, comfort with websites and eyesight (low vision, colour blindness and older
 eyes see filtered screenshots). You can browse any store yourself by clicking the same screenshot.
 
+Give a store one of eleven **page styles** — classic, minimal, luxury, brutalist, playful, marketplace, editorial,
+neon, retro web, organic or tech — picked from previews of the store itself, or **design it with AI**: ask for "a
+premium feel" or "no pressure tactics", watch the model change the design options with a before/after preview and
+undo, and test the result against the store in one click. Vision-model shoppers see the look; rule and text shoppers
+decide the same way whatever the style.
+
 <table>
 <tr>
 <td width="50%"><a href="./.github/assets/twinstore/demos/online-shops.mp4"><img src="./.github/assets/twinstore/demos/online-shops.webp" alt="Build a web shop"></a><br>
@@ -415,6 +421,8 @@ eyes see filtered screenshots). You can browse any store yourself by clicking th
 
 | Result | What it shows |
 | :-- | :-- |
+| **Verdict and shopper stream** | Each report opens with the run's verdict and every store's conversion; every shopper streams through each store as a dot that stops at the funnel stage where the visit ended — hover to find them in the other stores, click to watch. |
+| **Page flow** | The first six pages of every visit as a flow chart, step by step, with how each visit ended and the most common route. |
 | **Variants on the same shoppers** | Up to four stores per run; conversion, revenue per visit, add-to-cart, clicks and time as paired differences with bootstrap 95 % intervals, and about how many shoppers would confirm an unclear one. |
 | **Quick experiments** | Tick up to three one-click changes (a fee dropped, guest checkout, faster pages, free delivery, a welcome coupon, prices 10 % lower or higher…); each becomes a variant run on the same shoppers. |
 | **Who a change won and lost** | Paired differences by mission, device, age, gender, eyesight and traffic source, orders won and lost, and each shopper whose visit ended differently, with why. |

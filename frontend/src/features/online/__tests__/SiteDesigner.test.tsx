@@ -8,6 +8,7 @@ import { SiteDesigner } from "../SiteDesigner";
 
 vi.mock("@/shared/api/online", async (original) => ({
   ...await original<typeof online>(), getSite: vi.fn(), copySite: vi.fn(), saveSite: vi.fn(), deleteSite: vi.fn(),
+  designChat: vi.fn(), draftPreview: vi.fn(),
 }));
 
 const source: online.OnlineSite = {
@@ -264,4 +265,84 @@ it("shows the store in every page style and saves a picked style as a variant", 
   fireEvent.click(screen.getByRole("button", { name: "Save as a variant" }));
   await waitFor(() => expect(copied).toHaveBeenCalledWith("variant"));
   expect(online.copySite).toHaveBeenCalledWith("p1", "s1", expect.objectContaining({ options: { ...source.options, page_style: "neon" } }));
+});
+
+it("changes the design by asking, undoes a turn and tests the result against the store", async () => {
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  vi.mocked(online.designChat).mockResolvedValueOnce({
+    reply: "Switched to a luxury look and removed the urgency notes.", model: "fake",
+    options: { ...source.options, page_style: "luxury", urgency: false, quick_add: true }, changed: ["page_style", "quick_add"],
+  });
+  const tested = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <SiteDesigner projectId="p1" siteId="s1" onCopied={vi.fn()} onDeleted={vi.fn()} onTest={tested} />
+  </QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: /Make it feel premium/ }));
+  expect(await screen.findByText("Switched to a luxury look and removed the urgency notes.")).toBeTruthy();
+  expect(online.designChat).toHaveBeenCalledWith("p1", "s1", {
+    messages: [{ role: "owner", text: "Make it feel premium" }], options: source.options, model: undefined,
+  });
+  // The proposal is in the draft: the style picker and the toggles show it, and the preview is the unsaved design.
+  expect(screen.getByRole("radio", { name: /Luxury/ }).getAttribute("aria-checked")).toBe("true");
+  expect((screen.getByRole("checkbox", { name: /Add-to-cart buttons on product cards/ }) as HTMLInputElement).checked).toBe(true);
+  expect(screen.getByText("Unsaved changes")).toBeTruthy();
+  await waitFor(() => expect(screen.getByRole("img", { name: "Home page of Control with the changes" }).getAttribute("src")).toBe("data:image/png;base64,AAAA"));
+  expect(screen.getByText("Page style", { selector: "span" })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+  expect(screen.getByRole("radio", { name: /Classic/ }).getAttribute("aria-checked")).toBe("true");
+  expect(screen.getByText("Undone")).toBeTruthy();
+  expect(screen.queryByText("Unsaved changes")).toBeNull();
+
+  vi.mocked(online.designChat).mockResolvedValueOnce({
+    reply: "Dark neon it is.", model: "fake", options: { ...source.options, page_style: "neon" }, changed: ["page_style"],
+  });
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe a change… (Enter to send)" }), { target: { value: "Go neon" } });
+  fireEvent.keyDown(screen.getByRole("textbox", { name: "Describe a change… (Enter to send)" }), { key: "Enter" });
+  expect(await screen.findByText("Dark neon it is.")).toBeTruthy();
+  // The model sees the whole conversation, and the design as it now stands.
+  expect(vi.mocked(online.designChat).mock.calls[1]![2]).toEqual({
+    messages: [
+      { role: "owner", text: "Make it feel premium" },
+      { role: "designer", text: "Switched to a luxury look and removed the urgency notes.", changed: ["page_style", "quick_add"] },
+      { role: "owner", text: "Go neon" },
+    ],
+    options: source.options, model: undefined,
+  });
+  expect(screen.queryByText("No design option changed.")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Test against the store" }));
+  await waitFor(() => expect(tested).toHaveBeenCalledWith("variant"));
+  expect(online.copySite).toHaveBeenCalledWith("p1", "s1", {
+    name: "Control – AI design", note: "Go neon", options: { ...source.options, page_style: "neon" },
+  });
+});
+
+it("sends a design request routed from the command palette once the designer opens", async () => {
+  const { useAssistStore } = await import("@/stores/assistStore");
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  vi.mocked(online.designChat).mockResolvedValue({
+    reply: "Playful it is.", model: "fake", options: { ...source.options, page_style: "playful" }, changed: ["page_style"],
+  });
+  useAssistStore.getState().send({ projectId: "p1", destination: "online_design", text: "Make the web shop playful for kids" });
+  mount();
+  expect(await screen.findByText("Playful it is.")).toBeTruthy();
+  expect(vi.mocked(online.designChat).mock.calls[0]![2].messages).toEqual([{ role: "owner", text: "Make the web shop playful for kids" }]);
+  expect(useAssistStore.getState().pending).toBeNull();
+});
+
+it("keeps the design conversation when the store is saved", async () => {
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  vi.mocked(online.designChat).mockResolvedValue({
+    reply: "Minimal it is.", model: "fake", options: { ...source.options, page_style: "minimal" }, changed: ["page_style"],
+  });
+  const saved = { ...source, options: { ...source.options, page_style: "minimal" as const }, updated_at: "after" };
+  vi.mocked(online.saveSite).mockResolvedValue(saved);
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Make it feel premium/ }));
+  expect(await screen.findByText("Minimal it is.")).toBeTruthy();
+  vi.mocked(online.getSite).mockResolvedValue(saved);
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(screen.getByRole("radio", { name: /Minimal/ }).textContent).toContain("In use"));
+  expect(screen.getByText("Minimal it is.")).toBeTruthy();
 });

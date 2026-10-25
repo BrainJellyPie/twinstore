@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 0.6.0 — Online stores you can see, style and design by asking
+
+- Ask for a web shop change from the command bar: a request such as "make the
+  web shop look premium" now opens the online store's designer, where **Design
+  with AI** takes it as its first message.
+- See the same customer in both twins: a store shopper's page lists the online
+  visits of the shoppers made from that customer (runs that drew shoppers from
+  the store's customers), and each opens that run with the visit playing.
+  Online links can now open a run and play a shopper's visit directly.
+- Keep a tested marketing variant in the store: **Keep it in the store** in an
+  A/B report reviews the variant's edits on the tested layout as it is now (a
+  tested price becomes the everyday price; a test-only package is not kept)
+  and saves them as a new layout, leaving the original as it is.
+- Test a marketing A/B variant online: each variant in an A/B report can
+  become a variant of an online store in the same currency, its price,
+  discount, category-price and package changes applied to the products with
+  the same SKU (a store put online from a layout keeps them). Shelf signs and
+  moves, which have no web counterpart, are listed as not carried over, and
+  **Compare online** opens the online store's run form already comparing the
+  two. Online store links can now open a store and a comparison directly. A
+  price test's best price can be tried online the same way.
+
 - Read package labels before showing the model any catalog candidates. Small local
   vision models no longer copy candidate names into their image observations;
   unsupported brand/size guesses and product links are discarded. Match only names
@@ -13,6 +35,17 @@
   key. Fixed-key JSON schemas avoid duplicate groups and reordered positional
   recovery in automatic starter filling; existing validation and cache records
   still use canonical rack IDs and catalog SKUs.
+
+- Design an online store by talking to a model: **Design with AI** at the top
+  of the designer takes requests such as "make it feel premium" or "remove the
+  pressure tactics", and the text model changes the design options (style,
+  colour, banner, cards, popups, delivery fee, checkout…) within the designer's
+  own limits. Changed options appear as chips with one-click undo, the preview
+  switches between the saved store and the changes on desktop or phone, and
+  **Test against the store** saves the result as a variant and opens a run
+  with both stores selected. A reply that changed nothing says so, and a model
+  that only describes a change is asked once more to make it. Nothing is
+  saved until you save it.
 
 - Reduce local-model starter-selection retries and truncated responses: bound category
   groups by the actual task and use short product codes that resolve to exact catalog

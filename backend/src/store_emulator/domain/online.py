@@ -214,6 +214,28 @@ class SiteOptions(BaseModel):
     page_load_ms: int = Field(default=600, ge=50, le=15000)  # how long every page takes to load
 
 
+class DesignMessage(BaseModel):
+    """One turn of a conversation about a shop's design: the owner's request or the designer model's reply."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    role: Literal["owner", "designer"]
+    text: str = Field(min_length=1, max_length=1200)
+    changed: list[str] = Field(default_factory=list[str], max_length=40)  # options the reply changed
+
+
+class DesignChatRequest(BaseModel):
+    messages: list[DesignMessage] = Field(min_length=1, max_length=40)  # the conversation, the owner's message last
+    options: SiteOptions | None = None  # the design being edited (None = the saved store's)
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+class DesignChatReply(BaseModel):
+    reply: str
+    options: SiteOptions  # the design with the proposed changes; not saved
+    changed: list[str]  # the options that changed
+    model: str = ""
+
+
 class AdCampaign(BaseModel):
     id: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
     name: str = Field(min_length=1, max_length=60)

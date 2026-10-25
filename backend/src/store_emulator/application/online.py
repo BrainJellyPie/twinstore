@@ -24,11 +24,14 @@ from pydantic import BaseModel, Field, TypeAdapter
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.interview import InterviewMessage, InterviewQuestion
+from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.online import (
     FUNNEL_STAGES,
     ActionKind,
     AdCampaign,
     BrowserState,
+    DesignChatReply,
+    DesignChatRequest,
     Device,
     OnlineProduct,
     OnlineRunRequest,
@@ -42,6 +45,7 @@ from store_emulator.domain.online import (
     Vision,
     PageView,
     RivalVisit,
+    SessionOutcome,
     SessionResult,
     SessionStep,
     SiteOptions,
@@ -56,6 +60,9 @@ from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
+from store_emulator.engine.layout_edit import ZERO_DECIMAL
+from store_emulator.engine.online.design_chat import apply_design, chat_design
+from store_emulator.engine.online.store_changes import apply_store_changes
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
 from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
@@ -70,6 +77,7 @@ from .product_images import project_image_loader, snapshot_image_loader, snapsho
 from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
 from .setups import setup_lock_path, setup_tree_transaction
 from .simulation import with_engine_model, with_vision_default
+from .shelf_lab import package_path
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
 from .storage.setups import read_setup, read_state
@@ -319,6 +327,41 @@ def copy_site(pid: str, site_id: str, request: CopySiteRequest) -> OnlineSite:
     return copy
 
 
+class StoreChangesRequest(BaseModel):
+    """A marketing A/B variant's changes, to make a variant of an online store with."""
+    name: str = Field(default="", max_length=60)
+    note: str = Field(default="", max_length=400)
+    currency: str = Field(min_length=3, max_length=3, description="the currency of the test's prices")
+    changes: list[VariantChange] = Field(min_length=1, max_length=20)
+
+
+class StoreChangesResult(BaseModel):
+    site: OnlineSite  # the new variant
+    applied: list[str]
+    skipped: list[str]
+
+
+def variant_from_changes(pid: str, site_id: str, req: StoreChangesRequest) -> StoreChangesResult:
+    """A variant of this online store with a marketing test's changes, matched by SKU (see engine/online/store_changes)."""
+    site = get_site(pid, site_id)
+    if site.currency.upper() != req.currency.upper():
+        raise AppError(f"This store's prices are in {site.currency.upper()} and the test's in {req.currency.upper()}; "
+                       "pick a store in the same currency", 400)
+    uris: dict[str, str] = {}
+    for change in req.changes:
+        if change.kind == "package" and change.asset_id:
+            try:
+                uris[change.asset_id] = "file://" + str(package_path(pid, change.asset_id).resolve())
+            except AppError:
+                continue  # reported as skipped below
+    minor = 1 if site.currency.upper() in ZERO_DECIMAL else 100
+    products, applied, skipped = apply_store_changes(site, req.changes, minor_per_major=minor, package_uris=uris)
+    if not applied:
+        raise AppError("None of these changes fits this store: " + "; ".join(skipped[:3]), 400)
+    copy = copy_site(pid, site_id, CopySiteRequest(name=req.name or f"{site.name} B"[:60], note=req.note, products=products))
+    return StoreChangesResult(site=copy, applied=applied, skipped=skipped)
+
+
 def delete_site(pid: str, site_id: str) -> None:
     with _write_transaction(pid):
         path = _site_path(pid, site_id)
@@ -395,6 +438,40 @@ def template_preview(template_id: str, currency: str) -> bytes:
     site = build_site(template_id, site_id="preview", currency=currency)
     state = BrowserState(cookies_answered=True)
     return render_page(build_page(site, state), site, {}, _bundled_picture).png
+
+
+def design_chat(pid: str, site_id: str, req: DesignChatRequest, config: SimulationConfig) -> DesignChatReply:
+    """The designer model's reply to the owner's latest message, with its changes applied to the design being edited
+    (validated like the designer form). Nothing is saved."""
+    site = get_site(pid, site_id)
+    if req.messages[-1].role != "owner":
+        raise AppError("The last message must be the owner's", 400)
+    options = req.options or site.options
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 900})
+    try:
+        model = assistive_model(req.model, llm_config)
+        llm = assistive_client(model, llm_config)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        reply = asyncio.run(chat_design(llm, site, options, req.messages))
+        edited, changed = apply_design(options, reply.changes, site.currency)
+    except Exception as e:  # provider errors and unusable proposals reach the owner as a message, not a 500
+        logger.warning(f"[online design chat] {pid}/{site_id}: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The design could not be changed"), 502) from e
+    return DesignChatReply(reply=reply.reply, options=edited, changed=changed, model=answered_by(llm, model))
+
+
+class DraftPreviewRequest(BaseModel):
+    options: SiteOptions
+    device: Device = "desktop"
+
+
+def draft_preview(pid: str, site_id: str, options: SiteOptions, device: Device) -> bytes:
+    """The home page of a store with a design that is not saved yet (the design chat's proposal)."""
+    site = get_site(pid, site_id).model_copy(update={"options": options})
+    state = BrowserState(cookies_answered=True, device=device)
+    return render_page(build_page(site, state), site, {}, _picture(pid)).png
 
 
 def site_preview(pid: str, site_id: str, device: Device, style: PageStyle | None = None) -> bytes:
@@ -665,6 +742,41 @@ def get_run(pid: str, run_id: str) -> OnlineRunView:
     result_path = _run_dir(pid, run_id) / "result.json"
     result = OnlineRunResult.model_validate(read_json(result_path)) if result_path.exists() else None
     return OnlineRunView(status=status, result=result)
+
+
+class PersonaVisit(BaseModel):
+    """One online visit of a project customer: a run's shopper made from them, at one store of the run."""
+    run_id: str
+    run_name: str
+    created_at: str
+    variant: int
+    site_name: str
+    shopper_id: str
+    outcome: SessionOutcome
+    order_total: int
+    currency: str
+
+
+def persona_visits(pid: str, persona_id: str) -> list[PersonaVisit]:
+    """Where this customer shopped online: every finished run that drew shoppers from the project's customers, newest
+    first, one row per store they visited (runs saved before visits were recorded are left out)."""
+    visits: list[PersonaVisit] = []
+    for status in list_runs(pid):
+        if status.status != "completed" or status.request.source != "project":
+            continue
+        result = get_run(pid, status.run_id).result
+        if result is None:
+            continue
+        for shopper in result.shoppers:
+            if shopper.persona_id != persona_id:
+                continue
+            for variant, brief in enumerate((result.visits or {}).get(shopper.id, [])):
+                if variant < len(result.variants):
+                    visits.append(PersonaVisit(
+                        run_id=status.run_id, run_name=status.name or " vs ".join(status.site_names),
+                        created_at=status.created_at, variant=variant, site_name=result.variants[variant].site_name,
+                        shopper_id=shopper.id, outcome=brief.outcome, order_total=brief.order_total, currency=result.currency))
+    return visits[:60]
 
 
 def delete_run(pid: str, run_id: str) -> None:

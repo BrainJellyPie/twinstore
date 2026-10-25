@@ -294,6 +294,16 @@ async def draft_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEd
         raise HTTPException(e.status_code, str(e)) from e
 
 
+@router.post("/{sid}/edit/check", summary="Review given layout edits", response_model=LayoutEditDraft)
+async def check_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEditCheck) -> LayoutEditDraft:
+    """Edits made elsewhere (a marketing test's winning variant) applied to a copy of this layout, with the digest to
+    keep them as a new layout through `/edit`. Nothing is saved."""
+    try:
+        return await run_in_threadpool(layout_edit.check_edit, pid, sid, req)
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
+
+
 @router.post("/{sid}/edit", summary="Save layout edits as a new layout")
 async def apply_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEditApply) -> dict[str, object]:
     """Apply the reviewed edits to this layout and save the result as a new, active layout; the original stays as it

@@ -20,6 +20,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { ageBadge, personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { engineLabel } from "@/features/runs/labels";
+import { PersonaOnlineVisits } from "@/features/online/PersonaOnlineVisits";
 
 import { GroupInterviewPanel } from "./GroupInterview";
 import { InterviewChat } from "./InterviewChat";
@@ -241,6 +242,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
         </div>
       </div>
       <JourneyMap journey={j} store={store} active={active} onHover={setHover} />
+      <PersonaOnlineVisits projectId={projectId} personaId={sid} />
       <div className="flex rounded-xl bg-foreground/[0.055] p-1">
         {([["journey", "shopperJourney", Route], ["interview", "shopperInterview", MessagesSquare]] as const).map(([id, label, Icon]) => (
           <button key={id} type="button" onClick={() => setTab(id)}

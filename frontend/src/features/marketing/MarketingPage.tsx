@@ -330,7 +330,8 @@ function ExperimentJob({ projectId, id, setups, onDuplicate }: {
   return (
     <>
       {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
-      {report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name} /> : <JobState job={view.data} />}
+      {report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name}
+        variants={request?.variants} /> : <JobState job={view.data} />}
     </>
   );
 }

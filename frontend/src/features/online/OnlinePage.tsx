@@ -2,7 +2,7 @@
 // virtual shopper does — a screenshot with numbered options — tune their design, and run virtual shoppers with a
 // purchase, browsing or bargain-hunting mission through one store or several variants at once.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
@@ -12,6 +12,7 @@ import { listRuns, listSites, listTemplates, onlineKeys, type OnlineRunStatus } 
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -30,13 +31,28 @@ const TABS: { id: Tab; label: MessageKey; icon: typeof Globe2 }[] = [
 
 const busy = (run: OnlineRunStatus) => run.status === "pending" || run.status === "running";
 
-export function OnlinePage({ projectId }: { projectId: string }) {
+export function OnlinePage({ projectId, initialSite, initialCompare, initialRun, initialShopper }: {
+  projectId: string;
+  /** A store to open, and a variant of it to start a comparison with (links from the marketing studio). */
+  initialSite?: string; initialCompare?: string;
+  /** A run's report to open, and a shopper's visit in it to play (links from a store's shopper page). */
+  initialRun?: string; initialShopper?: { shopper: string; variant: number };
+}) {
   const { t, locale } = useI18n();
-  const [siteId, setSiteId] = useState<string | null>(null);
-  const [runId, setRunId] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("browse");
+  const [siteId, setSiteId] = useState<string | null>(initialSite ?? null);
+  const [runId, setRunId] = useState<string | null>(initialRun ?? null);
+  const [tab, setTab] = useState<Tab>(initialSite && initialCompare ? "simulate" : "browse");
   const [gallery, setGallery] = useState(false);
   const [wide, setWide] = useState(false);
+  const [compare, setCompare] = useState<string | null>(initialCompare ?? null);
+  // A design request typed in the command palette opens the designer, whose design chat takes it from there.
+  const designAsk = useAssistStore((s) => s.pending?.projectId === projectId && s.pending.destination === "online_design");
+  useEffect(() => {
+    if (!designAsk) return;
+    setRunId(null);
+    setGallery(false);
+    setTab("design");
+  }, [designAsk]);
 
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });
@@ -51,7 +67,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
   const selected = list.find((s) => s.id === siteId) ?? list[0] ?? null;
   const showGallery = gallery || (sites.isSuccess && list.length === 0);
 
-  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); };
+  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -121,7 +137,8 @@ export function OnlinePage({ projectId }: { projectId: string }) {
       <main className="m-3 flex min-h-[32rem] min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
         {runId ? (
           <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
-            wide={wide} onWide={() => setWide((w) => !w)} />
+            wide={wide} onWide={() => setWide((w) => !w)}
+            initialJourney={runId === initialRun && initialShopper ? { ...initialShopper, play: true } : undefined} />
         ) : showGallery ? (
           <TemplateGallery
             projectId={projectId} currency={currency} templates={templates.data ?? []} loading={templates.isPending}
@@ -143,10 +160,12 @@ export function OnlinePage({ projectId }: { projectId: string }) {
             {tab === "browse" && <BrowserView key={`${selected.id}:${selected.updated_at}`} projectId={projectId} siteId={selected.id} />}
             {tab === "design" && (
               <SiteDesigner key={selected.id} projectId={projectId} siteId={selected.id}
-                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)} />
+                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)}
+                onTest={(id) => { setCompare(id); setTab("simulate"); }} />
             )}
             {tab === "simulate" && (
-              <RunLauncher key={`${projectId}:${selected.id}`} projectId={projectId} sites={list} firstSiteId={selected.id}
+              <RunLauncher key={`${projectId}:${selected.id}:${compare ?? ""}`} projectId={projectId} sites={list} firstSiteId={selected.id}
+                compareWith={compare && list.some((s) => s.id === compare) ? compare : undefined}
                 hasCustomers={(project.data?.personas.length ?? 0) > 0}
                 onStarted={(id) => { setRunId(id); }} />
             )}

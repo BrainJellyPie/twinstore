@@ -102,3 +102,26 @@ it.each([false, true])("resets cached report shopper and variant selection on a 
   fireEvent.click(screen.getByRole("button", { name: "Watch a shopper" }));
   expect(screen.getByRole("dialog").textContent).toBe("New study:0:new_1");
 });
+
+it("opens a store's run form already comparing it with a variant from a link", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+  clients.push(client);
+  render(<QueryClientProvider client={client}><OnlinePage projectId="p1" initialSite="site_B" initialCompare="site_A" /></QueryClientProvider>);
+  expect((await screen.findByRole("tab", { name: "Simulate" })).getAttribute("aria-selected")).toBe("true");
+  expect((await screen.findByRole("checkbox", { name: /Shop B/ }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("checkbox", { name: /Shop A/ }) as HTMLInputElement).checked).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Compare stores: 2" }));
+  await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({ site_ids: ["site_B", "site_A"] })));
+});
+
+it("opens a run and plays a shopper's visit from a link", async () => {
+  mount();
+  cleanup();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+  clients.push(client);
+  client.setQueryData(online.onlineKeys.run("p1", first.status.run_id), first);
+  render(<QueryClientProvider client={client}>
+    <OnlinePage projectId="p1" initialRun={first.status.run_id} initialShopper={{ shopper: "old_2", variant: 1 }} />
+  </QueryClientProvider>);
+  expect((await screen.findByRole("dialog")).textContent).toBe("Old study:1:old_2");
+});

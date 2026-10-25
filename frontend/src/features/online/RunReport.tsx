@@ -33,14 +33,16 @@ const DIMENSIONS: { id: SegmentRow["dimension"]; label: MessageKey }[] = [
   { id: "arrival", label: "onSegArrival" },
 ];
 
-export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = () => {} }: {
+export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = () => {}, initialJourney }: {
   projectId: string; runId: string; onDeleted: () => void;
   /** The report fills the page (the store list is hidden). */
   wide?: boolean; onWide?: () => void;
+  /** A shopper's visit to play as soon as the report opens (a link from another tab). */
+  initialJourney?: Journey;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [journey, setJourney] = useState<Journey | null>(null);
+  const [journey, setJourney] = useState<Journey | null>(initialJourney ?? null);
   const [heroGone, setHeroGone] = useState(false);
   // Once the hero's buttons scroll away, a dock keeps the shopper replay one click away.
   const watchHero = (el: HTMLElement | null) => {
@@ -124,7 +126,7 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
   );
 }
 
-interface Journey { variant: number; shopper: string; play?: boolean; compare?: boolean }
+export interface Journey { variant: number; shopper: string; play?: boolean; compare?: boolean }
 
 function Report({ result, onJourney }: { result: OnlineRunResult; onJourney: (journey: Journey) => void }) {
   const { t } = useI18n();
