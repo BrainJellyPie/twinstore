@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A quick read while designing: as soon as the designer's draft differs from
+  the saved store, 150 rule shoppers visit both (about a second, nothing
+  saved) and the preview shows the draft's paired difference in revenue per
+  visit — clearly better, clearly worse or unclear — before you test it
+  properly. Rule shoppers do not see a page's look, which the hint says.
 - A tidier online store list: variants sit under the store they were first
   copied from (copies of copies too), behind a **Variants: N** toggle that
   opens by itself when it holds the open store; a copy whose original was

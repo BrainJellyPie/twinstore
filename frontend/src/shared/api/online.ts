@@ -313,8 +313,8 @@ export interface ScanResult { shoppers: number; conversion: number; revenue_per_
 
 export function scanSite(pid: string, siteId: string, body: {
   candidates: { id: string; options: SiteOptions; products?: OnlineProduct[] }[]; shoppers?: number; seed?: number;
-}): Promise<ScanResult> {
-  return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/scan`, { method: "POST", ...json(body) });
+}, signal?: AbortSignal): Promise<ScanResult> {
+  return fetchJson(`/api/projects/${pid}/online/sites/${siteId}/scan`, { method: "POST", signal, ...json(body) });
 }
 
 export function copySite(pid: string, siteId: string, body: {
