@@ -426,6 +426,10 @@ class LiteLLMClient:
         if self.cache_dir is None:
             return None
         extra: dict[str, str] = {"reasoning": "none"} if self._openai_hosted() else {}
+        if self.seed is None and seed is not None:
+            # A per-respondent draw still has an identity when provider seeding
+            # is disabled. Keep it separate without sending a seed to the API.
+            extra["request_seed"] = str(seed)
         if self.cache_namespace:
             extra["cache_namespace"] = self.cache_namespace
         key_src = json.dumps(

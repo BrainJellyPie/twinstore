@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Keep per-request sampling identities in the model cache when provider
+  seeding is disabled. Different respondents with identical profile text no
+  longer share one answer or overwrite each other's cached draws; repeating
+  the same study still reuses each respondent's own result. Provider seed
+  settings are unchanged.
+
 - Give each generated-customer batch a stable sample identity, including its
   seed and daily position range. Identical hourly specifications no longer
   reuse another batch's customers as newly written people. Probe requests,
