@@ -374,11 +374,10 @@ def _can_add(state: BrowserState, product: OnlineProduct) -> bool:
 
 
 def _cards(site: OnlineSite, state: BrowserState, products: list[OnlineProduct], ctl: _Builder,
-           sponsored: set[str] | None = None, ad_ids: dict[str, str] | None = None) -> tuple[Card, ...]:
-    """Product tiles. `ad_ids`: product → campaign for tiles that are ads (labelled as such, clicks attributed)."""
+           sponsored: set[str] | None = None, ad_id: str = "") -> tuple[Card, ...]:
+    """Product tiles, optionally belonging to one campaign with attributed clicks."""
     cards: list[Card] = []
     for p in products:
-        ad_id = ad_ids.get(p.id, "") if ad_ids else ""
         is_ad = bool(ad_id) or (sponsored is not None and p.id in sponsored)
         label = product_label(site, p, sponsored=is_ad)
         open_control = ctl(ActionKind.OPEN_PRODUCT, f"Ad · {label}" if ad_id else label, p.id, ad_id)
@@ -399,10 +398,11 @@ def _ad_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, placement: Ad
     """A sponsored row of one placement's ads (only products in `keep`, when given)."""
     ads = [ad for ad in active_ads(site, placement)
            if ad.product_id != exclude and (keep is None or ad.product_id in keep)][:_HOME_ROW]
-    products = [p for ad in ads if (p := site.product(ad.product_id)) is not None]
-    if not products:
+    cards = tuple(card for ad in ads if (product := site.product(ad.product_id)) is not None
+                  for card in _cards(site, state, [product], ctl, ad_id=ad.id))
+    if not cards:
         return None
-    return Grid(title, _cards(site, state, products, ctl, ad_ids={ad.product_id: ad.id for ad in ads}))
+    return Grid(title, cards)
 
 
 def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: str,

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep impressions, clicks and costs attached to the selected ad campaign when
+  multiple sponsored tiles promote the same product.
+
 - Recover an online exit survey once when a local model explicitly cuts its
   answer off at the output limit. Keep invalid answers and ordinary service
   errors within their original attempt budget, and exclude unanswered surveys.
