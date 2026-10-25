@@ -110,7 +110,9 @@ def _shopper(
     mission = _pick_mission(rng, missions)
     goal, category, terms, product, budget = _mission_details(site, mission, rng, preferred)
     savvy = min(1.0, max(0.05, rng.gauss(_SAVVY[age], 0.12)))
-    device = "mobile" if rng.random() < min(1.0, mobile_share * _MOBILE[age]) else "desktop"
+    # Weight the odds so age preferences preserve both all-mobile and all-desktop panels.
+    mobile_weight = mobile_share * _MOBILE[age]
+    device = "mobile" if rng.random() < mobile_weight / (1 - mobile_share + mobile_weight) else "desktop"
     sensitivity = min(1.0, max(0.0, rng.gauss(_SENSITIVITY[mission], 0.12)))
     low, high = _PATIENCE[mission]
     patience = round(rng.uniform(low, high) * (0.8 + 0.4 * (1 - savvy)))

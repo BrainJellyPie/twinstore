@@ -46,6 +46,8 @@
   menu actions and the close control visible above short or empty pages.
 - Let online shoppers turn off a store's default large text. Remember their
   choice across navigation while preserving older saved visits' appearance.
+- Honor mobile-only online panels for every age group. Apply age preferences
+  to device odds so both 0% and 100% mobile settings retain their meaning.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
