@@ -42,6 +42,8 @@
   page when a transition fails, and prevent overlapping page transitions.
 - Paginate large online carts so quantity, removal and checkout controls stay
   visible to vision shoppers. Keep totals and orders based on the complete cart.
+- Include open menus and welcome dialogs when sizing online screenshots, keeping
+  menu actions and the close control visible above short or empty pages.
 
 ## 0.4.14 — Robust local model requests and faithful automatic comparisons
 
