@@ -37,7 +37,7 @@ site.options.checkout_flow = 'one_page'
 product = site.products[0]
 shopper = sample_shoppers(site, 1, seed=4, missions={'browse': 1}, mobile_share=0)[0]
 shopper = shopper.model_copy(update={'budget': 100, 'device': args.device, 'patience_sec': 900, 'goal': 'Window-shop with no planned purchase. I put this item in my cart and am deciding whether to pay.'})
-state = BrowserState(at=PageRef(page=PageKind.CHECKOUT, checkout_step='review'), cart=[CartLine(product_id=product.id)], guest=True, address_added=True, payment_method='card', cookies_answered=True, welcome_seen=True)
+state = BrowserState(device=shopper.device, at=PageRef(page=PageKind.CHECKOUT, checkout_step='review'), cart=[CartLine(product_id=product.id)], guest=True, address_added=True, payment_method='card', cookies_answered=True, welcome_seen=True)
 page = build_page(site, state)
 numbers = numbering(page, 0)
 shot = render_page(page, site, numbers, _bundled_picture)

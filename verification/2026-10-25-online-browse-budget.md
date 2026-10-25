@@ -40,3 +40,15 @@ preserve purchase-mission wording.
 Focused verification: 85 backend tests passed in 17.18 seconds, strict backend
 checking reported zero errors/warnings, and backend boot and probe CLI checks
 passed. No frontend source changed in this integration.
+
+Follow-up viewport check: the first mobile probe changed the persona's device
+but left the browser state at its desktop default. That result is not evidence
+about the mobile layout. The probe now sets both. The corrected real mobile run
+(`browse-budget-1792960074855236109`) chose to leave in one call, 4.54 seconds.
+Its explanation invented a slow page despite a zero load delay, so interpretation
+of the thoughts still needs caution. A separate thought-first schema experiment
+on the desktop screenshot retained the wrong help action and was not shipped.
+
+Integrated `cc6cc6c9d2256ed80c2d13b0c441923564130e78` next: the launcher now
+estimates six model decisions per visit. Its 15 focused frontend tests, TypeScript
+check, changed-file lint and production build passed (build: 20.42 seconds).
