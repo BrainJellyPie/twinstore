@@ -25,6 +25,7 @@ from store_emulator.domain.online import (
     PageKind,
     PairedDelta,
     ProductRow,
+    RecoveryRow,
     SearchTermRow,
     SegmentRow,
     SessionResult,
@@ -127,7 +128,19 @@ def summarize(site: OnlineSite, shoppers: dict[str, OnlineShopper], sessions: li
         exits=[ExitRow(page=PageKind(page), sessions=count) for page, count in exits.most_common()],
         segments=segments, products=products, searches=searches, clicks=clicks,
         frictions=frictions(site, sessions), survey=survey_summary(sessions), ads=ad_rows(site, sessions),
+        recovery=recovery(site, sessions),
     )
+
+
+def recovery(site: OnlineSite, sessions: list[SessionResult]) -> RecoveryRow | None:
+    """The cart reminder email: who got it, came back and ordered, what that brought in and what it gave away."""
+    if not site.options.cart_reminder:
+        return None
+    reminded = [s for s in sessions if s.reminded]
+    back = [s for s in reminded if s.returned_at is not None]
+    won = [s for s in back if s.outcome == "purchased"]
+    return RecoveryRow(emails=len(reminded), returned=len(back), recovered=len(won),
+                       revenue=sum(s.order_total for s in won), discount=sum(s.discount for s in won))
 
 
 def frictions(site: OnlineSite, sessions: list[SessionResult]) -> list[FrictionRow]:
@@ -254,7 +267,8 @@ def paired_deltas(control: list[SessionResult], variant: list[SessionResult], *,
 
 
 CLICKSTREAM_COLUMNS = (
-    "variant", "site", "shopper", "mission", "device", "age_group", "gender", "vision", "step", "page", "url", "option", "action",
+    "variant", "site", "shopper", "mission", "device", "age_group", "gender", "vision", "visit", "step", "page", "url", "option",
+    "action",
     "target", "label", "ad_id", "search_text", "thought", "seconds", "load_seconds", "source", "outcome", "order_total",
 )
 
@@ -281,7 +295,9 @@ def clickstream_csv(variants: list[tuple[OnlineSite, list[SessionResult]]], shop
                 writer.writerow([_cell(v) for v in (
                     index, site.name, session.shopper_id, shopper.mission if shopper else "",
                     shopper.device if shopper else "", shopper.age_group if shopper else "",
-                    shopper.gender if shopper else "", shopper.vision if shopper else "", step.index, step.page.value, step.url, choice.number,
+                    shopper.gender if shopper else "", shopper.vision if shopper else "",
+                    2 if session.returned_at is not None and step.index >= session.returned_at else 1,
+                    step.index, step.page.value, step.url, choice.number,
                     choice.kind.value, choice.target, choice.label, choice.ad_id, step.search_text, step.thought, step.seconds,
                     step.load_seconds, step.source, session.outcome, session.order_total,
                 )])

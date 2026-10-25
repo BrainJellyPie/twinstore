@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
 
 import { getSession, onlineKeys, stepScreenshotUrl, type SessionView } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
@@ -102,6 +102,12 @@ function Journey({ projectId, runId, view, currency }: { projectId: string; runI
         <ol className="max-h-[50vh] space-y-1 overflow-y-auto">
           {session.steps.map((s, i) => (
             <li key={s.index}>
+              {s.index === session.returned_at && (
+                <p className="my-1 flex items-center gap-1 rounded-md bg-sky-500/10 px-2 py-1 text-[0.7rem] font-medium">
+                  <Mail className="size-3.5" aria-hidden />
+                  {t(s.state.reminder_percent ? "onReturnedDiscount" : "onReturned", { percent: s.state.reminder_percent ?? 0 })}
+                </p>
+              )}
               <button type="button" onClick={() => setIndex(i)} aria-current={i === index ? "step" : undefined}
                 className={cn("w-full rounded-lg border px-2 py-1 text-left text-xs", i === index ? "border-primary bg-primary/8" : "hover:bg-muted")}>
                 <span className="font-medium">{i + 1}. {t(PAGE_LABELS[s.page])}</span>

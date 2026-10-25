@@ -200,7 +200,8 @@ def cart_totals(site: OnlineSite, lines: list[CartLine], state: BrowserState, *,
         product = site.product(line.product_id)
         if product is not None:
             subtotal += product.price * line.quantity
-    discount = round(subtotal * o.coupon_percent / 100) if state.coupon_applied and o.coupon_percent else 0
+    percent = max(o.coupon_percent if state.coupon_applied else 0, state.reminder_percent)
+    discount = round(subtotal * percent / 100)
     goods = subtotal - discount
     free = o.free_shipping_threshold == 0 or goods >= o.free_shipping_threshold
     shipping = 0 if not lines or free else o.shipping_fee
@@ -208,6 +209,12 @@ def cart_totals(site: OnlineSite, lines: list[CartLine], state: BrowserState, *,
     addon = (round(subtotal * o.preselected_addon_percent / 100)
              if at_review and lines and o.preselected_addon_percent and not state.addon_removed else 0)
     return Totals(subtotal, discount, shipping, service, addon, goods + shipping + service + addon)
+
+
+def _discount_label(site: OnlineSite, state: BrowserState) -> str:
+    o = site.options
+    coupon = o.coupon_percent if state.coupon_applied else 0
+    return f"Coupon {o.coupon_code}" if coupon >= state.reminder_percent else f"Welcome-back discount ({state.reminder_percent}%)"
 
 
 def money(amount: int, site: OnlineSite) -> str:
@@ -584,7 +591,7 @@ def _cart(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[Panel]:
     t = cart_totals(site, state.cart, state, at_review=False)
     summary = [Line(f"Subtotal: {money(t.subtotal, site)}")]
     if t.discount:
-        summary.append(Line(f"Coupon {o.coupon_code}: -{money(t.discount, site)}", "good"))
+        summary.append(Line(f"{_discount_label(site, state)}: -{money(t.discount, site)}", "good"))
     elif o.coupon_code and o.coupon_percent:
         summary.append(Line("Have a coupon code?", "muted", ctl(ActionKind.APPLY_COUPON, "Apply a coupon code")))
     summary.append(Line("Delivery: free" if t.shipping == 0 else f"Delivery: {money(t.shipping, site)}"))
@@ -622,7 +629,7 @@ def _review_lines(site: OnlineSite, state: BrowserState, ctl: _Builder) -> list[
     t = cart_totals(site, state.cart, state, at_review=True)
     lines = [Line(f"Items: {money(t.subtotal, site)}")]
     if t.discount:
-        lines.append(Line(f"Coupon: -{money(t.discount, site)}", "good"))
+        lines.append(Line(f"{_discount_label(site, state)}: -{money(t.discount, site)}", "good"))
     elif o.coupon_code and o.coupon_percent:
         lines.append(Line("Have a coupon code?", "muted", ctl(ActionKind.APPLY_COUPON, "Apply a coupon code")))
     lines.append(Line("Delivery: free" if t.shipping == 0 else f"Delivery: {money(t.shipping, site)}"))
@@ -873,6 +880,17 @@ def initial_state(site: OnlineSite, *, device: Literal["desktop", "mobile"] = "d
     promo = bool(active_ads(site, "popup"))
     return BrowserState(device=device, overlay="welcome" if popup else "promo" if promo else "none", welcome_seen=popup,
                         signed_in=signed_in)
+
+
+def returning(state: BrowserState, percent: int) -> BrowserState:
+    """The visit a cart reminder email brings about: the saved cart opens, with the email's discount if it has one.
+    Sign-in, cookie answers and the shopper's text size carry over; address and payment are asked again."""
+    notice = f"Welcome back: {percent}% off your cart" if percent else "Welcome back: your cart is saved"
+    return BrowserState(at=PageRef(page=PageKind.CART), cart=state.cart, wishlist=state.wishlist, viewed=state.viewed,
+                        welcome_seen=True, cookies_answered=state.cookies_answered, coupon_known=state.coupon_known,
+                        coupon_applied=state.coupon_applied, signed_in=state.signed_in, large_text=state.large_text,
+                        text_size_changed=state.text_size_changed, device=state.device, reminder_percent=percent,
+                        notice=notice)
 
 
 def _go(state: BrowserState, ref: PageRef) -> BrowserState:

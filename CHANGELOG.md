@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add cart reminder emails to online stores. Visits that leave items in the cart
+  get a reminder, optionally with a discount (the better of it and a coupon
+  applies); some shoppers, more of the price-sensitive ones when there is a
+  discount, come back the next day to the saved cart. Reports show emails sent,
+  returns, recovered orders and revenue, the discount given and revenue per
+  email; replays mark where the second visit starts and the clickstream CSV
+  gains a `visit` column. Quick experiments offer a plain reminder and one with
+  10 % off.
 - Add quick experiments to online runs. Tick up to three one-click changes to the
   first store (drop the last-step fee, allow guest checkout, untick the add-on,
   remove the welcome popup or offer a welcome coupon, halve or double page load

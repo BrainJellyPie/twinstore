@@ -13,7 +13,7 @@ const OPTIONS: SiteOptions = {
   cookie_banner: true, chat_widget: false, shipping_fee: 499, free_shipping_threshold: 3500, coupon_code: "",
   coupon_percent: 0, coupon_public: true, guest_checkout: false, checkout_flow: "multi_step", payment_methods: ["card"],
   one_click_buy: false, service_fee: 300, preselected_addon_percent: 10, return_policy: "paid", trust_badges: true,
-  page_load_ms: 800,
+  page_load_ms: 800, cart_reminder: false, cart_reminder_percent: 0,
 };
 
 describe("quick experiments", () => {

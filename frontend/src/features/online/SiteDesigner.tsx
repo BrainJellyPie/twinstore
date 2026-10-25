@@ -192,6 +192,13 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
         <Field label={t("onOptCouponCode")}><Input aria-label={t("onOptCouponCode")} value={options.coupon_code} maxLength={20} onChange={(e) => set("coupon_code", e.target.value.toUpperCase())} /></Field>
         <Field label={t("onOptCouponPercent")}><NumberInput label={t("onOptCouponPercent")} value={options.coupon_percent} min={0} max={90} onChange={(v) => set("coupon_percent", v)} /></Field>
         {toggle("coupon_public", "onOptCouponPublic", "onOptCouponPublicHint")}
+        {toggle("cart_reminder", "onOptReminder", "onOptReminderHint")}
+        {options.cart_reminder && (
+          <Field label={t("onOptReminderPercent")} hint={t("onOptReminderPercentHint")}>
+            <NumberInput label={t("onOptReminderPercent")} value={options.cart_reminder_percent} min={0} max={50}
+              onChange={(v) => set("cart_reminder_percent", v)} />
+          </Field>
+        )}
         {toggle("guest_checkout", "onOptGuest", "onOptGuestHint")}
         <Field label={t("onOptFlow")}>
           <Select label={t("onOptFlow")} value={options.checkout_flow} onChange={(v) => set("checkout_flow", v as SiteOptions["checkout_flow"])}
