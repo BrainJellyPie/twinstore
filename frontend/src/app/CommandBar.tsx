@@ -2,7 +2,7 @@
 // control in the middle, and search (⌘K), backend status, the day/night switch and, under the launcher,
 // Quit on the right.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Camera, Globe2, KeyRound, LayoutGrid, Map, Megaphone, Moon, Search, Store, Sun } from "lucide-react";
@@ -38,13 +38,23 @@ interface NavItem {
 
 function NavSegment({ items }: { items: NavItem[] }) {
   const { t } = useI18n();
+  // In a long language a phone's tab row scrolls sideways: keep the current tab in view.
+  const row = useRef<HTMLElement>(null);
+  const current = items.findIndex((item) => item.active);
+  useEffect(() => {
+    const nav = row.current;
+    const tab = nav?.children[current] as HTMLElement | undefined;
+    if (!nav || !tab || nav.scrollWidth <= nav.clientWidth) return;
+    const left = tab.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+    if (left < 0 || left + tab.offsetWidth > nav.clientWidth) nav.scrollTo?.({ left: nav.scrollLeft + left - 8 });
+  }, [current]);
   return (
-    <nav aria-label={t("main")} className="glass col-span-2 row-start-2 flex items-center justify-self-center gap-0.5 rounded-2xl p-1 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+    <nav ref={row} aria-label={t("main")} className="glass col-span-2 row-start-2 flex max-w-full items-center justify-self-center overflow-x-auto sm:gap-0.5 rounded-2xl p-1 [scrollbar-width:none] lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:overflow-visible">
       {items.map(({ to, params, label, icon: Icon, active, disabled }) =>
         disabled ? (
           <span
             key={label}
-            className="flex h-11 cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl px-2 text-sm text-muted-foreground/45 sm:h-9 sm:flex-row sm:gap-2 sm:px-3"
+            className="flex h-11 cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl px-1 text-sm text-muted-foreground/45 sm:h-9 sm:flex-row sm:gap-2 sm:px-3"
             role="link"
             aria-label={label}
             aria-disabled="true"
@@ -62,7 +72,7 @@ function NavSegment({ items }: { items: NavItem[] }) {
             title={label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex h-11 flex-col items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium transition-[color,background-color,box-shadow] duration-200 sm:h-9 sm:flex-row sm:gap-2 sm:px-3",
+              "relative flex h-11 flex-col items-center justify-center gap-1 rounded-xl px-1 text-sm font-medium transition-[color,background-color,box-shadow] duration-200 sm:h-9 sm:flex-row sm:gap-2 sm:px-3",
               active
                 ? "bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_8px_22px_-10px_var(--primary)]"
                 : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",

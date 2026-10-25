@@ -82,7 +82,7 @@ export function LocalModelPanel() {
                 <Square className="size-3.5" aria-hidden /> {t("localStop")}
               </Button>
             ) : (
-              <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || local.state === "ready"}>
+              <Button size="sm" className="h-auto min-h-8 max-w-full py-1.5 whitespace-normal" onClick={() => start.mutate()} disabled={start.isPending || local.state === "ready"}>
                 <Play className="size-3.5" aria-hidden /> {local.downloaded === false
                   ? t("localDownloadStart", { model: plan.model.label, size: plan.model.download_gb })
                   : t("localStart", { model: plan.model.label })}

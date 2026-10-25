@@ -11,6 +11,10 @@
 
 ## 0.7.0 — The same customers in both twins, and answers that become tests
 
+- Nothing is cut off on a 360 px phone: the tab row fits in English and
+  Korean and scrolls sideways in longer languages with the current tab kept
+  in view (the last tab used to fall off the screen), and the local model's
+  download buttons wrap instead of running past their card.
 - Require product and badge fields in the local vision shopper's output grammar,
   preventing positive interest scores with no target from discarding whole shelf
   decisions. Preserve legacy name-only/number-only parsing and explicit no-choice
