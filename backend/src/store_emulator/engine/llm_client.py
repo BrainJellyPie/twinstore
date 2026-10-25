@@ -393,9 +393,9 @@ class LiteLLMClient:
             # reasoning before their JSON. Only known template-capable providers opt in.
             kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": self._chat_template_thinking}}
         if self.model.startswith("ollama_chat/"):
-            # Native Ollama otherwise drops earlier input to fit its context.
-            # Keep requirements intact so oversized tasks can recover explicitly.
-            cast(dict[str, object], kwargs.setdefault("extra_body", {}))["truncate"] = False
+            # Preserve requirements both when loading input and when generation
+            # fills the context, so oversized tasks can recover explicitly.
+            cast(dict[str, object], kwargs.setdefault("extra_body", {})).update(truncate=False, shift=False)
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -455,7 +455,7 @@ class LiteLLMClient:
         if self.model.startswith("ollama_chat/"):
             # Older SDKs accepted native length cutoffs as successful replies.
             extra["ollama_finish_reason"] = "native-v1"
-            extra["ollama_context"] = "preserve-input-v1"
+            extra["ollama_context"] = "preserve-context-v2"
         if self._chat_template_thinking is not None:
             extra["chat_template_thinking"] = str(self._chat_template_thinking)
         if self.seed is None and seed is not None:

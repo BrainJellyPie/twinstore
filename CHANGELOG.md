@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep native Ollama context intact during generation as well as input loading.
+  Requests disable context shifting so a full context can stop with a length
+  cutoff and reach bounded recovery instead of silently forgetting conditions.
+
 - Base model-failure advice on the final attempt and the native HTTP response.
   Ollama request, access, missing-model, rate-limit and server failures no longer
   all suggest starting an unreachable server; generated validation text cannot
