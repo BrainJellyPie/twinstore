@@ -69,7 +69,7 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
+parser.add_argument("--case", choices=["hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
     "persona-neighborhood", "persona-cafe", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
@@ -91,6 +91,11 @@ elif args.case == "book":
     options = TemplateLayoutRequest(template_id="bookstore", width=8, height=6, currency="USD",
         products_per_category=2, requirements="Books and stationery for local residents; no food or drinks.")
     description = "Petite librairie de quartier, livres et papeterie."
+elif args.case == "hypermarket":
+    options = TemplateLayoutRequest(template_id="hypermarket", width=32, height=26, currency="KRW",
+        products_per_category=1, excluded_categories=["beer_alcohol"],
+        requirements="Choose a coherent supermarket assortment, with one product per category. No alcoholic products. Keep cold products in fridges and respect department signs.")
+    description = "동네 주민과 가족들이 식료품과 생활필수품을 구입하는 대형 슈퍼마켓"
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
     temperature=.2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
     max_tokens=900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
@@ -373,6 +378,16 @@ try:
                 patch.object(httpx.AsyncClient, "send", traced_send):
             stocked, choices = template_assortment.select_initial_assortment(SimulationConfig(), store, options, description)
         issues = [issue.model_dump(mode="json") for issue in validate(stocked)]
+        if args.case == "hypermarket":
+            original_categories = {rack.id: rack.rack_desc for rack in store.racks}
+            categories = {row.category for row in choices}
+            result.update(category_count=len(categories),
+                          suggested_category_count=len({original_categories[row.rack_id] for row in choices}),
+                          reassigned_racks=sum(row.category != original_categories[row.rack_id] for row in choices))
+            if len(categories) <= 16:
+                issues.append({"error": "The large template collapsed to at most 16 departments."})
+            if categories & set(options.excluded_categories) or any(len(row.skus) != 1 for row in choices):
+                issues.append({"error": "The assortment violated category exclusions or the one-product limit."})
         result.update(success=not issues, choices=[choice.model_dump(mode="json") for choice in choices], issues=issues)
         (output / "store.json").write_text(stocked.model_dump_json(indent=2))
 except Exception as error:

@@ -19,8 +19,9 @@ from tests.engine.test_starter_selection import empty_store
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("count", [17, 24, 99, 100])
 @pytest.mark.parametrize("second_new", [1, 3, 7])
+@pytest.mark.parametrize("category_limit", [16, 24, 40])
 def test_near_full_category_budget_keeps_every_rack_without_invalid_global_choices(monkeypatch, tmp_path,
-                                                                                 mode, count, second_new):
+                                                                                 mode, count, second_new, category_limit):
     original = llm_client.litellm.acompletion
     calls, small = [], []
     allowed = sorted(CATALOG)[:40]
@@ -43,7 +44,7 @@ def test_near_full_category_budget_keeps_every_rack_without_invalid_global_choic
             if len(previous) == 8:
                 values = new[:second_new] + [previous[0]] * (size - second_new)
             else:
-                values = (new or choices)[:size]
+                values = new[:size] + [choices[0]] * max(0, size - len(new))
             answer = {"choices": values}
         else:
             assert "EACH listed category" in system
@@ -67,15 +68,19 @@ def test_near_full_category_budget_keeps_every_rack_without_invalid_global_choic
                      for i in range(count)]
             store = empty_store()
             before = store.model_dump()
-            result = await select_starter_products(client, store, racks, "동네 주민", allowed_categories=set(allowed))
+            result = await select_starter_products(client, store, racks, "동네 주민", allowed_categories=set(allowed),
+                                                   category_limit=category_limit)
             assert Counter(row.rack_id for row in result) == Counter(r.id for r in racks)
-            assert len({row.category for row in result}) == min(16, 8 + second_new + count - 16)
+            maximum = min(category_limit, count, len(allowed))
+            assert len({row.category for row in result}) == min(maximum, 8 + second_new + count - 16)
             assert all(row.skus and set(row.skus) <= {catalog_slot_item(item, "USD").sku for item in CATALOG[row.category]}
                        for row in result)
-            assert all(size <= (16 - previous if previous < 16 else 8) for previous, size in small)
+            assert all(size <= (maximum - previous if previous < maximum and len(allowed) > maximum else 8)
+                       for previous, size in small)
             assert len(calls) == 3 + len(small)  # Two bulk attempts, small tasks, one product selection.
             previous = len(calls)
-            assert await select_starter_products(client, store, racks, "동네 주민", allowed_categories=set(allowed)) == result
+            assert await select_starter_products(client, store, racks, "동네 주민", allowed_categories=set(allowed),
+                                                 category_limit=category_limit) == result
             assert len(calls) == previous and store.model_dump() == before
 
     asyncio.run(exercise())

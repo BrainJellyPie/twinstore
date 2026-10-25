@@ -72,12 +72,13 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
       </div>
 
       {shown.length === 0 ? <p className="text-xs text-muted-foreground">{t("onCardsNone")}</p> : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        // On a phone the cards are one swipeable row, so the rest of the report is not thousands of pixels away.
+        <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-3">
           {shown.slice(0, limit).map((sh) => {
             const v = visits[sh.id];
             const differs = v ? v.findIndex((x, i) => i > 0 && x.outcome !== v[0]!.outcome) : -1;
             return (
-              <li key={sh.id} className="group relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border bg-card/70 p-3 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+              <li key={sh.id} className="group relative flex w-[85%] shrink-0 snap-start flex-col gap-2.5 overflow-hidden rounded-2xl border bg-card/70 p-3 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg sm:w-auto">
                 <div className="pointer-events-none absolute -top-10 -right-10 size-28 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-40 heat-gradient" aria-hidden />
                 <div className="flex items-center gap-2.5">
                   <span className="heat-gradient grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold text-white shadow-inner" aria-hidden>{initials(sh.identity)}</span>

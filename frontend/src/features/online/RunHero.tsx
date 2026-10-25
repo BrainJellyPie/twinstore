@@ -66,12 +66,13 @@ export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onComp
       </div>
 
       <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
+        {/* On a phone the title takes the whole row and the actions sit under it. */}
+        <div className="min-w-0 flex-1 basis-full sm:basis-0">
           <div className="flex items-center gap-2 font-mono text-[0.7rem] tracking-[0.2em] text-white/60 uppercase">
             <span className={cn("size-2 rounded-full", running ? "animate-pulse-ring bg-volt" : status.status === "failed" ? "bg-negative" : "bg-positive shadow-[0_0_12px_var(--positive)]")} aria-hidden />
             {t("onHeroEyebrow")}
           </div>
-          <h2 className="mt-2 bg-gradient-to-r from-white via-white to-white/60 bg-clip-text font-display text-[clamp(1.9rem,4vw,3.4rem)] leading-[1.02] tracking-[-0.035em] text-transparent">
+          <h2 className="mt-2 bg-gradient-to-r from-white via-white to-white/60 bg-clip-text font-display text-[clamp(1.75rem,4vw,3.4rem)] leading-[1.02] tracking-[-0.035em] text-transparent">
             {status.name || status.site_names.join(" vs ")}
           </h2>
           <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
@@ -81,7 +82,7 @@ export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onComp
             {result?.rival_name && <span className={chip}>{t("onRivalTab", { rival: result.rival_name })}</span>}
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="-ml-2.5 flex items-center gap-1 sm:ml-0">
           <Button variant="ghost" size="icon" className="size-10 rounded-2xl text-white/80 hover:bg-white/10 hover:text-white" onClick={onWide}
             aria-pressed={wide} aria-label={wide ? t("onWideOff") : t("onWideOn")} title={wide ? t("onWideOff") : t("onWideOn")}>
             {wide ? <Minimize2 aria-hidden /> : <Maximize2 aria-hidden />}
