@@ -5,6 +5,13 @@
 - Preserve explicit free prices in automatically drafted shelf and A/B tests,
   including price-only offers, while still rejecting positive prices that round to zero.
 
+- Give rival-shop visits their own random draws. On the run's seed, a shopper who
+  reached the store from a search engine replayed at a rival like it, page for
+  page, the visit they had just left, so such a rival never sold to them.
+- Start an online visit's playback as soon as its first page has loaded, and
+  work out where each click landed without the slow eyesight filters, instead
+  of waiting for every page of the visit to be drawn twice.
+
 - Preserve explicitly free reference prices in automatically drafted concept
   tests, keeping a zero-price offer distinct from showing no price.
 
