@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Try a shelf test online: a shelf test's report can make a variant of an
+  online store from its changes, like an A/B variant. A move to another shelf
+  height now has a web counterpart: an eye-level (or higher) shelf puts the
+  product first in its category, as the Featured order shows it, and a lower
+  shelf puts it last; a move along the same shelf is still listed as not
+  carried over.
 - Bring an online variant's prices to the store: under each variant of an
   online run's comparison, **Keep it in the store** reviews the prices the
   variant changed (the run's own copy, matched by SKU) on a chosen layout in

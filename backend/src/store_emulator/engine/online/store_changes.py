@@ -2,9 +2,11 @@
 
 The marketing studio tests changes on the physical store's layout: a new price, a discount, a category's prices, a
 new package. The same changes reach an online store through its products' SKUs (a store put online from a layout
-keeps them), so one idea is tested in both channels on the same kind of shoppers. A shelf sign or a move to another
-shelf has no web counterpart and is reported as skipped rather than guessed; the other way, an online variant's
-prices reach the layout's products with the same SKU, and its design, pictures and ads stay online.
+keeps them), so one idea is tested in both channels on the same kind of shoppers. A move to another shelf height
+becomes the product's place in the list: eye level and above leads its category (the "featured" order is the list's),
+lower shelves end it. A shelf sign has no web counterpart and is reported as skipped rather than guessed; the other
+way, an online variant's prices reach the layout's products with the same SKU, and its design, pictures and ads stay
+online.
 """
 
 from collections.abc import Mapping
@@ -27,6 +29,8 @@ def apply_store_changes(site: OnlineSite, changes: list[VariantChange], *, minor
 
     applied: list[str] = []
     skipped: list[str] = []
+    first: list[OnlineProduct] = []
+    last: list[OnlineProduct] = []
     for change in changes:
         if change.kind == "category_price":
             key = change.category.strip().casefold()
@@ -49,12 +53,22 @@ def apply_store_changes(site: OnlineSite, changes: list[VariantChange], *, minor
         if change.kind == "promo":
             skipped.append(f"{change.promo or 'sign'}: a shelf sign has no web counterpart; try a discount or a coupon")
             continue
-        if change.kind == "move":
-            skipped.append("a move to another shelf has no web counterpart")
-            continue
         product = by_sku.get(change.sku)
         if product is None:
             skipped.append(f"{change.sku or 'product'}: no product with this SKU in this store")
+            continue
+        if change.kind == "move":
+            if change.level is None:
+                skipped.append(f"{product.name}: a move along the same shelf has no web counterpart")
+                continue
+            # Level 3 is eye level on a four-level rack; level 4 is above it, still in sight.
+            up = change.level >= 3
+            first[:] = [p for p in first if p is not product]
+            last[:] = [p for p in last if p is not product]
+            (first if up else last).append(product)
+            applied.append(f"{product.name}: {'first' if up else 'last'} in its category, as on "
+                           f"{'an eye-level' if up else 'a lower'} shelf"
+                           f"{'' if site.options.default_sort == 'featured' else ' (shown with the Featured sort)'}")
             continue
         old = product.price
         if change.kind == "price":
@@ -81,6 +95,9 @@ def apply_store_changes(site: OnlineSite, changes: list[VariantChange], *, minor
                 continue
             product.image_url = uri
             applied.append(f"{product.name}: new package picture")
+    if first or last:
+        moved = {id(p) for p in first + last}
+        products = first + [p for p in products if id(p) not in moved] + last
     return products, applied, skipped
 
 
