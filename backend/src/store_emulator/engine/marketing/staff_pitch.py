@@ -28,7 +28,7 @@ budget currency differently from the supplied currency. You may say no or ask fo
 
 Rate purchase_intent (1 definitely would not buy, 5 definitely would buy), trust in the employee's
 message (1 none, 5 high), and pressure felt (1 none, 5 high). Write a short natural customer reply and
-a specific reason for the ratings. These are hypothetical ratings, not a transaction.
+a specific reason for the ratings; both must contain nonblank text. These are hypothetical ratings, not a transaction.
 
 ## 언어
 Write reply and reason in English, regardless of the script's language.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Exclude staff-script ratings with blank required replies or reasons. Spaces
+  and Unicode whitespace no longer make an incomplete answer count as a valid
+  comparison pair, including when reading an older model-response cache.
+
 - Prioritize relevant store products in rival comparisons. A matching product
   after the first 300 catalog entries can now reach the model regardless of
   shelf order, while each request keeps the existing 300-reference limit.

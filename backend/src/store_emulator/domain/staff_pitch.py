@@ -50,8 +50,8 @@ class PitchRating(BaseModel):
     purchase_intent: Rating
     trust: Rating
     pressure: Rating
-    reply: str = Field(min_length=1, max_length=600)
-    reason: str = Field(min_length=1, max_length=800)
+    reply: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)]
 
 
 class PitchAnswer(BaseModel):
