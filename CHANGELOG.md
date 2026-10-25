@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Design an online store by talking to a model: **Design with AI** at the top
+  of the designer takes requests such as "make it feel premium" or "remove the
+  pressure tactics", and the text model changes the design options (style,
+  colour, banner, cards, popups, delivery fee, checkout…) within the designer's
+  own limits. Changed options appear as chips with one-click undo, the preview
+  switches between the saved store and the changes on desktop or phone, and
+  **Test against the store** saves the result as a variant and opens a run
+  with both stores selected. A reply that changed nothing says so, and a model
+  that only describes a change is asked once more to make it. Nothing is
+  saved until you save it.
+
 - Add eleven page styles for online stores: classic, minimal, luxury,
   brutalist, playful, marketplace, editorial, neon (dark), retro web, organic
   and tech. Each changes colours, corners, type (serif and monospace faces for

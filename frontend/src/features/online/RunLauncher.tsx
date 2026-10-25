@@ -25,12 +25,15 @@ const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 25, browse: 35, 
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
 const TYPICAL_STEPS = 11;
 
-export function RunLauncher({ projectId, sites, firstSiteId, hasCustomers, onStarted }: {
-  projectId: string; sites: SiteSummary[]; firstSiteId: string; hasCustomers: boolean; onStarted: (runId: string) => void;
+export function RunLauncher({ projectId, sites, firstSiteId, compareWith, hasCustomers, onStarted }: {
+  projectId: string; sites: SiteSummary[]; firstSiteId: string;
+  /** A variant to compare with the first store from the start (made by the design chat). */
+  compareWith?: string;
+  hasCustomers: boolean; onStarted: (runId: string) => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [chosen, setChosen] = useState<string[]>([firstSiteId]);
+  const [chosen, setChosen] = useState<string[]>(compareWith ? [firstSiteId, compareWith] : [firstSiteId]);
   const [shoppers, setShoppers] = useState(30);
   const [policy, setPolicy] = useState<ShopperPolicyKind>("rule");
   const [model, setModel] = useState<ModelChoice>({ kind: "default" });

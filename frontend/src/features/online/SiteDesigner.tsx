@@ -17,23 +17,27 @@ import { majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { searchText } from "@/shared/utils/searchText";
 
 import { AdsEditor } from "./AdsEditor";
+import { DesignChat } from "./DesignChat";
 import { PAYMENT_LABELS, SECTION_LABELS, SORT_LABELS } from "./labels";
 import { StylePicker } from "./StylePicker";
 
 const PRODUCT_ROWS = 60;
 
-export function SiteDesigner({ projectId, siteId, onCopied, onDeleted }: {
+export function SiteDesigner({ projectId, siteId, onCopied, onDeleted, onTest }: {
   projectId: string; siteId: string; onCopied: (siteId: string) => void; onDeleted: () => void;
+  /** A variant made to be tested against this store (the design chat's "test it"). */
+  onTest?: (variantId: string) => void;
 }) {
   const { t } = useI18n();
   const site = useQuery({ queryKey: onlineKeys.site(projectId, siteId), queryFn: ({ signal }) => getSite(projectId, siteId, signal) });
   if (site.isPending) return <div className="panel rounded-[1.6rem] p-4 text-sm text-muted-foreground">{t("studioLoading")}</div>;
   if (site.isError) return <div role="alert" className="panel rounded-[1.6rem] p-4 text-sm text-destructive">{site.error.message}</div>;
-  return <Designer key={site.data.updated_at} projectId={projectId} site={site.data} onCopied={onCopied} onDeleted={onDeleted} />;
+  return <Designer key={site.data.updated_at} projectId={projectId} site={site.data} onCopied={onCopied} onDeleted={onDeleted}
+    onTest={onTest ?? onCopied} />;
 }
 
-function Designer({ projectId, site, onCopied, onDeleted }: {
-  projectId: string; site: OnlineSite; onCopied: (siteId: string) => void; onDeleted: () => void;
+function Designer({ projectId, site, onCopied, onDeleted, onTest }: {
+  projectId: string; site: OnlineSite; onCopied: (siteId: string) => void; onDeleted: () => void; onTest: (variantId: string) => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -88,8 +92,15 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
       void qc.invalidateQueries({ queryKey: onlineKeys.sites(projectId), exact: true });
     },
   });
+  const test = useMutation({
+    // The design as it stands, as a variant of the saved store; products and ads stay the store's.
+    mutationFn: (asked: string) => copySite(projectId, site.id, {
+      name: t("onAiVariantName", { name: site.name }).slice(0, 60), note: asked.slice(0, 400), options,
+    }),
+    onSuccess: async (copy) => { await refresh(); onTest(copy.id); },
+  });
   const error = save.error ?? variant.error ?? remove.error ?? withoutAds.error;
-  const writing = save.isPending || variant.isPending || remove.isPending || withoutAds.isPending;
+  const writing = save.isPending || variant.isPending || remove.isPending || withoutAds.isPending || test.isPending;
 
   const shown = useMemo(() => {
     const words = searchText(filter);
@@ -103,6 +114,11 @@ function Designer({ projectId, site, onCopied, onDeleted }: {
 
   return (
     <fieldset disabled={writing} className="grid min-w-0 gap-3 xl:grid-cols-2">
+      <Card title={t("onAiTitle")} hint={t("onAiHint")} className="ring-aurora xl:col-span-2">
+        <DesignChat projectId={projectId} site={site} options={options} onOptions={setOptions}
+          onTest={(asked) => test.mutate(asked)} testing={test.isPending} testError={test.error?.message ?? ""} />
+      </Card>
+
       <Card title={t("onDesignStore")}>
         <Field label={t("onStoreName")}><Input aria-label={t("onStoreName")} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label={t("onVariantNote")} hint={t("onVariantNoteHint")}>

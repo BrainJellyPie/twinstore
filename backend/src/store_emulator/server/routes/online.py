@@ -21,7 +21,16 @@ from store_emulator.application.online import (
     SiteSummary,
 )
 from store_emulator.domain.interview import InterviewQuestion
-from store_emulator.domain.online import OnlineRunRequest, OnlineRunStatus, OnlineSite, OnlineTemplate, PageStyle, PageView
+from store_emulator.domain.online import (
+    DesignChatReply,
+    DesignChatRequest,
+    OnlineRunRequest,
+    OnlineRunStatus,
+    OnlineSite,
+    OnlineTemplate,
+    PageStyle,
+    PageView,
+)
 
 from ..deps import get_config
 
@@ -88,6 +97,21 @@ async def site_preview(pid: str, site_id: str, device: Literal["desktop", "mobil
     """`style` draws the store in another page style without changing it (the designer's style picker)."""
     png = await run_in_threadpool(_call, lambda: online_service.site_preview(pid, site_id, device, style))
     return Response(png, media_type="image/png", headers=_PNG_CACHE)
+
+
+@router.post("/projects/{pid}/online/sites/{site_id}/preview.png", summary="Home page of a store with an unsaved design")
+async def draft_preview(pid: str, site_id: str, req: online_service.DraftPreviewRequest) -> Response:
+    png = await run_in_threadpool(_call, lambda: online_service.draft_preview(pid, site_id, req.options, req.device))
+    return Response(png, media_type="image/png", headers=_PNG_CACHE)
+
+
+@router.post("/projects/{pid}/online/sites/{site_id}/design-chat", summary="Change a store's design by asking for it",
+             response_model=DesignChatReply)
+async def design_chat(pid: str, site_id: str, req: DesignChatRequest) -> DesignChatReply:
+    """The text model reads the conversation about the store's design (the owner's latest message last) and the
+    design being edited, and answers with a short reply and the options it changes, applied to that design and
+    checked like the designer form. Nothing is saved: keep the result as the store or as a variant to test."""
+    return await run_in_threadpool(_call, lambda: online_service.design_chat(pid, site_id, req, get_config()))
 
 
 @router.post("/projects/{pid}/online/sites/{site_id}/browse", summary="Browse the store as a shopper",

@@ -37,6 +37,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<Tab>("browse");
   const [gallery, setGallery] = useState(false);
   const [wide, setWide] = useState(false);
+  const [compare, setCompare] = useState<string | null>(null);
 
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const sites = useQuery({ queryKey: onlineKeys.sites(projectId), queryFn: ({ signal }) => listSites(projectId, signal) });
@@ -51,7 +52,7 @@ export function OnlinePage({ projectId }: { projectId: string }) {
   const selected = list.find((s) => s.id === siteId) ?? list[0] ?? null;
   const showGallery = gallery || (sites.isSuccess && list.length === 0);
 
-  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); };
+  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -143,10 +144,12 @@ export function OnlinePage({ projectId }: { projectId: string }) {
             {tab === "browse" && <BrowserView key={`${selected.id}:${selected.updated_at}`} projectId={projectId} siteId={selected.id} />}
             {tab === "design" && (
               <SiteDesigner key={selected.id} projectId={projectId} siteId={selected.id}
-                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)} />
+                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)}
+                onTest={(id) => { setCompare(id); setTab("simulate"); }} />
             )}
             {tab === "simulate" && (
-              <RunLauncher key={`${projectId}:${selected.id}`} projectId={projectId} sites={list} firstSiteId={selected.id}
+              <RunLauncher key={`${projectId}:${selected.id}:${compare ?? ""}`} projectId={projectId} sites={list} firstSiteId={selected.id}
+                compareWith={compare && list.some((s) => s.id === compare) ? compare : undefined}
                 hasCustomers={(project.data?.personas.length ?? 0) > 0}
                 onStarted={(id) => { setRunId(id); }} />
             )}

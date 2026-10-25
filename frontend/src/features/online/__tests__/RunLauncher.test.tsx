@@ -152,3 +152,14 @@ it("offers other stores in the same currency as the rival shop and sends the cho
   expect([...picker.options].map((o) => o.text)).toEqual(["None"]);
   expect(picker.value).toBe("");
 });
+
+it("starts with a variant made to be tested already compared with its store", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  clients.push(client);
+  const sites = [site, { ...site, id: "s2", name: "AI design" }];
+  render(<QueryClientProvider client={client}><RunLauncher projectId="p1" sites={sites} firstSiteId="s1" compareWith="s2"
+    hasCustomers onStarted={vi.fn()} /></QueryClientProvider>);
+  expect((screen.getByRole("checkbox", { name: /AI design/ }) as HTMLInputElement).checked).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Compare stores: 2" }));
+  await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({ site_ids: ["s1", "s2"] })));
+});

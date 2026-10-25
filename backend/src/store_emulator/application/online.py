@@ -29,6 +29,8 @@ from store_emulator.domain.online import (
     ActionKind,
     AdCampaign,
     BrowserState,
+    DesignChatReply,
+    DesignChatRequest,
     Device,
     OnlineProduct,
     OnlineRunRequest,
@@ -56,6 +58,7 @@ from store_emulator.engine.online.ads import ad_lifts
 from store_emulator.engine.online.analysis import clickstream_csv, paired_deltas, segment_deltas, summarize, switches
 from store_emulator.engine.online.browser import apply, build_page, initial_state, numbering, outline
 from store_emulator.engine.online.catalog import FROM_STORE_TEMPLATE, build_site, site_from_store, template_ids, template_summaries
+from store_emulator.engine.online.design_chat import apply_design, chat_design
 from store_emulator.engine.online.interview import ask_shopper as interview_shopper
 from store_emulator.engine.online.policies import ModelPolicy, RulePolicy, ShopperPolicy, Surveyor, tries_rival
 from store_emulator.engine.online.render import ProductPicture, Screenshot, animate, render_page, see_as
@@ -395,6 +398,40 @@ def template_preview(template_id: str, currency: str) -> bytes:
     site = build_site(template_id, site_id="preview", currency=currency)
     state = BrowserState(cookies_answered=True)
     return render_page(build_page(site, state), site, {}, _bundled_picture).png
+
+
+def design_chat(pid: str, site_id: str, req: DesignChatRequest, config: SimulationConfig) -> DesignChatReply:
+    """The designer model's reply to the owner's latest message, with its changes applied to the design being edited
+    (validated like the designer form). Nothing is saved."""
+    site = get_site(pid, site_id)
+    if req.messages[-1].role != "owner":
+        raise AppError("The last message must be the owner's", 400)
+    options = req.options or site.options
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 900})
+    try:
+        model = assistive_model(req.model, llm_config)
+        llm = assistive_client(model, llm_config)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        reply = asyncio.run(chat_design(llm, site, options, req.messages))
+        edited, changed = apply_design(options, reply.changes, site.currency)
+    except Exception as e:  # provider errors and unusable proposals reach the owner as a message, not a 500
+        logger.warning(f"[online design chat] {pid}/{site_id}: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The design could not be changed"), 502) from e
+    return DesignChatReply(reply=reply.reply, options=edited, changed=changed, model=answered_by(llm, model))
+
+
+class DraftPreviewRequest(BaseModel):
+    options: SiteOptions
+    device: Device = "desktop"
+
+
+def draft_preview(pid: str, site_id: str, options: SiteOptions, device: Device) -> bytes:
+    """The home page of a store with a design that is not saved yet (the design chat's proposal)."""
+    site = get_site(pid, site_id).model_copy(update={"options": options})
+    state = BrowserState(cookies_answered=True, device=device)
+    return render_page(build_page(site, state), site, {}, _picture(pid)).png
 
 
 def site_preview(pid: str, site_id: str, device: Device, style: PageStyle | None = None) -> bytes:
