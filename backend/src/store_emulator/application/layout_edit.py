@@ -13,6 +13,7 @@ from store_emulator.domain.product_edits import MAX_PRICE, ProductEditsReceipt
 from store_emulator.domain.store import Store
 from store_emulator.engine.layout_edit import (
     EDIT_KINDS,
+    MAX_LAYOUT_EDIT_CHANGES,
     LayoutEditDraft,
     apply_layout_edit,
     draft_layout_edit,
@@ -42,7 +43,7 @@ class LayoutEditApply(BaseModel):
     name: str = Field(default="", max_length=80, description="name of the new layout")
     source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     request_id: str = Field(pattern=r"^[0-9a-f]{32}$")
-    changes: list[VariantChange] = Field(min_length=1, max_length=20)
+    changes: list[VariantChange] = Field(min_length=1, max_length=MAX_LAYOUT_EDIT_CHANGES)
 
     @field_validator("changes")
     @classmethod
@@ -57,7 +58,7 @@ class LayoutEditCheck(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(default="", max_length=80)
-    changes: list[VariantChange] = Field(min_length=1, max_length=20)
+    changes: list[VariantChange] = Field(min_length=1, max_length=MAX_LAYOUT_EDIT_CHANGES)
     currency: str = Field(default="", max_length=3, description="the currency of the changes' prices; \"\" = the layout's")
 
 

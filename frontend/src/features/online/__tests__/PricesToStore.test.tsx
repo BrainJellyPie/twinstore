@@ -53,3 +53,13 @@ it("shows nothing when the variant changed no price", async () => {
   await vi.waitFor(() => expect(online.getRunStoreChanges).toHaveBeenCalled());
   expect(screen.queryByRole("combobox", { name: "Store layout" })).toBeNull();
 });
+
+it("shows a failed transfer request and lets the owner retry", async () => {
+  vi.mocked(online.getRunStoreChanges).mockRejectedValueOnce(new Error("This transfer exceeds 500 price changes"))
+    .mockResolvedValue(changes);
+  mount();
+  expect((await screen.findByRole("alert")).textContent).toContain("500 price changes");
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(await screen.findByRole("combobox", { name: "Store layout" })).toBeTruthy();
+  expect(screen.queryByRole("alert")).toBeNull();
+});

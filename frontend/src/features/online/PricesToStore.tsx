@@ -25,6 +25,14 @@ export function PricesToStore({ projectId, runId, variant }: { projectId: string
   const setupId = setups.some((s) => s.id === picked) ? picked
     : setups.some((s) => s.id === active) ? active : setups[setups.length - 1]?.id ?? "";
   const changes = found.data;
+  if (found.error) return (
+    <p role="alert" className="px-1.5 text-xs text-destructive">
+      {found.error.message}{" "}
+      <button type="button" onClick={() => void found.refetch()} disabled={found.isFetching} className="underline disabled:opacity-50">
+        {t("analystRetry")}
+      </button>
+    </p>
+  );
   if (!changes || changes.changes.length === 0 || !setupId) return null;
 
   return (

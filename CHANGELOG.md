@@ -24,6 +24,15 @@
   paired differences, funnel, ads, friction, survey, segments…), which
   scrolls into view and lights up once. Sections that show nothing for a run
   no longer leave an empty gap in the report.
+- Bound analyst conversation context by UTF-8 bytes and retain complete recent
+  exchanges, while preserving the entire report and current question. Four-store
+  reports with long Korean conversations no longer crowd out the tested local
+  model's reply. Keep the remaining unsupported-forecast failure visible in the
+  real CPU harness instead of treating complete JSON as a correct analysis.
+- Preserve every price change when bringing an online variant back to a store.
+  Review and save up to 500 changes; reject larger transfers explicitly instead
+  of repeatedly returning only the first 20. Show transfer errors with a retry
+  action. A real CPU probe follows a 30-product edit through both store formats.
 
 ## 0.6.0 — Online stores you can see, style and design by asking
 
