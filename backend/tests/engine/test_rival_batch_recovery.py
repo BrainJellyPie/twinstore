@@ -16,7 +16,8 @@ from store_emulator.engine.shelf_lab.rival_match import match_products
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("capacity", [1, 3, 8])
 @pytest.mark.parametrize("failure", ["length", "context"])
-def test_capacity_failure_retries_same_rows_in_smaller_learned_batches(monkeypatch, tmp_path, mode, capacity, failure):
+@pytest.mark.parametrize("extra_rows", ["single", "contradictory", "unmatched"])
+def test_capacity_failure_retries_same_rows_in_smaller_learned_batches(monkeypatch, tmp_path, mode, capacity, failure, extra_rows):
     rivals = [f"Rival tea {i}" for i in range(9)]
     ours = [f"Our tea {i}" for i in range(9)]
     original, calls, succeeded = llm_client.litellm.acompletion, [], []
@@ -36,6 +37,8 @@ def test_capacity_failure_retries_same_rows_in_smaller_learned_batches(monkeypat
             if rivals[0] not in asked:
                 # A small model can repeat a product from an earlier task. It is not part of this batch.
                 pairs.append({"rival": rivals[0], "ours": ours[1]})
+                if extra_rows != "single":
+                    pairs.append({"rival": rivals[0], "ours": ours[0] if extra_rows == "contradictory" else None})
         content = '{"pairs":[' if truncated else json.dumps({"pairs": pairs})
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "length" if truncated else "stop",
@@ -106,6 +109,7 @@ def test_unasked_product_beyond_existing_eighty_row_cap_is_not_accepted():
     class Model:
         async def generate_structured_async(self, schema, prompt, user, **kwargs):
             assert "- Label 80" not in user
-            return schema.model_validate({"pairs": [{"rival": "Label 80", "ours": "Tea"}]})
+            return schema.model_validate({"pairs": [{"rival": "Label 80", "ours": "Tea"},
+                                                    {"rival": "Label 80", "ours": "Coffee"}]})
 
-    assert asyncio.run(match_products(Model(), rivals, ["Tea"])) == {}
+    assert asyncio.run(match_products(Model(), rivals, ["Tea", "Coffee"])) == {}

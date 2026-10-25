@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate rival-product matches within the current recovery batch. Repeated
+  rows for earlier or unrequested products no longer invalidate otherwise
+  correct comparisons; conflicting answers for requested products still fail.
+
 - Use a reachable existing shelf face for automatic product moves. A busier
   face blocked by a lock, wall or fixture no longer prevents using the open
   side of the same shelf; explicitly selected blocked faces still warn.

@@ -40,6 +40,7 @@ MATCH_PROMPT = """You match products on a rival store's shelf to the same produc
 same brand, the same variant or flavour and the same size; a similar product is not a match. For each rival product,
 give our product's name exactly as listed, or an empty string, not null, when we do not sell that exact product.
 Return at most one match per rival product; never assign different products to the same rival name.
+Return only rival products listed in this request.
 Do not return both a match and an empty unmatched answer for the same rival product.
 For a name longer than 160 characters, copy its first 160 characters only when the prefix identifies one product
 in that list. Omit an ambiguous pair; do not guess between products sharing that prefix."""
@@ -75,12 +76,6 @@ async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_nam
             matched[rival] = target
         return {rival: target for rival, target in matched.items() if target is not None}
 
-    class MatchedPairs(_Pairs):
-        @model_validator(mode="after")
-        def consistent_matches(self) -> Self:
-            resolved_pairs(self.pairs)
-            return self
-
     listed = "\n".join(f"- {n}" for n in list(our_names)[:MAX_OURS])
     requested = list(rival_names[:80])
     pairs: list[_Pair] = []
@@ -88,6 +83,16 @@ async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_nam
     while start < len(requested):
         batch = requested[start:start + batch_limit]
         asked = "\n".join(f"- {name}" for name in batch)
+
+        class MatchedPairs(_Pairs):
+            @model_validator(mode="after")
+            def consistent_matches(self) -> Self:
+                # Other batches cannot change this task or invalidate its
+                # otherwise usable matches. Keep them out of the cache too.
+                self.pairs = [pair for pair in self.pairs if _listed_name(pair.rival, rivals) in batch]
+                resolved_pairs(self.pairs)
+                return self
+
         try:
             out = await llm.generate_structured_async(
                 MatchedPairs, MATCH_PROMPT, f"Our products:\n{listed}\n\nRival products:\n{asked}", max_retries=2, seed=0)
