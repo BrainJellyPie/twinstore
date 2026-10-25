@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prevent reviewed shelf-copy, library-photo, text-edit and capture-batch saves
+  from recreating deleted projects. Protect photo preview snapshots against
+  project deletion as well.
+
 - Keep late starter-product and product-edit saves from recreating deleted
   project directories while acquiring their save locks.
 

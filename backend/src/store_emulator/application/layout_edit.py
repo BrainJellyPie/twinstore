@@ -20,7 +20,7 @@ from store_emulator.engine.layout_edit import (
 from .errors import AppError, model_failure
 from .providers import assistive_client
 from .product_sources import check_product_layout, read_product_source
-from .setups import set_active_setup, setup_summary, setup_tree_transaction
+from .setups import set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .storage.io import write_json
 from .storage.setups import new_setup_data, read_setup, setup_path
 from .study_design import _last_run_units  # pyright: ignore[reportPrivateUsage]
@@ -83,8 +83,7 @@ def apply_edit(pid: str, sid: str, req: LayoutEditApply) -> dict[str, object]:
     path = setup_path(pid, f"setup_edit_{req.request_id}")
     receipt = path.parent / ".layout-edits" / f"{req.request_id}.json"
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with FileLock(path.parent / ".layout-edits.lock", timeout=0):
+        with FileLock(setup_lock_path(pid, sid).with_name(".layout-edits.lock"), timeout=0):
             if receipt.exists() and ProductEditsReceipt.model_validate_json(receipt.read_bytes()).source_id != sid:
                 raise AppError("This request belongs to another source layout", 409)
             if path.exists():

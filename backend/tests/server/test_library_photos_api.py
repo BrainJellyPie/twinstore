@@ -202,8 +202,9 @@ def test_library_500_limit(workflow):
 
 def test_lock_conflict_safe_retry_and_request_reuse(workflow):
     from filelock import FileLock
+    from store_emulator.application.setups import setup_lock_path
     client, source, _ = workflow; body = {**request(client), "request_id": "1" * 32}
-    with FileLock(setup_path(PID, SID).parent / ".library-photos.lock"):
+    with FileLock(setup_lock_path(PID, SID).with_name(".library-photos.lock")):
         assert client.post(URL + "/save", json=body).status_code == 409
     result = client.post(URL + "/save", json=body); assert result.status_code == 200
     changed = {**body, "replace_existing": True}
