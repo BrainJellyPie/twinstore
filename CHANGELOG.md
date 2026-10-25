@@ -11,8 +11,9 @@
   page with the verdict, every store's conversion ring, the paired
   differences with their intervals, the funnel, how visits ended, friction,
   ads, cart reminders, the rival shop's take, the exit survey, conversion by
-  group, products, searches and the questions asked about the run with the report lines each answer used. It reads on a
-  phone and prints to PDF (`GET …/online/runs/{id}/report.html`).
+  group, products, searches and the questions asked about the run with the
+  report lines each answer used. It reads on a phone and prints to PDF
+  (`GET …/online/runs/{id}/report.html`).
 - Ask about the web shop from the command bar: a question such as "did the
   web shop's new checkout win?" opens the latest finished online run, where
   **Ask about this run** answers it; with no finished online run the command
