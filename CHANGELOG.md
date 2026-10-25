@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Harden AI design edits for small local models with typed, sparse option updates;
+  reject duplicate, unknown, null and invalid changes. Keep the editor locked while
+  a model reply is pending, refresh changed money inputs on apply/undo without losing
+  unrelated unfinished edits, and round model-proposed amounts consistently with the
+  designer. Add reproducible CPU probes, including a broad request that still exposes
+  the 0.8B model's instruction-following limits.
+
+- Try a tested package online: a concept test whose package image is linked to
+  a store product can turn it into a variant of an online store with that
+  product's picture replaced, ready to compare with the store.
+- On narrow screens, opening an online store or run from the list scrolls to
+  it, the report's floating replay dock waits until its header has scrolled
+  past, and a variant's difference chip no longer splits its figure.
+- Keep the stores chosen for an online run in sight: they are listed together
+  above the store list, which now scrolls on its own when a project has many
+  stores, so a comparison opened from another tab shows what it compares.
+
 ## 0.6.0 — Online stores you can see, style and design by asking
 
 - Ask for a web shop change from the command bar: a request such as "make the

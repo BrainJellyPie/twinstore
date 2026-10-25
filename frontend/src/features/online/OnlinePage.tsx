@@ -2,7 +2,7 @@
 // virtual shopper does — a screenshot with numbered options — tune their design, and run virtual shoppers with a
 // purchase, browsing or bargain-hunting mission through one store or several variants at once.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, Globe2, Loader2, MousePointerClick, Plus, Settings2, Sparkles } from "lucide-react";
@@ -67,7 +67,12 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const selected = list.find((s) => s.id === siteId) ?? list[0] ?? null;
   const showGallery = gallery || (sites.isSuccess && list.length === 0);
 
-  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); };
+  // On a narrow screen the store list sits above the work area; bring what was opened into view.
+  const main = useRef<HTMLElement>(null);
+  const reveal = () => {
+    if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+  const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); reveal(); };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -115,7 +120,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ul className="space-y-1.5">
             {(runs.data ?? []).map((r) => (
               <li key={r.run_id}>
-                <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); }}
+                <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); reveal(); }}
                   aria-current={runId === r.run_id ? "true" : undefined}
                   className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", runId === r.run_id ? "border-primary bg-primary/8" : "hover:bg-muted")}>
                   <span className="flex items-center gap-2 font-medium">
@@ -134,7 +139,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         </section>
       </aside>
 
-      <main className="m-3 flex min-h-[32rem] min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
+      <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto">
         {runId ? (
           <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
             wide={wide} onWide={() => setWide((w) => !w)}

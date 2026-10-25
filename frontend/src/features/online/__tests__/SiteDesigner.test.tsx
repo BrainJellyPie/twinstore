@@ -32,6 +32,7 @@ const source: online.OnlineSite = {
 beforeEach(() => {
   useLocale.getState().setLocale("en");
   vi.mocked(online.getSite).mockResolvedValue(source);
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,preview");
   vi.mocked(online.copySite).mockImplementation(async () => ({ ...source, id: "variant", variant_of: source.id }));
   vi.mocked(online.saveSite).mockRejectedValue(new Error("The second write failed"));
 });
@@ -345,4 +346,80 @@ it("keeps the design conversation when the store is saved", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(screen.getByRole("radio", { name: /Minimal/ }).textContent).toContain("In use"));
   expect(screen.getByText("Minimal it is.")).toBeTruthy();
+});
+
+it("draws the unsaved design once typing settles, not on every key", async () => {
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  mount();
+  const hero = await screen.findByRole("textbox", { name: "Banner headline" });
+  for (const text of ["N", "Ne", "New", "New in"]) fireEvent.change(hero, { target: { value: text } });
+  await waitFor(() => expect(online.draftPreview).toHaveBeenCalled());
+  await new Promise((r) => setTimeout(r, 500));
+  expect(online.draftPreview).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(online.draftPreview).mock.calls[0]![2].hero_text).toBe("New in");
+});
+
+it("locks the draft and conflicting writes until a pending AI design reply settles", async () => {
+  let resolve: (reply: online.DesignChatReply) => void = () => { throw new Error("request not started"); };
+  vi.mocked(online.designChat).mockImplementation(() => new Promise((done) => { resolve = done; }));
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  mount();
+  const price = await screen.findByRole("textbox", { name: "Shirt: Price" }) as HTMLInputElement;
+  fireEvent.change(price, { target: { value: "7.25" } });
+  fireEvent.click(screen.getByRole("button", { name: /Make it feel premium/ }));
+  await waitFor(() => expect(online.designChat).toHaveBeenCalledTimes(1));
+  expect(price.matches(":disabled")).toBe(true);
+  expect(screen.getByLabelText("Brand color").matches(":disabled")).toBe(true);
+  for (const name of ["Save", "Save as a variant", "Delete"]) {
+    expect(screen.getByRole("button", { name }).matches(":disabled")).toBe(true);
+    screen.getByRole("button", { name }).click();
+  }
+  expect(online.saveSite).not.toHaveBeenCalled();
+  expect(online.copySite).not.toHaveBeenCalled();
+  expect(online.deleteSite).not.toHaveBeenCalled();
+  await act(async () => resolve({ reply: "Luxury style applied.", model: "local",
+    options: { ...source.options, page_style: "luxury" }, changed: ["page_style"] }));
+  await waitFor(() => expect(price.matches(":disabled")).toBe(false));
+  expect(price.value).toBe("7.25");
+  expect(screen.getByRole("radio", { name: /Luxury/ }).getAttribute("aria-checked")).toBe("true");
+});
+
+it("unlocks the draft and restores the request when AI design fails", async () => {
+  let reject: (error: Error) => void = () => { throw new Error("request not started"); };
+  vi.mocked(online.designChat).mockImplementation(() => new Promise((_done, fail) => { reject = fail; }));
+  mount();
+  const price = await screen.findByRole("textbox", { name: "Shirt: Price" }) as HTMLInputElement;
+  fireEvent.change(price, { target: { value: "7.25" } });
+  const request = screen.getByRole("textbox", { name: "Describe a change… (Enter to send)" }) as HTMLTextAreaElement;
+  fireEvent.change(request, { target: { value: "Only make the style neon" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await waitFor(() => expect(online.designChat).toHaveBeenCalledTimes(1));
+  expect(price.matches(":disabled")).toBe(true);
+  await act(async () => reject(new Error("Local model unavailable")));
+  expect((await screen.findByRole("alert")).textContent).toContain("Local model unavailable");
+  expect(price.matches(":disabled")).toBe(false);
+  expect(price.value).toBe("7.25");
+  expect(request.value).toBe("Only make the style neon");
+});
+
+it.each(["USD", "KRW", "JPY"])("shows the AI's changed %s delivery fee after a manual edit, including undo", async (currency) => {
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, currency });
+  vi.mocked(online.draftPreview).mockResolvedValue("data:image/png;base64,AAAA");
+  vi.mocked(online.designChat).mockResolvedValue({ reply: "Delivery is now free.", model: "local",
+    options: { ...source.options, shipping_fee: 0 }, changed: ["shipping_fee"] });
+  mount();
+  const fee = await screen.findByRole("textbox", { name: "Delivery fee" }) as HTMLInputElement;
+  fireEvent.change(fee, { target: { value: "7" } });
+  const price = screen.getByRole("textbox", { name: "Shirt: Price" }) as HTMLInputElement;
+  fireEvent.change(price, { target: { value: "wrong" } });
+  const request = screen.getByRole("textbox", { name: "Describe a change… (Enter to send)" });
+  fireEvent.change(request, { target: { value: "Make delivery free" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await screen.findByText("Delivery is now free.");
+  expect(fee.value).toBe("0");
+  expect(price.value).toBe("wrong");
+  expect(screen.getByRole("button", { name: "Save" }).matches(":disabled")).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+  expect(fee.value).toBe("7");
+  expect(price.value).toBe("wrong");
 });

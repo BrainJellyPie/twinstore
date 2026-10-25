@@ -30,8 +30,9 @@ const IDEAS: MessageKey[] = ["onAiIdeaPremium", "onAiIdeaKids", "onAiIdeaCalm", 
 
 export interface Turn extends DesignMessage { before?: SiteOptions; undone?: boolean }
 
-export function DesignChat({ projectId, site, options, onOptions, turns, onTurns, onTest, testing, testError }: {
+export function DesignChat({ projectId, site, options, onOptions, onWorking, turns, onTurns, onTest, testing, testError }: {
   projectId: string; site: OnlineSite; options: SiteOptions; onOptions: (options: SiteOptions) => void;
+  onWorking: (working: boolean) => void;
   /** The conversation, kept by the page so saving the store does not end it. */
   turns: Turn[]; onTurns: (update: (turns: Turn[]) => Turn[]) => void;
   /** Save the draft as a variant and open a comparison run with the store. */
@@ -50,18 +51,25 @@ export function DesignChat({ projectId, site, options, onOptions, turns, onTurns
       messages: [...turns.map(({ role, text: said, changed }) => ({ role, text: said, changed })), { role: "owner", text: owner }],
       options, model: model || undefined,
     }),
-    onMutate: () => setText(""),
+    onMutate: () => { setText(""); onWorking(true); },
     onSuccess: (reply, owner) => {
       onTurns((all) => [...all, { role: "owner", text: owner },
         { role: "designer", text: reply.reply, changed: reply.changed, before: reply.changed.length ? options : undefined }]);
       if (reply.changed.length) { onOptions(reply.options); setView("after"); }
     },
     onError: (_e, owner) => setText((current) => current || owner),
+    onSettled: () => onWorking(false),
   });
+  // Typing in the designer's fields changes the draft on every key; draw the preview once it settles.
+  const [settled, setSettled] = useState(options);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(options), 400);
+    return () => window.clearTimeout(timer);
+  }, [options]);
   const preview = useQuery({
-    queryKey: onlineKeys.draftPreview(projectId, site.id, options, device),
-    queryFn: ({ signal }) => draftPreview(projectId, site.id, options, device, signal),
-    enabled: edited && view === "after",
+    queryKey: onlineKeys.draftPreview(projectId, site.id, settled, device),
+    queryFn: ({ signal }) => draftPreview(projectId, site.id, settled, device, signal),
+    enabled: edited && view === "after" && JSON.stringify(settled) !== JSON.stringify(site.options),
     staleTime: Infinity,
   });
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [turns.length, ask.isPending]);

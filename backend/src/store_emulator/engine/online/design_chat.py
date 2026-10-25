@@ -8,9 +8,10 @@ the other online prompts; the "Language" block keeps the reply in English.
 """
 
 from collections.abc import Sequence
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from store_emulator.domain.online import (
     PAGE_STYLES,
@@ -36,8 +37,9 @@ class StructuredLLM(Protocol):
 
 DESIGN_PROMPT = """You are a web designer changing an online shop's design for its owner, in a conversation. Each turn,
 read the owner's latest message (and the conversation before it) and return:
-- the options to change, each set to its new value; leave every other option null. Use only the values listed for each
-  option. Every change you mention in the reply must be set here.
+- `updates`: a list of {{"option": field_name, "value": new_value}}. Include ONLY requested changes, using the
+  listed values. Do not copy unchanged values, emit null values or add unrelated options. Every change you mention
+  in the reply must be set here. Use an empty list when nothing should change.
 - `reply`: one to three plain sentences saying what you changed and why, or a short question ending in "?" when the
   request is unclear or cannot be done with these options (then change nothing).
 
@@ -45,6 +47,9 @@ Page styles: {styles}.
 Money amounts are in major units of {currency} (e.g. 4.99).
 Make the changes the owner asked for, plus only what clearly serves them (e.g. "feel premium": a luxury or minimal style,
 a dark theme colour, no urgency or popups). Do not undo earlier changes unless asked. Never invent options.
+Examples: "Change ONLY the color to #00AA33" => updates=[{{"option":"theme_color","value":"#00AA33"}}].
+"Remove the welcome popup" => updates=[{{"option":"welcome_popup","value":"none"}}].
+"Free delivery" => updates=[{{"option":"shipping_fee","value":0}}]. Never change unrelated options.
 
 ## Language
 Write reply in English."""
@@ -83,9 +88,50 @@ class DesignChanges(BaseModel):
     page_load_ms: int | None = Field(default=None, ge=50, le=15000)
 
 
+def _reply_schema(schema: dict[str, JsonValue]) -> None:
+    """Bind each sparse update to that option's existing non-null value schema."""
+    fields = schema["properties"]
+    assert isinstance(fields, dict)
+    variants: list[JsonValue] = []
+    for key, definition in fields.items():
+        if key == "reply":
+            continue
+        assert isinstance(definition, dict)
+        choices = definition["anyOf"]
+        assert isinstance(choices, list)
+        value = next(choice for choice in choices if isinstance(choice, dict) and choice.get("type") != "null")
+        variants.append({"type": "object", "required": ["option", "value"], "additionalProperties": False,
+            "properties": {"option": {"type": "string", "const": key}, "value": value}})
+    schema["properties"] = {
+        "updates": {"type": "array", "maxItems": len(variants), "items": {"anyOf": variants}}, "reply": fields["reply"],
+    }
+    schema["required"] = ["updates", "reply"]
+    schema["additionalProperties"] = False
+
+
 class DesignReply(DesignChanges):
     """The options to change, then the reply: a model writes what it set before saying what it did."""
+    model_config = ConfigDict(extra="forbid", json_schema_extra=_reply_schema)
     reply: str = Field(min_length=1, max_length=600)
+
+    @model_validator(mode="before")
+    @classmethod
+    def sparse_updates(cls, value: JsonValue) -> JsonValue:
+        if not isinstance(value, dict) or "updates" not in value:
+            return value  # Canonical flat changes remain readable from cache.
+        if set(value) - {"updates", "reply"} or not isinstance(value["updates"], list):
+            raise ValueError("Return only updates and reply; updates must be a list.")
+        fields: dict[str, JsonValue] = {"reply": value.get("reply")}
+        for update in value["updates"]:
+            if not isinstance(update, dict) or set(update) != {"option", "value"}:
+                raise ValueError("Each update must contain only option and value.")
+            key = update["option"]
+            if not isinstance(key, str) or key not in DesignChanges.model_fields or key in fields:
+                raise ValueError("Each design option may be updated once, using a known option name.")
+            if update["value"] is None:
+                raise ValueError("Omit unchanged options; an update must have a non-null value.")
+            fields[key] = update["value"]
+        return fields
 
     @property
     def changes(self) -> DesignChanges:
@@ -103,7 +149,8 @@ def apply_design(options: SiteOptions, changes: DesignChanges, currency: str) ->
     """`options` with the proposed changes, validated like the designer form, and the names of options that changed."""
     update: dict[str, object] = {}
     for key, value in changes.model_dump(exclude_none=True).items():
-        update[key] = round(value * _minor(currency)) if key in _MONEY and isinstance(value, float) else value
+        update[key] = (int((Decimal(str(value)) * _minor(currency)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+                       if key in _MONEY and isinstance(value, float) else value)
     edited = SiteOptions.model_validate({**options.model_dump(), **update})
     changed = [key for key in update if getattr(edited, key) != getattr(options, key)]
     return edited, changed

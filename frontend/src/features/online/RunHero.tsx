@@ -198,9 +198,9 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
         <div className="mt-2 text-xl font-semibold tabular-nums tracking-tight">{formatMoney(Math.round(money), currencyCode(currency))}</div>
         <div className="text-[0.7rem] text-white/55">{t("onKpiRevenue")} · {t("onHeroOrders", { count: orders })} · {t("onHeroOfVisits", { visits })}</div>
         {delta && (
-          <div className={cn("mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+          <div className={cn("mt-2 inline-flex flex-wrap items-center gap-x-1 rounded-2xl px-2 py-0.5 text-xs font-semibold tabular-nums",
             !delta.sure ? "bg-white/10 text-white/75" : delta.up ? "bg-positive/20 text-positive" : "bg-negative/20 text-negative")}>
-            <Arrow className="size-3.5" aria-hidden />{delta.text}
+            <span className="inline-flex items-center gap-1 whitespace-nowrap"><Arrow className="size-3.5" aria-hidden />{delta.text}</span>
             <span className="font-normal opacity-80">· {delta.sure ? (delta.up ? t("onClearlyBetter") : t("onClearlyWorse")) : t("onNoClearDiff")}</span>
           </div>
         )}

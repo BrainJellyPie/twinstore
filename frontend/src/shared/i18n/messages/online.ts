@@ -727,6 +727,7 @@ export const onlineMessages = {
   onPersonaVisitsTitle: ["This customer online", "이 고객의 온라인 쇼핑", "这位顾客的线上购物", "この顧客のオンラインでの買い物", "Este cliente en línea", "Ce client en ligne"],
   onPersonaVisitsHint: ["Online runs that drew shoppers from the store's customers sent this person to these web shops. Open one to watch the visit.", "매장 고객을 쇼핑객으로 쓴 온라인 실행에서 이 사람이 방문한 웹 쇼핑몰입니다. 하나를 열면 그 방문을 재생합니다.", "在以本店顾客为购物者的线上运行中，这个人访问了这些网店。打开其中一个即可观看访问。", "店舗の顧客を買い物客にしたオンライン実行で、この人が訪れたウェブショップです。開くとその訪問を再生します。", "Las ejecuciones online que usaron a los clientes de la tienda llevaron a esta persona a estas tiendas web. Abre una para ver la visita.", "Les simulations en ligne qui ont pris les clients du magasin comme acheteurs ont envoyé cette personne dans ces boutiques web. Ouvrez-en une pour revoir la visite."],
   onPersonaVisitsWatch: ["Watch the visit", "방문 재생", "观看访问", "訪問を再生", "Ver la visita", "Revoir la visite"],
+  onRunChosen: ["Chosen stores", "선택한 스토어", "已选商店", "選んだストア", "Tiendas elegidas", "Boutiques choisies"],
   onCardsMore: ["Show {count} more", "{count}명 더 보기", "再显示 {count} 位", "さらに {count} 人表示", "Mostrar {count} más", "Afficher {count} de plus"],
   onCardsWatch: ["Watch the visit of {shopper}", "{shopper}의 방문 보기", "观看 {shopper} 的访问", "{shopper} の訪問を見る", "Ver la visita de {shopper}", "Regarder la visite de {shopper}"],
   onCardsWatchShort: ["Watch", "보기", "观看", "見る", "Ver", "Regarder"],

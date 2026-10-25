@@ -15,6 +15,7 @@ import { richText } from "@/shared/i18n/richText";
 import { LikertBar, LikertLegend, ShareBars, VanWestendorpChart } from "./charts";
 import { segmentLabel } from "@/shared/i18n/personaLabels";
 import { questionLabel } from "./questions";
+import { PackagesOnline } from "./PackagesOnline";
 import { StudyReading } from "./StudyReading";
 
 const LETTERS = "ABCD";
@@ -137,6 +138,8 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
           <section className="self-start rounded-2xl border bg-card p-4 text-sm text-muted-foreground">{t("mkVwTooFew")}</section>
         ) : null}
       </div>
+
+      <PackagesOnline projectId={projectId} report={r} />
 
       {r.segments.length > 0 && <Segments report={r} />}
 
