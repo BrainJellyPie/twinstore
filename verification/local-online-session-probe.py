@@ -82,14 +82,15 @@ client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base=args.endpo
 policy = ModelPolicy(client, vision=True, max_tokens=240, max_retries=1)
 original_send = httpx.AsyncClient.send
 calls = 0
+attempts = 0
 
 async def traced(self, request, *a, **kw):
-    global calls
+    global calls, attempts
     started = time.perf_counter()
-    response = await original_send(self, request, *a, **kw)
-    if request.url.host == endpoint.hostname:
-        await response.aread()
-        calls += 1
+    local = request.url.host == endpoint.hostname
+    if local:
+        attempts += 1
+        attempt = attempts
         body = json.loads(request.content)
         pictures = 0
         for message in body.get('messages', []):
@@ -97,10 +98,18 @@ async def traced(self, request, *a, **kw):
                 for part in message['content']:
                     if part.get('type') == 'image_url':
                         pictures += 1
-                        picture = root/f'call-{calls}-image-{pictures}.png'
+                        picture = root/f'call-{attempt}-image-{pictures}.png'
                         picture.write_bytes(base64.b64decode(part['image_url']['url'].split(',', 1)[1]))
                         part['image_url']['url'] = picture.name
-        row = {'call': calls, 'seconds': round(time.perf_counter()-started, 2), 'status': response.status_code,
+        # A timeout must retain the exact prompt and rendered page that caused
+        # it. Never save headers or inline image bytes in the request trace.
+        with (root/'requests.jsonl').open('a') as handle:
+            handle.write(json.dumps({'attempt': attempt, 'request': body}, ensure_ascii=False)+'\n')
+    response = await original_send(self, request, *a, **kw)
+    if local:
+        await response.aread()
+        calls += 1
+        row = {'call': calls, 'attempt': attempt, 'seconds': round(time.perf_counter()-started, 2), 'status': response.status_code,
                'request': body, 'response': response.json()}
         with (root/'http.jsonl').open('a') as handle:
             handle.write(json.dumps(row, ensure_ascii=False)+'\n')
@@ -150,7 +159,7 @@ try:
                   'thought': step.thought, 'source': step.source} for step in session.steps])
 except Exception as error:
     result['error'] = repr(error)
-result.update(calls=calls, seconds=round(time.perf_counter()-started, 2), usage=client.get_usage().model_dump(mode='json'))
+result.update(calls=calls, attempted_calls=attempts, seconds=round(time.perf_counter()-started, 2), usage=client.get_usage().model_dump(mode='json'))
 (root/'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
 print(json.dumps({'root': str(root), **result}, ensure_ascii=False, indent=2), flush=True)
 raise SystemExit(0 if result['technical_success'] else 1)

@@ -12,7 +12,7 @@ from filelock import FileLock
 
 from store_emulator.application import marketing, optimize, setups, simulation
 from store_emulator.application.async_executor import executor
-from store_emulator.application.storage.io import read_json
+from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.application.storage.setups import metadata_path, personas_path, read_setup, setup_path
 from store_emulator.server.main import app
 from tests.server.test_simulation_setup_races import PID, SID, layout
@@ -58,6 +58,9 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
         url, payload = f"{base}/setups", {"source_setup_id": SID, "mode": operation}
     elif operation.startswith("delete"):
         method, url, payload = "DELETE", base if operation == "delete_project" else setup_url, None
+        if operation != "delete_project":  # a store keeps at least one layout
+            write_json(setup_path(PID, "setup_other"), {"id": "setup_other", "name": "Other", "status": "draft",
+                                                         "parentId": None, "store": None})
 
     held_path = setups.setup_lock_path(PID, SID)
     if operation in {"empty", "racks", "racks_and_items", "delete_layout_tree", "delete_project", "metadata"}:
