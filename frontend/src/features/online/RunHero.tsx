@@ -208,9 +208,11 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
         <div className="text-xs text-white/70">{t("onKpiRevenue")} · {t("onHeroOrders", { count: orders })} · {t("onHeroOfVisits", { visits })}</div>
         {delta && (
           <div className={cn("mt-2 inline-flex flex-wrap items-center gap-x-1 rounded-2xl px-2 py-0.5 text-xs font-semibold tabular-nums",
-            !delta.sure ? "bg-white/10 text-white/75" : delta.up ? "bg-positive/20 text-positive" : "bg-negative/20 text-negative")}>
-            <span className="inline-flex items-center gap-1 whitespace-nowrap"><Arrow className="size-3.5" aria-hidden />{delta.text}</span>
-            <span className="font-normal opacity-80">· {delta.sure ? (delta.up ? t("onClearlyBetter") : t("onClearlyWorse")) : t("onNoClearDiff")}</span>
+            !delta.sure ? "bg-white/10 text-white/80" : delta.up ? "bg-positive/30 text-white ring-1 ring-positive/60" : "bg-negative/30 text-white ring-1 ring-negative/60")}>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <Arrow className={cn("size-3.5", delta.sure && (delta.up ? "text-positive" : "text-negative"))} aria-hidden />{delta.text}
+            </span>
+            <span className="font-normal text-white/85">· {delta.sure ? (delta.up ? t("onClearlyBetter") : t("onClearlyWorse")) : t("onNoClearDiff")}</span>
           </div>
         )}
       </div>

@@ -34,6 +34,12 @@
   The online run form (34 px too wide in every language) and 60 other
   responsive grids now keep one column that can shrink below their breakpoint,
   so a long option or word wraps instead of pushing the whole page sideways.
+- Green, red and amber status text is legible in light mode: "clearly up",
+  gains, losses, warnings and errors measured 3.3–4.6:1 on the app's surfaces
+  (green as low as 3.3:1, under the 4.5:1 small text needs) and now measure at
+  least 4.7:1, with the same hues a shade deeper. Dark mode is unchanged. The
+  online run hero's "Clearly better/worse" pill is white on a stronger tint, and
+  the shopper filter counts are no longer dimmed.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
