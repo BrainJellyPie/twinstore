@@ -75,7 +75,11 @@ function HomePage() {
                   <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
                 </Link>
                 {projects && projects.length > 1 && (
-                  <button type="button" onClick={() => document.getElementById("stores-heading")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  <button type="button" onClick={() => {
+                    const heading = document.getElementById("stores-heading");
+                    heading?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    heading?.focus({ preventScroll: true });
+                  }}
                     className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground">
                     {t("homeAllStores", { count: projects.length })}
                     <ArrowDown className="size-3.5" aria-hidden />

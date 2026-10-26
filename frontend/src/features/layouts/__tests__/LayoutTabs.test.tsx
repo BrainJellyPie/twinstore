@@ -67,3 +67,13 @@ it.each(LOCALES)("localizes layout navigation and floor context without altering
   expect(tab.title).toContain(translate(code, "buildingFloorPosition", { level: 2, count: 3 })); expect(tab.dataset.layoutId).toBe("one");
   expect(screen.getByRole("button", { name: translate(code, "newLayout") })).toBeTruthy();
 });
+it("scrolls only the strip to the selected layout, leaving where Tab starts from alone", () => {
+  const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const [left, right] = this.getAttribute("role") === "tablist" ? [0, 100] : this.dataset.layoutId === "three" ? [150, 200] : [0, 0];
+    return { left, right, top: 0, bottom: 0, width: right - left, height: 0, x: left, y: 0, toJSON: () => ({}) } as DOMRect;
+  });
+  show("three");
+  expect(screen.getByRole("tablist").scrollLeft).toBe(100);
+  expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  rect.mockRestore();
+});

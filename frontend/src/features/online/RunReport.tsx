@@ -130,11 +130,11 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
                 <Columns2 className="size-4" aria-hidden /> {t("onSideBySide")}
               </button>
             )}
-            <a href="#online-stream" onClick={(e) => { e.preventDefault(); document.getElementById("online-stream")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+            <a href="#online-stream" onClick={(e) => { e.preventDefault(); jumpTo("online-stream"); }}
               className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm hover:bg-white/10">
               <Users className="size-4" aria-hidden /> {t("onRiverTitle")}
             </a>
-            <a href="#online-ask" onClick={(e) => { e.preventDefault(); document.getElementById("online-ask")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+            <a href="#online-ask" onClick={(e) => { e.preventDefault(); jumpTo("online-ask"); }}
               className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm hover:bg-white/10">
               <MessageSquareText className="size-4" aria-hidden /> {t("analystAsk")}
             </a>
@@ -291,7 +291,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
           controlSiteId={result.variants[0]?.site_id} onTry={onTry} />
       </Section>
 
-      <div id="online-funnel" className="grid grid-cols-1 scroll-mt-16 gap-3 xl:grid-cols-2">
+      <div id="online-funnel" tabIndex={-1} className="grid grid-cols-1 scroll-mt-16 gap-3 outline-none xl:grid-cols-2">
         <Section icon={Filter} title={t("onFunnel")}>
           {v.length > 1 && <StoreKey names={names} />}
           <FunnelChart variants={v} />
@@ -315,14 +315,14 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
         </Section>
       )}
 
-      <div id="online-ads" className="scroll-mt-16 empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
+      <div id="online-ads" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
       <div id="online-recovery" className="scroll-mt-16 empty:hidden"><Recovery variants={v} money={money} pct={pct} /></div>
-      <div id="online-rival" className="scroll-mt-16 empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
-      <div id="online-frictions" className="scroll-mt-16 empty:hidden"><Frictions variants={v} money={money} pct={pct} /></div>
-      <div id="online-surveys" className="scroll-mt-16 empty:hidden"><Surveys variants={v} pct={pct} /></div>
-      <div id="online-segments" className="scroll-mt-16 empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
+      <div id="online-rival" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
+      <div id="online-frictions" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Frictions variants={v} money={money} pct={pct} /></div>
+      <div id="online-surveys" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Surveys variants={v} pct={pct} /></div>
+      <div id="online-segments" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
 
-      <div id="online-products" className="grid grid-cols-1 scroll-mt-16 gap-3 xl:grid-cols-2">
+      <div id="online-products" tabIndex={-1} className="grid grid-cols-1 scroll-mt-16 gap-3 outline-none xl:grid-cols-2">
         <Section icon={Search} title={t("onSearches")} hint={t("onSearchesHint")}>
           {v.map((s, si) => (
             <div key={s.site_id}>
@@ -705,7 +705,7 @@ function SectionNav({ label, sections }: { label: string; sections: { id: string
       <nav ref={strip} aria-label={label} className={cn("relative flex gap-1 overflow-x-auto p-1 text-xs [scrollbar-width:none]", fade)}>
         {sections.map((x) => (
           <a key={x.id} href={`#${x.id}`} data-section={x.id} aria-current={active === x.id ? "location" : undefined}
-            onClick={(e) => { e.preventDefault(); setActive(x.id); jumpUntil.current = Date.now() + 1200; document.getElementById(x.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+            onClick={(e) => { e.preventDefault(); setActive(x.id); jumpUntil.current = Date.now() + 1200; jumpTo(x.id); }}
             className={cn("shrink-0 rounded-xl px-3 py-1.5 whitespace-nowrap transition-colors",
               active === x.id ? "bg-foreground font-medium text-background shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>{x.label}</a>
         ))}
@@ -714,9 +714,16 @@ function SectionNav({ label, sections }: { label: string; sections: { id: string
   );
 }
 
+// Like following an in-page link: bring the section into view and let the next Tab continue inside it.
+function jumpTo(id: string) {
+  const section = document.getElementById(id);
+  section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  section?.focus({ preventScroll: true });
+}
+
 function Section({ id, icon: Icon, title, hint, children }: { id?: string; icon?: LucideIcon; title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="reveal panel flex min-w-0 scroll-mt-16 flex-col gap-3 rounded-[1.6rem] p-4 text-sm sm:p-5">
+    <section id={id} tabIndex={id ? -1 : undefined} className="reveal panel flex min-w-0 scroll-mt-16 flex-col gap-3 rounded-[1.6rem] p-4 text-sm outline-none sm:p-5">
       <div className="flex items-start gap-3">
         {Icon && (
           <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white dark:text-neutral-950 shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
