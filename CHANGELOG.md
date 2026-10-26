@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- When the graphics driver resets the 3D store view (heavy work such as Photo
+  mode's path tracing can cause it), the view says so and offers **Restart the
+  3D view**, which brings the store back; Photo mode ends. Before, the store
+  went blank until the page was reloaded.
 - A layout that has no floor yet can be deleted from its Store & layout tab;
   one added by mistake could not be removed until a floor was built for it.
 - In the online stores' **Find a store or run**, Enter opens the first match and
