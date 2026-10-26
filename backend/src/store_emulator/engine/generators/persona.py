@@ -583,7 +583,20 @@ async def generate_personas_for_day(
         # Bound grammar-capable models to this task; keep the existing short/surplus
         # handling for providers that do not enforce the transmitted JSON schema.
         constraints: dict[str, JsonValue] = {"minItems": len(chunk), "maxItems": len(chunk)}
+
+        def observed_hour_types(values: list[LabelledPersona]) -> list[LabelledPersona]:
+            # The global enum alone permits a valid label from the wrong hour.
+            # Validate before cache/persistence, while Instructor can still ask
+            # the model to repair its answer. Surplus rows are discarded below.
+            for index, (person, (hour, _)) in enumerate(zip(values, chunk)):
+                allowed = [canonical_identifier(label, identities) for label in profiles_map[hour].person_types]
+                if person.identity not in allowed:
+                    raise ValueError(f"Customer at request row {index} ({hour}:00) must use one of this hour's "
+                                     f"customer identities: {allowed}. Preserve the requested row order.")
+            return values
+
         batch_schema = create_model("PersonaBatch", __base__=PersonaBatch,
+            __validators__={"observed_hour_types": field_validator("personas")(observed_hour_types)},
             personas=(list[LabelledPersona], Field(min_length=1, max_length=MAX_PERSONAS_PER_BATCH, json_schema_extra=constraints)))
         try:
             async with limit:

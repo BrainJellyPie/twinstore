@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate generated customers against the types supplied for their arrival
+  hour, so a valid global label cannot silently move a customer into a different
+  hourly cohort. Ask for correction before caching; retain bounded retries and
+  existing short-response and split-request recovery.
+
 - Recognize country-qualified dollar prices such as CA$, HK$ and US$ before
   interpreting a captured tag. Foreign amounts remain estimated for review;
   matching currencies keep their literal prices and existing discount/limit rules.

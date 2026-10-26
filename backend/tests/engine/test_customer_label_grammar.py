@@ -40,7 +40,7 @@ def test_generated_population_uses_actual_labels_and_keeps_cache_separate(monkey
             payload = dict(keywords=[], identities=identities, purposes=purposes)
         elif "hourly_profiles" in fields:
             assert set(fields["hourly_profiles"]["properties"]) == {"0"}
-            payload = {"hourly_profiles": {"0": dict(visitor_count=4, person_types=identities[:1] or ["shopper"])}}
+            payload = {"hourly_profiles": {"0": dict(visitor_count=4, person_types=list(dict.fromkeys(identities)) or ["shopper"])}}
         else:
             person_schema = fields["personas"]["items"]
             if "$ref" in person_schema:
