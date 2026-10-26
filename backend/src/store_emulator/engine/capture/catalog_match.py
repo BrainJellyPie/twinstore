@@ -224,12 +224,12 @@ _PRICE_LIMIT_SUFFIX_RE = re.compile(
     r"|[<>≤≥≦≧]=?\s*$|\+\s*$)", re.IGNORECASE,
 )
 _REFERENCE_NUMBER_PREFIX_RE = re.compile(
-    r"(?:\b(?:sku|upc|ean|gtin|(?:lot|batch|serial|model)(?:\s+(?:no\.?|number|code))?"
-    r"|(?:item|article|product)\s+(?:no\.?|number|code)"
+    r"(?:\b(?:sku|upc|ean|gtin"
+    r"|(?:lot|batch|serial|model|item|article|product|ref(?:erence)?\.?)(?:\s+(?:no\.?|number|code))?"
     r"|exp(?:iry|ires?|iration)?(?:\s+date)?|best\s+(?:before|by)|use\s+by|sell\s+by"
     r"|mfg(?:\s+date)?|manufactur(?:ed|ing)(?:\s+(?:date|on))?)"
     r"|상품(?:번호|코드)|제품(?:번호|코드)|제조(?:일자|일|번호)|유통기한|소비기한"
-    r"|賞味期限|消費期限|製造(?:年月日|日)|商品(?:番号|コード))\s*[:#]?\s*$", re.IGNORECASE,
+    r"|賞味期限|消費期限|製造(?:年月日|日)|商品(?:番号|コード)|#)\s*[:#]?\s*$", re.IGNORECASE,
 )
 _NUTRITION_UNIT = (
     r"(?:kcals?|kJ|cal(?:ories?|s)?|kilocalories?|kilojoules?|IU|international\s+units?"

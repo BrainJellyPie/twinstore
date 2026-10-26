@@ -75,7 +75,10 @@ def test_conflicting_net_size_is_filtered_before_matching(printed, size, name, s
 
 
 @pytest.mark.parametrize('mode', ['json', 'json_schema'])
-@pytest.mark.parametrize('size,reference', [('500 ml', '100 ml'), ('0.5 L', '100 ml'), ('0.5 kg', '100 g'), ('500 ml', '0.1 L')])
+@pytest.mark.parametrize('size,reference', [
+    ('500 ml', '100 ml'), ('0.5 L', '100 ml'), ('0.5 kg', '100 g'), ('500 ml', '0.1 L'),
+    ('500 ml x 6', '500 ml'), ('500ml×6', '500 ml'), ('500ml*6', '500 ml'), ('2 x 500 ml x 3', '500 ml'),
+])
 @pytest.mark.parametrize('has_correct_product', [False, True])
 @pytest.mark.parametrize('malicious_match', [False, True])
 def test_net_size_filter_survives_wire_modes_and_cached_observations(monkeypatch, tmp_path, mode, size, reference, has_correct_product, malicious_match):

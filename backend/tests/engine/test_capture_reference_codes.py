@@ -17,6 +17,13 @@ from tests.engine.test_scenario_target_matching import target_store
     ("EAN 1234", "EUR"), ("GTIN #1234", "USD"), ("LOT 1234", "USD"),
     ("Lot number: 1234", "USD"), ("Batch no. 1234", "USD"), ("Serial number 1234", "USD"),
     ("Item code: 1234", "USD"), ("Product number 1234", "USD"), ("Model 1234", "USD"),
+    ("ITEM #1234", "USD"), ("Item: 1234", "USD"), ("Item 1234", "USD"),
+    ("PRODUCT #1234", "USD"), ("Product 1234", "USD"), ("Article #1234", "EUR"),
+    ("Article 1234", "EUR"), ("Ref 1234", "USD"), ("REF #1234", "USD"),
+    ("Ref. 1234", "USD"), ("Ref. no. 1234", "USD"), ("Reference: 1234", "USD"),
+    ("Reference number 1234", "USD"), ("Reference code #1234", "USD"),
+    ("#1234", "USD"), ("# 1234", "JPY"), ("ＩＴＥＭ ＃１２３４", "KRW"),
+    ("ＲＥＦ．１２３４", "USD"), ("＃１２３４", "USD"),
     ("EXP 2026", "USD"), ("Expiry date: 2026", "USD"), ("Expires 2026", "USD"),
     ("Best before 2026", "USD"), ("Best by 2026", "USD"), ("Use by 2026", "USD"),
     ("Sell by 2026", "USD"), ("MFG 2026", "USD"), ("Manufactured on 2026", "USD"),
@@ -34,6 +41,11 @@ def test_reference_numbers_cannot_be_overridden_by_a_model_price_guess(tag, curr
     ("PRICE 1234", "USD", 1234), ("Item price $1.00", "USD", 100),
     ("Lot $1.00", "USD", 100), ("LOT USD 1.00", "USD", 100),
     ("EXPRESS $1.00", "USD", 100), ("Lotus $1.00", "USD", 100),
+    ("ITEM $1.00", "USD", 100), ("Product USD 1.00", "USD", 100),
+    ("Article $1.00", "USD", 100), ("Ref $1.00", "USD", 100), ("# $1.00", "USD", 100),
+    ("Item price 1.00", "USD", 100), ("Product price 1.00", "USD", 100),
+    ("Refill 1.00", "USD", 100), ("Referencebook 1.00", "USD", 100),
+    ("Itemized 1.00", "USD", 100), ("Productivity 1.00", "USD", 100),
     ("1,000원", "KRW", 1000), ("100円", "JPY", 100), ("1,00 €", "EUR", 100),
 ])
 def test_cash_prices_and_ordinary_numeric_tags_remain_usable(tag, currency, expected):
@@ -41,7 +53,7 @@ def test_cash_prices_and_ordinary_numeric_tags_remain_usable(tag, currency, expe
 
 
 @pytest.mark.parametrize("known", [False, True])
-@pytest.mark.parametrize("tag", ["SKU 1234", "LOT 1234", "EXP 2026"])
+@pytest.mark.parametrize("tag", ["SKU 1234", "LOT 1234", "EXP 2026", "ITEM #1234", "REF 1234", "#1234"])
 def test_a_reference_label_preserves_identity_and_the_existing_selling_price(known, tag):
     store = target_store()
     store.racks[0].slots[0].items[0].price = 799

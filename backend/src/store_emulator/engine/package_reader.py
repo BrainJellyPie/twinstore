@@ -89,7 +89,7 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     def printed_words(value: str) -> str:
         # Keep word boundaries, but allow capitalization, punctuation and 500ml/500 ml.
         normalized = unicodedata.normalize("NFKC", value).casefold()
-        normalized = re.sub(r"(?<=\d)\s*[×*]\s*(?=\d)", " x ", normalized)
+        normalized = re.sub(r"(?<=\w)\s*[×*]\s*(?=\d)", " x ", normalized)
         return " ".join(re.findall(r"[^\W\d_]+|\d+(?:[.,]\d+)?", normalized))
 
     observed = printed_words(reading.printed_text)
@@ -102,7 +102,13 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     # different orders. Require every full token, including repeated words,
     # and keep quantities together: "500 g 100 ml" does not prove "500 ml".
     # The separate matching call still decides whether the identity agrees.
-    label_tokens = re.compile(r"\d+(?:[.,]\d+)? [^\W\d_]+|[^ ]+")
+    multiplied_quantities = re.compile(
+        r"(?<![\d.,])(?:(?:\d+ x )+\d+(?:[.,]\d+)? [^\W\d_]+(?: x \d+(?![\d.,]))*"
+        r"|\d+(?:[.,]\d+)? [^\W\d_]+(?: x \d+(?![\d.,]))+)"
+    )
+    # Keep the whole expression together, including 2 x 500 ml x 3. Otherwise
+    # a trailing count can bind to a reordered brand name as if it were a unit.
+    label_tokens = re.compile(multiplied_quantities.pattern + r"|\d+(?:[.,]\d+)? [^\W\d_]+|[^ ]+")
     observed_tokens = Counter(label_tokens.findall(observed))
     # A serving/reference amount can be printed beside the net size. Reject
     # contradictory amounts, including exact conversions between metric units.
@@ -142,7 +148,6 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
 
     # A visible multipack cannot be linked to its single-unit catalog entry,
     # even though every word in the single-unit name appears on the pack.
-    multiplied_quantities = re.compile(r"(?<![\d.,])(?:\d+ x )+\d+(?:[.,]\d+)? [^\W\d_]+")
     observed_packs = set(multiplied_quantities.findall(observed))
     counted_packs = re.compile(
         r"(?<![\w.,])(?:(\d+)\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り|bottles?|cans?|jars?|병|캔|本|缶)"

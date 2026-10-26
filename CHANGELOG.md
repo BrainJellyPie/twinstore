@@ -12,6 +12,10 @@
   languages are separated by ";" or a comma and a space, so "1,49, 2,79" is
   two prices instead of four (1, 49, 2 and 79).
 
+- Keep item/reference numbers and hash-prefixed codes from becoming captured
+  selling prices. Preserve their printed labels and estimated-price review;
+  an explicit cash tag such as `ITEM $1.00` still supplies its literal price.
+
 - In a run of several days, dragging the time slider to closing time, pressing
   → near closing time, or clicking the last hour on the timeline now stays on
   the day you are watching. Before, it jumped to the end of the last day and
@@ -23,10 +27,9 @@
   Lab's price fields do the same. Typing into an estimated price and then
   erasing it no longer leaves the page "unsaved" and asking before you leave.
 
-- Model pickers and **Settings → Model providers** show the local model and
-  the self-hosted servers in the selected language ("llama.cpp 서버 ·
-  llama-server에 불러온 모델" in Korean), instead of always in English. Brand
-  names and names you gave a server stay as they are.
+- Keep reversed multipack sizes such as `500 ml × 6` from linking to a
+  single-unit product. Compare complete nested pack expressions and preserve
+  valid links when the catalog puts the brand after the pack size.
 
 - Require a resolvable shelf before accepting a generated shelf-purchase
   condition. Missing or unknown shelf targets now request correction before
@@ -39,6 +42,11 @@
 - Keep purchase limits and minimum/maximum quantities from becoming exact
   captured selling prices. Preserve the printed tag, estimated-price review
   and existing product prices; limited-offer cash prices remain usable.
+
+- Model pickers and **Settings → Model providers** show the local model and
+  the self-hosted servers in the selected language ("llama.cpp 서버 ·
+  llama-server에 불러온 모델" in Korean), instead of always in English. Brand
+  names and names you gave a server stay as they are.
 
 - The Area map key's note on rings and lines no longer starts with a stray
   "·" when it wraps onto its own line.

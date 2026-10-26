@@ -123,8 +123,8 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-reversed", "pack-multipack-reversed-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
+    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-item-code", "capture-reference-code", "capture-hash-code", "capture-item-price", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -652,7 +652,7 @@ try:
                 "capture-earn-reward": "EARN $1.00", "capture-reward-value": "$1.00 REWARD", "capture-rewards-price": "REWARDS PRICE $1.00", "capture-reward-krw": "1,000원 적립",
                 "capture-points": "100 POINTS", "capture-points-krw": "100포인트", "capture-points-price": "$1.00 WITH POINTS",
                 "capture-calorie-quantity": "100 kcal", "capture-calorie-prefix": "CALORIES 100", "capture-energy-quantity": "ENERGY 100 kJ",
-                "capture-sku-code": "SKU 1234", "capture-lot-code": "LOT 1234", "capture-expiry-year": "EXP 2026",
+                "capture-item-code": "ITEM #1234", "capture-reference-code": "REF 1234", "capture-hash-code": "#1234", "capture-item-price": "ITEM $1.00", "capture-sku-code": "SKU 1234", "capture-lot-code": "LOT 1234", "capture-expiry-year": "EXP 2026",
                 "capture-volume-only": "500 ml", "capture-count-only": "6 PACK", "capture-count-cash-price": "$6 PACK",
                 "capture-customer-limit": "LIMIT 2 PER CUSTOMER", "capture-minimum-count": "MIN 2 PER ORDER", "capture-maximum-count": "MAX 2 PER PERSON", "capture-limited-price": "LIMITED OFFER $1.00",
                 "capture-starting-price": "FROM $1.00", "capture-upper-price": "UNDER $1.00", "capture-starting-price-krw": "1,000원부터",
@@ -688,8 +688,8 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
-            expected_price = {"capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
+        if args.case in {"capture-item-price", "capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
+            expected_price = {"capture-item-price": 100, "capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
             if item.price != expected_price or item.price_estimated:
                 issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:
@@ -703,7 +703,7 @@ try:
         if args.case == "pack-jam":
             picture = bundled_product_image("/api/catalog-images/starter-01/15.webp")
             assert picture is not None
-        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted"}:
+        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-reversed", "pack-multipack-reversed-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted"}:
             # A deterministic positive-control label, not a photograph or model-generated picture.
             drawing = ImageDraw.Draw(picture)
             drawing.rounded_rectangle((100, 110, 500, 740), radius=70, fill="#dbeed0", outline="#245737", width=6)
@@ -723,6 +723,8 @@ try:
             if args.case.startswith(("pack-multipack-count", "pack-multipack-container-count")):
                 count_text = "6 BOTTLES" if "container-count" in args.case else "6 PACK"
                 labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "500 ml", 42), (560, count_text, 38)]
+            if args.case.startswith("pack-multipack-reversed"):
+                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "500 ml x 6", 42)]
             for y, label, size in labels:
                 drawing.text((300, y), label, font=load_font(size, True), fill="#153d24", anchor="mt")
             products = ["Leafy Green Tea 1 L", "Leafy Black Tea 500 ml"]
@@ -748,6 +750,8 @@ try:
                 products = ["Leafy Green Tea 500 ml"]
                 if args.case == "pack-multipack":
                     products.append("Leafy Green Tea 6 x 500 ml")
+                if args.case == "pack-multipack-reversed":
+                    products.append("Leafy Green Tea 500 ml x 6")
                 if args.case == "pack-multipack-count":
                     products.append("Leafy Green Tea 500 ml 6 pack")
                 if args.case == "pack-multipack-container-count":
@@ -758,6 +762,7 @@ try:
         issues = []
         expected_match = ("Leafy Green Tea 0.5 L" if args.case == "pack-cross-unit-reference" else
             "Leafy Green Tea 500 ml" if args.case == "pack-metric-equivalent" else
+            "Leafy Green Tea 500 ml x 6" if args.case == "pack-multipack-reversed" else
             "Leafy Green Tea 6 x 500 ml" if args.case == "pack-multipack" else
             "Leafy Green Tea 500 ml 6 pack" if args.case == "pack-multipack-count" else
             "Leafy Green Tea 500 ml 6 bottles" if args.case == "pack-multipack-container-count" else
