@@ -25,6 +25,7 @@ import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 import { useAvailableModels } from "../hooks";
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 
 const OBJECTIVES: { value: OptimizeObjective; label: MessageKey }[] = [
   { value: "revenue_per_visitor", label: "optObjRevenuePerVisitor" },
@@ -369,7 +370,8 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   }
   return (
     <div className="space-y-4 text-sm">
-      <div className={cn("rounded-lg border p-3", good ? "tone-good" : "bg-muted/30")}>
+      {/* Replaces the Start button and the progress, so focus moves to the verdict. */}
+      <div ref={focusOnMount} tabIndex={-1} className={cn("rounded-lg border p-3 outline-offset-2", good ? "tone-good" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
           {good ? <CheckCircle2 className="size-4 text-positive" /> : <TriangleAlert className="size-4 text-warn" />}
           {t("optValidated", { improvement: improvementText(validated, validationGain ?? 0, metric?.mean_a ?? 1, objective, code, locale) })}
@@ -389,7 +391,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             {/* Candidates are numbered trials: a number axis ticked at 1, 10, 20 … instead of every other one. */}
             <XAxis dataKey="i" type="number" domain={["dataMin", "dataMax"]} allowDecimals={false}
-              ticks={chart.filter((d) => d.i === 1 || d.i % 10 === 0).map((d) => d.i)} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
+              ticks={xTicks(chart.map((d) => d.i))} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
             <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={["auto", "auto"]} tickFormatter={score} width={64} />
             <Tooltip contentStyle={{ fontSize: 11 }} formatter={(value) => typeof value === "number" ? score(value) : value} />
             <Legend verticalAlign="top" align="right" height={20} iconType="plainline" wrapperStyle={{ fontSize: 11 }} />
@@ -457,7 +459,7 @@ function JudgeView({ report, result, status, code, apply, onRestart }: {
   const cal = report.calibration;
   return (
     <div className="space-y-4 text-sm">
-      <div className={cn("rounded-xl border p-3", improved && sure ? "tone-good" : improved ? "tone-warn" : "bg-muted/30")}>
+      <div ref={focusOnMount} tabIndex={-1} className={cn("rounded-xl border p-3 outline-offset-2", improved && sure ? "tone-good" : improved ? "tone-warn" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
           <Eye className="size-4" />
           {improved ? t("optPrefer", { candidate: winner!.label, improvement: improvementText(winner!.relative_improvement, gain, result.baseline_score, objective, code, locale) }) : t("optKept")}
@@ -536,6 +538,13 @@ function scoreText(objective: OptimizeObjective, value: number, code: string): s
   if (objective === "revenue_per_visitor" || objective === "total_revenue" || objective === "impulse_revenue") return formatMoney(value, code);
   if (objective === "conversion_rate") return formatPercent(value);
   return formatDecimal(value, objective === "units_per_visitor" ? 2 : 1);
+}
+
+/** Every candidate of a short search, else the first, each tenth and (when not crowding the tenth) the last. */
+function xTicks(candidates: number[]): number[] {
+  if (candidates.length <= 12) return candidates;
+  const last = candidates[candidates.length - 1] ?? 1;
+  return [...candidates.filter((i) => i === 1 || i % 10 === 0), ...(last % 10 > 3 ? [last] : [])];
 }
 
 /** A difference in the objective's unit, signed; a conversion difference reads in percentage points. */
