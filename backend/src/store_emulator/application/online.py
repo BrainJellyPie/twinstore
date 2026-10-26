@@ -631,11 +631,14 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
         status = OnlineRunStatus(
             run_id=run_id, name=request.name or " vs ".join(s.name for s in sites)[:80], site_ids=[s.id for s in sites],
             site_names=[s.name for s in sites], status="pending",
+            rival_name=rival.name if rival is not None else "",
             total=len(shoppers) * (len(sites) + (rival is not None)), request=request,
             created_at=now_iso(), image_snapshot=True,
         )
         # Shoppers see each store under its family's name; the run keeps the stores' own names as labels.
         sites = [_as_shoppers_see(pid, site) for site in sites]
+        if rival is not None:
+            rival = _as_shoppers_see(pid, rival)
         folder = _run_dir(pid, run_id)
         folder.mkdir(parents=True, exist_ok=False)
         try:
@@ -725,7 +728,7 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
             run_id=status.run_id, name=status.name, policy=request.policy, model=model, currency=sites[0].currency,
             variants=summaries, comparisons=comparisons, shoppers=shoppers, model_requests=requests,
             fallbacks=fallbacks, seconds=round(time.monotonic() - started, 1), notes=notes,
-            rival_name=rival.name if rival is not None else "",
+            rival_name=(status.rival_name or rival.name) if rival is not None else "",
             visits={shopper.id: [VisitBrief(outcome=sessions[i].outcome, order_total=sessions[i].order_total,
                                             clicks=sum(1 for step in sessions[i].steps if step.choice is not None),
                                             rival=r.outcome if (r := sessions[i].rival) else None,
@@ -912,8 +915,11 @@ def _stores(pid: str, run_id: str) -> list[OnlineSite]:
 
 def _labels(pid: str, run_id: str, stores: list[OnlineSite]) -> list[str]:
     """The run's stores by their own names; the snapshot holds the names their shoppers saw."""
-    names = OnlineRunStatus.model_validate(read_json(_run_dir(pid, run_id) / "status.json")).site_names
-    return [names[i] if i < len(names) else store.name for i, store in enumerate(stores)]
+    status = OnlineRunStatus.model_validate(read_json(_run_dir(pid, run_id) / "status.json"))
+    names = [status.site_names[i] if i < len(status.site_names) else store.name for i, store in enumerate(stores)]
+    if status.rival_name and len(stores) > len(status.site_ids):
+        names[len(status.site_ids)] = status.rival_name
+    return names
 
 
 def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> SessionView:
@@ -1203,4 +1209,6 @@ def export_clickstream(pid: str, run_id: str) -> str:
     visitors = [{s.id: s for s in shoppers} for _ in sites]
     if len(stores) > len(sites):  # the rival's visitors, as they arrived there
         visitors.append({s.id: there for s in shoppers if (there := at_rival(stores[-1], s, sites[0])) is not None})
-    return clickstream_csv([(site, _sessions(pid, run_id, i), visitors[i]) for i, site in enumerate(stores)])
+    labels = _labels(pid, run_id, stores)
+    return clickstream_csv([(site.model_copy(update={"name": labels[i]}), _sessions(pid, run_id, i), visitors[i])
+                            for i, site in enumerate(stores)])

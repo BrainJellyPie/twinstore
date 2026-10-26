@@ -722,6 +722,7 @@ class OnlineRunStatus(BaseModel):
     name: str = ""
     site_ids: list[str]
     site_names: list[str] = []
+    rival_name: str = ""  # the rival's report label; its snapshot may use the shopper-facing family name
     status: str  # pending | running | completed | failed
     phase: str = ""
     done: int = 0  # sessions finished, all variants

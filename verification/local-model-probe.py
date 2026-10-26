@@ -123,12 +123,12 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
+    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-sku-code", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -149,6 +149,12 @@ output = args.output / f"{args.case}-{args.structured_output}-{time.time_ns()}"
 output.mkdir(parents=True)
 if args.cache_from:
     shutil.copytree(args.cache_from.resolve(), output / "cache")
+starter_book_price_bounds = {
+    "book-price-unavailable": ("USD", "100.00", "200.00", 10000, 20000),
+    "book-price-range": ("USD", "15.00", "20.00", 1500, 2000),
+    "book-price-range-krw": ("KRW", "25000", "28000", 25000, 28000),
+    "book-price-range-jpy": ("JPY", "2800", "3100", 2800, 3100),
+}
 options = TemplateLayoutRequest(template_id="compact_cvs", width=8, height=6, currency="KRW")
 description = "동네 주민이 자주 방문하는 동네 편의점"
 if args.case == "cafe":
@@ -156,7 +162,7 @@ if args.case == "cafe":
         products_per_category=1, excluded_categories=["beer_alcohol"],
         requirements="No alcoholic products. One product per category. Preserve the cafe and bakery shelf purposes.")
     description = "近所の住民が訪れる小さなカフェ。パンとコーヒー。"
-elif args.case in {"book", "book-repurpose", "book-excluded"}:
+elif args.case.startswith("book"):
     options = TemplateLayoutRequest(template_id="bookstore", width=8, height=6, currency="USD",
         products_per_category=2, requirements="Books and stationery for local residents; no food or drinks.")
     description = "Petite librairie de quartier, livres et papeterie."
@@ -164,6 +170,10 @@ elif args.case in {"book", "book-repurpose", "book-excluded"}:
         options = options.model_copy(update={"requirements": "Repurpose every shelf for gift wrapping products only. Use gift_wrapping for every section, overriding the books and stationery shelf signs. Select at most two products. No other categories."})
     elif args.case == "book-excluded":
         options = options.model_copy(update={"excluded_categories": ["stationery"], "requirements": "Sell only books. Replace the stationery section with books and keep existing book sections. No food, drinks or other categories."})
+    elif args.case in starter_book_price_bounds:
+        currency, minimum, maximum, _, _ = starter_book_price_bounds[args.case]
+        options = options.model_copy(update={"currency": currency, "products_per_category": 1,
+            "requirements": f"Keep the Books and Stationery shelf purposes. Select only books priced from {minimum} to {maximum} {currency} each, inclusive. For stationery choose any catalog product. At most one product per category. No food or drinks."})
 elif args.case == "hypermarket":
     options = TemplateLayoutRequest(template_id="hypermarket", width=32, height=26, currency="KRW",
         products_per_category=1, excluded_categories=["beer_alcohol"],
@@ -554,6 +564,9 @@ try:
         elif args.case == "persona-bookstore":
             address, currency, categories, budget = "Lyon, France", "EUR", ["books", "stationery"], (500, 2000)
             profile = "Une librairie de quartier pour les habitants qui achètent des livres et de la papeterie. Le budget par visite est de 5 à 20 euros."
+        elif args.case == "persona-category-labels":
+            address, currency, categories, budget = "Seoul, South Korea", "KRW", ["Books — 새책·헌책", "Stationery / 紙もの 🌿"], (3000, 10000)
+            profile = "Neighborhood residents buy books and stationery. Their per-visit budget is 3,000–10,000 KRW. Copy the supplied department names exactly; do not translate or shorten them."
         elif args.case == "persona-us":
             address, currency, categories, budget = "Austin, Texas, USA", "USD", ["snacks", "drinks"], (300, 1000)
             profile = "Una tienda de barrio para vecinos que compran aperitivos y bebidas. El presupuesto por visita es de 3 a 10 dólares estadounidenses."
@@ -574,11 +587,14 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches"}:
+            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels"}:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
                     identities=["local resident", "night shift worker"], purposes=["buy snacks", "buy drinks"])
+                if args.case == "persona-category-labels":
+                    area = TradeAreaProfile(keywords=["neighborhood", "reading"],
+                        identities=["local resident", "student"], purposes=["buy books", "buy stationery"])
                 hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
                 people = asyncio.run(generate_personas_for_day(client, address, area, Weekday.MON, hourly,
                     seed=4, batch_size=persona_batch_size, max_concurrent=1, categories=categories,
@@ -592,7 +608,7 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches"} and len(written) != customer_count:
+        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels"} and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
         if any(person.day != Weekday.MON or not opening <= person.arrival_hour < closing for person in people):
             issues.append("Arrival outside the open hours")
@@ -619,6 +635,7 @@ try:
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00", "capture-coupon-value": "$1.00 COUPON",
                 "capture-earn-reward": "EARN $1.00", "capture-reward-value": "$1.00 REWARD", "capture-rewards-price": "REWARDS PRICE $1.00", "capture-reward-krw": "1,000원 적립",
                 "capture-points": "100 POINTS", "capture-points-krw": "100포인트", "capture-points-price": "$1.00 WITH POINTS",
+                "capture-sku-code": "SKU 1234", "capture-lot-code": "LOT 1234", "capture-expiry-year": "EXP 2026",
                 "capture-volume-only": "500 ml", "capture-count-only": "6 PACK", "capture-count-cash-price": "$6 PACK",
                 "capture-starting-price": "FROM $1.00", "capture-upper-price": "UNDER $1.00", "capture-starting-price-krw": "1,000원부터",
                 "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
@@ -720,6 +737,12 @@ try:
         store = generate_store(options.template_id, currency=options.currency, options=options)
         original = store.model_dump(mode="json")
         (output / "source-store.json").write_text(store.model_dump_json(indent=2))
+        if args.case == "book-price-unavailable":
+            _, _, _, minimum, maximum = starter_book_price_bounds[args.case]
+            available_prices = [catalog_slot_item(entry, options.currency).price for entry in CATALOG["books"]]
+            result["available_book_prices"] = available_prices
+            if any(minimum <= price <= maximum for price in available_prices):
+                raise AssertionError("The unavailable-price fixture now has an eligible catalog book; update its bounds.")
         # Inject the real loopback client at the provider-selection seam, without editing saved settings.
         with patch.object(template_assortment, "assistive_client", return_value=client), \
                 patch.object(httpx.AsyncClient, "send", traced_send):
@@ -760,7 +783,7 @@ try:
                 issues.append({"error": "The large template collapsed to at most 16 departments."})
             if categories & set(options.excluded_categories) or any(len(row.skus) != 1 for row in choices):
                 issues.append({"error": "The assortment violated category exclusions or the one-product limit."})
-        if args.case in {"book", "book-repurpose", "book-excluded", "cafe"}:
+        if args.case.startswith("book") or args.case == "cafe":
             replacement = {"book-repurpose": "gift_wrapping", "book-excluded": "books"}.get(args.case)
             expected = {rack.id: replacement or rack.rack_desc for rack in store.racks}
             mismatches = [{"rack": row.rack_id, "expected": expected[row.rack_id], "actual": row.category}
@@ -768,6 +791,13 @@ try:
             result["category_mismatches"] = mismatches
             if mismatches:
                 issues.append({"error": "The category choices ignored this fixture's explicit requirements or shelf purposes."})
+        if args.case in starter_book_price_bounds:
+            _, _, _, minimum, maximum = starter_book_price_bounds[args.case]
+            books = {item.sku: item.price for rack in stocked.racks if rack.rack_desc == "books"
+                     for slot in rack.slots for item in slot.items}
+            result["book_prices"] = books
+            if not books or any(not minimum <= price <= maximum for price in books.values()):
+                issues.append({"error": "Selected books outside the explicitly requested per-product price range."})
         result.update(success=not issues, choices=[choice.model_dump(mode="json") for choice in choices], issues=issues)
         (output / "store.json").write_text(stocked.model_dump_json(indent=2))
 except Exception as error:

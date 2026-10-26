@@ -7,6 +7,18 @@
   for the ordinary-day preset, in every language. Situations the user named keep
   their names.
 
+- Keep bare product identifiers, batch numbers and marked expiry/manufacture
+  dates from becoming exact captured selling prices. Preserve their printed
+  text and existing product prices; explicit currency prices stay usable.
+
+- Keep generated customer preferences within the supplied department list in
+  both the model grammar and response/cache validation. Repair unknown labels
+  before accepting a customer; preserve browsing and inference when no list is supplied.
+
+- Give automatic starter-product selection readable currency amounts instead
+  of unqualified stored integers, and require both ends of a requested price
+  range. A cheaper product below the requested minimum is not a valid substitute.
+
 - Shelf Lab's product slots can be filled from a list of the shelf's products
   as well as by clicking the photo, so a swap, extension or any other change
   can be set up from the keyboard. The button that clears a slot is no longer
@@ -23,7 +35,9 @@
   different store name, sometimes one that described the change being tested.
   Runs, replays and the store designer's previews now show the original name.
   Reports, run lists and the store list still use each version's own name, and
-  the designer says so under a variant's name.
+  the designer says so under a variant's name. Rival variants use their original
+  storefront name too, while CSV exports and historical reports retain the
+  version labels captured when the run started.
 
 - Emptying a pack's name in the marketing product library and leaving the
   field now brings the saved name back. Before, the field stayed blank while
