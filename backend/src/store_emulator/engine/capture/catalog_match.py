@@ -224,6 +224,7 @@ _MEASURE_RATE_RE = re.compile(
     rf"|(?<!\w){_MEASURE_UNIT}\s*(?:당|当たり|あたり))(?!\w)",
     re.IGNORECASE,
 )
+_MEASURE_QUANTITY_RE = re.compile(rf"^{_MEASURE_UNIT}(?!\w)", re.IGNORECASE)
 _CONTAINER_UNIT = r"(?:bottles?|cans?|jars?|병|캔|本|缶)"
 _CONTAINER_RATE_RE = re.compile(
     rf"(?:(?:[/∕⁄]|\bper\s+)\s*{_CONTAINER_UNIT}(?:\s*(?:당|当たり|あたり))?"
@@ -287,6 +288,13 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
         return None
     if any(_MEASURE_RATE_RE.search(part) for part in price_context):
         # The photographed package can contain a different volume/weight.
+        return None
+    cash_unit = (any(symbol in normalized for symbol in "$€£¥₩¢원円")
+                 or _PRICE_CURRENCY_CODE_RE.search(normalized) is not None
+                 or re.search(r"\bcents?\b", normalized, re.IGNORECASE) is not None)
+    if not cash_unit and (_MEASURE_QUANTITY_RE.match(price_context[1]) or _PACK_COUNT_RE.search(normalized)):
+        # A bare size/count (500 ml, 6 PACK) supplies no price or currency.
+        # Explicit cash amounts such as "$6 PACK" still describe selling prices.
         return None
     if multipack and any(_CONTAINER_RATE_RE.search(part) for part in price_context):
         # A bottle/can rate does not establish the price of the whole multipack.

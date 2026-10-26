@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep bare package sizes and counts, such as "500 ml" and "6 PACK", from
+  becoming exact captured prices. Explicit cash amounts such as "$6 PACK"
+  and ordinary numeric price tags retain their existing interpretation.
+
 - Do not turn loyalty point counts into cash selling prices during shelf
   capture. Preserve point labels and mark fallback prices as estimated;
   explicit cash prices such as "$1.00 WITH POINTS" still apply.
