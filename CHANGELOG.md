@@ -6,6 +6,10 @@
   of unqualified stored integers, and require both ends of a requested price
   range. A cheaper product below the requested minimum is not a valid substitute.
 
+- On a phone-width screen the Area page shows its map key below the map
+  instead of covering the lower half of it, including part of the store's
+  catchment rings. Wider screens keep the key over the map.
+
 - Capitalize the crowding choices in the situation editor and the day-type
   switch on the Area page, like the options around them ("Busy",
   "Weekend").

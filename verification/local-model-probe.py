@@ -123,7 +123,7 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
     "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
@@ -150,6 +150,7 @@ output.mkdir(parents=True)
 if args.cache_from:
     shutil.copytree(args.cache_from.resolve(), output / "cache")
 starter_book_price_bounds = {
+    "book-price-unavailable": ("USD", "100.00", "200.00", 10000, 20000),
     "book-price-range": ("USD", "15.00", "20.00", 1500, 2000),
     "book-price-range-krw": ("KRW", "25000", "28000", 25000, 28000),
     "book-price-range-jpy": ("JPY", "2800", "3100", 2800, 3100),
@@ -729,6 +730,12 @@ try:
         store = generate_store(options.template_id, currency=options.currency, options=options)
         original = store.model_dump(mode="json")
         (output / "source-store.json").write_text(store.model_dump_json(indent=2))
+        if args.case == "book-price-unavailable":
+            _, _, _, minimum, maximum = starter_book_price_bounds[args.case]
+            available_prices = [catalog_slot_item(entry, options.currency).price for entry in CATALOG["books"]]
+            result["available_book_prices"] = available_prices
+            if any(minimum <= price <= maximum for price in available_prices):
+                raise AssertionError("The unavailable-price fixture now has an eligible catalog book; update its bounds.")
         # Inject the real loopback client at the provider-selection seam, without editing saved settings.
         with patch.object(template_assortment, "assistive_client", return_value=client), \
                 patch.object(httpx.AsyncClient, "send", traced_send):
