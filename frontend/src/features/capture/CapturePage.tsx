@@ -317,19 +317,20 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
                   className={cn("rounded-xl border p-2 transition-colors", hover === d.id ? "border-primary bg-primary/5" : "")}>
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 shrink-0 rounded-full" style={{ background: categoryColor(d.category) }} />
-                    <Input value={d.name} placeholder={t("capProductName")} onChange={(e) => patch(d.id, { name: e.target.value })} className="h-8 flex-1 text-sm" />
+                    <Input value={d.name} placeholder={t("capProductName")} aria-label={t("capProductName")} onChange={(e) => patch(d.id, { name: e.target.value })} className="h-8 flex-1 text-sm" />
                     <button type="button" aria-label={t("capRemoveProduct")} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                       onClick={() => setDrafts((ds) => ds.filter((x) => x.id !== d.id))}>
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
                   <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_92px] items-center gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_88px_92px]">
-                    <select className="col-span-2 h-7 min-w-0 rounded-md border bg-background px-1 sm:col-span-1" value={d.category} onChange={(e) => patch(d.id, { category: e.target.value })}>
+                    <select className="col-span-2 h-7 min-w-0 rounded-md border bg-background px-1 sm:col-span-1" value={d.category}
+                      aria-label={t("capCategoryOf", { name: d.name || t("capProductName") })} onChange={(e) => patch(d.id, { category: e.target.value })}>
                       <option value="">{categoryLabel("", t)}</option>
                       {CAPTURE_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{t(c.label)}</option>)}
                     </select>
                     <div className="relative">
-                      <Input value={d.price} inputMode="decimal" onChange={(e) => patch(d.id, { price: e.target.value, estimated: false })}
+                      <Input value={d.price} inputMode="decimal" aria-label={t("capPriceOf", { name: d.name || t("capProductName") })} onChange={(e) => patch(d.id, { price: e.target.value, estimated: false })}
                         className={cn("h-7 pr-1 text-xs tabular-nums", d.estimated && "border-dashed text-muted-foreground")} placeholder={t("capPricePlaceholder")}
                         title={d.estimated ? t("capEstimatedPriceTitle") : undefined} />
                     </div>

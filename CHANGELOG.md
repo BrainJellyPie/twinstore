@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover oversized automatic-product catalogs in bounded groups, shrinking
+  failed groups before trying individual categories. Clarify that product lists
+  are candidates, so small local models do not copy the whole catalog when the
+  owner requests one product per category. Keep SKU, capacity and currency checks.
+
 - Keep package matches when the catalog puts the printed brand or size in a
   different order. Still require the observed words and preserve quantity/unit
   pairs, so a label with “500 g / 100 ml” does not support a 500 ml product.
@@ -77,6 +82,12 @@
   store's layout is closed at weekends), the panel says so and points to the
   layout's opening hours, instead of showing 0 visitors, "half within 0 m", a
   "≈ 1 min" walk and an empty hourly chart.
+- Shelf capture's **Restore saved queue** with nothing saved says no queue is
+  saved in this browser yet, instead of "the browser copy is no longer
+  available. It may have been cleared or evicted."
+- A shelf photo's product rows name their fields for screen readers ("Category
+  of Cola 2L", "Price of Cola 2L"); the category list had no name and the
+  price field only a "price" placeholder.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

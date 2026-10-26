@@ -140,6 +140,7 @@ client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_k
 send = httpx.AsyncClient.send
 calls = 0
 attempts = 0
+wire_output_modes: set[str] = set()
 
 
 async def traced_send(self, request, *positional, **keywords):
@@ -150,6 +151,8 @@ async def traced_send(self, request, *positional, **keywords):
         attempts += 1
         attempt = attempts
         payload = json.loads(request.content)
+        response_format = payload.get("response_format", {})
+        wire_output_modes.add(str(response_format.get("type", "unspecified")))
         for message in payload.get("messages", []):
             if isinstance(message.get("content"), list):
                 for part in message["content"]:
@@ -618,7 +621,7 @@ try:
 except Exception as error:
     result.update(success=False, error=repr(error))
 result.update(seconds=round(time.perf_counter() - started, 2), calls=calls, attempted_calls=attempts,
-              usage=client.get_usage().model_dump(mode="json"))
+              wire_output_modes=sorted(wire_output_modes), usage=client.get_usage().model_dump(mode="json"))
 (output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
 print(json.dumps({"output": str(output), **{key: result[key] for key in ("success", "seconds", "calls", "attempted_calls", "usage")}}, indent=2))
 raise SystemExit(0 if result["success"] else 1)
