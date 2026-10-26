@@ -8,6 +8,8 @@
   labels sit on small solid pills and bubbles are opaque, so where shoppers
   stand close the nearer one covers the farther instead of their text printing
   over each other ("MCorporate executivesrs").
+- A shopper's facts (came for, budget, spent) wrap to two lines instead of
+  cutting off at one ("Spent: $35.73 · 7 i…").
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
