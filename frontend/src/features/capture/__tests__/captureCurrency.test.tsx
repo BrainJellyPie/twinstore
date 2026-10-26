@@ -7,7 +7,7 @@ import * as api from "@/shared/api/client";
 import type { CaptureStatus, CaptureView } from "@/shared/api/client";
 import { CapturePage } from "../CapturePage";
 
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn(), useRouter: () => ({ state: { location: { pathname: "/capture/project" } } }) }));
+vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }), useNavigate: () => vi.fn(), useRouter: () => ({ state: { location: { pathname: "/capture/project" } } }) }));
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(),
   listCaptures: vi.fn(), getCapture: vi.fn(), updateCapture: vi.fn(), getModels: vi.fn().mockResolvedValue([]),

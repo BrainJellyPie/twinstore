@@ -3,11 +3,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useBlocker, useNavigate, useRouter } from "@tanstack/react-router";
 import { Camera, Check, Eye, EyeOff, FlaskConical, ListChecks, Loader2, Minus, Plus, Save, Trash2, Wand2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import type { CaptureBox, CaptureEdit, CaptureItem, CaptureResult, CaptureStatus } from "@/shared/api/client";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -29,6 +32,7 @@ import { STAGES } from "./stages";
 const DETECTORS: Record<string, MessageKey> = { classic: "capDetectorClassicName", vlm: "capDetectorVlmName" };
 
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
+const blockLeaving = () => true;
 
 export function CapturePage({ projectId }: { projectId: string }) {
   const { t } = useI18n();
@@ -44,7 +48,15 @@ export function CapturePage({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!selected && !chosenNew && captures.length > 0) setSelected(captures[0]!.capture_id);
   }, [captures, selected, chosenNew]);
-  const select = (id: string | null) => { setChosenNew(id === null); setSelected(id); };
+  const show = (id: string | null) => { setChosenNew(id === null); setSelected(id); };
+  // Unsaved product corrections on the open photo: ask before another photo, another page or a reload drops them.
+  const [unsaved, setUnsaved] = useState(false);
+  const [switchTo, setSwitchTo] = useState<{ id: string | null } | null>(null);
+  const leave = useBlocker({ shouldBlockFn: blockLeaving, withResolver: true, enableBeforeUnload: true, disabled: !unsaved });
+  const select = (id: string | null) => {
+    if (unsaved && id !== selected) setSwitchTo({ id });
+    else show(id);
+  };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
@@ -54,9 +66,24 @@ export function CapturePage({ projectId }: { projectId: string }) {
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
         <div hidden={!!selected} className="min-h-64 shrink-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} onRecoveryAvailable={setHasSavedQueue} /></div>
         {selected && (
-          <CaptureWorkspace key={selected} projectId={projectId} captureId={selected} onDeleted={() => select(null)} />
+          <CaptureWorkspace key={selected} projectId={projectId} captureId={selected} onDeleted={() => show(null)} onUnsaved={setUnsaved} />
         )}
       </div>
+      <AlertDialog open={leave.status === "blocked" || switchTo !== null}
+        onOpenChange={(open) => { if (!open) { setSwitchTo(null); leave.reset?.(); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("capLeaveEditsTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("capLeaveEditsDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("keepEditing")}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => {
+              if (switchTo) { setUnsaved(false); show(switchTo.id); setSwitchTo(null); } else leave.proceed?.();
+            }}>{t("capLeaveEdits")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -91,7 +118,9 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
 
 // ── Workspace ─────────────────────────────────────────────────────────────
 
-function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: string; captureId: string; onDeleted: () => void }) {
+function CaptureWorkspace({ projectId, captureId, onDeleted, onUnsaved }: {
+  projectId: string; captureId: string; onDeleted: () => void; onUnsaved: (unsaved: boolean) => void;
+}) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const view = useQuery({
@@ -186,7 +215,8 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
           {status.status === "failed" && <p className="rounded-xl border tone-bad p-3 text-sm">{status.error}</p>}
-          {result && tab === "planogram" && <ItemsEditor projectId={projectId} captureId={captureId} result={result} hover={hover} onHover={setHover} />}
+          {/* Kept mounted on the Shelf Lab tab so unsaved corrections survive a look there. */}
+          {result && <div hidden={tab !== "planogram"}><ItemsEditor projectId={projectId} captureId={captureId} result={result} hover={hover} onHover={setHover} onUnsaved={onUnsaved} /></div>}
           {result && tab === "planogram" && <ApplyPanel projectId={projectId} captureId={captureId} result={result} />}
           {result && tab === "planogram" && <RivalCard projectId={projectId} captureId={captureId} result={result} />}
           {result && tab === "lab" && (
@@ -274,8 +304,9 @@ const toDraft = (it: CaptureItem, currency: string): Draft => ({
   facings: it.facings, level: it.level, estimated: it.price_estimated, confidence: it.confidence,
 });
 
-function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
+function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }: {
   projectId: string; captureId: string; result: CaptureResult; hover: string | null; onHover: (id: string | null) => void;
+  onUnsaved: (unsaved: boolean) => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -283,6 +314,8 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
   const [drafts, setDrafts] = useState<Draft[]>(initial);
   useEffect(() => setDrafts(initial), [initial]);
   const dirty = JSON.stringify(drafts) !== JSON.stringify(initial);
+  useEffect(() => { onUnsaved(dirty); }, [dirty, onUnsaved]);
+  useEffect(() => () => onUnsaved(false), [onUnsaved]);
   const invalidPrice = drafts.some((d) => d.price.trim() !== "" && toMinor(d.price, minorUnitDivisor(result.currency)) === null);
   const save = useMutation({
     mutationFn: () => api.updateCapture(projectId, captureId, drafts.map((d): CaptureEdit => ({
