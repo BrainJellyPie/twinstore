@@ -2,6 +2,67 @@
 
 ## Unreleased
 
+- The command palette finds each marketing studio tool by name in any of the six
+  languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
+  before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`
+  links to a tool.
+- The floor editor's grid is one Tab stop: the arrow keys move between cells,
+  Home and End go to a row's ends, and Enter selects. Before, every cell was a
+  Tab stop (1,600 on a 40 by 40 floor). Cells read their place as "column 3,
+  row 3" for screen readers, as the panel shows it, instead of "2,2".
+- The floor editor opens at the largest zoom (up to 100 %) that shows every row:
+  an 8 by 8 floor opened at 100 % with its last row cut off. A floor too deep
+  to fit opens at the smallest zoom and scrolls.
+- A layout without a floor yet opens on its setup steps (Step 1: Floor
+  configuration), and the empty floor and the Store & layout tab both offer
+  **Go to Step 1**. Coming from another layout's store tab, a new empty layout
+  showed only "Add a floor first to see store info." with no way forward.
+- Keep visible multipack quantities when linking package photos to catalog
+  products, so `6 x 500 ml` and `500 ml / 6 PACK` cannot silently select a
+  single bottle. Support printed multiplication signs and recognized pack-count
+  wording while retaining exact matching products and unrelated label details.
+
+- Preserve explicitly printed zero prices such as `FREE $0.00` through shelf
+  capture and replacement of an existing paid offer. Missing prices, ambiguous
+  zeros and positive amounts rounded below the smallest currency unit still
+  require an estimate or review.
+
+- Treat recognized previous/list prices (`WAS`, `MSRP`, `RRP`) as reference
+  amounts rather than exact current shelf prices. Preserve the observed tag
+  and mark the catalog fallback as estimated, including colon-separated tags.
+
+- Offer model setup after failed optimizer goals, studio question drafts and
+  new-store descriptions when no model is configured.
+
+- **Rack details** marks a product without a picture with a small icon (named
+  "no image" for screen readers) instead of "no img" broken over two lines.
+- Every Tab stop on the store screen shows where focus is: a results or
+  shoppers tab panel and the hourly timeline chart took focus without a mark.
+- The store-operations costs (a till hour, a refill round, a unit a day) line up
+  along one row even when their labels wrap to different lengths.
+- Layout problems the floor editor reports on save name racks as the editor
+  shows them ("cannot reach rack 'Snacks 1' from the entrance", "'Drink 1'
+  overlaps with 'Snacks 2'") instead of by internal id.
+- The optimizer's changes name rack cells as the floor editor does, counted from
+  1 ("Swap contents of 'Ice cream 1' (column 5, row 5) <-> 'Ice cream 2'
+  (column 6, row 5)"; it read "(4, 4)"). Its progress chart has a legend, ticks
+  at 1, 10, 20 … instead of every other candidate, and joins candidates with
+  straight lines rather than a smoothed curve.
+- **Compare runs** names a run in its notes as the run pickers do ("In layout 2
+  — LLM · final · May 18 each shopper had the store alone") instead of by its
+  id ("run_efd57c"), and explains zero baselines only when a row has one.
+- File fields in the marketing studio (price checks, unit prices, inventory,
+  pilot timing, reviews and till records) read "Choose file" and "No file
+  chosen" in the app's language, then the chosen file's name. The browser's
+  own button spoke the browser's language ("Choose File" in a Korean screen).
+
+## 0.8.2 — More reliable local-model setup and shelf capture
+
+- Keep recognized savings/coupon amounts out of exact shelf prices, preserving
+  the product and marking its fallback price as estimated. Read actual product
+  values wrapped in `properties` without silently replacing them with an empty
+  label; copied schema definitions and invalid field types remain rejected.
+
 - Recover oversized automatic-product catalogs in bounded groups, shrinking
   failed groups before trying individual categories. Clarify that product lists
   are candidates, so small local models do not copy the whole catalog when the
@@ -75,10 +136,7 @@
   with **Download local model** and **Model settings** buttons, in the chosen
   language; so does **Change the layout in words**. Before, the first sign was
   an English error after sending. A failed A/B report commentary or study
-  reading shows the same buttons when no model is set up, as do the
-  optimizer's goal box and the studio's "What do you want to know?" drafts
-  (A/B, shelf, concept, conjoint, staff scripts, field pilots) and the new-store
-  form's **Describe the store in your own words**.
+  reading shows the same buttons when no model is set up.
 - Closing a dialog, sheet or confirmation returns keyboard focus to the button
   that opened it (such as **Watch a shopper**), so Tab carries on from there.
   Most dialogs open from a plain button, and focus used to drop to the start
@@ -99,46 +157,10 @@
   a word: leaving the page, reloading, or opening another photo first asks
   **Leave without saving the product corrections?**, and a look at the
   **Shelf Lab** tab keeps them.
-- The command palette finds each marketing studio tool by name in any of the six
-  languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
-  before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`
-  links to a tool.
 - The marketing studio's tools (A/B tests … Products) and an online store's
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
-- The floor editor's grid is one Tab stop: the arrow keys move between cells,
-  Home and End go to a row's ends, and Enter selects. Before, every cell was a
-  Tab stop (1,600 on a 40 by 40 floor). Cells read their place as "column 3,
-  row 3" for screen readers, as the panel shows it, instead of "2,2".
-- The floor editor opens at the largest zoom (up to 100 %) that shows every row:
-  an 8 by 8 floor opened at 100 % with its last row cut off. A floor too deep
-  to fit opens at the smallest zoom and scrolls.
-- A layout without a floor yet opens on its setup steps (Step 1: Floor
-  configuration), and the empty floor and the Store & layout tab both offer
-  **Go to Step 1**. Coming from another layout's store tab, a new empty layout
-  showed only "Add a floor first to see store info." with no way forward.
-- **Rack details** marks a product without a picture with a small icon (named
-  "no image" for screen readers) instead of "no img" broken over two lines.
-- Every Tab stop on the store screen shows where focus is: a results or
-  shoppers tab panel and the hourly timeline chart took focus without a mark.
-- The store-operations costs (a till hour, a refill round, a unit a day) line up
-  along one row even when their labels wrap to different lengths.
-- Layout problems the floor editor reports on save name racks as the editor
-  shows them ("cannot reach rack 'Snacks 1' from the entrance", "'Drink 1'
-  overlaps with 'Snacks 2'") instead of by internal id.
-- The optimizer's changes name rack cells as the floor editor does, counted from
-  1 ("Swap contents of 'Ice cream 1' (column 5, row 5) <-> 'Ice cream 2'
-  (column 6, row 5)"; it read "(4, 4)"). Its progress chart has a legend, ticks
-  at 1, 10, 20 … instead of every other candidate, and joins candidates with
-  straight lines rather than a smoothed curve.
-- **Compare runs** names a run in its notes as the run pickers do ("In layout 2
-  — LLM · final · May 18 each shopper had the store alone") instead of by its
-  id ("run_efd57c"), and explains zero baselines only when a row has one.
-- File fields in the marketing studio (price checks, unit prices, inventory,
-  pilot timing, reviews and till records) read "Choose file" and "No file
-  chosen" in the app's language, then the chosen file's name. The browser's
-  own button spoke the browser's language ("Choose File" in a Korean screen).
 - A number field's hint ("Leave empty to keep", "비워 두면 유지") is set in the
   text font; in the number font Korean and Japanese hints were spaced apart.
 - A shopper row's trip line wraps only between its parts, so "5 stops" (in

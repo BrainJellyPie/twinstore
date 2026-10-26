@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from PIL import Image
+from pydantic import JsonValue, model_validator
 
 from store_emulator.domain.capture import ShelfItemLabel
 
@@ -157,7 +158,10 @@ LABEL_PROMPT = (
     "category: what kind of product it is in one or two words, for example soft drink, "
     "water, coffee drink, milk, beer, chips, chocolate, candy, instant noodles, sandwich, bread, ice cream, "
     "shampoo, detergent. price_text: the text on the price tag in the bottom strip, exactly as printed, "
-    "or \"\". price: that price as a number, or null. confidence: 0-10 for how sure you are of the name.\n"
+    "or \"\". Preserve discount words such as SAVE, OFF and 할인 in price_text. "
+    "price: the current selling price as a number, or null if no selling price is shown. "
+    "A savings amount, coupon value or amount off is not the selling price; use null for those. "
+    "confidence: 0-10 for how sure you are of the name.\n"
     "For any unreadable text field, use an empty string, not null. Do not invent missing text.\n"
     "Copy any printed currency symbol or code unchanged, even if it differs from the store currency. "
     "Do not convert the amount.\n"
@@ -165,6 +169,21 @@ LABEL_PROMPT = (
 )
 
 _CURRENCY_HINT = {"USD": "US dollars ($)", "KRW": "Korean won (원)", "JPY": "Japanese yen (¥)", "EUR": "euros (€)"}
+
+
+class _ShelfLabelResponse(ShelfItemLabel):
+    @model_validator(mode="before")
+    @classmethod
+    def read_wrapped_values(cls, value: JsonValue) -> JsonValue:
+        # JSON-mode models sometimes put observed values under the schema's
+        # properties key. Retain flat fields when present; never guess values
+        # from actual field definitions (the inherited validators reject those).
+        if isinstance(value, dict) and "properties" in value and not any(key in value for key in cls.model_fields):
+            fields = value["properties"]
+            if not isinstance(fields, dict) or not any(key in fields for key in cls.model_fields):
+                raise ValueError("Return observed product field values, not schema definitions.")
+            return fields
+        return value
 
 
 class VLMLabeler:
@@ -183,7 +202,7 @@ class VLMLabeler:
         async with self.semaphore:
             self.calls += 1
             return await self.llm.generate_structured_with_image_async(
-                ShelfItemLabel, LABEL_SYSTEM_PROMPT, prompt, url, max_retries=1, seed=0,
+                _ShelfLabelResponse, LABEL_SYSTEM_PROMPT, prompt, url, max_retries=1, seed=0,
             )
 
     async def label_groups(

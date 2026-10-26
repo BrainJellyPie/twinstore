@@ -86,7 +86,9 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     target = ""
     def printed_words(value: str) -> str:
         # Keep word boundaries, but allow capitalization, punctuation and 500ml/500 ml.
-        return " ".join(re.findall(r"[^\W\d_]+|\d+(?:[.,]\d+)?", unicodedata.normalize("NFKC", value).casefold()))
+        normalized = unicodedata.normalize("NFKC", value).casefold()
+        normalized = re.sub(r"(?<=\d)\s*[×*]\s*(?=\d)", " x ", normalized)
+        return " ".join(re.findall(r"[^\W\d_]+|\d+(?:[.,]\d+)?", normalized))
 
     observed = printed_words(reading.printed_text)
     brand_words, size_words = printed_words(reading.brand), printed_words(reading.size)
@@ -100,10 +102,25 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     # The separate matching call still decides whether the identity agrees.
     label_tokens = re.compile(r"\d+(?:[.,]\d+)? [^\W\d_]+|[^ ]+")
     observed_tokens = Counter(label_tokens.findall(observed))
+    # A visible multipack cannot be linked to its single-unit catalog entry,
+    # even though every word in the single-unit name appears on the pack.
+    multiplied_quantities = re.compile(r"(?<![\d.,])(?:\d+ x )+\d+(?:[.,]\d+)? [^\W\d_]+")
+    observed_packs = set(multiplied_quantities.findall(observed))
+    counted_packs = re.compile(
+        r"(?<![\w.,])(?:\d+\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り)|pack\s+of\s+\d+)(?!\w)",
+        re.IGNORECASE,
+    )
+    def pack_counts(value: str) -> set[str]:
+        # Match before splitting letters from digits: B6 PACK is not six packs.
+        return {printed_words(match.group()) for match in counted_packs.finditer(unicodedata.normalize("NFKC", value))}
+
+    observed_counts = pack_counts(reading.printed_text)
     # Bound the matching prompt after evidence filtering: unrelated early
     # catalog entries must not hide an observed product later in the store.
     listed = [name for name in dict.fromkeys(products)
               if (words := printed_words(name.strip()[:120])) and
+              observed_packs <= set(multiplied_quantities.findall(words)) and
+              observed_counts <= pack_counts(name.strip()[:120]) and
               (f" {words} " in f" {observed} " or Counter(label_tokens.findall(words)) <= observed_tokens)][:MAX_LISTED]
     if listed:
         names: list[JsonValue] = ["", *dict.fromkeys(name.strip()[:120] for name in listed)]

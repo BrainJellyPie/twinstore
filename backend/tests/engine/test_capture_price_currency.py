@@ -39,7 +39,7 @@ def test_conflicting_currency_is_unreadable_even_with_a_numeric_model_guess(prin
     ("$2.49", "CAD", 249), ("$2.49", "AUD", 249), ("$300", "TWD", 300),
     ("¥300", "CNY", 30000), ("¥300", "JPY", 300), ("300円", "JPY", 300),
     ("CAD $2.49", "CAD", 249), ("CHF 2.49", "CHF", 249), ("1,800원", "KRW", 1800),
-    ("USD 249 cents", "USD", 249), ("249 cents", "EUR", 249), ("$2.49 OFF", "USD", 249),
+    ("USD 249 cents", "USD", 249), ("249 cents", "EUR", 249), ("$2.49 EACH", "USD", 249),
     ("25 lei", "RON", 2500), ("2.49", "USD", 249), ("", "USD", 249),
 ])
 def test_matching_shared_or_unmarked_units_keep_existing_price_semantics(printed, currency, expected):
