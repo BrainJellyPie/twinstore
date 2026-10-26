@@ -350,6 +350,11 @@ class LocalVLMManager:
             if not busy and not ready:
                 self._may_download = download
                 self._cancel.clear()
+                # Callers must see this accepted start before the worker gets
+                # scheduled, rather than the previous off/error state.
+                self._status = self._status.model_copy(update={
+                    "state": "preparing", "message": "Reading this computer's hardware", "progress": None,
+                })
                 self._thread = threading.Thread(target=self._run, name="local-vlm", daemon=True)
                 self._thread.start()
             thread = self._thread

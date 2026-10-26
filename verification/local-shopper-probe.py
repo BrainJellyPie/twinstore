@@ -1,7 +1,7 @@
 """Show a real checkout screenshot to a tiny loopback VLM.
 
 Run with PYTHONPATH=backend/src and the backend Python. Requires the local
-OpenAI-compatible model server on port 8081; no paid provider is used. Saves
+OpenAI-compatible model server (port 8081 by default); no paid provider is used. Saves
 the screenshot, shopper, site, raw request/response (without headers), and the
 chosen action. A $1 browse customer sees a $19.99 item already in checkout.
 Budget delivery and avoiding an unaffordable order are separate observations;
@@ -10,6 +10,7 @@ unaffordable order fails this fixture even if the HTTP reply is valid JSON.
 """
 import argparse, asyncio, json, random, time
 from pathlib import Path
+from urllib.parse import urlsplit
 from unittest.mock import patch
 import httpx
 from pydantic import SecretStr
@@ -26,7 +27,11 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
 parser.add_argument('--device', choices=['desktop', 'mobile'], default='desktop')
 parser.add_argument('--structured-output', choices=['json_schema', 'json'], default='json_schema')
+parser.add_argument('--endpoint', default='http://127.0.0.1:8081/v1')
 args = parser.parse_args()
+endpoint = urlsplit(args.endpoint)
+if endpoint.scheme != 'http' or endpoint.hostname not in {'localhost', '127.0.0.1', '::1'}:
+    parser.error('Use an HTTP loopback endpoint for the local model.')
 root = args.output.resolve() / f'browse-budget-{args.device}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
 site = build_site('fashion', site_id='cpu_budget', currency='USD')
@@ -45,7 +50,7 @@ numbers = numbering(page, 0)
 shot = render_page(page, site, numbers, _bundled_picture)
 (root / 'screen.png').write_bytes(shot.png)
 view = StepView(page, state, numbers, outline(page, site), 1, product.price, (product.name,), shot.scaled_data_url(896), seed=4, point=0)
-client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base='http://127.0.0.1:8081/v1', api_key=SecretStr('local'), temperature=0, seed=0, max_tokens=240, timeout_sec=180, max_parallel=1, chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0, cache_dir=str(root / 'cache')))
+client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base=args.endpoint, api_key=SecretStr('local'), temperature=0, seed=0, max_tokens=240, timeout_sec=180, max_parallel=1, chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0, cache_dir=str(root / 'cache')))
 policy = ModelPolicy(client, vision=True, max_tokens=240, max_retries=1)
 original = httpx.AsyncClient.send
 calls = 0
@@ -83,6 +88,7 @@ if choice.source != 'model':
 if choice.control.action.kind == 'place_order':
     issues.append('The model ordered an item costing more than the explicit budget')
 result = {'root': str(root), 'success': not issues, 'issues': issues, 'device': args.device,
+    'endpoint': args.endpoint,
     'structured_output': args.structured_output, 'budget': shopper.budget, 'product_price': product.price, 'budget_visible': visible, 'unaffordable_order_avoided': choice.control.action.kind != 'place_order', 'calls': calls, 'seconds': round(time.perf_counter() - started, 2), 'action': choice.control.action.model_dump(mode='json'), 'thought': choice.thought, 'source': choice.source, 'error': choice.error}
 (root / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
 (root / 'shopper.json').write_text(shopper.model_dump_json(indent=2))

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Show a local model as preparing as soon as Start is accepted. A scheduled
+  startup no longer briefly reports the previous stopped or failed state before
+  its worker runs; repeated starts and stopping during preparation remain safe.
+
 - Avoid repeating automatic product selection when a small model lists too many
   valid products. Check the entire list for unknown, wrong-category or duplicate
   IDs before retaining its first requested products, within shelf capacity.

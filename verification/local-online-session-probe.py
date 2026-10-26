@@ -1,6 +1,6 @@
 """Run an actual CPU vision shopper from arrival through its exit survey.
 
-Requires the loopback model at port 8081. Uses production screenshots, browser
+Requires a loopback model (port 8081 by default). Uses production screenshots, browser
 transitions and policy calls; no model replies or actions are mocked. Raw replies,
 images and the full session are retained without HTTP headers. Technical validity,
 goal completion and semantic review are distinct: a valid survey is not evidence
@@ -13,6 +13,7 @@ import json
 import shutil
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 from unittest.mock import patch
 
 import httpx
@@ -30,10 +31,14 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--case', choices=['purchase', 'unavailable'], default='unavailable')
 parser.add_argument('--device', choices=['desktop', 'mobile'], default='mobile')
 parser.add_argument('--structured-output', choices=['json', 'json_schema'], default='json_schema')
+parser.add_argument('--endpoint', default='http://127.0.0.1:8081/v1')
 parser.add_argument('--max-steps', type=int, default=8)
 parser.add_argument('--cache-from', type=Path, help='Explicitly replay a saved model cache directory while testing a changed stage')
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
 args = parser.parse_args()
+endpoint = urlsplit(args.endpoint)
+if endpoint.scheme != 'http' or endpoint.hostname not in {'localhost', '127.0.0.1', '::1'}:
+    parser.error('Use an HTTP loopback endpoint for the local model.')
 root = args.output.resolve() / f'online-session-{args.case}-{args.device}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
 if args.cache_from:
@@ -53,7 +58,7 @@ shopper = shopper.model_copy(update={'device': args.device, 'budget': 5000, 'pat
     'target_terms': [product.name] if args.case == 'purchase' else ['laptop'],
     'goal': (f'Buy exactly one {product.name} if the total is at most $50.00. Do not add other products.'
              if args.case == 'purchase' else 'I need a laptop computer only. Leave if no laptops are available. I do not want clothing.')})
-client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base='http://127.0.0.1:8081/v1',
+client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base=args.endpoint,
     api_key=SecretStr('local'), temperature=0, seed=0, max_tokens=240, timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
     cache_dir=str(root/'cache')))
@@ -65,7 +70,7 @@ async def traced(self, request, *a, **kw):
     global calls
     started = time.perf_counter()
     response = await original_send(self, request, *a, **kw)
-    if request.url.host == '127.0.0.1':
+    if request.url.host == endpoint.hostname:
         await response.aread()
         calls += 1
         body = json.loads(request.content)
@@ -89,6 +94,7 @@ async def traced(self, request, *a, **kw):
 (root/'shopper.json').write_text(shopper.model_dump_json(indent=2))
 started = time.perf_counter()
 result = {'case': args.case, 'device': args.device, 'structured_output': args.structured_output,
+          'endpoint': args.endpoint,
           'cache_replay_from': str(args.cache_from) if args.cache_from else None,
           'technical_success': False, 'semantic_review': 'Inspect the saved actions, thoughts and survey against the actual visit.'}
 try:
@@ -109,8 +115,11 @@ try:
         issues.append('Bought clothing despite unavailable-only laptop intent')
     if args.case == 'purchase' and any(line.product_id != product.id or line.quantity != 1 for line in session.order):
         issues.append('Ordered a different product or quantity from the explicit goal')
+    goal_completed = (len(session.order) == 1 and session.order[0].product_id == product.id
+                      and session.order[0].quantity == 1 and session.order_total <= shopper.budget
+                      if args.case == 'purchase' else not session.order and session.outcome in {'left', 'bounced'})
     result.update(technical_success=not issues, issues=issues, outcome=session.outcome,
-        goal_completed=bool(session.order) if args.case == 'purchase' else session.outcome in {'left', 'bounced'},
+        goal_completed=goal_completed,
         steps=len(session.steps), model_choices=policy.answered, failed_choices=policy.failed,
         fallbacks=session.fallbacks, survey=session.survey.model_dump(mode='json') if session.survey else None,
         order_total=session.order_total,
