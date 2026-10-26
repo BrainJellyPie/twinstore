@@ -11,6 +11,7 @@ import { useSetupGeneration } from "@/shared/queries/useSetupGeneration";
 import { deleteProject } from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { Button } from "@/shared/components/ui/button";
+import { LoadingView } from "@/shared/components/LoadingView";
 import { useI18n } from "@/shared/i18n/i18n";
 import { PreparingView } from "@/views/simulation/states/PreparingView";
 import { ReadyView } from "@/views/simulation/states/ReadyView";
@@ -32,7 +33,9 @@ const lastLayoutKey = (pid: string) => `twinstore.layout.${pid}`;
 
 function SimulationPage() {
   const { pid } = Route.useParams();
-  return <SimulationPageInner key={pid} pid={pid} />;
+  // A boundary of its own: the app's outer one is already showing when the router renders this page in a transition,
+  // so it would keep the page blank while the store loads instead of saying so.
+  return <Suspense fallback={<LoadingView />}><SimulationPageInner key={pid} pid={pid} /></Suspense>;
 }
 
 function SimulationPageInner({ pid }: { pid: string }) {
@@ -114,8 +117,9 @@ function SimulationPageInner({ pid }: { pid: string }) {
         selectedSetupId. On remount, the initial useEffect restores it to layouts[0],
         producing a regression where "selection snaps back to layout 1". A local
         Suspense boundary scopes the remount to SimulationPageContent and preserves
-        inner state. fallback=null works with startTransition so the previous content
-        stays visible until the transition completes.
+        inner state. Store-driven switches cannot be held back as a transition, so whatever
+        suspends here (a layout not yet loaded, opening a run) shows the loading message
+        instead of a blank page.
       */}
       {effectiveSetupId ? <div ref={content} className="contents"
         onFocusCapture={(event) => {
@@ -129,7 +133,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
           // Suspense hides the old view before replacement, which also blurs its focused tab.
           if (!next && typeof event.target.checkVisibility === "function" && !event.target.checkVisibility()) return;
           if (!(next instanceof HTMLElement) || !next.matches("[data-layout-id],[data-layout-finder-result],[data-layout-finder-trigger]")) navigationFocus.current = null;
-        }}><Suspense fallback={null}>
+        }}><Suspense fallback={<LoadingView />}>
         <SimulationPageContent
           key={effectiveSetupId}
           pid={pid}
