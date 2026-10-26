@@ -47,6 +47,22 @@ from store_emulator.engine.package_reader import read_pack
     ('LEAFY GREEN TEA 500 ml 6本入り', 'Leafy Green Tea 500 ml 6本入り', True),
     ('LEAFY VITAMIN B6 PACK 500 ml', 'Leafy Vitamin B6 Pack 500 ml', True),
     ('LEAFY GREEN TEA 500 ml 6 packing tips', 'Leafy Green Tea 500 ml', True),
+    ('LEAFY GREEN TEA 500 ml 6 BOTTLES', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6 BOTTLES', 'Leafy Green Tea 500 ml 6 bottles', True),
+    ('LEAFY GREEN TEA 500 ml 6-bottle', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6 CANS', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6 CANS', 'Leafy Green Tea 500 ml 6 cans', True),
+    ('LEAFY GREEN TEA 500 ml 6 JARS', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6병', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6병', 'Leafy Green Tea 500 ml 6병', True),
+    ('LEAFY GREEN TEA 500 ml 6캔', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6本', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 6缶', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml ６ ＢＯＴＴＬＥＳ', 'Leafy Green Tea 500 ml', False),
+    ('LEAFY GREEN TEA 500 ml 1 BOTTLE', 'Leafy Green Tea 500 ml', True),
+    ('LEAFY GREEN TEA 500 ml 1 PACK', 'Leafy Green Tea 500 ml', True),
+    ('LEAFY VITAMIN B6 BOTTLES 500 ml', 'Leafy Vitamin B6 Bottles 500 ml', True),
+    ('LEAFY GREEN TEA 500 ml 6 bottled flavours', 'Leafy Green Tea 500 ml', True),
 ])
 def test_package_candidates_keep_observed_words_across_display_orders(printed, name, supported):
     matched = []

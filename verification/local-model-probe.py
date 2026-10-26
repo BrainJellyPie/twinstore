@@ -99,8 +99,8 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted",
-    "capture-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
+    "capture-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -557,7 +557,8 @@ try:
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00",
                 "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
-                "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE"}
+                "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
+                "capture-container-count-price": "$1.00 / BOTTLE"}
         currency = "KRW" if args.case.endswith("-krw") else "USD"
         fixture = Image.new("RGB", (448, 512), "#f5f1e9")
         drawing = ImageDraw.Draw(fixture)
@@ -565,6 +566,8 @@ try:
         drawing.rectangle((174, 12, 274, 44), fill="#ca3333")
         drawing.rectangle((140, 140, 308, 292), fill="#ca3333")
         package_size = "6 PACK" if args.case.startswith("capture-pack-") else "500 ml"
+        if args.case == "capture-container-count-price":
+            package_size = "6 BOTTLES"
         for text, y, size in [("ACME", 150, 26), ("COLA", 188, 42), (package_size, 246, 24)]:
             drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
         drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
@@ -596,7 +599,7 @@ try:
         if args.case == "pack-jam":
             picture = bundled_product_image("/api/catalog-images/starter-01/15.webp")
             assert picture is not None
-        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted"}:
+        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted"}:
             # A deterministic positive-control label, not a photograph or model-generated picture.
             drawing = ImageDraw.Draw(picture)
             drawing.rounded_rectangle((100, 110, 500, 740), radius=70, fill="#dbeed0", outline="#245737", width=6)
@@ -607,8 +610,9 @@ try:
                 labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "NET 500 g", 38), (560, "SERVING 100 ml", 30)]
             if args.case.startswith("pack-multipack"):
                 labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "6 x 500 ml", 42)]
-            if args.case.startswith("pack-multipack-count"):
-                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "500 ml", 42), (560, "6 PACK", 38)]
+            if args.case.startswith(("pack-multipack-count", "pack-multipack-container-count")):
+                count_text = "6 BOTTLES" if "container-count" in args.case else "6 PACK"
+                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "500 ml", 42), (560, count_text, 38)]
             for y, label, size in labels:
                 drawing.text((300, y), label, font=load_font(size, True), fill="#153d24", anchor="mt")
             products = ["Leafy Green Tea 1 L", "Leafy Black Tea 500 ml"]
@@ -626,12 +630,15 @@ try:
                     products.append("Leafy Green Tea 6 x 500 ml")
                 if args.case == "pack-multipack-count":
                     products.append("Leafy Green Tea 500 ml 6 pack")
+                if args.case == "pack-multipack-container-count":
+                    products.append("Leafy Green Tea 500 ml 6 bottles")
         picture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reading = asyncio.run(read_pack(client, picture, products))
         issues = []
         expected_match = ("Leafy Green Tea 6 x 500 ml" if args.case == "pack-multipack" else
             "Leafy Green Tea 500 ml 6 pack" if args.case == "pack-multipack-count" else
+            "Leafy Green Tea 500 ml 6 bottles" if args.case == "pack-multipack-container-count" else
             "Green Tea 500 ml — Leafy" if args.case == "pack-brand-suffix" else
             "Leafy Green Tea 500 ml" if args.case in {"pack-label", "pack-large-catalog"} else "")
         if reading.shelf_product != expected_match:

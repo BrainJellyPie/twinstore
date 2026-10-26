@@ -218,7 +218,8 @@ _CONTAINER_RATE_RE = re.compile(
     re.IGNORECASE,
 )
 _PACK_COUNT_RE = re.compile(
-    r"(?<![\w.,])(?:(\d+)\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り)|pack\s+of\s+(\d+))(?!\w)",
+    rf"(?<![\w.,])(?:(\d+)\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り|{_CONTAINER_UNIT})"
+    r"|pack\s+of\s+(\d+))(?!\w)",
     re.IGNORECASE,
 )
 _MULTIPLIED_PACK_RE = re.compile(

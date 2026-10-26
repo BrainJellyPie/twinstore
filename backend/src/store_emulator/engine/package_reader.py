@@ -107,12 +107,14 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     multiplied_quantities = re.compile(r"(?<![\d.,])(?:\d+ x )+\d+(?:[.,]\d+)? [^\W\d_]+")
     observed_packs = set(multiplied_quantities.findall(observed))
     counted_packs = re.compile(
-        r"(?<![\w.,])(?:\d+\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り)|pack\s+of\s+\d+)(?!\w)",
+        r"(?<![\w.,])(?:(\d+)\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り|bottles?|cans?|jars?|병|캔|本|缶)"
+        r"|pack\s+of\s+(\d+))(?!\w)",
         re.IGNORECASE,
     )
     def pack_counts(value: str) -> set[str]:
         # Match before splitting letters from digits: B6 PACK is not six packs.
-        return {printed_words(match.group()) for match in counted_packs.finditer(unicodedata.normalize("NFKC", value))}
+        return {printed_words(match.group()) for match in counted_packs.finditer(unicodedata.normalize("NFKC", value))
+                if any(int(count) > 1 for count in match.groups() if count)}
 
     observed_counts = pack_counts(reading.printed_text)
     # Bound the matching prompt after evidence filtering: unrelated early

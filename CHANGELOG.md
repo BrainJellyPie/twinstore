@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recognize explicit container quantities such as `6 BOTTLES`, `6 CANS`
+  and `6병` when interpreting a photographed unit price. A price per bottle
+  must not overwrite the selling price of the whole observed multipack.
+  Package reading also keeps those counts when filtering catalog matches,
+  so a visible multipack cannot be linked to a single-container product.
+
 - When a shelf test, concept test, conjoint study, staff-script test or a
   vision-shopper A/B test cannot start for want of a model, the studio offers
   the model setup (start or download the local model, or open Model settings)
