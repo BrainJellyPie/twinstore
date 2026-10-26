@@ -515,3 +515,14 @@ it("keeps a whole emoji when a generated store or ad name reaches its length lim
   fireEvent.click(await screen.findByRole("button", { name: "Add an ad" }));
   expect(screen.getAllByRole("textbox", { name: "Ad name" }).map((input) => (input as HTMLInputElement).value)).toEqual(["Shirt banner", long]);
 });
+
+it("says that a version's name is a label and shoppers see the original store's name", async () => {
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, variant_of: "s0", name: "Control – no ads" });
+  mount();
+  expect(await screen.findByText(/Shoppers see the original store's name/)).toBeTruthy();
+  cleanup();
+  vi.mocked(online.getSite).mockResolvedValue(source);
+  mount();
+  await screen.findByRole("textbox", { name: "Store name" });
+  expect(screen.queryByText(/Shoppers see the original store's name/)).toBeNull();
+});

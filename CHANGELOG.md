@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Online variants now show shoppers the original store's name. A version
+  named "Glow Room – no ads" used to put that label on the page itself (logo,
+  tab title, search box and web address), so the shoppers of one arm saw a
+  different store name, sometimes one that described the change being tested.
+  Runs, replays and the store designer's previews now show the original name.
+  Reports, run lists and the store list still use each version's own name, and
+  the designer says so under a variant's name.
+
 - Emptying a pack's name in the marketing product library and leaving the
   field now brings the saved name back. Before, the field stayed blank while
   the old name was kept, so it looked cleared until the page reloaded.

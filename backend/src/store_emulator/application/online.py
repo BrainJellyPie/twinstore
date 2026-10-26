@@ -238,6 +238,19 @@ def get_site(pid: str, site_id: str) -> OnlineSite:
     return OnlineSite.model_validate(read_json(path))
 
 
+def _as_shoppers_see(pid: str, site: OnlineSite) -> OnlineSite:
+    """The store under the name its shoppers see: a variant shows its original store's name, so the stores of a test
+    differ only in what is tested and not in a label such as "– no ads" written on the page."""
+    by_id = {s.id: s for s in list_sites(pid)}
+    name, seen = site.name, {site.id}
+    parent = by_id.get(site.variant_of)
+    while parent is not None and parent.id not in seen:
+        name = parent.name
+        seen.add(parent.id)
+        parent = by_id.get(parent.variant_of)
+    return site if name == site.name else site.model_copy(update={"name": name})
+
+
 def _check(site: OnlineSite) -> None:
     for label, ids in (("category", [c.id for c in site.categories]), ("product", [p.id for p in site.products])):
         if len(set(ids)) != len(ids):
@@ -486,7 +499,7 @@ def page_view(site: OnlineSite, state: BrowserState, *, mark_seed: int = 0, pict
 
 def browse(pid: str, site_id: str, request: BrowseRequest) -> PageView:
     """The page after using one option of the current page (or the landing page of a new visit)."""
-    site = get_site(pid, site_id)
+    site = _as_shoppers_see(pid, get_site(pid, site_id))
     state = request.state or initial_state(site, device=request.device)
     if request.option is not None:
         page = build_page(site, state)
@@ -545,13 +558,13 @@ class DraftPreviewRequest(BaseModel):
 
 def draft_preview(pid: str, site_id: str, options: SiteOptions, device: Device) -> bytes:
     """The home page of a store with a design that is not saved yet (the design chat's proposal)."""
-    site = get_site(pid, site_id).model_copy(update={"options": options})
+    site = _as_shoppers_see(pid, get_site(pid, site_id)).model_copy(update={"options": options})
     state = BrowserState(cookies_answered=True, device=device)
     return render_page(build_page(site, state), site, {}, _picture(pid)).png
 
 
 def site_preview(pid: str, site_id: str, device: Device, style: PageStyle | None = None) -> bytes:
-    site = get_site(pid, site_id)
+    site = _as_shoppers_see(pid, get_site(pid, site_id))
     if style is not None:
         site = site.model_copy(update={"options": site.options.model_copy(update={"page_style": style})})
     state = BrowserState(cookies_answered=True, device=device)
@@ -621,6 +634,8 @@ def start_run(pid: str, request: OnlineRunRequest, config: SimulationConfig) -> 
             total=len(shoppers) * (len(sites) + (rival is not None)), request=request,
             created_at=now_iso(), image_snapshot=True,
         )
+        # Shoppers see each store under its family's name; the run keeps the stores' own names as labels.
+        sites = [_as_shoppers_see(pid, site) for site in sites]
         folder = _run_dir(pid, run_id)
         folder.mkdir(parents=True, exist_ok=False)
         try:
@@ -674,15 +689,17 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
             write_json(_run_dir(pid, status.run_id) / f"sessions-{index}.json", _SESSIONS.dump_python(sessions, mode="json"))
         by_id = {s.id: s for s in shoppers}
         with_rival = rival is not None
+        labeled = [site.model_copy(update={"name": status.site_names[i]}) if i < len(status.site_names) else site
+                   for i, site in enumerate(sites)]
         summaries = [summarize(site, by_id, sessions, with_rival=with_rival)
-                     for site, sessions in zip(sites, variants, strict=True)]
+                     for site, sessions in zip(labeled, variants, strict=True)]
         comparisons: list[VariantComparison] = []
-        for site, sessions, summary in zip(sites[1:], variants[1:], summaries[1:], strict=True):
+        for site, sessions, summary in zip(labeled[1:], variants[1:], summaries[1:], strict=True):
             won, lost, changed, switched = switches(variants[0], sessions)
             comparisons.append(VariantComparison(
                 site_id=site.id, site_name=site.name,
                 deltas=paired_deltas(variants[0], sessions, seed=request.seed, with_rival=with_rival),
-                ad_lifts=ad_lifts(sites[0], variants[0], summaries[0].ads, site, sessions, summary.ads),
+                ad_lifts=ad_lifts(labeled[0], variants[0], summaries[0].ads, site, sessions, summary.ads),
                 segments=segment_deltas(variants[0], sessions, by_id, seed=request.seed), won=won, lost=lost,
                 changed=changed, switches=switched,
             ))
@@ -695,7 +712,7 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
                          "shoppers react to what each page actually shows.")
         survey_requests = 0
         if isinstance(policy, ModelPolicy) and request.exit_survey:
-            for site, sessions in zip(sites, variants, strict=True):
+            for site, sessions in zip(labeled, variants, strict=True):
                 survey_requests += len(sessions)
                 missing = sum(session.survey is None for session in sessions)
                 if missing:
@@ -893,6 +910,12 @@ def _stores(pid: str, run_id: str) -> list[OnlineSite]:
     return [*sites, OnlineSite.model_validate(read_json(path))] if path.exists() else sites
 
 
+def _labels(pid: str, run_id: str, stores: list[OnlineSite]) -> list[str]:
+    """The run's stores by their own names; the snapshot holds the names their shoppers saw."""
+    names = OnlineRunStatus.model_validate(read_json(_run_dir(pid, run_id) / "status.json")).site_names
+    return [names[i] if i < len(names) else store.name for i, store in enumerate(stores)]
+
+
 def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> SessionView:
     """One shopper's visit to one store of the run; the index after the variants is their visit to the rival shop."""
     sites, shoppers = _snapshot(pid, run_id)
@@ -905,8 +928,8 @@ def get_session(pid: str, run_id: str, variant: int, shopper_id: str) -> Session
         raise AppError(f"shopper not found in this run: {shopper_id}", 404)
     if variant == len(sites):
         shopper = at_rival(stores[variant], shopper, sites[0]) or shopper
-    return SessionView(variant=variant, site_id=stores[variant].id, site_name=stores[variant].name, shopper=shopper,
-                       session=session)
+    return SessionView(variant=variant, site_id=stores[variant].id, site_name=_labels(pid, run_id, stores)[variant],
+                       shopper=shopper, session=session)
 
 
 class RunStoreChanges(BaseModel):
@@ -925,8 +948,7 @@ def run_store_changes(pid: str, run_id: str, variant: int) -> RunStoreChanges:
     if len(changes) > MAX_LAYOUT_EDIT_CHANGES:
         raise AppError(f"This variant changes {len(changes)} prices; a layout can accept at most "
                        f"{MAX_LAYOUT_EDIT_CHANGES} price changes at once. Use a variant with fewer price changes.", 400)
-    return RunStoreChanges(name=sites[variant].name[:80], currency=sites[variant].currency.upper(), changes=changes,
-                           skipped=skipped)
+    return RunStoreChanges(name=_labels(pid, run_id, sites)[variant][:80], currency=sites[variant].currency.upper(), changes=changes, skipped=skipped)
 
 
 def _analyst_path(pid: str, run_id: str) -> Path:
