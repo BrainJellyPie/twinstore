@@ -40,6 +40,10 @@ from store_emulator.engine.capture.recognize import FacingGroup, VLMLabeler, des
     ("REF 1234", "USD", "500ml", None),
     ("#1234", "USD", "500ml", None),
     ("ITEM $1.00", "USD", "500ml", 100),
+    ("₹100", "USD", "500ml", None),
+    ("₹100", "INR", "500ml", 10000),
+    ("R$1.00", "USD", "500ml", None),
+    ("R$1.00", "BRL", "500ml", 100),
     ("", "USD", "500ml", None),
     (None, "USD", "500ml", None),
 ])

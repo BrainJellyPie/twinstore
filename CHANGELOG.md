@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recognize rupee (`₹`) and Brazilian real (`R$`) marks on captured price
+  tags. Foreign amounts remain estimates for review, while a matching INR
+  amount such as `₹100` retains its literal 100-rupee value.
+
 - Keep item/reference numbers and hash-prefixed codes from becoming captured
   selling prices. Preserve their printed labels and estimated-price review;
   an explicit cash tag such as `ITEM $1.00` still supplies its literal price.

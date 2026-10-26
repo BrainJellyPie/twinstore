@@ -4,7 +4,7 @@ import pytest
 from store_emulator.domain.capture import ShelfItemLabel
 from store_emulator.engine.capture.catalog_match import price_minor_units
 
-ALIASES = [('US', 'USD'), ('CA', 'CAD'), ('AU', 'AUD'), ('NZ', 'NZD'), ('HK', 'HKD'), ('SG', 'SGD'), ('NT', 'TWD')]
+ALIASES = [('US', 'USD'), ('CA', 'CAD'), ('AU', 'AUD'), ('NZ', 'NZD'), ('HK', 'HKD'), ('SG', 'SGD'), ('NT', 'TWD'), ('R', 'BRL')]
 
 
 @pytest.mark.parametrize('prefix,source,currency', [(prefix, source, currency) for prefix, source in ALIASES for _, currency in ALIASES if currency != source])
@@ -33,6 +33,9 @@ def test_qualified_units_do_not_hide_non_selling_or_negative_price_context(prefi
     ('FOCUS$1.00', 'USD', 100), ('MAC$1.00', 'USD', 100),
     ('US$1.00 WITH COUPON', 'USD', 100), ('$1.00', 'CAD', 100),
     ('CA$', 'USD', None),
+    ('Ｒ＄１．００', 'USD', None), ('Ｒ＄１．００', 'BRL', 100),
+    ('R$1.00 USD', 'USD', None), ('R$1.00 BRL', 'BRL', 100),
+    ('BAR$1.00', 'USD', 100), ('TOWER$1.00', 'USD', 100),
 ])
 def test_qualified_unit_boundaries_and_shared_symbols(printed, currency, expected):
     assert price_minor_units(ShelfItemLabel(price_text=printed, price=1), currency, 249) == expected
