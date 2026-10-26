@@ -71,7 +71,7 @@ it("locks input during a request and recovers from network failure", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Compare observed offers" }));
   await waitFor(() => expect((screen.getByLabelText("Observed offers CSV") as HTMLInputElement).disabled).toBe(true));
   for (const label of ["Focal retailer ID", "As-of date", "Maximum observation age (days)"]) expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(true);
-  reject(new Error("Connection lost")); expect((await screen.findByRole("alert")).textContent).toContain("Connection lost");
+  reject(new Error("Connection lost")); expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
   expect((screen.getByLabelText("Observed offers CSV") as HTMLInputElement).disabled).toBe(false);
   expect(screen.queryByRole("button", { name: "Export unit-price audit CSV" })).toBeNull();
 });

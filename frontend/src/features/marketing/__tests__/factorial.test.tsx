@@ -79,7 +79,7 @@ it("locks scope inputs during a request and recovers from network failure", asyn
   await waitFor(() => expect((screen.getByLabelText("Factorial outcome") as HTMLSelectElement).disabled).toBe(true));
   for (const label of ["Price-only arm (10)", "Sign-only arm (01)", "Combined arm (11)"]) expect((screen.getByLabelText(label) as HTMLSelectElement).disabled).toBe(true);
   reject(new Error("Connection lost"));
-  expect((await screen.findByRole("alert")).textContent).toContain("Connection lost");
+  expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
   expect(screen.queryByRole("button", { name: "Export factorial audit CSV" })).toBeNull();
 });
 
@@ -114,7 +114,7 @@ it("surfaces source-load errors and can recover through an explicit reload", asy
   fetchMock.mockRejectedValueOnce(new Error("Source unavailable")).mockResolvedValueOnce(new Response(JSON.stringify(source)));
   render(<FactorialReview projectId="proj_test" experimentId="exp_test" />, { wrapper });
   fireEvent.click(screen.getByRole("button", { name: "Open price × sign analysis" }));
-  expect((await screen.findByRole("alert")).textContent).toContain("Source unavailable");
+  expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
   fireEvent.click(screen.getByRole("button", { name: "Reload paired source" }));
   await screen.findByLabelText("Price-only arm (10)");
   expect(screen.queryByRole("alert")).toBeNull();

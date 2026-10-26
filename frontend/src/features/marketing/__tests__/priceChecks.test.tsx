@@ -84,7 +84,7 @@ it("locks inputs while pending and recovers from network failure without export"
   render(<PriceChecks projectId="p" />, { wrapper }); fill(); fireEvent.click(screen.getByRole("button", { name: "Review price checks" }));
   await waitFor(() => expect((screen.getByLabelText("Store reference") as HTMLInputElement).disabled).toBe(true));
   for (const label of ["Audit date", "Label observations CSV", "Checkout observations CSV"]) expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(true);
-  fail(new Error("Connection lost")); expect((await screen.findByRole("alert")).textContent).toContain("Connection lost");
+  fail(new Error("Connection lost")); expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
   expect((screen.getByLabelText("Store reference") as HTMLInputElement).disabled).toBe(false);
   expect(screen.queryByRole("button", { name: "Export price-check audit CSV" })).toBeNull();
 });
