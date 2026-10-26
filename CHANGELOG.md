@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Neighbor synergy on the Area page now scrolls to its results when the
+  analysis finishes and moves focus there, instead of leaving focus on the
+  page after the button disabled itself. A failed analysis is announced next to
+  the Analyze button instead of at the top of the panel.
+
 - Screen readers now announce which day type, map tool and neighbor kinds are
   chosen on the Area page, and which local events are on in the situation
   editor. Before, only the button color showed it.

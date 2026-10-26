@@ -23,6 +23,7 @@ import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, labelOf, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
 import { formatPercent } from "@/shared/utils/money";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
 const DAY_LABELS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekday", weekend: "areaDayWeekend", holiday: "areaDayHoliday" };
@@ -123,7 +124,6 @@ export function TownPage({ projectId }: { projectId: string }) {
         {town && <TownSummary town={town} />}
         {town && loadError}
         {error && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
-        {analysisError && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{analysisError.message}</p>}
         {(townQ.isSuccess || town) && <>
           <GeneratePanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
           <ImportPanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
@@ -167,6 +167,7 @@ export function TownPage({ projectId }: { projectId: string }) {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">{t("areaSynergyHint")}</p>
+            {analysisError && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{analysisError.message}</p>}
             {synergy && <SynergyTable rows={synergy} onAskShoppers={setVlmVenue} />}
           </section>
         )}
@@ -472,7 +473,7 @@ function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppe
   const { t } = useI18n();
   const sorted = [...rows].sort((a, b) => Math.abs(b.effect_on_focal_visitors) - Math.abs(a.effect_on_focal_visitors));
   return (
-    <div className="max-h-[22rem] overflow-y-auto pr-1">
+    <div ref={revealOnMount} tabIndex={-1} className="max-h-[22rem] overflow-y-auto rounded-md pr-1 outline-offset-4">
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
         <tr><th className="text-left font-normal">{t("areaColVenue")}</th><th className="text-right font-normal">{t("areaColDistance")}</th><th className="text-right font-normal">{t("areaColEffect")}</th><th /></tr>

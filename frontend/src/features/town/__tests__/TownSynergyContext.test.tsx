@@ -90,3 +90,14 @@ it("closes the selected vision result when the current town changes", async () =
   const client = await mount(); await completed(); fireEvent.click(check()!); expect(screen.getByRole("dialog")).toBeTruthy();
   await change(client, "town"); expect(screen.queryByRole("dialog")).toBeNull();
 });
+it("lands on the results below the button once the analysis finishes", async () => {
+  await mount(); await completed();
+  expect(document.activeElement).toBe(screen.getByRole("table").parentElement);
+});
+it("announces a failed analysis next to the button", async () => {
+  vi.mocked(api.getTownSynergy).mockRejectedValueOnce(new Error("Current analysis failed"));
+  await mount(); fireEvent.click(analyze());
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toBe("Current analysis failed");
+  expect(analyze().closest("section")?.contains(alert)).toBe(true);
+});
