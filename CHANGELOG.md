@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep a coupon's face value, such as "$1.00 COUPON", from becoming an exact
+  product price during shelf capture. Preserve the printed text, mark the
+  fallback price as estimated and retain existing product prices when placing
+  the capture; explicit prices such as "$1.00 WITH COUPON" still apply.
+
 - If another setting replaces a number while its field is being edited,
   show the new value and discard the old typed text so leaving the field
   cannot silently restore the previous number.

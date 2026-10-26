@@ -200,7 +200,8 @@ _NON_SELLING_PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 _SAVINGS_SUFFIX_RE = re.compile(
-    r"^(?:off\b|savings?\b|rebate\b|cash[\s-]*back\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
+    r"^(?:off\b|savings?\b|rebate\b|cash[\s-]*back\b|coupons?(?:\s+value)?[.!]?$"
+    r"|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
 )
 _DEPOSIT_PREFIX_RE = re.compile(r"\bdeposit\s*:?\s*$", re.IGNORECASE)
 _DEPOSIT_INCLUDED_PREFIX_RE = re.compile(
