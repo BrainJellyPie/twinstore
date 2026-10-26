@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- In a shelf photo's product list, a price that cannot be read is outlined in
+  red and tied to its error message, so it can be found in a long list; Shelf
+  Lab's price fields do the same. Typing into an estimated price and then
+  erasing it no longer leaves the page "unsaved" and asking before you leave.
+
 - Keep reversed multipack sizes such as `500 ml × 6` from linking to a
   single-unit product. Compare complete nested pack expressions and preserve
   valid links when the catalog puts the brand after the pack size.

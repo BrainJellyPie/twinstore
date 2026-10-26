@@ -86,3 +86,40 @@ it("keeps untouched estimated prices estimated when saving another correction", 
     expect.objectContaining({ id: "i1", price: null }), expect.objectContaining({ id: "i2", price: 320 }),
   ]));
 });
+
+it("marks the one price that cannot be read, so it can be found in a long shelf", async () => {
+  const item = (id: string, name: string) => ({ id, band: 0, level: 1, order: 0, facings: 1, boxes: [], sku: id, name, brand: "",
+    size: "", category: "", raw_category: "", price: 250, price_estimated: false, price_text: "", confidence: 10, labeled: true });
+  const view: CaptureView = { status, result: {
+    image_size: [100, 100], tilt_deg: 0, detector: "classic", detection_sources: {}, model: "none", currency: "USD",
+    rack_type: "shelf", bands: [], gaps: [], dominant_category: "", notes: [], timings: {}, vlm_calls: 0, edited: false,
+    items: [item("i1", "Tea"), item("i2", "Cola")],
+  } };
+  vi.mocked(api.listCaptures).mockResolvedValue([status]);
+  vi.mocked(api.getCapture).mockResolvedValue(view);
+  show("USD");
+  const cola = await screen.findByLabelText("Price of Cola");
+  fireEvent.change(cola, { target: { value: "-5" } });
+  const alert = await screen.findByRole("alert");
+  expect(cola.getAttribute("aria-invalid")).toBe("true");
+  expect(cola.getAttribute("aria-describedby")).toBe(alert.id);
+  expect(screen.getByLabelText("Price of Tea").getAttribute("aria-invalid")).toBe("false");
+});
+
+it("has nothing to save after a typed estimated price is put back as it was", async () => {
+  const view: CaptureView = { status, result: {
+    image_size: [100, 100], tilt_deg: 0, detector: "classic", detection_sources: {}, model: "none", currency: "USD",
+    rack_type: "shelf", bands: [], gaps: [], dominant_category: "", notes: [], timings: {}, vlm_calls: 0, edited: false,
+    items: [{ id: "i1", band: 0, level: 1, order: 0, facings: 1, boxes: [], sku: "tea", name: "Tea", brand: "",
+      size: "", category: "", raw_category: "", price: null, price_estimated: true, price_text: "", confidence: 10, labeled: true }],
+  } };
+  vi.mocked(api.listCaptures).mockResolvedValue([status]);
+  vi.mocked(api.getCapture).mockResolvedValue(view);
+  show("USD");
+  const price = await screen.findByLabelText("Price of Tea");
+  fireEvent.change(price, { target: { value: "-" } });
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
+  fireEvent.change(price, { target: { value: "" } });
+  expect(screen.getByRole("button", { name: "Saved" })).toBeTruthy();
+  expect(price.getAttribute("title")).toBe("Tag unreadable — typical price for the category");
+});
