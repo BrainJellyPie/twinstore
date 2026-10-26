@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep earned rewards and store-credit amounts out of captured selling
+  prices, including Korean "1,000원 적립" tags. Preserve the tag and mark the
+  fallback as estimated; explicit rewards prices still retain their amount.
+
 - Match discount previews to the physical and online stores' rounding,
   including half-cent and half-won boundaries. Block out-of-range discount
   and category percentages with localized correction guidance while keeping
