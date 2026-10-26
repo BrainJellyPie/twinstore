@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Compare package net quantities across metric units before linking a catalog
+  product. A 0.5 L package cannot become its printed 100 ml nutrition reference;
+  equivalent quantities remain usable when the catalog name has printed evidence.
+
 - Keep purchase limits and minimum/maximum quantities from becoming exact
   captured selling prices. Preserve the printed tag, estimated-price review
   and existing product prices; limited-offer cash prices remain usable.
