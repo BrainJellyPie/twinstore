@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, Copy, FlaskConical, Grid3x3, Images, Loader2, MessagesSquare, Plus, Rows3, Trash2, TriangleAlert } from "lucide-react";
+import { Copy, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
@@ -55,30 +55,24 @@ import { InventoryReview } from "./InventoryReview";
 import { FieldPilots } from "./FieldPilots";
 import { StaffPitchBuilder } from "./StaffPitchBuilder";
 import { StaffPitchReportView } from "./StaffPitchReport";
+import { MARKETING_TOOLS, type MarketingTool } from "./tools";
 
-type Tab = "ab" | "shelf" | "survey" | "conjoint" | "pitch" | "pilot" | "products" | "inventory" | "prices" | "protocols" | "priceChecks";
 type JobTab = "ab" | "shelf" | "survey" | "conjoint" | "pitch";
 
-const TABS: { id: Tab; label: MessageKey; icon: typeof FlaskConical; blurb: MessageKey }[] = [
-  { id: "ab", label: "mkTabAb", icon: FlaskConical, blurb: "mkTabAbBlurb" },
-  { id: "shelf", label: "mkTabShelf", icon: Rows3, blurb: "mkTabShelfBlurb" },
-  { id: "survey", label: "mkTabSurvey", icon: ClipboardList, blurb: "mkTabSurveyBlurb" },
-  { id: "conjoint", label: "mkTabConjoint", icon: Grid3x3, blurb: "mkTabConjointBlurb" },
-  { id: "pitch", label: "mkTabPitch", icon: MessagesSquare, blurb: "mkTabPitchBlurb" },
-  { id: "pilot", label: "mkTabPilot", icon: ClipboardList, blurb: "mkTabPilotBlurb" },
-  { id: "protocols", label: "mkTabProtocols", icon: ClipboardList, blurb: "mkTabProtocolsBlurb" },
-  { id: "priceChecks", label: "mkTabPriceChecks", icon: ClipboardList, blurb: "mkTabPriceChecksBlurb" },
-  { id: "prices", label: "mkTabPrices", icon: ClipboardList, blurb: "mkTabPricesBlurb" },
-  { id: "inventory", label: "mkTabInventory", icon: ClipboardList, blurb: "mkTabInventoryBlurb" },
-  { id: "products", label: "mkTabProducts", icon: Images, blurb: "mkTabProductsBlurb" },
-];
 const NEW_JOB: Record<JobTab, MessageKey> = { ab: "mkNewAb", shelf: "mkNewShelf", pitch: "mkNewPitch", conjoint: "mkNewConjoint", survey: "mkNewSurvey" };
 
 const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 
-export function MarketingPage({ projectId }: { projectId: string }) {
+export function MarketingPage({ projectId, tool, onToolChange }: {
+  projectId: string; tool?: MarketingTool; onToolChange?: (tool: MarketingTool) => void;
+}) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>("ab");
+  const [localTab, setLocalTab] = useState<MarketingTool>("ab");
+  const tab = tool ?? localTab;
+  const setTab = useCallback((next: MarketingTool) => {
+    setLocalTab(next);
+    onToolChange?.(next);
+  }, [onToolChange]);
   const [selected, setSelected] = useState<Record<JobTab, string | null>>({ ab: null, shelf: null, survey: null, conjoint: null, pitch: null });
   // A request routed here from the command palette opens the right builder and drafts from the same words.
   const pendingAsk = useAssistStore((s) => s.pending);
@@ -96,7 +90,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     setTab(target);
     setSelected((s) => ({ ...s, [target]: "" }));
     setPrefill({ tab: target, text: ask.text, id: ask.id });
-  }, [pendingAsk, projectId, takeAsk]);
+  }, [pendingAsk, projectId, takeAsk, setTab]);
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
@@ -112,7 +106,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     setSetupId(req.setup_id);  // checked against the store's layouts where it is used
     setAbDraft({ key: Date.now(), req });
     setSelected((s) => ({ ...s, ab: "" }));
-  }, [pendingDraft, projectId, takeDraft]);
+  }, [pendingDraft, projectId, takeDraft, setTab]);
   const activeSetup = [setupId, project.data?.state.activeSetupId]
     .find((id) => setups.some((candidate) => candidate.id === id)) ?? setups[0]?.id ?? "";
   const setup = useQuery({
@@ -201,7 +195,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[1.7rem] leading-tight tracking-[-0.04em]">{t("mkTitleMain")} <span className="font-accent aurora-text">{t("mkTitleAccent")}</span></h1>
-          <p className="text-sm text-muted-foreground">{t(TABS.find((item) => item.id === tab)!.blurb)}</p>
+          <p className="text-sm text-muted-foreground">{t(MARKETING_TOOLS.find((item) => item.id === tab)!.blurb)}</p>
         </div>
         <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -212,8 +206,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
           </label>
           {/* One scrolling row on a phone, so the studio's content starts near the top. */}
           <div ref={tabRow} className="relative flex max-w-full overflow-x-auto rounded-xl bg-foreground/[0.055] p-1 [scrollbar-width:none] sm:flex-wrap" role="tablist"
-            aria-label={t("mkTabsLabel")} onKeyDown={(e) => onTabKeys(e, TABS.map((item) => item.id), tab, setTab)}>
-            {TABS.map(({ id, label, icon: Icon }) => (
+            aria-label={t("mkTabsLabel")} onKeyDown={(e) => onTabKeys(e, MARKETING_TOOLS.map((item) => item.id), tab, setTab)}>
+            {MARKETING_TOOLS.map(({ id, label, icon: Icon }) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)}
                 className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
                   tab === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>

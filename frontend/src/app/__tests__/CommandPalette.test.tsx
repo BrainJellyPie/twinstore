@@ -236,3 +236,12 @@ it("finds the store's online stores and runs by name once something is typed", a
   fireEvent.click(await screen.findByRole("option", { name: /Staples price test/ }));
   expect(state.navigate).toHaveBeenLastCalledWith({ to: "/online/$pid", params: { pid: "proj_cafe" }, search: { run: "orun_1" } });
 });
+
+it.each([["shelf test", "shelf"], ["conjoint", "conjoint"], ["선반 테스트", "shelf"]])("opens the studio tool named by %s", (query, tool) => {
+  state.pathname = "/projects/proj_cafe";
+  render(<CommandPalette />);
+  const input = screen.getByRole("combobox", { name: "Command" });
+  fireEvent.change(input, { target: { value: query } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(state.navigate).toHaveBeenCalledWith({ to: "/marketing/$pid", params: { pid: "proj_cafe" }, search: { tool } });
+});

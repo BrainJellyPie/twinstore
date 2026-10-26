@@ -38,6 +38,7 @@ import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { MARKETING_TOOLS } from "@/features/marketing/tools";
 
 import { useCommandPalette, useShortcutsSheet } from "./commandPalette";
 import { quitLauncher, useLauncher } from "./launcher";
@@ -109,6 +110,17 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const runs = useQuery({
     queryKey: onlineKeys.runs(storeId ?? ""), queryFn: ({ signal }) => listRuns(storeId!, signal), enabled: !!storeId && typed,
   });
+  // The studio's tools by name ("shelf test", "conjoint"), once something is typed.
+  const toolCommands = useMemo<Command[]>(() => {
+    if (!storeId || !typed) return [];
+    return MARKETING_TOOLS.map((tool) => ({
+      id: `tool-${tool.id}`, group: translate(locale, "marketingStudio"), label: translate(locale, tool.label),
+      hint: translate(locale, tool.blurb), icon: Megaphone,
+      aliases: LOCALES.map(({ code }) => `${translate(code, "marketingStudio")} ${translate(code, tool.label)}`).join(" "),
+      run: () => navigate({ to: "/marketing/$pid", params: { pid: storeId }, search: { tool: tool.id } }),
+    }));
+  }, [storeId, typed, navigate, locale]);
+
   const onlineCommands = useMemo<Command[]>(() => {
     if (!storeId) return [];
     const open = (search: { site: string } | { run: string }) => () => navigate({ to: "/online/$pid", params: { pid: storeId }, search });
@@ -238,7 +250,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
     }
   };
   const visible = useMemo(() => {
-    const found = [...commands, ...(typed ? onlineCommands : [])].filter((c) => matches(c, query));
+    const found = [...commands, ...toolCommands, ...(typed ? onlineCommands : [])].filter((c) => matches(c, query));
     // A sentence that names no command can be asked; command words keep their commands.
     if (!canAsk || found.length > 0) return found;
     // Running it is handled in `run` (the palette stays open while the request is routed).
@@ -246,7 +258,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       id: "ask", group: t("commandAsk"), label: `“${text}”`, hint: t("commandAskHint"), icon: Sparkles, run: () => {},
     };
     return [askCommand];
-  }, [commands, onlineCommands, typed, query, canAsk, text, t]);
+  }, [commands, toolCommands, onlineCommands, typed, query, canAsk, text, t]);
   const current = Math.min(active, Math.max(visible.length - 1, 0));
 
   useEffect(() => {

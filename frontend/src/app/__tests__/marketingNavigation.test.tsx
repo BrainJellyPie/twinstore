@@ -54,13 +54,14 @@ async function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }); clients.push(client);
   for (const pid of ["alpha", "beta"]) client.setQueryData(queryKeys.project(pid), projects[pid]);
   const root = createRootRoute({ component: Outlet });
-  const route = createRoute({ getParentRoute: () => root, path: "/marketing/$pid", component: Route.options.component });
+  const route = createRoute({ getParentRoute: () => root, path: "/marketing/$pid", component: Route.options.component,
+    validateSearch: Route.options.validateSearch });
   const router = createRouter({ routeTree: root.addChildren([route]), history: createMemoryHistory({ initialEntries: ["/marketing/alpha"] }) });
   await router.load();
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   await screen.findByText("Loaded alpha/exp_a1");
   const go = async () => { await act(async () => { await router.navigate({ to: "/marketing/$pid", params: { pid: "beta" } }); }); };
-  return { client, go };
+  return { client, go, router };
 }
 function expectOwnedRequests() {
   expect(vi.mocked(api.getSetup).mock.calls.filter(([pid, id]) => !projects[pid]!.setups.some((s) => s.id === id))).toEqual([]);
@@ -192,5 +193,31 @@ it("opens price checks in Market and resets the draft on project navigation", as
   await go();
   fireEvent.click(screen.getByRole("tab", { name: /Price checks/ }));
   expect((await screen.findByLabelText("Store reference") as HTMLInputElement).value).toBe("");
+  expectOwnedRequests();
+});
+
+it("opens a linked tool while the studio is open, including the same link after selecting another tab", async () => {
+  const { router } = await mount();
+  const openShelf = async () => { await act(async () => {
+    await router.navigate({ to: "/marketing/$pid", params: { pid: "alpha" }, search: { tool: "shelf" } });
+  }); };
+  await openShelf();
+  expect(screen.getByRole("tab", { name: /Shelf test/ }).getAttribute("aria-selected")).toBe("true");
+  fireEvent.click(screen.getByRole("tab", { name: /A\/B test/ }));
+  await screen.findByText("Loaded alpha/exp_a1");
+  await openShelf();
+  expect(screen.getByRole("tab", { name: /Shelf test/ }).getAttribute("aria-selected")).toBe("true");
+  expectOwnedRequests();
+});
+
+it("opens the requested tool after navigating between stores and retains its tab on query refresh", async () => {
+  const { client, router } = await mount();
+  await act(async () => {
+    await router.navigate({ to: "/marketing/$pid", params: { pid: "beta" }, search: { tool: "conjoint" } });
+  });
+  expect(screen.getByRole("tab", { name: /Conjoint/ }).getAttribute("aria-selected")).toBe("true");
+  fireEvent.click(screen.getByRole("tab", { name: /Shelf test/ }));
+  await act(async () => { client.setQueryData(queryKeys.project("beta"), { ...projects.beta }); });
+  expect(screen.getByRole("tab", { name: /Shelf test/ }).getAttribute("aria-selected")).toBe("true");
   expectOwnedRequests();
 });

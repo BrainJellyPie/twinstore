@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The command palette finds each marketing studio tool by name in any of the six
+  languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
+  before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`
+  links to a tool. Keep the selected tab in the URL so reopening the same
+  tool works after selecting another tab, without resetting the whole studio.
+
 - Keep recognized per-weight/per-volume rates (`/kg`, `/L`, `per litre`,
   `리터당`) out of exact package prices in shelf capture. Preserve the product,
   tag and existing store price, and ask the model to retain unit wording.
