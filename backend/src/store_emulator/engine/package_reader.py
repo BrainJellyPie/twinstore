@@ -6,6 +6,7 @@ import re
 import unicodedata
 from collections import Counter
 from collections.abc import Sequence
+from decimal import Decimal
 from typing import Protocol
 
 from PIL import Image
@@ -70,7 +71,8 @@ Confidence is a fraction: choose 0, 0.25, 0.5, 0.75 or 1. Never use 100 or anoth
 
 MATCH_PROMPT = """Match the observed package to at most one listed store product. The observation is evidence;
 the candidate list is not evidence of what was printed. Only match the same brand, variant and size when the
-observation supports them. Do not invent missing package details. Return {"shelf_product": ""} if no exact match
+observation supports them. Nutrition or serving reference amounts are not the package net size.
+Do not invent missing package details. Return {"shelf_product": ""} if no exact match
 is supported or multiple products remain possible. Otherwise copy the listed name into shelf_product.
 For a product name longer than 120 characters, copy its first 120 characters only when that prefix identifies one
 listed product. If several names share that prefix, leave shelf_product empty instead of guessing."""
@@ -102,6 +104,17 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     # The separate matching call still decides whether the identity agrees.
     label_tokens = re.compile(r"\d+(?:[.,]\d+)? [^\W\d_]+|[^ ]+")
     observed_tokens = Counter(label_tokens.findall(observed))
+    # A serving/reference amount can be printed beside the net size. A candidate
+    # stating a different amount in the same unit contradicts the observed size.
+    quantities = re.compile(r"(\d+(?:[.,]\d+)?) ([^\W\d_]+)")
+    net_quantities: dict[str, set[Decimal]] = {}
+    for amount, unit in quantities.findall(printed_words(reading.size)):
+        net_quantities.setdefault(unit, set()).add(Decimal(amount.replace(",", ".")))
+
+    def agrees_with_net_size(words: str) -> bool:
+        return all(unit not in net_quantities or Decimal(amount.replace(",", ".")) in net_quantities[unit]
+                   for amount, unit in quantities.findall(words))
+
     # A visible multipack cannot be linked to its single-unit catalog entry,
     # even though every word in the single-unit name appears on the pack.
     multiplied_quantities = re.compile(r"(?<![\d.,])(?:\d+ x )+\d+(?:[.,]\d+)? [^\W\d_]+")
@@ -120,7 +133,7 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     # Bound the matching prompt after evidence filtering: unrelated early
     # catalog entries must not hide an observed product later in the store.
     listed = [name for name in dict.fromkeys(products)
-              if (words := printed_words(name.strip()[:120])) and
+              if (words := printed_words(name.strip()[:120])) and agrees_with_net_size(words) and
               observed_packs <= set(multiplied_quantities.findall(words)) and
               observed_counts <= pack_counts(name.strip()[:120]) and
               (f" {words} " in f" {observed} " or Counter(label_tokens.findall(words)) <= observed_tokens)][:MAX_LISTED]
