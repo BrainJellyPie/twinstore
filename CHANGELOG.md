@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Protocols** moves focus to the form's heading when **New protocol**
+  opens it and to the saved protocol after **Record original plan** or an
+  amendment; the button pressed was replaced and focus fell back to the top
+  of the page.
 - **Field pilots** offers **Open Staff scripts** next to its note that pilots
   are prepared from a completed script test; the note named the place but
   gave no way there.

@@ -52,9 +52,12 @@ async function openSaved() {
 
 it("records an explicit complete original plan through the API and shows the saved history", async () => {
   render(<Protocols projectId="project_test" />, { wrapper }); fireEvent.click(screen.getByRole("button", { name: "New protocol" }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Record an original research plan" }));
   expect((screen.getByRole("button", { name: "Record original plan" }) as HTMLButtonElement).disabled).toBe(true);
   fill(); fireEvent.click(screen.getByRole("button", { name: "Record original plan" }));
   expect(await screen.findByRole("button", { name: "Record amendment" })).toBeTruthy();
+  // The record button is replaced by the saved protocol; focus follows to its heading.
+  expect(document.activeElement?.textContent).toMatch(/^Amend saved protocol · revision 1/);
   const [url, init] = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
   const req = JSON.parse(String(init?.body)) as { plan: ProtocolPlan; request_id: string; data_stage: string };
   expect(url).toContain("/project_test/protocols"); expect(req.plan).toEqual(PLAN); expect(req.request_id).toMatch(/^[0-9a-f]{32}$/);
