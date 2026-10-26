@@ -17,6 +17,7 @@ import { autoSelectStarterProducts } from "@/shared/api/starterFill";
 import { resolveImageUrl } from "@/shared/api/images";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 
 export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
   const { t } = useI18n();
@@ -169,7 +170,7 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
       {prepared && !save.data && <Button disabled={busy} onClick={() => void persist()}>{t(save.isPending ? "starterSaving" : save.isError ? "starterRetrySave" : "starterSave")}</Button>}
     </section>}
     {save.isError && <RequestError error={save.error}><p>{t("copyUncertain")}</p></RequestError>}
-    {save.data && <div role="status"><p>{t("starterSaved")}</p><Button onClick={() => { if (save.data) { useSimulationStore.getState().setSelectedSetupId(save.data.setup_id); close(); } }}>{t("starterOpen")}</Button></div>}
+    {save.data && <div ref={focusOnMount} tabIndex={-1} role="status" className="outline-offset-2"><p>{t("starterSaved")}</p><Button onClick={() => { if (save.data) { useSimulationStore.getState().setSelectedSetupId(save.data.setup_id); close(); } }}>{t("starterOpen")}</Button></div>}
     <p className="text-xs">{t("starterAutoClosing")}</p>
   </div>;
 }

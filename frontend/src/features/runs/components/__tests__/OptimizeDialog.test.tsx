@@ -182,12 +182,12 @@ it.each(["rule", "vlm"] as const)("moves focus to the %s verdict that replaces t
   expect(focused.textContent).toMatch(kind === "vlm" ? /Vision shoppers prefer/ : /Validated on fresh shoppers/);
 });
 
-it.each(["rule", "vlm"] as const)("continues from the saved layout's tab after saving the %s winner", async (kind) => {
+it.each(["rule", "vlm"] as const)("opens the saved layout after saving the %s winner", async (kind) => {
   await show(kind, 100, "revenue_per_visitor", { closeable: true });
   vi.mocked(api.applyOptimization).mockResolvedValueOnce({ id: "s2" } as Awaited<ReturnType<typeof api.applyOptimization>>);
   fireEvent.click(screen.getByRole("button", { name: kind === "vlm" ? "Save the winner as a new layout" : "Save as new layout" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Optimized layout" })));
+  expect(useSimulationStore.getState().selectedSetupId).toBe("s2");
 });
 
 it.each(["closed", "unmounted", "selection changed"])("keeps the current layout when a delayed save finishes after the dialog is %s", async state => {

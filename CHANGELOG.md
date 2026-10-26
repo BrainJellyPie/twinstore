@@ -21,7 +21,10 @@
   numbers every candidate on its axis; it showed only "1" until the tenth.
   Saving the result as a new layout continues from that layout's tab; the
   button that opened the optimizer goes away with the run, and focus fell to
-  the page.
+  the page. The same holds for any layout opened from elsewhere (product,
+  shelf-copy, starter and library-photo drafts, the command palette), and
+  those drafts' "saved" confirmations take focus when they replace the save
+  button.
 
 - Keep a coupon's face value, such as "$1.00 COUPON", from becoming an exact
   product price during shelf capture. Preserve the printed text, mark the
