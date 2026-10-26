@@ -159,12 +159,13 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
 
     const seekTarget = consumeSeek();
     if (seekTarget !== null) {
-      if (seekTarget >= maxTime && isLastDay) {
+      const skip = seekTarget === Number.POSITIVE_INFINITY;
+      if ((skip || seekTarget >= maxTime) && isLastDay) {
         loadDay(lastDay, maxTime);
         usePlaybackControlStore.getState().setDay(lastDay);
         usePlaybackControlStore.getState().pause();
         useSimulationMetricsStore.getState().setMetrics({ finished: true });
-      } else if (seekTarget >= maxTime && !isLastDay) {
+      } else if (skip) {
         usePlaybackControlStore.getState().setDay(lastDay);
         loadDay(lastDay, maxTime);
         const acc = accumulatorRef.current;
@@ -176,7 +177,7 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
         usePlaybackControlStore.getState().pause();
         useSimulationMetricsStore.getState().setMetrics({ finished: true, ...acc.snapshot() });
       } else {
-        loadDay(currentDay, seekTarget);
+        loadDay(currentDay, Math.min(seekTarget, maxTime));
       }
       return;
     }

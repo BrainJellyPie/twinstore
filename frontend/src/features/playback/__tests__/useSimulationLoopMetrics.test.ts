@@ -89,7 +89,7 @@ it.each([{ availableDays: [1] }, { availableDays: [2, 5] }])("can play and finis
 it.each([{ availableDays: [1] }, { availableDays: [2, 5] }])("can skip and reset an empty result for weekdays $availableDays", ({ availableDays }) => {
   usePlaybackControlStore.getState().setAvailableDays(availableDays);
   const hook = renderHook(() => useSimulationLoop({ ...options, customers: [], availableDays }));
-  usePlaybackControlStore.getState().seek(options.maxTime);
+  usePlaybackControlStore.getState().skipToEnd();
   tick();
   expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: true, revenue: 0 });
   expect(hook.result.current.playbackTimeRef.current).toBe(options.maxTime);
@@ -99,4 +99,24 @@ it.each([{ availableDays: [1] }, { availableDays: [2, 5] }])("can skip and reset
   expect(hook.result.current.playbackTimeRef.current).toBe(options.minTime);
   expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: false, revenue: 0 });
   expect(usePlaybackControlStore.getState().seekTarget).toBeNull();
+});
+
+it("stays on the current day when the time is moved to closing time, and plays on into the next day", () => {
+  const hook = renderHook(() => useSimulationLoop(options));
+  usePlaybackControlStore.getState().seek(options.maxTime);
+  tick(); tick();
+  expect(usePlaybackControlStore.getState().currentDay).toBe(1);
+  expect(hook.result.current.playbackTimeRef.current).toBe(options.maxTime);
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: false, revenue: 100 });
+  usePlaybackControlStore.getState().play();
+  tick(1 / 60);
+  expect(usePlaybackControlStore.getState().currentDay).toBe(2);
+});
+
+it("skips to the end of the whole run with every day's sales", () => {
+  renderHook(() => useSimulationLoop(options));
+  usePlaybackControlStore.getState().skipToEnd();
+  tick();
+  expect(usePlaybackControlStore.getState()).toMatchObject({ currentDay: 3, playing: false });
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: true, revenue: 600 });
 });

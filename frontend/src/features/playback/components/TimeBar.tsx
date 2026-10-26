@@ -52,6 +52,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   const togglePlay = usePlaybackControlStore((s) => s.togglePlay);
   const setSpeed = usePlaybackControlStore((s) => s.setSpeed);
   const seek = usePlaybackControlStore((s) => s.seek);
+  const skipToEnd = usePlaybackControlStore((s) => s.skipToEnd);
   const currentDay = usePlaybackControlStore((s) => s.currentDay);
   const availableDays = usePlaybackControlStore((s) => s.availableDays);
   const nextDay = usePlaybackControlStore((s) => s.nextDay);
@@ -139,7 +140,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
                 size="icon-lg"
                 className="size-8 rounded-full sm:size-10"
                 disabled={disabled}
-                onClick={() => seek(maxTime)}
+                onClick={skipToEnd}
                 title={t("pbSkipToClose")}
                 aria-label={t("pbSkipToClose")}
               >
