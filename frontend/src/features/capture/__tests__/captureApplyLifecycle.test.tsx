@@ -7,7 +7,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { CapturePage } from "../CapturePage";
 
 const { navigate, router } = vi.hoisted(() => ({ navigate: vi.fn(), router: { state: { location: { pathname: "/capture/project" } } } }));
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate, useRouter: () => router }));
+vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }), useNavigate: () => navigate, useRouter: () => router }));
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(),
   listCaptures: vi.fn(), getCapture: vi.fn(), getModels: vi.fn(), getSetups: vi.fn(), getSetup: vi.fn(), getProject: vi.fn(), applyCapture: vi.fn(),

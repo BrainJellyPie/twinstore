@@ -35,6 +35,10 @@ from store_emulator.domain.types import Weekday
 from store_emulator.engine.generators.persona import Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
+from store_emulator.engine.capture.detect import Detection
+from store_emulator.engine.capture.frame import make_frame
+from store_emulator.engine.capture.pipeline import build_items
+from store_emulator.engine.capture.recognize import FacingGroup, VLMLabeler, describe
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.generators.store_setup_writer import draft_store_setup
 from store_emulator.engine.generators.profile_writer import draft_profile
@@ -96,6 +100,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank",
+    "capture-price", "capture-saving", "capture-off", "capture-saving-krw",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -133,7 +138,7 @@ elif args.case == "hypermarket":
     description = "동네 주민과 가족들이 식료품과 생활필수품을 구입하는 대형 슈퍼마켓"
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
     temperature=.5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
-    max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith(("persona-", "traffic-")) else 5000,
+    max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith(("pack-", "capture-")) else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith(("persona-", "traffic-")) else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
@@ -534,6 +539,39 @@ try:
             address=address, currency=currency, profile=profile, categories=categories, persona_batch_size=persona_batch_size,
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
+    elif args.case.startswith("capture-"):
+        tags = {"capture-price": "$1.00", "capture-saving": "SAVE $1.00", "capture-off": "$1.00 OFF",
+                "capture-saving-krw": "1,000원 할인"}
+        currency = "KRW" if args.case == "capture-saving-krw" else "USD"
+        fixture = Image.new("RGB", (448, 512), "#f5f1e9")
+        drawing = ImageDraw.Draw(fixture)
+        drawing.rounded_rectangle((138, 24, 310, 376), radius=28, fill="#553023", outline="black", width=3)
+        drawing.rectangle((174, 12, 274, 44), fill="#ca3333")
+        drawing.rectangle((140, 140, 308, 292), fill="#ca3333")
+        for text, y, size in [("ACME", 150, 26), ("COLA", 188, 42), ("500 ml", 246, 24)]:
+            drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
+        drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
+        drawing.text((224, 439), tags[args.case], fill="black", font=load_font(36, bold=True), anchor="mt")
+        fixture.save(output / "image.png")
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            label = asyncio.run(VLMLabeler(client, currency=currency).label(fixture))
+        # Known fixture geometry isolates real label recognition and conversion;
+        # this is not a detector benchmark or a photograph of a real shelf.
+        frame = make_frame(fixture)
+        detection = Detection(x1=138, y1=24, x2=310, y2=376, band=0)
+        group = FacingGroup(band=0, facings=[detection], descriptor=describe(fixture, detection), label=label)
+        items, _ = build_items(frame, [group], [3], currency=currency, rack_type="shelf")
+        item = items[0]
+        issues = []
+        if not item.labeled or "cola" not in item.name.casefold():
+            issues.append("The printed product identity was not retained.")
+        if args.case == "capture-price":
+            if item.price != 100 or item.price_estimated:
+                issues.append("The printed $1.00 selling price was not retained as 100 cents.")
+        elif not item.price_estimated:
+            issues.append("A savings/discount amount became an exact selling price.")
+        result.update(success=not issues, issues=issues, fixture_tag=tags[args.case], currency=currency,
+                      label=label.model_dump(mode="json"), item=item.model_dump(mode="json"))
     elif args.case.startswith("pack-"):
         products = ["Strawberry Jam 340g", "Apricot Jam 340g", "Marmalade 340g"]
         picture = Image.new("RGB", (600, 800), "white")

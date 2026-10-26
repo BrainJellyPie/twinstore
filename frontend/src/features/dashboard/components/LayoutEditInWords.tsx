@@ -13,6 +13,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 export function LayoutEditInWords({ projectId, setupId }: { projectId: string; setupId: string }) {
   const { t } = useI18n();
@@ -80,6 +81,7 @@ export function LayoutEditInWords({ projectId, setupId }: { projectId: string; s
         placeholder={t("editWordsPlaceholder")}
         aria-label={t("editWordsLabel")}
         className="w-full resize-none rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
+      <NeedsModel purpose="assist" />
       <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={length < 5 || busy} onClick={() => request(text)}>
         {draft.isPending ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />} {t("editWordsDraft")}
       </Button>

@@ -22,6 +22,7 @@ import { FactorialReview } from "./FactorialReview";
 import { KeepAsLayout } from "./KeepAsLayout";
 import { TestOnline } from "./TestOnline";
 import { segmentLabel } from "@/shared/i18n/personaLabels";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)}%`;
 
@@ -282,6 +283,7 @@ function ReportBar({ projectId, experimentId }: { projectId: string; experimentI
         {write.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkAddCommentary")}
       </Button>
       {write.error && <p className="basis-full text-xs text-destructive">{write.error.message}</p>}
+      {write.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
     </div>
   );
 }

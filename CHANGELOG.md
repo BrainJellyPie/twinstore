@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.8.2 — More reliable local-model setup and shelf capture
+
+- Keep recognized savings/coupon amounts out of exact shelf prices, preserving
+  the product and marking its fallback price as estimated. Read actual product
+  values wrapped in `properties` without silently replacing them with an empty
+  label; copied schema definitions and invalid field types remain rejected.
+
 - Recover oversized automatic-product catalogs in bounded groups, shrinking
   failed groups before trying individual categories. Clarify that product lists
   are candidates, so small local models do not copy the whole catalog when the
@@ -43,7 +50,9 @@
 
 - A shopper's thought on the store floor wraps into a small card of at most
   three lines; a model's long thought ran as one line across the store and
-  under the playback panel. Purchases still read on one line. Shoppers' group
+  under the playback panel. A checkout description wraps the same way
+  ("Places the pistachios, beef jerky… on the counter" ran 600 px wide);
+  purchases still read on one line. Shoppers' group
   labels sit on small solid pills and bubbles are opaque, so where shoppers
   stand close the nearer one covers the farther instead of their text printing
   over each other ("MCorporate executivesrs").
@@ -71,7 +80,9 @@
 - The online designer, both run analysts and the shopper interviews (one
   shopper, a group, an online shopper) say up front when no model is set up,
   with **Download local model** and **Model settings** buttons, in the chosen
-  language. Before, the first sign was an English error after sending.
+  language; so does **Change the layout in words**. Before, the first sign was
+  an English error after sending. A failed A/B report commentary or study
+  reading shows the same buttons when no model is set up.
 - Closing a dialog, sheet or confirmation returns keyboard focus to the button
   that opened it (such as **Watch a shopper**), so Tab carries on from there.
   Most dialogs open from a plain button, and focus used to drop to the start
@@ -88,6 +99,18 @@
 - A shelf photo's product rows name their fields for screen readers ("Category
   of Cola 2L", "Price of Cola 2L"); the category list had no name and the
   price field only a "price" placeholder.
+- Unsaved product corrections on a shelf photo are no longer dropped without
+  a word: leaving the page, reloading, or opening another photo first asks
+  **Leave without saving the product corrections?**, and a look at the
+  **Shelf Lab** tab keeps them.
+- The marketing studio's tools (A/B tests … Products) and an online store's
+  Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
+  Tab stop instead of one per tab (eleven in the studio). The studio's tab row
+  has an accessible name.
+- A number field's hint ("Leave empty to keep", "비워 두면 유지") is set in the
+  text font; in the number font Korean and Japanese hints were spaced apart.
+- A shopper row's trip line wraps only between its parts, so "5 stops" (in
+  Korean "5곳 들름") or "2.7 min" is never split across two lines.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

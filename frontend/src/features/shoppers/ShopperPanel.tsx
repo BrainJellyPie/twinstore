@@ -1,7 +1,7 @@
 // Shoppers tab of a finished run: pick one shopper, follow their path and thoughts step by step, see them in
 // 3D, and interview them about the trip afterwards.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search, Sparkles, UsersRound, X } from "lucide-react";
 
@@ -167,7 +167,9 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age ? ageBadge(r.age, t) : "–"}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8rem] font-medium" title={r.name}>{r.name}</span>
-                <span className="num block text-[0.68rem] text-muted-foreground">{t(r.stops === 1 ? "shopperTripOne" : "shopperTripMany", { day: r.day, time: r.arrival, minutes: oneDecimal.format(r.minutes), stops: r.stops })}</span>
+                <span className="num block text-[0.68rem] text-muted-foreground">{/* Wrap only between the "·" parts: "5곳 들름" or "2.7 min" never split across lines. */}
+                  {t(r.stops === 1 ? "shopperTripOne" : "shopperTripMany", { day: r.day, time: r.arrival, minutes: oneDecimal.format(r.minutes), stops: r.stops })
+                    .split(" · ").map((part, i) => <Fragment key={i}>{i > 0 && " · "}<span className="whitespace-nowrap">{part}</span></Fragment>)}</span>
               </span>
               <span className="text-right">
                 <span className="num block text-[0.8rem] font-semibold">{r.units ? formatMoney(r.spent, currency) : "–"}</span>

@@ -194,6 +194,13 @@ _PRICE_CURRENCY_SYMBOLS = {
 _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
+_SAVINGS_PREFIX_RE = re.compile(
+    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cashback|coupon(?:\s+value)?)|할인액|절약|値引き)\s*$",
+    re.IGNORECASE,
+)
+_SAVINGS_SUFFIX_RE = re.compile(
+    r"^(?:off\b|savings?\b|rebate\b|cashback\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
+)
 
 
 def _integer_digits(raw: str, separators: str) -> str | None:
@@ -218,6 +225,12 @@ def _parse_number(text: str) -> tuple[float, bool] | None:
         return None
     match = matches[0]
     before, after = normalized[:match.start()].strip(), normalized[match.end():].strip()
+    # A savings/coupon value is not a selling price, even when the model left
+    # its numeric price unknown. Strip currency marks only for this label test.
+    price_context = [re.sub(r"[$€£¥₩¢원円]", "", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
+                     for part in (before, after)]
+    if _SAVINGS_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
+        return None
     if (re.search(r"[-−–—]\s*(?:[$€£¥₩]|[A-Z]{3})?\s*$", before, re.IGNORECASE)
             or after.startswith(("-", "−")) or before.endswith((".", ","))
             or "(" in before and ")" in after):
