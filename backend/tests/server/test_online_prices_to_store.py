@@ -119,6 +119,7 @@ def test_large_price_transfers_are_complete_or_explicitly_rejected(monkeypatch, 
     for product in variant.products:
         product.price = 90
     monkeypatch.setattr(online, "_snapshot", lambda *_: ([control, variant], []))
+    monkeypatch.setattr(online, "_labels", lambda *_: ["Control", "Variant"])
     if count > 500:
         with pytest.raises(AppError, match="500"):
             online.run_store_changes("p", "r", 1)

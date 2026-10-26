@@ -126,36 +126,39 @@ export function BeforeAfter({ beforeUrl, afterUrl, maskUrl, size, showMask }: {
 
 // ── Composer ──────────────────────────────────────────────────────────────
 
-function ProductSlot({ label, itemId, names, active, onActivate, onClear }: {
-  label: string; itemId: string | null; names: Map<string, string>; active: boolean; onActivate: () => void; onClear: () => void;
+function ProductSlot({ label, itemId, names, active, onActivate, onChoose, onClear }: {
+  label: string; itemId: string | null; names: Map<string, string>; active: boolean; onActivate: () => void;
+  onChoose: (id: string) => void; onClear: () => void;
 }) {
   const { t } = useI18n();
+  // Besides clicking the photo, the shelf's products can be chosen from this list, so a slot also works from the keyboard.
   return (
-    <button
-      type="button"
-      onClick={onActivate}
+    <div
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-[border-color,box-shadow]",
+        "flex min-w-0 flex-1 items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-[border-color,box-shadow]",
         active ? "border-primary shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_22%,transparent)]" : "hover:border-foreground/20",
       )}
     >
-      <span className="eyebrow shrink-0">{label}</span>
-      <span className={cn("min-w-0 flex-1 truncate font-medium", !itemId && "text-muted-foreground")}>
-        {itemId ? names.get(itemId) ?? itemId : active ? t("capLabClickOnPhoto") : t("capLabNotChosen")}
-      </span>
+      <label className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="eyebrow shrink-0">{label}</span>
+        <select aria-label={label} value={itemId ?? ""} onFocus={onActivate} onClick={onActivate}
+          onChange={(e) => (e.target.value ? onChoose(e.target.value) : onClear())}
+          className={cn("min-w-0 flex-1 cursor-pointer appearance-none truncate rounded-md bg-transparent font-medium outline-offset-2", !itemId && "text-muted-foreground")}>
+          <option value="">{active ? t("capLabClickOnPhoto") : t("capLabNotChosen")}</option>
+          {[...names].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
+      </label>
       {itemId && (
-        <span
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           aria-label={t("capLabClear", { label })}
-          onClick={(e) => { e.stopPropagation(); onClear(); }}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onClear(); } }}
+          onClick={onClear}
           className="rounded-md p-0.5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
         >
           <X className="size-3.5" />
-        </span>
+        </button>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -239,10 +242,12 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
 
       <div className="flex flex-col gap-2">
         <ProductSlot label={t("capLabSlotProduct")} itemId={draft.target} names={names} active={draft.slot === "target"}
-          onActivate={() => setDraft({ ...draft, slot: "target" })} onClear={() => setDraft({ ...draft, target: null, slot: "target" })} />
+          onActivate={() => setDraft({ ...draft, slot: "target" })} onClear={() => setDraft({ ...draft, target: null, slot: "target" })}
+          onChoose={(id) => setDraft({ ...draft, target: id, slot: needsOther(draft.kind) && !draft.other ? "other" : "target" })} />
         {needsOther(draft.kind) && (
           <ProductSlot label={draft.kind === "swap" ? t("capLabSlotWith") : t("capLabSlotOver")} itemId={draft.other} names={names} active={draft.slot === "other"}
-            onActivate={() => setDraft({ ...draft, slot: "other" })} onClear={() => setDraft({ ...draft, other: null, slot: "other" })} />
+            onActivate={() => setDraft({ ...draft, slot: "other" })} onClear={() => setDraft({ ...draft, other: null, slot: "other" })}
+            onChoose={(id) => setDraft({ ...draft, other: id, slot: "target" })} />
         )}
       </div>
 

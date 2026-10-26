@@ -14,6 +14,26 @@
   of unqualified stored integers, and require both ends of a requested price
   range. A cheaper product below the requested minimum is not a valid substitute.
 
+- Shelf Lab's product slots can be filled from a list of the shelf's products
+  as well as by clicking the photo, so a swap, extension or any other change
+  can be set up from the keyboard. The button that clears a slot is no longer
+  nested inside the slot's own button.
+
+- A captured product's facings stay between 1 and 24, the most the server
+  saves. The plus button used to go past 24, and saving then failed. At either
+  limit the button shows as unavailable but keeps keyboard focus, and screen
+  readers announce the new count.
+
+- Online variants now show shoppers the original store's name. A version
+  named "Glow Room – no ads" used to put that label on the page itself (logo,
+  tab title, search box and web address), so the shoppers of one arm saw a
+  different store name, sometimes one that described the change being tested.
+  Runs, replays and the store designer's previews now show the original name.
+  Reports, run lists and the store list still use each version's own name, and
+  the designer says so under a variant's name. Rival variants use their original
+  storefront name too, while CSV exports and historical reports retain the
+  version labels captured when the run started.
+
 - Emptying a pack's name in the marketing product library and leaving the
   field now brings the saved name back. Before, the field stayed blank while
   the old name was kept, so it looked cleared until the page reloaded.

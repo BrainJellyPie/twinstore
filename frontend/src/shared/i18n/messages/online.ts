@@ -34,6 +34,7 @@ export const onlineMessages = {
   onFromStore: ["My store’s shelves", "내 매장의 진열 상품", "我的门店货架", "自店の棚", "Los estantes de mi tienda", "Les rayons de mon magasin"],
   onFromStoreBody: ["Put the products of a layout online: one category per shelf sign, shelf prices and promotions included.", "배치의 상품을 그대로 온라인에 올립니다. 진열대 이름마다 카테고리 하나, 진열 가격과 프로모션도 함께 옮깁니다.", "把布局中的商品搬到线上：每个货架标识一个类别，货架价格和促销一并带上。", "レイアウトの商品をオンラインに並べます。棚の表示ごとに1カテゴリ、棚の価格と販促も引き継ぎます。", "Lleva online los productos de un plano: una categoría por cartel de estante, con precios y promociones.", "Mettez en ligne les produits d’un plan : une catégorie par enseigne de rayon, prix et promotions compris."],
   onStoreName: ["Store name", "스토어 이름", "商店名称", "ストア名", "Nombre de la tienda", "Nom de la boutique"],
+  onVariantNameHint: ["Shoppers see the original store's name. This name only labels the version in lists and reports.", "쇼퍼에게는 원래 스토어 이름이 보입니다. 이 이름은 목록과 보고서에서 버전을 구분하는 데만 쓰입니다.", "购物者看到的是原商店的名称。此名称仅用于在列表和报告中区分版本。", "ショッパーには元のストア名が表示されます。この名前は一覧とレポートでバージョンを見分けるためだけに使われます。", "Los compradores ven el nombre de la tienda original. Este nombre solo identifica la versión en listas e informes.", "Les acheteurs voient le nom de la boutique d'origine. Ce nom sert seulement à repérer la version dans les listes et les rapports."],
   onFromLayout: ["Layout", "배치", "布局", "レイアウト", "Plano", "Plan"],
   onActiveLayout: ["Active layout", "현재 배치", "当前布局", "使用中のレイアウト", "Plano activo", "Plan actif"],
   onCreateStore: ["Create store", "스토어 만들기", "创建商店", "ストアを作成", "Crear tienda", "Créer la boutique"],

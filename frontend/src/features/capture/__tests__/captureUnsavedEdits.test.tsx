@@ -60,3 +60,18 @@ it("keeps unsaved corrections across the Shelf Lab tab and asks before another p
   expect(await screen.findByDisplayValue("Coffee")).toBeTruthy();
   expect(api.updateCapture).not.toHaveBeenCalled();
 });
+
+it("keeps facings between one and the 24 the server saves, without dropping focus at either end", async () => {
+  show();
+  await screen.findByDisplayValue("Tea");
+  const fewer = screen.getByRole("button", { name: "Fewer facings of Tea" });
+  const more = screen.getByRole("button", { name: "More facings of Tea" });
+  expect(fewer.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(fewer);
+  expect(screen.getByText("1×")).toBeTruthy();
+  for (let i = 0; i < 30; i++) fireEvent.click(more);
+  expect(screen.getByText("24×")).toBeTruthy();
+  expect(more.getAttribute("aria-disabled")).toBe("true");
+  expect((more as HTMLButtonElement).disabled).toBe(false);
+  expect(fewer.getAttribute("aria-disabled")).toBe("false");
+});

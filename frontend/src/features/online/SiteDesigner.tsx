@@ -134,7 +134,9 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
       </Card>
 
       <Card title={t("onDesignStore")}>
-        <Field label={t("onStoreName")}><Input aria-label={t("onStoreName")} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label={t("onStoreName")} hint={site.variant_of ? t("onVariantNameHint") : undefined}>
+          <Input aria-label={t("onStoreName")} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+        </Field>
         <Field label={t("onVariantNote")} hint={t("onVariantNoteHint")}>
           <Input aria-label={t("onVariantNote")} value={note} maxLength={400} onChange={(e) => setNote(e.target.value)} />
         </Field>

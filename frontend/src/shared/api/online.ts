@@ -259,6 +259,7 @@ export interface FlowLink { depth: number; source: PageKind; target: PageKind | 
 
 export interface OnlineRunStatus {
   run_id: string; name: string; site_ids: string[]; site_names: string[];
+  rival_name?: string;
   status: "pending" | "running" | "completed" | "failed"; phase: string; done: number; total: number; error: string;
   request: OnlineRunRequest; created_at: string; finished_at: string;
 }
