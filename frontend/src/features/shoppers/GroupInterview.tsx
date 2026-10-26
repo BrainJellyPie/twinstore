@@ -141,7 +141,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
                 onBlur={() => setConfirmDelete(null)} disabled={del.isPending}
                 aria-label={confirmDelete === g.group_id ? t("mkDeleteConfirm") : t("groupDelete")}
                 className={cn("inline-flex shrink-0 items-center gap-1 rounded p-1 text-[0.68rem]", confirmDelete === g.group_id
-                  ? "bg-destructive text-white dark:text-neutral-950" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100")}>
+                  ? "bg-destructive text-white dark:text-neutral-950" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100 [@media(hover:none)]:opacity-100")}>
                 <Trash2 className="size-3.5" />{confirmDelete === g.group_id ? ` ${t("mkDeleteConfirm")}` : ""}
               </button>
             </div>

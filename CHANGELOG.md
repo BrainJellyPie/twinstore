@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- On phones and tablets, the delete buttons of studies, library products and
+  saved interview groups are shown; they appeared only when a mouse hovered
+  over the card, so a touch screen never showed them. The online report's
+  **Click heatmap** link also moves keyboard focus to the heatmap.
+
 - Report section links also move focus into optional advertising, competitor
   and survey results; those sections previously scrolled while focus stayed
   on the navigation link.

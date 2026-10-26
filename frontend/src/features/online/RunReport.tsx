@@ -364,7 +364,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
         </Section>
       </div>
 
-      <div id="online-clicks" className="scroll-mt-16 empty:hidden"><Heatmap variants={v} /></div>
+      <div id="online-clicks" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Heatmap variants={v} /></div>
     </>
   );
 }
