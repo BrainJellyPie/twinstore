@@ -63,3 +63,16 @@ Artifacts under `/workspace/scratch/cpu-vlm-probe-2b/`:
 
 CLI evidence: `/workspace/scratch/probe-temperature-cli-checks.json`.
 Scratch runners: `probe-persona-budget-first.py` and `probe-persona-budget-fields.py`.
+
+## Follow-up at the default sampling temperature
+
+The budget-first schema-order candidate was also tried at temperature 1 on
+main `57dcd38a`, without changing production persona code. This complete
+12-person, 5+5+2 cohort took 90.69 seconds and three HTTP requests with zero
+application cache hits. It had no text-diversity flag but seven budgets fell
+below the supplied 3,000-won minimum: one 2,000–3,000 range and six 0–10,000
+ranges. The candidate remains withheld. No follow-up currency/control
+matrix was run after this failure.
+
+Result: `/workspace/scratch/cpu-vlm-probe-2b/persona-budget-first-default/persona-nightmarket-local-batches-json_schema-1793039233059134565/result.json`.
+Review: `/workspace/scratch/persona-budget-first-default-review.json`.

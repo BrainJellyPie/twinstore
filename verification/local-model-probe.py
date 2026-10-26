@@ -106,6 +106,10 @@ design_requests = {
     "design-threshold-krw": "무료 배송 기준을 30,000원으로 바꿔주세요. 기존 배송비와 다른 설정은 그대로 두세요.",
 }
 layout_requests = {
+    "layout-missing-product": "Set only Dragonfruit Juice to $3.00. If that product is absent, do not change or substitute any existing product. Keep all other products unchanged.",
+    "layout-missing-product-ko": "Dragonfruit Juice 상품이 목록에 있을 때만 가격을 3달러로 바꿔주세요. 목록에 없으면 아무것도 바꾸지 마세요. 다른 상품으로 대체하지 마세요.",
+    "layout-unsupported-edit": "Paint the shop walls red. Do not change any product prices, signs or shelf placements.",
+    "layout-no-changes": "Keep every product price, sign and shelf placement exactly as it is. Do not make any changes.",
     "layout-price-krw": "Green Tea 가격만 3,000원으로 바꿔 주세요. 다른 상품이나 설정은 그대로 유지해 주세요.",
     "layout-discount-promo": "Discount Green Tea by 10 percent and put a SALE sign on Potato Chips. Change nothing else.",
     "layout-category": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
@@ -320,7 +324,7 @@ try:
         elif args.case == "layout-sequence":
             expected["tea"].update(price=360, regular_price=400)
             expected["water"]["promo"] = "SALE"
-        else:
+        elif args.case == "layout-move":
             expected["tea"]["level"] = 3
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reply = asyncio.run(draft_layout_edit(client, layout_requests[args.case], store, currency))
@@ -346,6 +350,15 @@ try:
         issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
         if set(after) != set(expected):
             issues.append("Product identities changed")
+        if args.case in {"layout-missing-product", "layout-missing-product-ko", "layout-unsupported-edit", "layout-no-changes"}:
+            if reply.changes or applied or not reply.summary.strip():
+                issues.append("Expected an explicit no-change explanation with no operations.")
+        if args.case.startswith("layout-missing-product") and any(phrase in reply.summary.casefold() for phrase in (
+            "no edits requested", "not present in the instructions", "no english instruction",
+        )):
+            issues.append("The explanation mistakes an absent product for an absent or unsupported-language instruction.")
+        if args.case == "layout-no-changes" and "product is not listed" in reply.summary.casefold():
+            issues.append("A request to leave everything unchanged was incorrectly explained as an absent product.")
         result.update(success=not issues and not warnings, request=layout_requests[args.case],
             reply=reply.model_dump(mode="json"), applied=applied, warnings=warnings, issues=issues)
         (output / "before.json").write_text(store.model_dump_json(indent=2))
