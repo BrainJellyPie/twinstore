@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A layout that has no floor yet can be deleted from its Store & layout tab;
+  one added by mistake could not be removed until a floor was built for it.
 - In the online stores' **Find a store or run**, Enter opens the first match and
   ↓ moves into the matches, as in **Find a layout**; Enter in the home page's
   **Filter stores** opens the first store it shows.
