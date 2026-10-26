@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- A shopper's journey reads "Heads to Snacks 1" for a walk to a shelf; it read
-  "Heads over Snacks 1".
+- A shopper's journey in English reads "Heads to Snacks 1", "Takes from
+  Snacks 1", "Pays at Counter 1", "Walks in by", "Wanders near" and "Leaves
+  by"; the steps lacked their prepositions ("Heads over Snacks 1", "Takes
+  Snacks 1", "Pays Counter 1").
 - The enlarged shelf picture in a shopper's journey opens with focus on
   **Close**, is announced as a modal dialog, and gives focus back to the
   picture when it closes; focus stayed on the page behind it.
