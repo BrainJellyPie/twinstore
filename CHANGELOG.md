@@ -3,8 +3,8 @@
 ## Unreleased
 
 - The enlarged shelf picture in a shopper's journey opens with focus on
-  **Close**, holds Tab inside for screen readers as a modal, and gives focus
-  back to the picture when it closes; focus stayed on the page behind it.
+  **Close**, is announced as a modal dialog, and gives focus back to the
+  picture when it closes; focus stayed on the page behind it.
 - Saving or removing an API key in **Model providers** updates the "Explore
   without an API key" banner, the local model's role and the "needs a model"
   prompts at once; they stayed as before until the page was reloaded. After
