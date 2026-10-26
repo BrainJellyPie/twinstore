@@ -36,6 +36,10 @@ from store_emulator.engine.capture.recognize import FacingGroup, VLMLabeler, des
     ("MAX 2 PER PERSON", "USD", "500ml", None),
     ("MINIMUM 2 PER ORDER", "USD", "500ml", None),
     ("LIMITED OFFER $1.00", "USD", "500ml", 100),
+    ("ITEM #1234", "USD", "500ml", None),
+    ("REF 1234", "USD", "500ml", None),
+    ("#1234", "USD", "500ml", None),
+    ("ITEM $1.00", "USD", "500ml", 100),
     ("", "USD", "500ml", None),
     (None, "USD", "500ml", None),
 ])

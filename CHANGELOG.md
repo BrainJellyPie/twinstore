@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep item/reference numbers and hash-prefixed codes from becoming captured
+  selling prices. Preserve their printed labels and estimated-price review;
+  an explicit cash tag such as `ITEM $1.00` still supplies its literal price.
+
 - In a shelf photo's product list, a price that cannot be read is outlined in
   red and tied to its error message, so it can be found in a long list; Shelf
   Lab's price fields do the same. Typing into an estimated price and then
