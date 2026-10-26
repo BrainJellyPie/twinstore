@@ -12,6 +12,7 @@ import type { JudgeSpec, OptimizeAlgorithm, OptimizeObjective, OptimizeScope, Op
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
@@ -221,15 +222,15 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-muted-foreground">{t("optCandidatesToTry")}</span>
-              <Input type="number" min={6} max={1000} value={spec.budget} onChange={(e) => setSpec({ ...spec, budget: Math.max(1, Number(e.target.value) || 1) })} className="h-8" />
+              <WholeNumberInput min={6} max={1000} value={spec.budget} onChange={(budget) => setSpec({ ...spec, budget })} className="h-8" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-muted-foreground">{t("optShoppersPerCandidate")}</span>
-              <Input type="number" min={50} max={3000} step={50} value={spec.eval_customers} onChange={(e) => setSpec({ ...spec, eval_customers: Math.max(10, Number(e.target.value) || 10) })} className="h-8" />
+              <WholeNumberInput min={50} max={3000} step={50} value={spec.eval_customers} onChange={(eval_customers) => setSpec({ ...spec, eval_customers })} className="h-8" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-muted-foreground">{t("optMaxChanges")}</span>
-              <Input type="number" min={1} max={50} value={spec.constraints.max_moves} onChange={(e) => setSpec({ ...spec, constraints: { ...spec.constraints, max_moves: Math.max(1, Number(e.target.value) || 1) } })} className="h-8" />
+              <WholeNumberInput min={1} max={50} value={spec.constraints.max_moves} onChange={(max_moves) => setSpec({ ...spec, constraints: { ...spec.constraints, max_moves } })} className="h-8" />
             </label>
             <label className="mt-5 flex items-center gap-2">
               <input type="checkbox" className="accent-primary" checked={spec.constraints.keep_fridges_on_walls} onChange={(e) => setSpec({ ...spec, constraints: { ...spec.constraints, keep_fridges_on_walls: e.target.checked } })} />
@@ -258,11 +259,11 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
               <div className="grid grid-cols-1 gap-3 text-xs min-[400px]:grid-cols-2 sm:grid-cols-3">
                 <label className="flex flex-col gap-1">
                   <span className="text-muted-foreground">{t("optVisionPerLayout")}</span>
-                  <Input type="number" min={4} max={400} value={judge.vlm_customers} onChange={(e) => setJudge({ ...judge, vlm_customers: Math.min(400, Math.max(4, Number(e.target.value) || 4)) })} className="h-8" />
+                  <WholeNumberInput min={4} max={400} value={judge.vlm_customers} onChange={(vlm_customers) => setJudge({ ...judge, vlm_customers })} className="h-8" />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-muted-foreground">{t("optCandidatesJudged")}</span>
-                  <Input type="number" min={1} max={8} value={judge.top_k} onChange={(e) => setJudge({ ...judge, top_k: Math.min(8, Math.max(1, Number(e.target.value) || 1)) })} className="h-8" />
+                  <WholeNumberInput min={1} max={8} value={judge.top_k} onChange={(top_k) => setJudge({ ...judge, top_k })} className="h-8" />
                 </label>
                 <label className="flex items-center gap-2 sm:mt-5">
                   <input type="checkbox" checked={judge.calibrate} onChange={(e) => setJudge({ ...judge, calibrate: e.target.checked })} />

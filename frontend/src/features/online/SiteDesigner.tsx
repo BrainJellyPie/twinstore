@@ -11,6 +11,7 @@ import {
 } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
@@ -372,8 +373,7 @@ function Select({ label, value, onChange, choices }: { label: string; value: str
 
 function NumberInput({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
-    <Input type="number" className="h-9 w-24" aria-label={label} min={min} max={max} value={value}
-      onChange={(e) => onChange(Math.min(max, Math.max(min, Math.round(Number(e.target.value) || 0))))} />
+    <WholeNumberInput className="h-9 w-24" aria-label={label} min={min} max={max} value={value} onChange={onChange} />
   );
 }
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Number fields that have limits can be cleared and retyped: the online run's
+  shopper count and step limit, the optimizer's candidates, shoppers, changes,
+  vision panel and judged layouts, the area's vision visitors and the online
+  designer's numbers. Emptying one snapped it to its minimum while typing, so
+  typing 60 into a cleared shopper count gave 160 and a step limit of 24
+  became 80. A number outside the limits now waits until the field is left,
+  and an emptied field keeps its last number.
 - Pressing Escape to close the command palette or another dialog opened over a
   shelf's detail panel no longer closes the shelf panel too; a second Escape
   closes it.
