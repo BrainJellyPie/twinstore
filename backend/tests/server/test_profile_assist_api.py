@@ -85,7 +85,7 @@ def test_the_create_store_form_is_filled_from_a_description(client, monkeypatch,
     assert d["template_id"] == "campus_cvs" and d["store_type"] == "convenience" and d["open_days"] == "weekday"
     assert (d["open_hour"], d["close_hour"], d["currency"]) == (7, 23, "KRW") and d["warnings"] == []
     system, user = fake.calls[0]
-    assert system.endswith("give a short rationale in English.") and "Write the name and description in Korean" in system
+    assert "give a short rationale in English." in system and "Write the name and description in Korean" in system
     assert "- University campus store (convenience):" in user and user.endswith("Description: 중앙대 캠퍼스 편의점, 평일 7시-23시, 학생 위주")
 
 

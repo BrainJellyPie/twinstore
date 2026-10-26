@@ -26,6 +26,7 @@ from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.interview import AnalystMessage
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.domain.online import DesignMessage, OnlineRunRequest, OnlineRunResult, VariantComparison
+from store_emulator.domain.persona import AGE_GROUPS, GENDERS, Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
@@ -46,6 +47,26 @@ from store_emulator.engine.package_reader import read_pack
 from store_emulator.engine.perception.product_images import bundled_product_image
 from store_emulator.engine.perception.shelf_render import load_font
 from store_emulator.engine.validation import validate
+
+
+def customer_text_issues(people: list[Persona]) -> list[str]:
+    """Catch observed field mix-ups; passing these checks is not a semantic-quality guarantee."""
+    issues: list[str] = []
+    seen: set[str] = set()
+    for person in people:
+        fingerprint = person.model_dump_json(exclude={"id", "twin_of"})
+        if fingerprint in seen:
+            issues.append(f"{person.id}: identical independently written profile; inspect customer diversity")
+        seen.add(fingerprint)
+        for field in ("identity", "purpose", "description", "intent", "behavior_tendency"):
+            value = getattr(person, field)
+            if value and not re.search(r"[A-Za-z]{2,}", value):
+                issues.append(f"{person.id}: {field} contains no English words despite the prompt's language instruction")
+        if person.identity.strip().casefold() == person.purpose.strip().casefold():
+            issues.append(f"{person.id}: identity and visit purpose are the same label; inspect the field meanings")
+        if person.behavior_tendency.strip() in {*AGE_GROUPS, *GENDERS}:
+            issues.append(f"{person.id}: behavior_tendency is a demographic label, not a behavior")
+    return issues
 
 
 design_requests = {
@@ -72,7 +93,7 @@ layout_requests = {
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
-    "persona-neighborhood", "persona-cafe", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
@@ -357,6 +378,10 @@ try:
         if args.case == "setup-night" and draft.template_id not in {"compact_cvs", "urban_cvs"}:
             format_issues.append("A plain night convenience store acquired an unrelated specialized setting")
         issues = list(format_issues)
+        if not draft.name.strip():
+            issues.append("The draft lost the supplied store identity instead of proposing a name")
+        if not draft.description.strip():
+            issues.append("The draft lost the supplied store description")
         if (draft.open_hour, draft.close_hour) != expected_hours:
             issues.append(f"Expected hours {expected_hours}, received {(draft.open_hour, draft.close_hour)}")
         if args.case == "setup-night" and not draft.warnings:
@@ -378,6 +403,15 @@ try:
         if args.case == "persona-cafe":
             address, currency, categories, budget = "Tokyo, Japan", "JPY", ["coffee", "bakery"], (500, 1500)
             profile = "近所の住民がパンとコーヒーを買いに訪れる小さなカフェです。一人の予算は500〜1500円です。"
+        elif args.case == "persona-bookstore":
+            address, currency, categories, budget = "Lyon, France", "EUR", ["books", "stationery"], (500, 2000)
+            profile = "Une librairie de quartier pour les habitants qui achètent des livres et de la papeterie. Le budget par visite est de 5 à 20 euros."
+        elif args.case == "persona-us":
+            address, currency, categories, budget = "Austin, Texas, USA", "USD", ["snacks", "drinks"], (300, 1000)
+            profile = "Una tienda de barrio para vecinos que compran aperitivos y bebidas. El presupuesto por visita es de 3 a 10 dólares estadounidenses."
+        elif args.case == "persona-fractional":
+            address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
+            profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
         if args.case == "persona-nightmarket":
             expected_hour, customer_count = 23, 12
@@ -397,9 +431,15 @@ try:
             issues.append("Arrival outside the open hour")
         if categories and any(category not in categories for person in people for category in person.preferred_categories):
             issues.append("Preference outside the supplied category list")
+        if categories and any(not person.preferred_categories for person in people):
+            issues.append("Missing preferences despite the fixture's explicit buying intent and listed categories")
         if any(person.budget_min < budget[0] or person.budget_max == 0 or person.budget_max > budget[1] for person in people):
             issues.append("Budget outside the supplied range")
-        result.update(success=not issues, address=address, currency=currency, profile=profile, categories=categories,
+        population_ok = not issues
+        text_issues = customer_text_issues(written)
+        issues.extend(text_issues)
+        result.update(success=not issues, population_ok=population_ok, text_ok=not text_issues,
+            address=address, currency=currency, profile=profile, categories=categories,
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("pack-"):

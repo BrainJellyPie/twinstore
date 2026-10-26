@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Convert generated customer budgets from explicit currency amounts into stored
+  units in code, so small models do not have to calculate cents. Existing saved
+  integer budgets keep their units. Customer prompts distinguish people, visit
+  goals and behavior, and CPU probes flag observed field mix-ups and duplicates.
+- Read local-model setup values wrapped in `properties` and exact quoted integer
+  hours without silently losing the draft. Layout-choice prompts request a selected
+  value explicitly, avoiding long copied schema enums. Schema definitions are not
+  treated as values; the model's factual mistakes still need user review.
+- Check a drafted store layout against a separate, short business-type choice.
+  If they disagree, choose again within that business so a bakery or café is not
+  silently started as a convenience store or the wrong retail category.
 - The store designer no longer lets a reply pass for changes it did not make:
   a real 450M local model set only the colour and the home sections while its
   reply also described a coupon, removing the popup, a chat widget, a delivery
@@ -23,9 +34,8 @@
   tests) read on a phone: the interval used to shrink to a dot with its axis
   labels printed over each other at 390 px; the label and value now share a
   line with the interval full width below, and an A/B test's arm cards stack.
-- Nothing scrolls sideways or is cut off on a 360 px phone any more, now
-  checked for content clipped inside cards and panes as well as at the screen
-  edge, in all six languages: the shelf test form (its question box and
+- Improve 360 px phone layouts, including content inside cards and panes
+  in all six languages: the shelf test form (its question box and
   selects ran 62 px past the card), the conjoint attribute rows (the remove
   button sat on a line of its own), the A/B variant card, the store card's
   quick links (icons ran into the labels and "En ligne" was cut off in French;
@@ -52,9 +62,6 @@
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
   visible colour dot in dark mode: the dots' outline is stronger there.
-- Check a drafted store layout against a separate, short business-type choice.
-  If they disagree, choose again within that business so a bakery or café is not
-  silently started as a convenience store or the wrong retail category.
 - Keep valid automatic-product selections when another category needs repair,
   and ask the model only for missing or invalid categories. This avoids repeating
   the full catalog and discarding otherwise valid choices on small local models.

@@ -3,8 +3,8 @@
 Prices and budgets are stored as integers in the currency's minor unit
 (USD → cents, KRW → won). Prompts must tell the model which unit it is reading,
 otherwise a Korean store's 1500 (= ₩1,500) would be read as $15.00.
-Fragments are Korean because they are spliced into Korean prompt bodies
-(see AGENTS.md, i18n policy).
+Shopper-facing fragments use the simulation prompts' Korean wording; the
+customer-generation budget instruction follows its English field definitions.
 """
 
 import re
@@ -65,16 +65,18 @@ def format_budget(budget_min: int, budget_max: int, currency: str) -> str:
     return f"{format_price(budget_min, currency)}~{format_price(budget_max, currency)}"
 
 
+def minor_unit_scale(currency: str) -> int:
+    """Stored money units per major unit, matching the simulator's currency convention."""
+    return 1 if currency.upper() in _ZERO_DECIMAL else 100
+
+
 def budget_example(currency: str) -> str:
-    """Example line for persona generation (budget_min / budget_max field rule)."""
+    """Model-facing major amounts; the customer harness performs the unit conversion."""
     code = currency.upper()
-    if code == "USD":
-        return "예산 범위를 US cents 정수로 (예: $3.00~$8.00이면 budget_min=300, budget_max=800)"
-    if code == "KRW":
-        return "예산 범위를 원(KRW) 정수로 (예: 3,000~8,000원이면 budget_min=3000, budget_max=8000)"
-    if code in _ZERO_DECIMAL:
-        return f"예산 범위를 {code} 정수로 (소수점 없음)"
-    return f"예산 범위를 {code}의 최소 화폐 단위(1/100) 정수로"
+    precision = "whole amounts" if minor_unit_scale(code) == 1 else "amounts with at most two decimal places"
+    return (f"Write {precision} in {code}, as quoted numeric strings with a dot for decimals and no currency symbols. "
+            f"Use the amounts in {code} as stated in the customer profile. Do not convert to cents or multiply by 100; "
+            "the application converts to stored money units")
 
 
 def relevant_first[T](entries: list[tuple[str, str, T]], query: str, limit: int) -> list[T]:
