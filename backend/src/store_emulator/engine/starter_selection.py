@@ -144,7 +144,10 @@ async def _validated_selection[T: BaseModel](
     payload = context
     for attempt in range(2):
         try:
-            selected = await llm.generate_structured_async(schema, prompt, json.dumps(payload, ensure_ascii=False), max_retries=2)
+            # Catalogs have hundreds of repeated JSON separators. Compact them
+            # so an 8K local context still has room to finish its selection.
+            selected = await llm.generate_structured_async(
+                schema, prompt, json.dumps(payload, ensure_ascii=False, separators=(",", ":")), max_retries=2)
         except BadRequestError as exc:
             if not is_context_overflow(exc):
                 raise

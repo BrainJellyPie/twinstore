@@ -97,7 +97,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-cafe", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
@@ -429,9 +429,11 @@ try:
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."
-        if args.case == "persona-cafe":
+        if args.case in {"persona-cafe", "persona-local-categories"}:
             address, currency, categories, budget = "Tokyo, Japan", "JPY", ["coffee", "bakery"], (500, 1500)
             profile = "近所の住民がパンとコーヒーを買いに訪れる小さなカフェです。一人の予算は500〜1500円です。"
+            if args.case == "persona-local-categories":
+                categories = ["コーヒー", "パン"]
         elif args.case == "persona-bookstore":
             address, currency, categories, budget = "Lyon, France", "EUR", ["books", "stationery"], (500, 2000)
             profile = "Une librairie de quartier pour les habitants qui achètent des livres et de la papeterie. Le budget par visite est de 5 à 20 euros."
