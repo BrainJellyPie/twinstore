@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Model providers** says why it chose the local model in the selected
+  language ("CPU 코어: 4, 여유 메모리: 14GB — 실행을 빠르게 유지하는 0.8B 모델");
+  the reason was the server's English in every language. The local model plan
+  now carries `reason_code` and `reason_gb` beside the English `reason`.
 - **Set up vision shoppers** explains the model setup in the selected
   language (whether the local model is off, getting ready or running, and its
   download size); it showed the server's English sentence in every language.

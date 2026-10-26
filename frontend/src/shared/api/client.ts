@@ -1201,6 +1201,9 @@ export interface LocalVLMPlan {
   parallel: number;
   context: number;
   reason: string;
+  /** Which rule chose the model (for the app to say `reason` in the reader's language), and the memory it names in GB. */
+  reason_code?: "nvidia" | "apple" | "vulkan" | "cpu_reliable" | "cpu_fast" | "cpu_smallest" | null;
+  reason_gb?: number;
 }
 
 export interface LocalVLMStatus {
