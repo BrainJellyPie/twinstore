@@ -25,10 +25,10 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.catalog import build_site
 from store_emulator.engine.online.policies import ModelPolicy
 from store_emulator.engine.online.session import run_session
-from store_emulator.engine.online.shoppers import sample_shoppers
+from store_emulator.engine.online.shoppers import at_rival, sample_shoppers
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--case', choices=['purchase', 'unavailable'], default='unavailable')
+parser.add_argument('--case', choices=['purchase', 'unavailable', 'browse-rival'], default='unavailable')
 parser.add_argument('--device', choices=['desktop', 'mobile'], default='mobile')
 parser.add_argument('--structured-output', choices=['json', 'json_schema'], default='json_schema')
 parser.add_argument('--endpoint', default='http://127.0.0.1:8081/v1')
@@ -51,13 +51,30 @@ site.options.guest_checkout = True
 site.options.checkout_flow = 'one_page'
 site.options.cart_reminder = False
 product = site.products[0]
-shopper = sample_shoppers(site, 1, seed=4, missions={'purchase': 1}, mobile_share=0)[0]
-shopper = shopper.model_copy(update={'device': args.device, 'budget': 5000, 'patience_sec': 900,
-    'arrival': 'direct', 'target_product': product.id if args.case == 'purchase' else '',
-    'target_category': product.category_id if args.case == 'purchase' else '',
-    'target_terms': [product.name] if args.case == 'purchase' else ['laptop'],
-    'goal': (f'Buy exactly one {product.name} if the total is at most $50.00. Do not add other products.'
-             if args.case == 'purchase' else 'I need a laptop computer only. Leave if no laptops are available. I do not want clothing.')})
+rival_allowed = None
+if args.case == 'browse-rival':
+    source = site
+    shopper = sample_shoppers(source, 1, seed=4, missions={'browse': 1}, mobile_share=0)[0]
+    shopper = shopper.model_copy(update={'device': args.device})
+    assert 'the shop' in shopper.goal
+    (root/'source-site.json').write_text(source.model_dump_json(indent=2))
+    (root/'source-shopper.json').write_text(shopper.model_dump_json(indent=2))
+    # A smaller fashion competitor keeps five categories but has no apparel.
+    site = source.model_copy(deep=True, update={'id': 'cpu_rival',
+        'categories': [c for c in source.categories if c.id != 'apparel'],
+        'products': [p for p in source.products if p.category_id != 'apparel']})
+    routed = at_rival(site, shopper, source)
+    rival_allowed = routed is not None
+    if routed is not None:
+        shopper = routed
+else:
+    shopper = sample_shoppers(site, 1, seed=4, missions={'purchase': 1}, mobile_share=0)[0]
+    shopper = shopper.model_copy(update={'device': args.device, 'budget': 5000, 'patience_sec': 900,
+        'arrival': 'direct', 'target_product': product.id if args.case == 'purchase' else '',
+        'target_category': product.category_id if args.case == 'purchase' else '',
+        'target_terms': [product.name] if args.case == 'purchase' else ['laptop'],
+        'goal': (f'Buy exactly one {product.name} if the total is at most $50.00. Do not add other products.'
+                 if args.case == 'purchase' else 'I need a laptop computer only. Leave if no laptops are available. I do not want clothing.')})
 client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base=args.endpoint,
     api_key=SecretStr('local'), temperature=0, seed=0, max_tokens=240, timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
@@ -95,9 +112,12 @@ async def traced(self, request, *a, **kw):
 started = time.perf_counter()
 result = {'case': args.case, 'device': args.device, 'structured_output': args.structured_output,
           'endpoint': args.endpoint,
+          'rival_allowed': rival_allowed,
           'cache_replay_from': str(args.cache_from) if args.cache_from else None,
           'technical_success': False, 'semantic_review': 'Inspect the saved actions, thoughts and survey against the actual visit.'}
 try:
+    if rival_allowed is False:
+        raise ValueError('The whole-shop browser was excluded from a rival before any model choice.')
     with patch.object(httpx.AsyncClient, 'send', traced):
         session = asyncio.run(run_session(site, shopper, policy, seed=4, max_steps=args.max_steps,
             render=True, image_width=896, picture=_bundled_picture, surveyor=policy.survey))
@@ -115,9 +135,12 @@ try:
         issues.append('Bought clothing despite unavailable-only laptop intent')
     if args.case == 'purchase' and any(line.product_id != product.id or line.quantity != 1 for line in session.order):
         issues.append('Ordered a different product or quantity from the explicit goal')
-    goal_completed = (len(session.order) == 1 and session.order[0].product_id == product.id
-                      and session.order[0].quantity == 1 and session.order_total <= shopper.budget
-                      if args.case == 'purchase' else not session.order and session.outcome in {'left', 'bounced'})
+    if args.case == 'browse-rival':
+        goal_completed = bool(session.steps) and session.outcome in {'left', 'bounced', 'purchased'}
+    else:
+        goal_completed = (len(session.order) == 1 and session.order[0].product_id == product.id
+                          and session.order[0].quantity == 1 and session.order_total <= shopper.budget
+                          if args.case == 'purchase' else not session.order and session.outcome in {'left', 'bounced'})
     result.update(technical_success=not issues, issues=issues, outcome=session.outcome,
         goal_completed=goal_completed,
         steps=len(session.steps), model_choices=policy.answered, failed_choices=policy.failed,

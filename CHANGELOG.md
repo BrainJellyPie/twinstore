@@ -2,11 +2,29 @@
 
 ## Unreleased
 
+- Whole-shop browsers no longer keep a hidden single-category target that
+  biased rule browsing and incorrectly excluded otherwise suitable rivals.
+
 - Bound generated hourly traffic to the opening slots, using numbered entries
   instead of a repeating array. Preserve explicit clock mapping in caches and
   identify missing/extra slot keys for correction. CPU probes now retain all
   24 observed hourly counts in structured-output mode; plain JSON can still
   misread visitor counts, and generated customer budgets still need review.
+
+- The floor editor says why a layout cannot be saved: a missing exit read only
+  "store layout has errors." and now reads "Place at least one exit" (in the
+  chosen language; other layout problems show the server's reason). Other
+  structured API errors that list their issues name them too.
+- The floor editor counts cells from 1 everywhere: its panel said "Edit cell
+  (0, 6)" for the cell the grid called "column 1, row 7", and unnamed racks were
+  listed as "(0,0)".
+- A store's floor reopens on the layout you were viewing (remembered in this
+  browser), or else the store's active layout; a reload always went back to the
+  first layout, while the marketing studio opened the active one.
+- In **Find a layout**, Enter opens the first match and ↓ moves into the
+  results; typing a name and pressing Enter did nothing.
+- Fill empty shelves counts its racks as "Racks shown: 1" instead of "1 racks
+  shown" (and likewise in Spanish and French).
 
 - A shopper's thought on the store floor wraps into a small card of at most
   three lines; a model's long thought ran as one line across the store and

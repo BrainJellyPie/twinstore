@@ -126,7 +126,9 @@ def _mission_details(
         place = "the whole shop" if whole_shop else category.name.lower()
         goal = f"Window-shop {place} for ideas, with no plan to buy anything in particular"
         patience = _BROWSING_PATIENCE
-    return goal, category.id, [category.name.lower()], "", budget, patience
+    # Arrival, rule browsing and rival routing also read these targets. A broad
+    # goal must not remain restricted to the randomly sampled category.
+    return goal, "" if whole_shop else category.id, [] if whole_shop else [category.name.lower()], "", budget, patience
 
 
 def _shopper(

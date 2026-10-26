@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
@@ -27,6 +27,9 @@ export const Route = createFileRoute("/projects/$pid")({
   component: SimulationPage,
 });
 
+// localStorage key of the layout viewed last in a store.
+const lastLayoutKey = (pid: string) => `twinstore.layout.${pid}`;
+
 function SimulationPage() {
   const { pid } = Route.useParams();
   return <SimulationPageInner key={pid} pid={pid} />;
@@ -53,15 +56,25 @@ function SimulationPageInner({ pid }: { pid: string }) {
     target?.focus();
   }, [pid, router]);
   const isCurrentProject = useCallback(() => router.state.location.pathname.replace(/\/$/, "") === `/projects/${pid}`, [pid, router]);
-  const effectiveSetupId = layouts?.some((layout) => layout.id === selectedSetupId)
-    ? selectedSetupId
-    : layouts?.[0]?.id;
+  // A reload or a return to the store opens the layout viewed last in this browser, else the store's active one.
+  const remembered = useMemo(() => {
+    try { return localStorage.getItem(lastLayoutKey(pid)); } catch { return null; }  // storage unavailable
+  }, [pid]);
+  const listed = (id: string | null | undefined): id is string => !!id && !!layouts?.some((layout) => layout.id === id);
+  const effectiveSetupId = listed(selectedSetupId) ? selectedSetupId
+    : listed(remembered) ? remembered
+      : listed(project?.state.activeSetupId) ? project.state.activeSetupId
+        : layouts?.[0]?.id;
 
   useEffect(() => {
     if (effectiveSetupId && selectedSetupId !== effectiveSetupId) {
       switchLayout(effectiveSetupId);
     }
   }, [selectedSetupId, effectiveSetupId, switchLayout]);
+  useEffect(() => {
+    if (!effectiveSetupId) return;
+    try { localStorage.setItem(lastLayoutKey(pid), effectiveSetupId); } catch { /* storage unavailable */ }
+  }, [pid, effectiveSetupId]);
 
   useEffect(() => {
     return () => {

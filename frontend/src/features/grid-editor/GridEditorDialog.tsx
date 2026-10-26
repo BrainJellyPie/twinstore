@@ -48,6 +48,12 @@ import { DimensionInput } from "./DimensionInput";
 import { useProject } from "@/shared/queries/useProject";
 import type { Store } from "@/shared/types/domain";
 import type { EditorRack, SetupDetailWithBlocked } from "./types";
+import type { MessageKey } from "@/shared/i18n/messages";
+
+// Layout issues the server reports that have their own words; others show as the server wrote them.
+const ISSUE_TEXT: Record<string, MessageKey> = {
+  no_entrance: "readinessNoEntrance", no_exit: "readinessNoExit", no_counter: "readinessNoCounter",
+};
 
 // onSaved: parent only invalidates queries — do NOT mutate setup state or selectedSetupId.
 // No `next` argument by design: removes the temptation to sync via local state.
@@ -267,9 +273,9 @@ export function GridEditorDialog({
       (r) => NAMED_TYPES.has(r.type) && !r.rack_name.trim(),
     );
     if (unnamed.length > 0) {
-      const coords = unnamed
-        .map((r) => `(${r.position[0]},${r.position[1]})`)
-        .join(", ");
+      const coords = unnamed  // counted from 1, as under the grid
+        .map((r) => translate(locale, "gridCellAt", { column: r.position[0] + 1, row: r.position[1] + 1 }))
+        .join("; ");
       setSaveError(translate(locale, "gridUnnamed", { cells: coords }));
       return;
     }
@@ -293,7 +299,15 @@ export function GridEditorDialog({
         },
       });
       if (!result.ok) {
-        setSaveError(result.message || translate(locale, "gridSaveFailed"));
+        // Say what the layout is missing ("no exit"), not only that it has errors.
+        const listed = Array.isArray(result.details.issues) ? result.details.issues as unknown[] : [];
+        const issues = listed.flatMap((issue) => {
+          if (!issue || typeof issue !== "object") return [];
+          const { code, message } = issue as { code?: unknown; message?: unknown };
+          const key = typeof code === "string" ? ISSUE_TEXT[code] : undefined;
+          return key ? [translate(locale, key)] : typeof message === "string" && message ? [message] : [];
+        });
+        setSaveError(issues.length ? issues.join(" · ") : result.message || translate(locale, "gridSaveFailed"));
         return;
       }
       onSaved();
