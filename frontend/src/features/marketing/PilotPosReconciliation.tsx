@@ -7,6 +7,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
 import { Input } from "@/shared/components/ui/input";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const labels: Record<PosMatchStatus, MessageKey> = {
   proposed_purchase: "mkPosProposed", already_recorded: "mkPosAlready", conflicting_purchase: "mkPosConflict",
@@ -56,7 +57,7 @@ function PosReport({ report: r, disabled, onReview, onDiscard }: {
   const [verified, setVerified] = useState(false);
   const rows = r.matches.filter((m) => filter === "all" || m.status === filter);
   return <div className="space-y-3 text-sm">
-    <p>{t("mkPosSummary", { revision: String(r.revision), rows: r.source_rows, transactions: r.transactions, linked: r.linked_assignments })}</p>
+    <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkPosSummary", { revision: String(r.revision), rows: r.source_rows, transactions: r.transactions, linked: r.linked_assignments })}</p>
     <p><b>{t("mkPosProposedCount", { count: r.proposed_purchases })}</b>{t("mkPosWithoutEvidence", { count: r.enrolled_without_evidence })}</p>
     <label className="block">{t("mkPosFilter")}<select className="ml-2 rounded-md border bg-background p-1" value={filter} onChange={(e) => { setFilter(e.target.value); setPage(0); }}>
       <option value="all">{t("mkAllMatches")}</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{t(label)} ({r.matches.filter((m) => m.status === value).length})</option>)}

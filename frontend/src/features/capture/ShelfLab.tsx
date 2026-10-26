@@ -648,7 +648,7 @@ function AuditView({ projectId, report, onFocus }: { projectId: string; report: 
                 className="flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition-colors hover:bg-foreground/[0.03]">
                 <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold", style.tone)}>{t(style.label)}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{f.name || t("capLabLevelLabel", { level: f.level })}</span>
+                  <span className="block truncate font-medium" title={f.name || t("capLabLevelLabel", { level: f.level })}>{f.name || t("capLabLevelLabel", { level: f.level })}</span>
                   <span className="block truncate text-muted-foreground">{t("capLabExpectedFound", { expected: String(f.expected), found: String(f.found) })}</span>
                 </span>
                 {f.loss_per_day != null && (

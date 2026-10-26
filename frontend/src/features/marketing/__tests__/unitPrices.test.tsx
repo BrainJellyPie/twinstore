@@ -26,7 +26,8 @@ it("requires a scope and file, sends exact inputs and shows missing comparisons"
   render(<UnitPrices projectId="project_test" />, { wrapper });
   const button = screen.getByRole("button", { name: "Compare observed offers" }) as HTMLButtonElement;
   expect(button.disabled).toBe(true); expect(fetchMock).not.toHaveBeenCalled(); fill(); fireEvent.click(button);
-  expect(await screen.findByText(/1 \/ 1 offers qualify/)).toBeTruthy();
+  const summary = await screen.findByText(/1 \/ 1 offers qualify/);
+  expect(document.activeElement).toBe(summary);
   expect(screen.getAllByText("Unavailable")).toHaveLength(3);
   const [url, init] = fetchMock.mock.calls[0]!; const body = init?.body as FormData;
   expect(url).toContain("/project_test/unit-prices/preview"); expect(body.get("focal_retailer")).toBe("ours");

@@ -247,7 +247,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
                   <Icon className="size-4" aria-hidden /> {t(label)}
                 </button>
               ))}
-              <span className="ml-auto truncate px-2 text-sm font-semibold">{selected.name}</span>
+              <span className="ml-auto truncate px-2 text-sm font-semibold" title={selected.name}>{selected.name}</span>
             </div>
             {tab === "browse" && <BrowserView key={`${selected.id}:${selected.updated_at}`} projectId={projectId} siteId={selected.id} />}
             {tab === "design" && (
@@ -283,7 +283,7 @@ function SiteButton({ site, active, onOpen, compact = false, searchResult = true
         active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
       <span className={cn("flex items-center gap-2 font-medium", compact && "text-[0.8rem]")}>
         <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25 dark:ring-foreground/55" style={{ background: site.theme_color }} aria-hidden />
-        <span className="truncate">{site.name}</span>
+        <span className="truncate" title={site.name}>{site.name}</span>
       </span>
       {!compact && <span className="mt-0.5 block text-xs text-muted-foreground">{t("onStoreStats", { products: site.products, categories: site.categories })}</span>}
       {site.note && <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={site.note}>{site.note}</span>}

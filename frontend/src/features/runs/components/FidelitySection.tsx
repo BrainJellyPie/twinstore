@@ -120,7 +120,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
               const v = verdict(m);
               return (
                 <li key={m.name} className="flex items-center justify-between gap-2 text-xs" title={m.description}>
-                  <span className="truncate">{m.name.replace(/_/g, " ")}</span>
+                  <span className="truncate" title={m.name.replace(/_/g, " ")}>{m.name.replace(/_/g, " ")}</span>
                   <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
                     {m.value === null ? t("notAvailable") : m.value.toLocaleString(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     {v && <span className={`rounded px-1 text-[0.72rem] ${VERDICT_CLASS[v]}`}>{t(VERDICT_LABEL[v])}</span>}

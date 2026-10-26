@@ -445,7 +445,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
           <div className="mb-1 text-muted-foreground">{t("areaRivalsTitle")}</div>
           {rivals.map((s) => (
             <div key={s.venue_id} className="flex justify-between gap-2">
-              <span className="truncate">{s.name}</span>
+              <span className="truncate" title={s.name}>{s.name}</span>
               <span className="shrink-0 tabular-nums text-muted-foreground">{t("areaRivalLine", { distance: Math.round(s.distance_m), count: Math.round(s.expected_visitors) })}</span>
             </div>
           ))}

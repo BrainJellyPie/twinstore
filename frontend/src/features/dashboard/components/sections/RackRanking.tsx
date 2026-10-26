@@ -83,7 +83,7 @@ export function RackRanking({ store }: Props) {
               return (
                 <li key={m.rackId}>
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate">{name}</span>
+                    <span className="truncate" title={name}>{name}</span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">
                       {sortBy === "revenue"
                         ? formatMoney(m.revenue, currency)

@@ -359,6 +359,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
           {t("mkRunAb")}
         </Button>
+        {run.error && engine === "vlm" && <div className="basis-full"><NeedsModel /></div>}
       </div>
     </div>
   );

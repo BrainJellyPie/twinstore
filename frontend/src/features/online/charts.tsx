@@ -22,7 +22,7 @@ export function StoreKey({ names, rival }: { names: string[]; rival?: string }) 
       {names.map((name, i) => (
         <span key={i} className="inline-flex min-w-0 items-center gap-1.5">
           <Swatch index={i} />
-          <span className="truncate text-foreground">{name}</span>
+          <span className="truncate text-foreground" title={name}>{name}</span>
           <span>{i === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + i) })}</span>
         </span>
       ))}

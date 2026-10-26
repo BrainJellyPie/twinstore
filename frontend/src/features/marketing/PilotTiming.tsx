@@ -5,6 +5,7 @@ import { pilotTimingExport, pilotTimingPreview, pilotTimingTemplate } from "@/se
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob); const link = document.createElement("a");
@@ -43,7 +44,7 @@ export function PilotTiming({ projectId, pilotId, revision, eligible }: {
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </>}
     {report && <div className="space-y-3 text-sm">
-      <p>{t("mkTimingTimed", { timed: report.timed, planned: report.planned, revision: String(report.revision) })}</p>
+      <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkTimingTimed", { timed: report.timed, planned: report.planned, revision: String(report.revision) })}</p>
       {!report.complete && <p>{t("mkTimingMissing")}</p>}
       <div className="overflow-x-auto"><table className="w-full text-sm"><caption className="text-left">{t("mkTimingCaption")}</caption><thead><tr className="text-left"><th>{t("mkColAssignedScript")}</th><th>{t("mkColTimedPlanned")}</th><th>{t("mkColMeanSeconds")}</th><th>{t("mkColMaxSeconds")}</th></tr></thead><tbody>{[report.a, report.b].map((arm) => <tr key={arm.arm} className="border-t"><th className="py-2 text-left">{arm.arm}</th><td>{arm.timed} / {arm.planned}</td><td>{seconds(arm.mean_seconds)}</td><td>{seconds(arm.max_seconds)}</td></tr>)}</tbody></table></div>
       <p>{t("mkTimingDiff", { value: seconds(report.difference_seconds) })}{report.complete ? t("mkTimingSecondsSuffix") : "."}</p>

@@ -70,7 +70,7 @@ function HomePage() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-xs text-muted-foreground">{t("homeContinue")}</span>
-                    <span className="block truncate font-semibold tracking-[-0.01em]">{resume.name}</span>
+                    <span className="block truncate font-semibold tracking-[-0.01em]" title={resume.name}>{resume.name}</span>
                   </span>
                   <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
                 </Link>

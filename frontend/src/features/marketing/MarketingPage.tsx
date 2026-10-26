@@ -292,7 +292,7 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
   return (
     <div className={cn("group relative rounded-2xl border px-3 py-2.5 transition-colors", active ? "border-primary bg-primary/[0.06]" : "bg-card/60 hover:border-foreground/20")}>
       <button type="button" onClick={onSelect} className="block w-full text-left">
-        <span className="block truncate pr-6 text-sm font-medium">{job.name || job.job_id}</span>
+        <span className="block truncate pr-6 text-sm font-medium" title={job.name || job.job_id}>{job.name || job.job_id}</span>
         <span className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
           {busy(job.status) ? <><Loader2 className="size-3 animate-spin" /> {Math.round(job.progress * 100)}% · {job.stage}</>
             : job.status === "failed" ? <><TriangleAlert className="size-3 text-destructive" /> {t("mkJobFailed")}</> : when}

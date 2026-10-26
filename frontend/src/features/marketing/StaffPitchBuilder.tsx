@@ -154,6 +154,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
     </section>
     {personaCount < 20 && <p role="alert" className="text-sm text-destructive">{t("mkNeedPersonas")}</p>}
     {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
+    {run.error && <NeedsModel />}
     <div className="flex justify-end"><Button type="submit" disabled={!ready || run.isPending}>
       {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <MessagesSquare className="size-4" />} {t("mkTestScripts")}
     </Button></div>

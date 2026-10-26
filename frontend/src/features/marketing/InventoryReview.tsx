@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const FLAGS: Record<InventoryFlag, MessageKey> = {
   stock_mismatch: "mkInvFlagMismatch", negative_expected_stock: "mkInvFlagNegative",
@@ -56,7 +57,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
     {preview.isPending && <p className="text-sm">{t("mkInvReconciling")}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {report && <div className="space-y-3 text-sm">
-      <p>{t("mkInvPeriod", { start: report.period.start_date, end: report.period.end_date, days: report.period_days, currency: report.period.currency, reconciled: report.totals.reconciled_skus, total: report.totals.sku_count })}</p>
+      <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkInvPeriod", { start: report.period.start_date, end: report.period.end_date, days: report.period_days, currency: report.period.currency, reconciled: report.totals.reconciled_skus, total: report.totals.sku_count })}</p>
       <p>{t("mkInvTotals", { sales: number(report.totals.net_sales_minor), cogs: number(report.totals.cogs_minor), profit: number(report.totals.gross_profit_minor), avg: number(report.totals.average_inventory_cost_minor) })}</p>
       <p>{t("mkInvGmroi")} <b>{ratio(report.totals.gmroi)}</b>{t("mkInvTurnover")} <b>{ratio(report.totals.inventory_turns)}</b></p>
       {report.totals.cogs_minor < 0 && <p>{t("mkInvTurnoverUnavailable")}</p>}

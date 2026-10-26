@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- When a shelf test, concept test, conjoint study, staff-script test or a
+  vision-shopper A/B test cannot start for want of a model, the studio offers
+  the model setup (start or download the local model, or open Model settings)
+  under the error, as drafting from a question already did. The error alone
+  pointed to Settings in words.
+- The studio's file reviews (price checks, unit prices, inventory, pilot
+  timing, pilot observations and till records) bring their result into view
+  and move focus to its summary when it is ready. The result opened below the
+  button, out of sight on a laptop screen, so a review looked as if nothing
+  had happened.
+- Names cut short with "…" show in full on hover: studio tests, online stores
+  and runs, products in rack details, top items and rack rankings, real-map
+  shops, conjoint attributes and the home page's last store.
+
 - Keep a printed bottle/can/jar rate from becoming the exact price of a
   recognized multipack. A `6 PACK` tagged `$1.00 / BOTTLE` now needs an
   estimate or review; `$6.00 / PACK` and ordinary single-bottle prices stay
