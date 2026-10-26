@@ -166,7 +166,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
               className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border bg-card/60 px-2.5 py-2 text-left transition-colors hover:border-primary/50">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age ? ageBadge(r.age, t) : "–"}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8rem] font-medium">{r.name}</span>
+                <span className="block truncate text-[0.8rem] font-medium" title={r.name}>{r.name}</span>
                 <span className="num block text-[0.68rem] text-muted-foreground">{t(r.stops === 1 ? "shopperTripOne" : "shopperTripMany", { day: r.day, time: r.arrival, minutes: oneDecimal.format(r.minutes), stops: r.stops })}</span>
               </span>
               <span className="text-right">
