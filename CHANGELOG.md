@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep a printed bottle/can/jar rate from becoming the exact price of a
+  recognized multipack. A `6 PACK` tagged `$1.00 / BOTTLE` now needs an
+  estimate or review; `$6.00 / PACK` and ordinary single-bottle prices stay
+  exact. Preserve an existing pack price when applying the capture.
+
 - An A/B test's results offer the **price × sign** 2×2 analysis only when the
   test has a price arm, a promotion-sign arm and an arm with both; a discount
   ladder offered it and then could only report that it did not apply.

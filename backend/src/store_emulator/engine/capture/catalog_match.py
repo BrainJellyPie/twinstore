@@ -211,6 +211,31 @@ _MEASURE_RATE_RE = re.compile(
     rf"|(?<!\w){_MEASURE_UNIT}\s*(?:당|当たり|あたり))(?!\w)",
     re.IGNORECASE,
 )
+_CONTAINER_UNIT = r"(?:bottles?|cans?|jars?|병|캔|本|缶)"
+_CONTAINER_RATE_RE = re.compile(
+    rf"(?:(?:[/∕⁄]|\bper\s+)\s*{_CONTAINER_UNIT}(?:\s*(?:당|当たり|あたり))?"
+    rf"|(?<!\w){_CONTAINER_UNIT}\s*(?:당|当たり|あたり))(?!\w)",
+    re.IGNORECASE,
+)
+_PACK_COUNT_RE = re.compile(
+    r"(?<![\w.,])(?:(\d+)\s*-?\s*(?:packs?|pk|count|ct|입|개입|本入り|個入り)|pack\s+of\s+(\d+))(?!\w)",
+    re.IGNORECASE,
+)
+_MULTIPLIED_PACK_RE = re.compile(
+    rf"(?<![\w.,])(?:((?:\d+\s*[x×*]\s*)+)\d+(?:[.,]\d+)?\s*{_MEASURE_UNIT}"
+    rf"|\d+(?:[.,]\d+)?\s*{_MEASURE_UNIT}\s*[x×*]\s*(\d+))(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def _is_multipack(label: ShelfItemLabel) -> bool:
+    for value in (label.size, label.name):
+        text = unicodedata.normalize("NFKC", value)
+        for pattern in (_PACK_COUNT_RE, _MULTIPLIED_PACK_RE):
+            for match in pattern.finditer(text):
+                if any(int(number) > 1 for group in match.groups() if group for number in re.findall(r"\d+", group)):
+                    return True
+    return False
 
 
 def _integer_digits(raw: str, separators: str) -> str | None:
@@ -225,7 +250,7 @@ def _integer_digits(raw: str, separators: str) -> str | None:
     return "".join(groups) if western or indian else None
 
 
-def _parse_number(text: str) -> tuple[float, bool] | None:
+def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] | None:
     """'2.49' → (2.49, True); '1,800' → (1800, False); '1.800' → (1800, False); '12,50' → (12.5, True)."""
     normalized = unicodedata.normalize("NFKC", text).replace("’", "'")
     if "%" in normalized or "٪" in normalized:
@@ -243,6 +268,9 @@ def _parse_number(text: str) -> tuple[float, bool] | None:
         return None
     if any(_MEASURE_RATE_RE.search(part) for part in price_context):
         # The photographed package can contain a different volume/weight.
+        return None
+    if multipack and any(_CONTAINER_RATE_RE.search(part) for part in price_context):
+        # A bottle/can rate does not establish the price of the whole multipack.
         return None
     if (re.search(r"[-−–—]\s*(?:[$€£¥₩]|[A-Z]{3})?\s*$", before, re.IGNORECASE)
             or after.startswith(("-", "−")) or before.endswith((".", ","))
@@ -294,7 +322,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     ):
         return None
     zero_decimal = code in ZERO_DECIMAL
-    parsed = _parse_number(label.price_text) if label.price_text else None
+    parsed = _parse_number(label.price_text, multipack=_is_multipack(label)) if label.price_text else None
     if parsed is None and any(character.isdigit() for character in label.price_text):
         # A numeric guess must not override an explicitly ambiguous/negative printed tag.
         return None
