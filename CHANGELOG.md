@@ -30,6 +30,10 @@
   over each other ("MCorporate executivesrs").
 - A shopper's facts (came for, budget, spent) wrap to two lines instead of
   cutting off at one ("Spent: $35.73 · 7 i…").
+- The A/B builder's percent field shows a whole value such as "-10" (it cut
+  to "-1"), the store-operations number fields fit their digits, and the
+  builder's product pickers for a variant change and a tracked product have
+  accessible names.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

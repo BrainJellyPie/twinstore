@@ -202,15 +202,15 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
                 <div key={index} role="group" aria-label={t("labShiftN", { n: index + 1 })} className="space-y-1 rounded-md border p-1.5">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <label className="flex items-center gap-1">{t("labShiftFrom")}
-                      <Input type="number" min={0} max={23} step={1} className="h-7 w-16" value={shift.start}
+                      <Input type="number" min={0} max={23} step={1} className="h-7 w-16 px-2" value={shift.start}
                         aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ start: e.target.value })} />
                     </label>
                     <label className="flex items-center gap-1">{t("labShiftTo")}
-                      <Input type="number" min={1} max={24} step={1} className="h-7 w-16" value={shift.end}
+                      <Input type="number" min={1} max={24} step={1} className="h-7 w-16 px-2" value={shift.end}
                         aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ end: e.target.value })} />
                     </label>
                     <label className="flex items-center gap-1">{t("labShiftStaff")}
-                      <Input type="number" min={1} max={100} step={1} className="h-7 w-16" value={shift.staff}
+                      <Input type="number" min={1} max={100} step={1} className="h-7 w-16 px-2" value={shift.staff}
                         aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ staff: e.target.value })} />
                     </label>
                     <Button type="button" size="icon" variant="ghost" className="size-7" aria-label={t("labRemoveShift", { n: index + 1 })}
