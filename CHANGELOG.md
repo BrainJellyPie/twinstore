@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Emptying a pack's name in the marketing product library and leaving the
+  field now brings the saved name back. Before, the field stayed blank while
+  the old name was kept, so it looked cleared until the page reloaded.
+
 - On a phone-width screen the Area page shows its map key below the map
   instead of covering the lower half of it, including part of the store's
   catchment rings. Wider screens keep the key over the map.

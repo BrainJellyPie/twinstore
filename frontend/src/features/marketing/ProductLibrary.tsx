@@ -183,7 +183,7 @@ function ProductCard({ projectId, asset, products, setupId, onDeleted }: {
         </button>
       </div>
       <div className="space-y-1.5 p-2.5">
-        <Input value={name} onChange={(e) => setNameDraft(e.target.value === asset.name ? null : e.target.value)} onBlur={() => name.trim() && name !== asset.name && save.mutate({ name: name.trim() })}
+        <Input value={name} onChange={(e) => setNameDraft(e.target.value === asset.name ? null : e.target.value)} onBlur={() => { if (!name.trim()) setNameDraft(null); else if (name !== asset.name) save.mutate({ name: name.trim() }); }}
           className="h-8 text-sm font-medium" aria-label={t("mkName")} />
         <Input value={brand} onChange={(e) => setBrandDraft(e.target.value === (asset.brand ?? "") ? null : e.target.value)} onBlur={() => brand !== (asset.brand ?? "") && save.mutate({ brand: brand.trim() })}
           placeholder={t("mkBrand")} className="h-8 text-xs" aria-label={t("mkBrand")} />
