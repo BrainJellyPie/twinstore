@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Area map key's note on rings and lines no longer starts with a stray
+  "·" when it wraps onto its own line.
+
 - **Validate against real sales** names its metrics in plain words in the
   selected language ("Product mix similarity", "Top 10 best sellers match"),
   instead of ids such as "sku js similarity". Hovering a name still shows the

@@ -70,7 +70,7 @@ export const studioMessages = {
   areaModeClose: ["Close venue", "시설 제거", "关闭商户", "施設を削除", "Cerrar local", "Fermer un lieu"],
   areaVenueType: ["Venue type", "시설 유형", "商户类型", "施設の種類", "Tipo de local", "Type de lieu"],
   areaOurStore: ["Our store", "우리 매장", "本店", "自店", "Nuestra tienda", "Notre magasin"],
-  areaLegendRings: ["· rings: 50 % / 80 % of customers · lines: where they come from", "· 원: 고객 50% / 80% 범위 · 선: 고객이 오는 곳", "· 圆环：50% / 80% 顾客范围 · 连线：顾客来源", "· 円：顧客の50% / 80%の範囲 · 線：顧客の出発地", "· anillos: 50 % / 80 % de los clientes · líneas: de dónde vienen", "· anneaux : 50 % / 80 % des clients · lignes : d’où ils viennent"],
+  areaLegendRings: ["Rings: 50 % / 80 % of customers · lines: where they come from", "원: 고객 50% / 80% 범위 · 선: 고객이 오는 곳", "圆环：50% / 80% 顾客范围 · 连线：顾客来源", "円：顧客の50% / 80%の範囲 · 線：顧客の出発地", "Anillos: 50 % / 80 % de los clientes · líneas: de dónde vienen", "Anneaux : 50 % / 80 % des clients · lignes : d’où ils viennent"],
   areaGenerated: ["generated", "생성됨", "生成", "生成", "generado", "généré"],
   areaResidents: ["Residents", "거주자", "居民", "居住者", "Residentes", "Résidents"],
   areaWorkers: ["Workers", "직장인", "上班族", "就業者", "Trabajadores", "Actifs"],
