@@ -36,6 +36,7 @@ import { useAssistStore } from "@/stores/assistStore";
 import { useExperimentDraft } from "@/stores/experimentDraftStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { onTabKeys } from "@/shared/utils/tabKeys";
 
 import { ConjointBuilder } from "./ConjointBuilder";
 import { ConjointReportView } from "./ConjointReport";
@@ -210,9 +211,10 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             </select>
           </label>
           {/* One scrolling row on a phone, so the studio's content starts near the top. */}
-          <div ref={tabRow} className="relative flex max-w-full overflow-x-auto rounded-xl bg-foreground/[0.055] p-1 [scrollbar-width:none] sm:flex-wrap" role="tablist">
+          <div ref={tabRow} className="relative flex max-w-full overflow-x-auto rounded-xl bg-foreground/[0.055] p-1 [scrollbar-width:none] sm:flex-wrap" role="tablist"
+            aria-label={t("mkTabsLabel")} onKeyDown={(e) => onTabKeys(e, TABS.map((item) => item.id), tab, setTab)}>
             {TABS.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+              <button key={id} type="button" role="tab" aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)}
                 className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
                   tab === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                 <Icon className="size-4" /> {t(label)}

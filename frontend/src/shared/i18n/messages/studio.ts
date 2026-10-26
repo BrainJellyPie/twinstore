@@ -568,6 +568,7 @@ export const studioMessages = {
   capLabComparing: ["Comparing…", "비교 중…", "正在比较…", "比較中…", "Comparando…", "Comparaison…"],
 
   // ── Marketing studio: page ────────────────────────────────────────────────
+  mkTabsLabel: ["Studio tools", "스튜디오 도구", "工作室工具", "スタジオのツール", "Herramientas del estudio", "Outils du studio"],
   mkTitleMain: ["Marketing", "마케팅", "营销", "マーケティング", "Estudio", "Studio"],
   mkTitleAccent: ["studio", "스튜디오", "工作室", "スタジオ", "de marketing", "marketing"],
   mkLayout: ["Layout", "배치", "布局", "レイアウト", "Plano", "Plan"],

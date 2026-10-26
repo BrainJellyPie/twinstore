@@ -96,6 +96,10 @@
   a word: leaving the page, reloading, or opening another photo first asks
   **Leave without saving the product corrections?**, and a look at the
   **Shelf Lab** tab keeps them.
+- The marketing studio's tools (A/B tests … Products) and an online store's
+  Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
+  Tab stop instead of one per tab (eleven in the studio). The studio's tab row
+  has an accessible name.
 - A shopper row's trip line wraps only between its parts, so "5 stops" (in
   Korean "5곳 들름") or "2.7 min" is never split across two lines.
 

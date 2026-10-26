@@ -16,6 +16,7 @@ import { searchText } from "@/shared/utils/searchText";
 import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { onTabKeys } from "@/shared/utils/tabKeys";
 
 import { BrowserView } from "./BrowserView";
 import { RunLauncher } from "./RunLauncher";
@@ -228,9 +229,11 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           />
         ) : selected ? (
           <>
-            <div className="panel flex flex-wrap items-center gap-2 rounded-[1.4rem] p-2" role="tablist" aria-label={t("onStoreTabs")}>
+            <div className="panel flex flex-wrap items-center gap-2 rounded-[1.4rem] p-2" role="tablist" aria-label={t("onStoreTabs")}
+              onKeyDown={(e) => onTabKeys(e, TABS.map((item) => item.id), tab, setTab)}>
               {TABS.map(({ id, label, icon: Icon }) => (
-                <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => { setSiteId(selected.id); setTab(id); }}
+                <button key={id} type="button" role="tab" aria-selected={tab === id} tabIndex={tab === id ? 0 : -1}
+                  onClick={() => { setSiteId(selected.id); setTab(id); }}
                   className={cn("flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium", tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
                   <Icon className="size-4" aria-hidden /> {t(label)}
                 </button>
