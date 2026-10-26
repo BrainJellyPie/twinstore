@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The numbered spots on a shopper's journey map list their steps in the
+  selected language ("2. Looks at", "3. Takes Cola"), instead of the internal
+  action names "browse" and "buy".
+
 - **Compare runs** names only the run that left customers out of the pairing,
   instead of starting with "0 customers only in" the other run.
 

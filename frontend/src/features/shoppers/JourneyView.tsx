@@ -54,7 +54,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
         const label = group.length > 1 ? `${s.index}+` : String(s.index);
         return (
           <g key={s.index} onPointerEnter={() => onHover(s.index)} onPointerLeave={() => onHover(null)} className="cursor-default">
-            <title>{group.map((g) => `${g.index}. ${g.action}${g.product_name ? ` ${g.product_name}` : ""}`).join("\n")}</title>
+            <title>{group.map((g) => `${g.index}. ${VERB[g.action] ? t(VERB[g.action]) : g.action}${g.product_name ? ` ${g.product_name}` : ""}`).join("\n")}</title>
             <circle cx={s.x + 0.5} cy={s.y + 0.5} r={on ? 0.44 : 0.34}
               fill={bought ? "var(--viz-2)" : "var(--viz-1)"} stroke="var(--card)" strokeWidth={0.08} />
             <text x={s.x + 0.5} y={s.y + 0.5} textAnchor="middle" dominantBaseline="central" fontSize={label.length > 2 ? 0.27 : 0.33} fill="#fff" fontWeight={700}>{label}</text>
