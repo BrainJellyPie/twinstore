@@ -25,7 +25,8 @@ def _meta():
 
 
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
-def test_automatic_initial_products_use_wizard_category_before_project_and_personas_are_saved(client, monkeypatch, currency):
+@pytest.mark.parametrize("limit", [1, 2])
+def test_automatic_initial_products_use_wizard_category_before_project_and_personas_are_saved(client, monkeypatch, currency, limit):
     from store_emulator.application import template_assortment
     from store_emulator.application.storage.setups import read_setup
     from store_emulator.engine.starter_selection import CategorySelection
@@ -40,21 +41,26 @@ def test_automatic_initial_products_use_wizard_category_before_project_and_perso
                 return schema.model_validate({"groups": [{"category": "first_aid_tools", "rack_ids": [r["id"] for r in payload["racks"]]}]})
             return schema.model_validate({"groups": [{"category": "first_aid_tools", "skus": [p["sku"] for p in payload["categories"]["first_aid_tools"][:2]]}]})
     monkeypatch.setattr(template_assortment, "assistive_client", lambda *a: Model())
-    meta = {**_meta(), "starter_selection": "automatic", "layout": {"template_id": "community_pharmacy", "currency": currency}}
+    meta = {**_meta(), "starter_selection": "automatic", "layout": {"template_id": "community_pharmacy",
+            "currency": currency, "products_per_category": limit}}
     response = api.post("/api/projects/create-store", data={"meta": json.dumps(meta)})
     assert response.status_code == 200, response.text
     data = response.json(); pid, sid = data["metadata"]["project_id"], data["setup"]["id"]
     saved = read_setup(pid, sid)
     assert saved["starter_selection"]["mode"] == "automatic"
     assert saved["starter_selection"]["assignments"]
-    assert all(row["category"] == "first_aid_tools" and len(row["skus"]) == 2 for row in saved["starter_selection"]["assignments"])
+    assignments = saved["starter_selection"]["assignments"]
+    assert all(row["category"] == "first_aid_tools" and len(row["skus"]) == limit for row in assignments)
+    selected = {sku for row in assignments for sku in row["skus"]}
+    placed = {item["sku"] for rack in saved["store"]["racks"] for slot in rack["slots"] for item in slot["items"]}
+    assert len(selected) == limit and placed == selected
     assert calls[0]["store_name"] == meta["name"] and calls[0]["store_type"] == "pharmacy"
     assert "Care and wellness" in calls[0]["requirements"]
     assert len(calls) == 2 and len(api.get("/api/projects").json()) == len(before) + 1
     generation.assert_called_once()
 
 
-@pytest.mark.parametrize("failure", ["timeout", "unknown_category", "unknown_sku", "excluded_category", "product_limit", "missing_model"])
+@pytest.mark.parametrize("failure", ["timeout", "unknown_category", "unknown_sku", "excluded_category", "missing_model"])
 def test_model_selection_failure_creates_no_partial_project_and_format_retry_succeeds(client, monkeypatch, failure):
     from store_emulator.application import template_assortment
     from store_emulator.engine.starter_selection import CategorySelection
@@ -71,7 +77,7 @@ def test_model_selection_failure_creates_no_partial_project_and_format_retry_suc
         return Model()
     monkeypatch.setattr(template_assortment, "assistive_client", client_factory)
     meta = {**_meta(), "starter_selection": "automatic", "layout": {"template_id": "community_pharmacy",
-            "excluded_categories": ["dairy"] if failure == "excluded_category" else [], "products_per_category": 1 if failure == "product_limit" else 2}}
+            "excluded_categories": ["dairy"] if failure == "excluded_category" else [], "products_per_category": 2}}
     before = api.get("/api/projects").json()
     response = api.post("/api/projects/create-store", data={"meta": json.dumps(meta)})
     assert response.status_code == 502 and "format defaults" in response.text
