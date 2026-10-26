@@ -74,6 +74,25 @@ it("finds stores and runs by name, opening the group of a matching variant", asy
   expect(screen.getByText("Nothing matches.")).toBeTruthy();
 });
 
+it("opens the first match with Enter and moves into the matches with the down arrow", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([
+    site("a", "Shop A"), site("b", "Shop B"), site("c", "Corner Mart"), site("d", "Glow Room"), site("e", "Edge pets"),
+    site("f", "Fresh"), site("g", "Gadget"),
+  ]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><OnlinePage projectId="p1" /></QueryClientProvider>);
+  const box = await screen.findByRole("searchbox", { name: "Find a store or run" });
+  await screen.findByRole("button", { name: /Glow Room/ });
+  fireEvent.change(box, { target: { value: "glow" } });
+  const glow = () => within(screen.getByRole("region", { name: "Stores" })).getByRole("button", { name: /Glow Room/ });
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(glow());
+  fireEvent.keyDown(box, { key: "Enter", isComposing: true });
+  expect(glow().getAttribute("aria-current")).toBeNull();
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(glow().getAttribute("aria-current")).toBe("true");
+});
+
 it("keeps the open store in the address, dropping one-time hand-offs, so a reload comes back to it", async () => {
   window.history.replaceState({ key: "kept" }, "", "/online/p1?site=a&compare=a1&shopper=s3&variant=1");
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
