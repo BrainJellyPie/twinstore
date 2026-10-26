@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- In Spanish, the online stores list counts its runs with the same word as
+  its Runs section ("Ejecuciones"), instead of a second word for them.
+
 - In Spanish and French, price fields accept a decimal comma ("2,50"), as
   those languages write it, instead of calling it an invalid price. A comma
   before three digits ("1,500") is still a thousands separator, and the other
