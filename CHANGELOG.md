@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep reversed multipack sizes such as `500 ml × 6` from linking to a
+  single-unit product. Compare complete nested pack expressions and preserve
+  valid links when the catalog puts the brand after the pack size.
+
 - Require a resolvable shelf before accepting a generated shelf-purchase
   condition. Missing or unknown shelf targets now request correction before
   caching instead of silently dropping that part of a shopper search.
