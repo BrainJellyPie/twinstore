@@ -42,6 +42,8 @@ def test_changes_are_screened_on_the_same_shoppers(client: TestClient) -> None:
 
 def test_scan_keeps_the_normal_arrival_mix_and_paired_customer_conditions(client, monkeypatch):
     from store_emulator.application import online
+    from store_emulator.domain.online import OnlineRunRequest, OnlineSite
+    from store_emulator.engine.online.shoppers import sample_shoppers
 
     visits = []
     run_session = online.run_session
@@ -57,5 +59,7 @@ def test_scan_keeps_the_normal_arrival_mix_and_paired_customer_conditions(client
         "candidates": [{"id": "same", "options": site["options"]}]})
     assert response.status_code == 200, response.text
     assert len(visits) == 80 and visits[:40] == visits[40:]
-    arrivals = {shopper["arrival"] for shopper, _ in visits[:40]}
-    assert arrivals == {"direct", "search_engine", "social", "email"}
+    defaults = OnlineRunRequest(site_ids=[site["id"]])
+    expected = sample_shoppers(OnlineSite.model_validate(site), 40, seed=0, missions=defaults.missions,
+                               mobile_share=defaults.mobile_share, arrivals=defaults.arrivals)
+    assert [shopper for shopper, _ in visits[:40]] == [shopper.model_dump() for shopper in expected]

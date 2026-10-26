@@ -94,15 +94,17 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-large-catalog", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
 parser.add_argument("--cache-from", type=Path, help="Copy a saved response cache for an explicit diagnostic replay")
+parser.add_argument("--persona-batch-size", type=int, choices=range(1, 13),
+                    help="Customers per model request; override the case's default for a controlled comparison")
 args = parser.parse_args()
 endpoint = urlsplit(args.endpoint)
 if endpoint.hostname not in {"localhost", "127.0.0.1", "::1"} or endpoint.scheme != "http":
@@ -429,6 +431,8 @@ try:
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."
+        if args.case == "persona-unspecified":
+            profile, budget = "동네 주민", (0, 0)
         if args.case in {"persona-cafe", "persona-local-categories"}:
             address, currency, categories, budget = "Tokyo, Japan", "JPY", ["coffee", "bakery"], (500, 1500)
             profile = "近所の住民がパンとコーヒーを買いに訪れる小さなカフェです。一人の予算は500〜1500円です。"
@@ -450,10 +454,11 @@ try:
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
         schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=expected_hour, close_hour=expected_hour + 1) for day in Weekday]
         estimates = {}
+        persona_batch_size = args.persona_batch_size or customer_count
         with patch.object(httpx.AsyncClient, "send", traced_send):
             people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
-                batch_size=customer_count, max_concurrent=1, categories=categories, currency=currency,
-                pace=lambda usual: Pace(daily_cap=customer_count, batch_size=customer_count, sample_cap=customer_count), estimates=estimates))
+                batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency,
+                pace=lambda usual: Pace(daily_cap=customer_count, batch_size=persona_batch_size, sample_cap=customer_count), estimates=estimates))
         written = [person for person in people if not person.twin_of]
         issues = []
         if not written or len({person.id for person in people}) != len(people):
@@ -464,13 +469,15 @@ try:
             issues.append("Preference outside the supplied category list")
         if categories and any(not person.preferred_categories for person in people):
             issues.append("Missing preferences despite the fixture's explicit buying intent and listed categories")
-        if any(person.budget_min < budget[0] or person.budget_max == 0 or person.budget_max > budget[1] for person in people):
+        if budget == (0, 0) and any(person.budget_min or person.budget_max for person in people):
+            issues.append("Invented a budget absent from the supplied profile")
+        elif budget != (0, 0) and any(person.budget_min < budget[0] or person.budget_max == 0 or person.budget_max > budget[1] for person in people):
             issues.append("Budget outside the supplied range")
         population_ok = not issues
         text_issues = customer_text_issues(written)
         issues.extend(text_issues)
         result.update(success=not issues, population_ok=population_ok, text_ok=not text_issues,
-            address=address, currency=currency, profile=profile, categories=categories,
+            address=address, currency=currency, profile=profile, categories=categories, persona_batch_size=persona_batch_size,
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("pack-"):
@@ -479,7 +486,7 @@ try:
         if args.case == "pack-jam":
             picture = bundled_product_image("/api/catalog-images/starter-01/15.webp")
             assert picture is not None
-        elif args.case in {"pack-label", "pack-wrong-variant"}:
+        elif args.case in {"pack-label", "pack-large-catalog", "pack-wrong-variant"}:
             # A deterministic positive-control label, not a photograph or model-generated picture.
             drawing = ImageDraw.Draw(picture)
             drawing.rounded_rectangle((100, 110, 500, 740), radius=70, fill="#dbeed0", outline="#245737", width=6)
@@ -488,13 +495,15 @@ try:
             for y, label, size in [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "500 ml", 48)]:
                 drawing.text((300, y), label, font=load_font(size, True), fill="#153d24", anchor="mt")
             products = ["Leafy Green Tea 1 L", "Leafy Black Tea 500 ml"]
-            if args.case == "pack-label":
+            if args.case in {"pack-label", "pack-large-catalog"}:
                 products.insert(0, "Leafy Green Tea 500 ml")
+            if args.case == "pack-large-catalog":
+                products = [f"Unrelated product {i:03d}" for i in range(180)] + products
         picture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reading = asyncio.run(read_pack(client, picture, products))
         issues = []
-        expected_match = "Leafy Green Tea 500 ml" if args.case == "pack-label" else ""
+        expected_match = "Leafy Green Tea 500 ml" if args.case in {"pack-label", "pack-large-catalog"} else ""
         if reading.shelf_product != expected_match:
             issues.append(f"Expected product match {expected_match!r}, received {reading.shelf_product!r}")
         if args.case in {"pack-jam", "pack-blank"} and (reading.brand or reading.size):
