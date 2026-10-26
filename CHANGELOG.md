@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Compare runs** names only the run that left customers out of the pairing,
+  instead of starting with "0 customers only in" the other run.
+
 - Keep local JSON correction prompts focused on the current validation error
   instead of repeating SDK response dumps and transport metadata. Preserve
   the conversation, full failure diagnostics, retry limits and usage counts.

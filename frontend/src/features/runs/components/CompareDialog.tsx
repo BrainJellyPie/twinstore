@@ -204,7 +204,9 @@ const RUN_PARAMS = new Set(["run", "runA", "runB", "runs"]);
 function noteText(report: ComparisonReport, index: number, t: (key: MessageKey, params?: Record<string, string | number>) => string,
   nameOf: (id: string) => string | undefined): string {
   const coded = report.note_codes?.[index];
-  const key = coded ? `cmpNote_${coded.code}` : "";
+  // Customers left out of one run only: name just that run, not "0 customers only in" the other.
+  const side = coded?.code === "unpaired" ? (coded.params.onlyA === 0 ? "B" : coded.params.onlyB === 0 ? "A" : "") : "";
+  const key = coded ? `cmpNote_${coded.code}${side}` : "";
   if (!coded || !Object.prototype.hasOwnProperty.call(messages, key)) return report.notes[index]!;
   const params = Object.fromEntries(Object.entries(coded.params).map(([name, value]) => [name,
     RUN_PARAMS.has(name) && typeof value === "string" ? value.split(", ").map((id) => nameOf(id) ?? id).join("; ") : value]));

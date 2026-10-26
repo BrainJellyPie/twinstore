@@ -111,3 +111,16 @@ def test_impulse_spend_is_not_compared_with_a_run_that_never_recorded_it():
     assert any("run_old was made by an older version" in note for note in report.notes)
     both = compare_runs(new, new, n_bootstrap=200)
     assert "impulse_spend" in {m.metric for m in both.metrics} and not any("older version" in n for n in both.notes)
+
+
+def test_unpaired_note_names_only_the_runs_that_left_customers_out():
+    both = [_customer(f"P{i}", [("cola", 200, 1, "planned")]) for i in range(40)]
+    extra = [_customer(f"X{i}", [("cola", 200, 1, "planned")]) for i in range(3)]
+    only_b = compare_runs(both, both + extra, run_a="run_a", run_b="run_b", n_bootstrap=50)
+    assert "3 customers only in run_b were excluded (failed or different persona sets)." in only_b.notes
+    only_a = compare_runs(both + extra, both, run_a="run_a", run_b="run_b", n_bootstrap=50)
+    assert "3 customers only in run_a were excluded (failed or different persona sets)." in only_a.notes
+    other = [_customer(f"Y{i}", [("cola", 200, 1, "planned")]) for i in range(2)]
+    each = compare_runs(both + extra, both + other, run_a="run_a", run_b="run_b", n_bootstrap=50)
+    assert "3 customers only in run_a and 2 only in run_b were excluded (failed or different persona sets)." in each.notes
+    assert [c.params for c in only_b.note_codes if c.code == "unpaired"] == [{"onlyA": 0, "runA": "run_a", "onlyB": 3, "runB": "run_b"}]

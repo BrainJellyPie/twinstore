@@ -63,8 +63,9 @@ def compare_runs(
     notes: list[tuple[str, str, dict[str, str | int]]] = []
     if len(ids) < len(a) or len(ids) < len(b):
         only_a, only_b = len(a) - len(ids), len(b) - len(ids)
-        notes.append(("unpaired", f"{only_a} customers only in {run_a} and {only_b} only in {run_b} "
-                      "were excluded (failed or different persona sets).",
+        left_out = (f"{only_b} customers only in {run_b}" if not only_a else f"{only_a} customers only in {run_a}"
+                    if not only_b else f"{only_a} customers only in {run_a} and {only_b} only in {run_b}")
+        notes.append(("unpaired", f"{left_out} were excluded (failed or different persona sets).",
                       {"onlyA": only_a, "runA": run_a, "onlyB": only_b, "runB": run_b}))
     if len(ids) < 30:
         notes.append(("few_paired", "Fewer than 30 paired customers: intervals are unreliable.", {}))
