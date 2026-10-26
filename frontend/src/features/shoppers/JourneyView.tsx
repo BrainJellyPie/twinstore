@@ -10,6 +10,7 @@ import { cn } from "@/shared/utils/cn";
 import { rackBounds } from "@/shared/utils/grid";
 import { formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { rackTypeLabel } from "@/shared/i18n/rackTypeLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 
@@ -42,7 +43,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
         return (
           <rect key={r.id} x={r.position[0] + 0.08} y={r.position[1] + 0.08} width={b.w - 0.16} height={b.d - 0.16} rx={0.12}
             className={cn(journey.shelves[r.id] ? "fill-foreground/25" : "fill-foreground/10")}>
-            <title>{r.rack_name || r.type}</title>
+            <title>{r.rack_name || rackTypeLabel(r.type, t)}</title>
           </rect>
         );
       })}

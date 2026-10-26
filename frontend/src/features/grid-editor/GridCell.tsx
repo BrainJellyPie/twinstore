@@ -13,6 +13,7 @@ import type { LucideIcon } from "lucide-react";
 import type { Position, Rack, RackType, BlockedFaceDetail } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { rackTypeLabel } from "@/shared/i18n/rackTypeLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { BlockedFaceOverlay } from "./BlockedFaceOverlay";
 
@@ -70,12 +71,6 @@ const RACK_VISUALS: Record<RackType, RackVisual | null> = {
   wall: null,
 };
 
-// Rack types in screen-reader labels ("fridge Drink 1 at 2,0"); the type values themselves are unchanged.
-const TYPE_LABELS: Partial<Record<RackType, MessageKey>> = {
-  shelf: "gridType_shelf", fridge: "gridType_fridge", counter: "gridType_counter", table: "gridType_table",
-  entrance: "gridType_entrance", exit: "gridType_exit",
-};
-
 const FACE_OVERLAY_TYPES: ReadonlySet<RackType> = new Set(["shelf", "fridge", "counter"]);
 
 // rotation 0 ⇒ front=S. shelf/fridge/counter share the same face mapping.
@@ -97,7 +92,7 @@ export function GridCell({
 }: GridCellProps) {
   const { t } = useI18n();
   const [x, y] = position;
-  const typeLabel = (type: RackType) => { const key = TYPE_LABELS[type]; return key ? t(key) : type; };
+  const typeLabel = (type: RackType) => rackTypeLabel(type, t);
 
   if (racks.length === 0) {
     return (

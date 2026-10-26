@@ -45,6 +45,7 @@ import { useGridEditor } from "./useGridEditor";
 import { saveSetup } from "./gridEditorApi";
 import { MIN_DIM, MAX_DIM } from "./gridDimensions";
 import { DimensionInput } from "./DimensionInput";
+import { rackTypeLabel } from "@/shared/i18n/rackTypeLabels";
 import { useProject } from "@/shared/queries/useProject";
 import type { Store } from "@/shared/types/domain";
 import type { EditorRack, SetupDetailWithBlocked } from "./types";
@@ -263,7 +264,7 @@ export function GridEditorDialog({
       x < 0 || y < 0 || x >= editor.gridSize[0] || y >= editor.gridSize[1],
     ));
     if (outside.length > 0) {
-      const names = outside.slice(0, 3).map((rack) => rack.rack_name || rack.type).join(", ");
+      const names = outside.slice(0, 3).map((rack) => rack.rack_name || rackTypeLabel(rack.type, (key) => translate(locale, key))).join(", ");
       setSaveError(translate(locale, "gridOutside", { count: outside.length, names: `${names}${outside.length > 3 ? ", …" : ""}` }));
       return;
     }

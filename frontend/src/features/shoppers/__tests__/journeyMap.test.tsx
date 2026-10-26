@@ -14,7 +14,10 @@ const step = (index: number, action: string, product_name = "") => ({ index, tim
   x: 2, y: 3 }) as unknown as JourneyStep;
 const journey = { run_id: "run1", currency: "USD", path: [[0, 2, 3]], shelves: {},
   steps: [step(2, "browse"), step(3, "buy", "Cola 500ml")] } as unknown as Journey;
-const store = { grid_size: [6, 6], racks: [] } as unknown as Store;
+const store = { grid_size: [6, 6], racks: [
+  { id: "door", type: "entrance", rack_name: "", position: [0, 0], shape: [[1]], rotation: 0, slots: [] },
+  { id: "r1", type: "shelf", rack_name: "Drinks", position: [2, 3], shape: [[1]], rotation: 0, slots: [] },
+] } as unknown as Store;
 
 it.each([["en", "2. Looks at\n3. Takes Cola 500ml"], ["ko", "2. 살펴봄\n3. 집음 Cola 500ml"]])(
   "lists the steps at a spot in the selected language (%s)", (locale, expected) => {
@@ -22,3 +25,9 @@ it.each([["en", "2. Looks at\n3. Takes Cola 500ml"], ["ko", "2. 살펴봄\n3. �
     const { container } = render(<JourneyMap journey={journey} store={store} active={new Set()} onHover={() => {}} />);
     expect(container.querySelector("g > title")!.textContent).toBe(expected);
   });
+
+it("names an unnamed rack by its type in the selected language", () => {
+  useLocale.getState().setLocale("ko");
+  const { container } = render(<JourneyMap journey={journey} store={store} active={new Set()} onHover={() => {}} />);
+  expect([...container.querySelectorAll("rect > title")].map((title) => title.textContent)).toEqual(["입구", "Drinks"]);
+});
