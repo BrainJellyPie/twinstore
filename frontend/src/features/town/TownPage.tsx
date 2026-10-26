@@ -18,6 +18,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { ModelWaiting } from "@/shared/components/ModelWaiting";
 
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, labelOf, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
@@ -394,6 +395,7 @@ function ImportPanel({ projectId, onDone, onError, hasTown }: { projectId: strin
           {replace.armed ? t("areaReplaceConfirm") : t("areaImport")}
         </Button>
         {replace.armed && <p role="status" className="text-muted-foreground">{t("areaReplaceHint")}</p>}
+        {imp.isPending && <p role="status"><ModelWaiting label={t("areaImporting")} hint={t("areaImportSlow")} /></p>}
         <p className="text-muted-foreground">{t("areaImportHint")}</p>
       </div>
     </details>

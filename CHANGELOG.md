@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- A layout that has no floor yet can be deleted from its Store & layout tab;
+  one added by mistake could not be removed until a floor was built for it.
+- In the online stores' **Find a store or run**, Enter opens the first match and
+  ↓ moves into the matches, as in **Find a layout**; Enter in the home page's
+  **Filter stores** opens the first store it shows. Matching variants stay
+  visible during filtering, and keyboard search opens the matching variant
+  instead of its non-matching parent.
+- **New online store** puts focus in the template search, so typing filters the
+  ready-made shops at once; focus stayed on the button behind the gallery.
+- A real-map import says what it is doing while it runs ("Downloading
+  buildings, shops and roads…"), and after 15 seconds that busy map servers can
+  take a few minutes, with the time so far. When every server was slow, the
+  only sign for almost five minutes was a spinner.
 - The command palette finds each marketing studio tool by name in any of the six
   languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
   before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`

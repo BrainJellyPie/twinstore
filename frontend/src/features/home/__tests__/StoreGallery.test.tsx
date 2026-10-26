@@ -139,3 +139,15 @@ it.each(LOCALES)("leads a load failure with the $code message and keeps the raw 
   expect(alert.querySelector(".font-medium")!.textContent).toBe(translate(code, "loadStoresError"));
   expect(alert.textContent).toContain("Failed to fetch");
 });
+
+it("opens the first matching store with Enter, but not while composing or with an empty filter", () => {
+  const { props } = show();
+  const box = screen.getByRole("searchbox", { name: "Filter stores" });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(props.onOpen).not.toHaveBeenCalled();
+  filter("night");
+  fireEvent.keyDown(box, { key: "Enter", isComposing: true });
+  expect(props.onOpen).not.toHaveBeenCalled();
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(props.onOpen).toHaveBeenCalledWith("b");
+});

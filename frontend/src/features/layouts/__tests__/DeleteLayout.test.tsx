@@ -36,3 +36,14 @@ it("does not offer to delete the store's last layout", async () => {
   await waitFor(() => expect(api.getSetups).toHaveBeenCalled());
   expect(screen.queryByRole("button", { name: "Delete this layout" })).toBeNull();
 });
+
+it("offers deletion on a layout's Store & layout tab before it has a floor", async () => {
+  const { SettingsPanel } = await import("@/features/dashboard/components/SettingsPanel");
+  vi.mocked(api.getSetups).mockResolvedValue([setup("a", null), setup("b", null)]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <SettingsPanel store={null} summary={null} personas={[]} location="" projectId="p1" setupId="b" editableLayout />
+  </QueryClientProvider>);
+  expect(await screen.findByRole("button", { name: "Delete this layout" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Go to Step 1: Floor configuration" })).toBeTruthy();
+});

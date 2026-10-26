@@ -63,7 +63,9 @@ export function TemplateGallery({
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input className="pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("onGallerySearch")} aria-label={t("onGallerySearch")} />
+          {/* Opened from "New online store" (it can be cancelled): start in the search, not back at that button. */}
+          <Input className="pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("onGallerySearch")} aria-label={t("onGallerySearch")}
+            autoFocus={!!onCancel} />
         </label>
       </div>
 

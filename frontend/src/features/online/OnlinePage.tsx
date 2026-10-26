@@ -143,11 +143,19 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           </span>
           <ChevronDown className={cn("size-4 shrink-0 transition-transform", listOpen && "rotate-180")} aria-hidden />
         </button>
-        <div className={cn("flex flex-col gap-4", !listOpen && "hidden lg:flex")}>
+        <div className={cn("flex flex-col gap-4", !listOpen && "hidden lg:flex")} data-online-list>
         {(list.length > 6 || (runs.data?.length ?? 0) > 6) && (
           <label className="relative block">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={t("onFind")} aria-label={t("onFind")}
+              onKeyDown={(e) => {
+                // Enter opens the first match, ↓ moves into the matches (not while an IME is composing).
+                if (e.nativeEvent.isComposing || e.keyCode === 229 || (e.key !== "Enter" && e.key !== "ArrowDown")) return;
+                const first = e.currentTarget.closest("[data-online-list]")?.querySelector<HTMLElement>("[data-online-result]");
+                if (!first) return;
+                e.preventDefault();
+                if (e.key === "Enter") first.click(); else first.focus();
+              }}
               className="h-8 w-full rounded-xl border bg-card/60 pr-2 pl-8 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
           </label>
         )}
@@ -158,17 +166,18 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ul className="space-y-1.5">
             {roots.map((root) => {
               const variants = family.get(root.id) ?? [];
-              const expanded = open[root.id] ?? (variants.some((v) => v.id === selected?.id) || (!!needle && variants.length > 0));
+              const expanded = !!needle || (open[root.id] ?? variants.some((v) => v.id === selected?.id));
               return (
                 <li key={root.id} className="space-y-1">
-                  <SiteButton site={root} active={!showGallery && !runId && selected?.id === root.id} onOpen={openSite} />
+                  <SiteButton site={root} active={!showGallery && !runId && selected?.id === root.id} onOpen={openSite}
+                    searchResult={found(root.name, root.note)} />
                   {variants.length > 0 && (
                     <>
-                      <button type="button" aria-expanded={expanded} onClick={() => setOpen((o) => ({ ...o, [root.id]: !expanded }))}
+                      {!needle && <button type="button" aria-expanded={expanded} onClick={() => setOpen((o) => ({ ...o, [root.id]: !expanded }))}
                         className="ml-3 inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
                         <ChevronRight className={cn("size-3.5 transition-transform", expanded && "rotate-90")} aria-hidden />
                         {t("onVariantsCount", { count: variants.length })}
-                      </button>
+                      </button>}
                       {expanded && (
                         <ul className="ml-3 space-y-1 border-l pl-2">
                           {variants.map((v) => (
@@ -191,7 +200,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ul className="space-y-1.5">
             {shownRuns.map((r) => (
               <li key={r.run_id}>
-                <button type="button" onClick={() => { setRunId(r.run_id); setGallery(false); setListOpen(false); reveal(); }}
+                <button type="button" data-online-result onClick={() => { setRunId(r.run_id); setGallery(false); setListOpen(false); reveal(); }}
                   aria-current={runId === r.run_id ? "true" : undefined}
                   className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", runId === r.run_id ? "border-primary bg-primary/8" : "hover:bg-muted")}>
                   <span className="flex items-center gap-2 font-medium">
@@ -264,12 +273,12 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   );
 }
 
-function SiteButton({ site, active, onOpen, compact = false }: {
-  site: SiteSummary; active: boolean; onOpen: (id: string) => void; compact?: boolean;
+function SiteButton({ site, active, onOpen, compact = false, searchResult = true }: {
+  site: SiteSummary; active: boolean; onOpen: (id: string) => void; compact?: boolean; searchResult?: boolean;
 }) {
   const { t } = useI18n();
   return (
-    <button type="button" onClick={() => onOpen(site.id)} aria-current={active ? "true" : undefined}
+    <button data-online-result={searchResult ? "" : undefined} type="button" onClick={() => onOpen(site.id)} aria-current={active ? "true" : undefined}
       className={cn("w-full rounded-xl border text-left transition-colors", compact ? "px-2.5 py-1.5" : "px-3 py-2",
         active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
       <span className={cn("flex items-center gap-2 font-medium", compact && "text-[0.8rem]")}>

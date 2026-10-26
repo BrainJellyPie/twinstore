@@ -74,6 +74,8 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
       <div className="space-y-3 px-3 pt-3 text-xs text-muted-foreground">
         <p>{t("storeTabNoFloor")}</p>
         <EmptyFloorStart />
+        {/* A layout added by mistake can go before it has a floor. */}
+        {projectId && setupId && <DeleteLayout key={`delete:${setupId}`} projectId={projectId} setupId={setupId} />}
       </div>
     );
   }
