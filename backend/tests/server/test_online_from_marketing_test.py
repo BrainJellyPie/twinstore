@@ -75,3 +75,13 @@ def test_a_lower_shelf_ends_the_list_and_a_move_along_the_shelf_is_skipped(clien
     assert result["site"]["products"][-1]["id"] == a["id"] and len(result["site"]["products"]) == len(site["products"])
     assert any("last in its category" in x for x in result["applied"])
     assert any("same shelf" in x for x in result["skipped"])
+
+
+def test_the_store_list_says_which_stores_sell_a_tests_products(client: TestClient) -> None:
+    mart = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "from_store"}).json()
+    fashion = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "fashion"}).json()
+    skus = [mart["products"][0]["sku"], mart["products"][1]["sku"], "NOT-HERE"]
+    listed = client.get(f"/api/projects/{PID}/online/sites", params={"sku": skus}).json()
+    carries = {s["id"]: s["carries"] for s in listed}
+    assert carries[mart["id"]] == 2 and carries[fashion["id"]] == 0
+    assert all(s["carries"] is None for s in client.get(f"/api/projects/{PID}/online/sites").json())

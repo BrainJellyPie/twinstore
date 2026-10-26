@@ -10,6 +10,15 @@
   lists). **Review on the layout** and **Save as a new layout** move focus to
   what replaces them, here and under an online variant's prices; focus fell
   back to the top of the page.
+- **Test it online** under an A/B variant lists first the online stores that
+  sell the tested products, picks one of them, and marks the others "does not
+  sell these products" (they could only fail with "no product with this SKU");
+  before, it picked the first store in the list, an apparel shop for a cola
+  test. A variant that only adds a shelf sign says a sign has no web
+  counterpart instead of offering a variant that could carry nothing. The
+  online store list takes `sku` to say how many of those products each store
+  sells (`carries`). After **Make an online variant**, focus moves to the
+  result rather than the top of the page.
 - In a price test's **Price response**, the control row no longer shows an
   interval ("1.7 [1.7, 1.7]"): the arms' intervals are measured from it. The
   app, Markdown and HTML reports agree, and the app names the control in the

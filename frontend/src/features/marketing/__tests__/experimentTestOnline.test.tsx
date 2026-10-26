@@ -44,7 +44,8 @@ it("carries a tested variant to an online store in the test's currency and links
   expect([...picker.options].map((o) => o.text)).toEqual(["Tea shop", "Tea outlet"]);
   fireEvent.change(picker, { target: { value: "s3" } });
   fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
-  expect(await screen.findByText("Online variant ready: Tea outlet – Cheaper tea")).toBeTruthy();
+  const ready = await screen.findByText("Online variant ready: Tea outlet – Cheaper tea");
+  expect(document.activeElement).toBe(ready.parentElement);
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s3", {
     name: "Tea outlet – Cheaper tea", note: "Tea test: Cheaper tea", currency: "USD", changes: variants[0]!.changes,
   });
@@ -95,4 +96,35 @@ it("offers the best tested price as an online variant", async () => {
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({
     name: "Tea shop – Best price $2.49", changes: [{ kind: "price", sku: "tea", price: 249 }],
   }));
+});
+
+it("puts the stores that sell the tested products first and keeps the others out of reach", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([
+    { ...site("s1", "Threadline"), carries: 0 }, { ...site("s2", "Tea outlet"), carries: 1 },
+  ]);
+  show();
+  await screen.findByRole("option", { name: "Tea outlet" });
+  expect(online.listSites).toHaveBeenCalledWith("p", expect.anything(), ["tea"]);
+  const picker = screen.getByRole("combobox", { name: "Online store" }) as HTMLSelectElement;
+  expect([...picker.options].map((o) => [o.text, o.disabled])).toEqual([
+    ["Tea outlet", false], ["Threadline — does not sell these products", true],
+  ]);
+  expect(picker.value).toBe("s2");
+});
+
+it("says so when no online store sells the tested products", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([{ ...site("s1", "Threadline"), carries: 0 }]);
+  show();
+  expect(await screen.findByText(/No online store in USD sells these products yet/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+});
+
+it("explains that a shelf sign has nothing to carry online", () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <ExperimentReportView projectId="p" report={report} variants={[{ name: "Cheaper tea", changes: [{ kind: "promo", sku: "tea", promo: "SALE" }] }]} />
+  </QueryClientProvider>);
+  expect(screen.getByText(/A shelf sign has no web counterpart/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+  expect(online.listSites).not.toHaveBeenCalled();
 });
