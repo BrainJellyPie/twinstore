@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- With reduced motion turned on in the system, report sections no longer fade,
+  blur and slide in as they scroll into view; the scroll-linked effect ignored
+  the app's reduced-motion setting, and a section half in view stayed blurred.
 - In an A/B test's results, each variant's **Review on the layout** and **Make
   an online variant** buttons name the variant for screen readers ("Review
   -20 % on the layout"), so a test with several variants no longer repeats

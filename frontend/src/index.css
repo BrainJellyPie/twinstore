@@ -483,9 +483,12 @@ body {
 /* Page flow: particles of visits running along each ribbon. */
 @keyframes flow-run { to { stroke-dashoffset: -64; } }
 .flow-particles { animation: flow-run 1.6s linear infinite; }
-/* Report sections rise into place as they scroll into view, where the browser can tie it to scrolling. */
+/* Report sections rise into place as they scroll into view, where the browser can tie it to scrolling. A scroll
+   timeline ignores the reduced-motion duration override above, so it is left out for those who ask for less motion. */
 @supports (animation-timeline: view()) {
-  .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  }
 }
 
 /* App backdrop: aurora light, dot grid and film grain behind every page. */
