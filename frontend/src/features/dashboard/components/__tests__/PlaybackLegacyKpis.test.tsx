@@ -54,3 +54,19 @@ it("says the rack and item lists fill in as the day plays, and only reports no s
   expect(screen.getByText("No rack sales in this run.")).toBeTruthy();
   expect(screen.getByText("No sales in this run.")).toBeTruthy();
 });
+
+it("leads with the run's totals before the day plays, and drops them once it does", () => {
+  act(() => useSimulationMetricsStore.getState().reset());
+  show(current);
+  const teaser = screen.getByRole("button", { name: /See the results/ });
+  expect(teaser.textContent).toContain("Revenue: $50.00");
+  expect(teaser.textContent).toContain("Shoppers: 10");
+  act(() => useSimulationMetricsStore.getState().setMetrics({ entered: 1 }));
+  expect(screen.queryByRole("button", { name: /See the results/ })).toBeNull();
+});
+
+it("offers no totals teaser for a run made before the conversion KPIs", () => {
+  act(() => useSimulationMetricsStore.getState().reset());
+  show(legacy);
+  expect(screen.queryByRole("button", { name: /See the results/ })).toBeNull();
+});

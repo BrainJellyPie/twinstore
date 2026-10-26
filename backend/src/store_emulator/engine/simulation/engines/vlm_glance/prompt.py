@@ -108,11 +108,32 @@ def shelf_glance_model(view: ShelfView, *, numbered: bool = True) -> type[ShelfG
     names: list[JsonValue] = [name for name in sorted({"", *(marked.item.name[:_GLANCE_PRODUCT_LIMIT] for marked in view.items)})]
     name_constraints: dict[str, JsonValue] = {"enum": names} if numbered else {}
 
+    def compact_schema(schema: dict[str, JsonValue]) -> None:
+        # Tiny JSON-mode models copy verbose field definitions instead of values.
+        # Keep the constraints, without display titles or default-answer examples.
+        schema.pop("title", None)
+        schema["required"] = ["product", "number", "interest"]
+        properties = schema.get("properties")
+        if isinstance(properties, dict):
+            for field in properties.values():
+                if isinstance(field, dict):
+                    field.pop("title", None)
+                    field.pop("default", None)
+
     class VisibleShelfGlance(ShelfGlance):
         # Grammar-driven models otherwise omit both optional identifiers and emit
         # an unusable positive score. Keep default/legacy parsing permissive, but
         # require an explicit target (or "", 0 for no target) on the wire.
-        model_config = ConfigDict(json_schema_extra={"required": ["product", "number", "interest"]})
+        model_config = ConfigDict(json_schema_extra=compact_schema)
+
+        @model_validator(mode="before")
+        @classmethod
+        def instance_values(cls, value: JsonValue) -> JsonValue:
+            # Accept a wrapped instance, never extract values from schema defaults
+            # or enums. Existing top-level fields remain authoritative.
+            if isinstance(value, dict) and "properties" in value and not any(key in value for key in cls.model_fields):
+                return value["properties"]
+            return value
 
         product: str = Field(default="", max_length=_GLANCE_PRODUCT_LIMIT, json_schema_extra=name_constraints)
 

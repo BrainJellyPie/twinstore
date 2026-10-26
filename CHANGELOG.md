@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recover actual shelf judgments that small JSON-mode models wrap in `properties`.
+  Compact shelf schemas retain their constraints while removing copied metadata;
+  missing scores and schema definitions remain errors, and saved answers stay flat.
+
 - Convert generated customer budgets from explicit currency amounts into stored
   units in code, so small models do not have to calculate cents. Existing saved
   integer budgets keep their units. Customer prompts distinguish people, visit
@@ -56,6 +60,13 @@
   field (or pick it in the command palette, whose footer now links it) for a
   sheet of every key that works without the mouse. On the store floor, **←** and
   **→** now step the day back or forward 15 minutes.
+- A finished run no longer opens on a wall of zeros: before the day plays, the
+  Results tab leads with **This run** (its revenue and shopper count) and a
+  **See the results** link to the run's totals, until playback starts.
+- The neighborhood map's legend sits on a solid card, so venue dots and
+  buildings no longer show through its labels, and the area's figure tiles
+  wrap their notes to two lines instead of cutting them off ("of convenience
+  trips in to…").
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a

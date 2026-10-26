@@ -202,7 +202,7 @@ function Legend() {
   const { t } = useI18n();
   const venues: VenueCategory[] = ["convenience", "cafe", "bakery", "pharmacy", "gym", "academy", "restaurant", "supermarket"];
   return (
-    <div className="absolute bottom-3 left-3 right-3 max-w-[560px] glass rounded-xl border p-2.5 text-xs shadow-float lg:bottom-6 lg:left-6 lg:right-6">
+    <div className="absolute bottom-3 left-3 right-3 max-w-[560px] rounded-xl border bg-card/95 p-2.5 text-xs shadow-float backdrop-blur-md lg:bottom-6 lg:left-6 lg:right-6">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> {t("areaOurStore")}</span>
         {venues.map((c) => (
@@ -454,7 +454,7 @@ function Stat({ label, value, hint, icon: Icon }: { label: string; value: string
     <div className="rounded-md border px-2 py-1.5">
       <div className="flex items-center gap-1 text-muted-foreground">{Icon && <Icon className="size-3" />}{label}</div>
       <div className="text-base font-semibold tabular-nums">{value}</div>
-      <div className="truncate text-xs text-muted-foreground">{hint}</div>
+      <div className="line-clamp-2 text-xs text-muted-foreground" title={hint}>{hint}</div>
     </div>
   );
 }
