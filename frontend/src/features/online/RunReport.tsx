@@ -291,7 +291,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
           controlSiteId={result.variants[0]?.site_id} onTry={onTry} />
       </Section>
 
-      <div id="online-funnel" className="grid scroll-mt-16 gap-3 xl:grid-cols-2">
+      <div id="online-funnel" className="grid grid-cols-1 scroll-mt-16 gap-3 xl:grid-cols-2">
         <Section icon={Filter} title={t("onFunnel")}>
           {v.length > 1 && <StoreKey names={names} />}
           <FunnelChart variants={v} />
@@ -322,7 +322,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
       <div id="online-surveys" className="scroll-mt-16 empty:hidden"><Surveys variants={v} pct={pct} /></div>
       <div id="online-segments" className="scroll-mt-16 empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
 
-      <div id="online-products" className="grid scroll-mt-16 gap-3 xl:grid-cols-2">
+      <div id="online-products" className="grid grid-cols-1 scroll-mt-16 gap-3 xl:grid-cols-2">
         <Section icon={Search} title={t("onSearches")} hint={t("onSearchesHint")}>
           {v.map((s, si) => (
             <div key={s.site_id}>
@@ -414,7 +414,7 @@ function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: numbe
             <p className="text-xs text-muted-foreground">{t("onAdLiftHint")}</p>
           </div>
           {result.comparisons.map((c) => c.ad_lifts.map((lift) => (
-            <div key={`${c.site_id}:${lift.ad_id}`} className="grid gap-2 rounded-xl border p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div key={`${c.site_id}:${lift.ad_id}`} className="grid grid-cols-1 gap-2 rounded-xl border p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-2 lg:col-span-4">
                 <div className="font-medium">{lift.name}</div>
                 <div className="text-muted-foreground">
@@ -558,7 +558,7 @@ function Surveys({ variants, pct }: { variants: VariantSummary[]; pct: (x: numbe
   if (variants.every((s) => !s.survey)) return null;
   return (
     <Section icon={ClipboardList} title={t("onSurveys")} hint={t("onSurveysHint")}>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {variants.map((s) => s.survey && (
           <div key={s.site_id} className="space-y-2 rounded-xl border p-3 text-xs">
             {variants.length > 1 && <div className="font-medium">{s.site_name}</div>}

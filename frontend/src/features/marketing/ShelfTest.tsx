@@ -149,13 +149,13 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
 
   return (
     <div className="space-y-4">
-      <section className="glass grid gap-3 rounded-2xl p-4 md:grid-cols-2">
+      <section className="glass grid grid-cols-1 gap-3 rounded-2xl p-4 md:grid-cols-2">
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2 md:col-span-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(question); } }}
             placeholder={t("mkShelfQuestionPlaceholder")}
-            aria-label={t("mkShelfQuestionLabel")} className="h-9 min-w-[14rem] flex-1 bg-card" />
+            aria-label={t("mkShelfQuestionLabel")} className="h-9 min-w-0 grow basis-56 bg-card" />
           <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkDraftTest")}
           </Button>
@@ -185,7 +185,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         </p>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkNewPack")}</h3>
           <div className="flex flex-wrap gap-1.5">
@@ -240,7 +240,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
       </section>
 
       {preview.data && (
-        <section className={cn("grid gap-3 md:grid-cols-2", preview.isFetching && "opacity-70 transition-opacity")}>
+        <section className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", preview.isFetching && "opacity-70 transition-opacity")}>
           {(["control", "test"] as const).map((arm) => (
             <figure key={arm} className="overflow-hidden rounded-2xl border bg-card">
               <img src={preview.data[arm]} alt={t("mkShelfPreviewAlt", { arm: t(ARM_LABEL[arm]) })} className="w-full" />
@@ -292,7 +292,7 @@ export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
         ) : t("mkNoPairedAnswers")}</span>
         <Button asChild size="sm" variant="outline"><a href={shelfTestReportUrl(projectId, r.test_id)} target="_blank" rel="noopener"><FileText className="size-4" /> {t("studioReport")}</a></Button>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {(["control", "test"] as const).map((arm) => (
           <figure key={arm} className="overflow-hidden rounded-2xl border bg-card">
             <img src={shelfTestImageUrl(projectId, r.test_id, arm)} alt={t("mkShelfAlt", { arm: t(ARM_LABEL[arm]) })} className="w-full" />
@@ -311,7 +311,7 @@ export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
         <LiftChart format={pp} axisLabel={t("mkShareOfRespondents")}
           rows={r.comparisons.map((c) => ({ key: c.metric, label: METRIC[c.metric] ? t(METRIC[c.metric]!) : c.metric, sub: `${pctf(c.control)} → ${pctf(c.test)}`, diff: c.diff, lo: c.ci_low, hi: c.ci_high, detail: t("mkPHigherTest", { pct: Math.round(c.prob_better * 100) }) }))} />
       </section>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <section className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkWhatTheyTake")}</h3>
           <div className="space-y-1.5">

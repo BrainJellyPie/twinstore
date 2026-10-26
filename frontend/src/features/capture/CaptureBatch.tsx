@@ -141,7 +141,7 @@ export function CaptureBatch({
             </Button>
           </div>
           <p>{t("capSelectedCount", { count: chosen.length })}</p>
-          <div className="grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
+          <div className="grid grid-cols-1 max-h-64 gap-2 overflow-auto sm:grid-cols-2">
             {captures.map((c) => {
               const ready = c.status === "completed" && c.items > 0;
               const checked = selected.includes(c.capture_id);

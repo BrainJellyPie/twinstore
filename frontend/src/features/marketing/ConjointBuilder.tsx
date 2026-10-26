@@ -228,7 +228,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
         </div>
-        <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr]">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.4fr]">
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">{t("mkChoosing")}</span>
             <Input value={product} onChange={(e) => setProduct(Array.from(e.target.value).slice(0, 160).join(""))} placeholder={t("mkExIcedTeaProduct")} className="h-9" />
@@ -242,10 +242,10 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
           {attrs.map((a, i) => {
             const levels = splitLevels(a.levels);
             return (
-              <div key={i} className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
                 <Input value={a.name} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, name: Array.from(e.target.value).slice(0, 40).join("") } : x)))}
                   placeholder={t("mkAttributeN", { n: i + 1 })} aria-label={t("mkAttributeNName", { n: i + 1 })} className="h-9 font-medium" />
-                <div className="relative">
+                <div className="relative order-last col-span-2 sm:order-none sm:col-span-1">
                   <Input value={a.levels} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, levels: e.target.value } : x)))}
                     placeholder={t("mkLevelsPlaceholder")} aria-label={t("mkLevelsOf", { name: a.name || t("mkAttributeLower", { n: i + 1 }) })} className="h-9 pr-14" />
                   <span className={cn("num absolute top-1/2 right-3 -translate-y-1/2 text-[0.7rem]", levels.length >= 2 && levels.length <= 6 ? "text-muted-foreground" : "text-destructive")}>
@@ -259,10 +259,10 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
               </div>
             );
           })}
-          <div className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
             <span className="px-3 text-sm font-medium">{t("mkPrice")} <span className="text-xs font-normal text-muted-foreground">({currency})</span></span>
             <Input value={priceText} onChange={(e) => setPriceText(e.target.value)} placeholder={t("mkPricesPlaceholder")} inputMode="decimal" aria-label={t("mkPriceLevels")} className="num h-9" />
-            <span className="w-7" />
+            <span className="hidden w-7 sm:block" />
           </div>
           {attrs.length < 6 && (
             <button type="button" onClick={() => setAttrs((xs) => [...xs, { name: "", levels: "" }])}
@@ -273,7 +273,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr]">
         <div className="space-y-3 rounded-2xl border bg-card p-4">
           <div className="flex items-baseline justify-between">
             <h3 className="text-sm font-semibold">{t("mkSampleTask")}</h3>
@@ -281,7 +281,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
               <Dices className="size-3.5" /> {t("mkAnother")}
             </button>
           </div>
-          <div className={cn("grid gap-2", options + (none ? 1 : 0) > 3 ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
+          <div className={cn("grid grid-cols-1 gap-2", options + (none ? 1 : 0) > 3 ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
             {sample.map((lines, o) => (
               <div key={o} className="rounded-xl border bg-background/60 p-3">
                 <span className="mb-1.5 grid size-6 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">{LETTERS[o]}</span>
@@ -290,7 +290,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
             ))}
             {none && <div className="grid place-items-center rounded-xl border border-dashed p-3 text-center text-[0.8rem] text-muted-foreground">{t("mkNoneOfThese")}</div>}
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="flex justify-between text-xs text-muted-foreground">{t("mkTasksPer")} <b className="num text-foreground">{tasks}</b></span>
               <input type="range" min={3} max={15} value={tasks} onChange={(e) => setTasks(Number(e.target.value))} aria-label={t("mkTasksPer")} />

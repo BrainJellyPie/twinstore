@@ -56,7 +56,7 @@ export function ChannelMix({ projectId, runId }: { projectId: string; runId: str
           </button>
         )}
       </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="grid grid-cols-2 gap-2 self-start">
           {CELLS.map((c) => (
             <div key={c.key} className="relative overflow-hidden rounded-2xl border bg-card/60 p-3">

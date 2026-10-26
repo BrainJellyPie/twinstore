@@ -91,7 +91,7 @@ function Journey({ projectId, runId, view, currency, rival, play, onRival }: {
   if (!step) return null;
   const choice = step.choice;
   return (
-    <div className="grid gap-4 text-sm lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 text-sm lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="space-y-3">
         <div className="rounded-xl border p-3 text-xs">
           <div className="font-semibold">{shopper.identity}</div>

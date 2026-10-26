@@ -37,7 +37,7 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <section className="rounded-2xl border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold">{t("mkDrivers")} <span className="font-normal text-muted-foreground">{t("mkDriversHint")}</span></h3>
           <ShareBars rows={ranked.map((i) => ({ label: attributeLabel(i.attribute, t), share: i.importance, lo: i.ci_low, hi: i.ci_high }))} />
@@ -69,7 +69,7 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
 
       <section className="rounded-2xl border bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold">{t("mkPartWorths")} <span className="font-normal text-muted-foreground">{t("mkPartWorthsHint")}</span></h3>
-        <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
           {[...r.attributes.map((a) => a.name), ...(r.prices.length ? ["Price"] : [])].map((name) => (
             <div key={name}>
               <h4 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{attributeLabel(name, t)}</h4>
@@ -83,7 +83,7 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
 
       {r.segments.length > 0 && <Segments report={r} />}
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {r.verbatims.length > 0 && <Verbatims items={r.verbatims} />}
         <section className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkReadWithCare")}</h3>
@@ -139,8 +139,8 @@ function Simulator({ report: r }: { report: Report }) {
           </button>
         )}
       </div>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-        <div className="grid items-start gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2">
           {products.map((p, i) => (
             <div key={i} className="space-y-1.5 rounded-xl border bg-background/50 p-3">
               <div className="flex items-center justify-between">
@@ -261,7 +261,7 @@ function Verbatims({ items }: { items: string[] }) {
   return (
     <section className="rounded-2xl border bg-card p-4">
       <h3 className="mb-2 text-sm font-semibold">{t("mkWhatMattered")} <span className="font-normal text-muted-foreground">· {items.length}</span></h3>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {shown.map(([v, k]) => (
           <blockquote key={v} className="rounded-xl bg-foreground/[0.035] px-3 py-2 text-sm">
             <Quote className="mb-1 size-3.5 text-muted-foreground" aria-hidden />{v}

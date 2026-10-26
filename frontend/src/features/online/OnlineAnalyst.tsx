@@ -115,7 +115,7 @@ export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry
       {messages.length === 0 && !pending ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">{t("onAnalystIntro")}</p>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {starters.map(({ icon: Icon, text: starter }) => (
               <button key={starter} type="button" onClick={() => send(starter)} disabled={busy}
                 className="group flex items-start gap-2.5 rounded-2xl border bg-card/50 p-3 text-left text-xs leading-snug transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_12px_30px_-18px_var(--heat-2)] disabled:opacity-50">

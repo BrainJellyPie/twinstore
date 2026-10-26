@@ -53,7 +53,7 @@ export function RestockOrderPlanner({ projectId, report }: { projectId: string; 
   return <section aria-label={t("capOrderTitle")} className="space-y-3 rounded-xl border p-3">
     <h4 className="section-title">{t("capOrderTitle")}</h4>
     <p className="text-xs text-muted-foreground">{t("capOrderIntro")}</p>
-    <div className="grid gap-2 sm:grid-cols-2">{[{ label: t("capOrderBudget", { currency: report.currency }), value: budget, update: setBudget },
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{[{ label: t("capOrderBudget", { currency: report.currency }), value: budget, update: setBudget },
       { label: t("capOrderDelivery", { currency: report.currency }), value: delivery, update: setDelivery }].map((field) => <label key={field.label} className="text-xs">{field.label}
         <input type="number" min={0} max={1_000_000_000_000} step={1} value={field.value} disabled={busy} onChange={(e) => { invalidate(); field.update(e.target.value); }} className="mt-1 block w-full rounded border bg-background p-1" />
       </label>)}</div>

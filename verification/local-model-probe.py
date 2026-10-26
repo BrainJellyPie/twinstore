@@ -93,7 +93,7 @@ layout_requests = {
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
-    "persona-neighborhood", "persona-cafe", "persona-bookstore", "persona-us", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-cafe", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
@@ -409,6 +409,9 @@ try:
         elif args.case == "persona-us":
             address, currency, categories, budget = "Austin, Texas, USA", "USD", ["snacks", "drinks"], (300, 1000)
             profile = "Una tienda de barrio para vecinos que compran aperitivos y bebidas. El presupuesto por visita es de 3 a 10 dólares estadounidenses."
+        elif args.case == "persona-fractional":
+            address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
+            profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
         if args.case == "persona-nightmarket":
             expected_hour, customer_count = 23, 12

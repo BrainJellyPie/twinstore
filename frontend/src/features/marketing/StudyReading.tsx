@@ -112,7 +112,7 @@ function StudyReadingContent({ projectId, study, jobId, answers }: StudyReadingP
         <Button size="sm" variant="ghost" onClick={() => remove.mutate()} disabled={busy} aria-label={t("mkRemoveReading")}><X className="size-4" /></Button>
       </header>
       {(write.error || remove.error) && <p role="alert" className="mb-2 text-xs text-destructive">{(write.error ?? remove.error)?.message}</p>}
-      <div className={cn("grid gap-5", r.themes.length > 0 && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]")}>
+      <div className={cn("grid grid-cols-1 gap-5", r.themes.length > 0 && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]")}>
         <div className="max-w-[68ch] space-y-2 text-sm leading-relaxed">
           <p className="font-medium">{r.summary}</p>
           {r.interpretation && <p className="text-foreground/85">{r.interpretation}</p>}

@@ -36,7 +36,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
   return <section aria-label={t("mkInvAria")} className="space-y-4 rounded-2xl border bg-card p-4">
     <h2 className="text-lg font-semibold">{t("mkInvAria")}</h2>
     <p className="text-sm text-muted-foreground">{t("mkInvIntro")}</p>
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <label className="text-sm">{t("mkPeriodStart")}<Input type="date" disabled={busy} value={start} onChange={(e) => { clear(); setStart(e.target.value); }} /></label>
       <label className="text-sm">{t("mkPeriodEnd")}<Input type="date" disabled={busy} value={end} onChange={(e) => { clear(); setEnd(e.target.value); }} /></label>
       <label className="text-sm">{t("mkCurrencyCode")}<Input placeholder="USD, KRW, ..." maxLength={3} disabled={busy} value={currency} onChange={(e) => { clear(); setCurrency(e.target.value.toUpperCase()); }} /></label>

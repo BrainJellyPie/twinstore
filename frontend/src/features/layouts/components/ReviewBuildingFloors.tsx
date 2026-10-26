@@ -62,7 +62,7 @@ function FloorReviews({ floors, onEdit }: Props) {
       {ready === floors.length && <p>{t("layBuildingTotals", { cells: stores.reduce((sum, store) => sum + store.grid_size[0] * store.grid_size[1], 0), tables, seats, checkouts })}</p>}
       {!validBuildingFloors(floors) && <p role="alert" className="text-destructive">{t("layBuildingInvalidCreate")}</p>}
     </div>
-    <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2">
+    <div className="grid grid-cols-1 min-h-0 gap-4 overflow-y-auto sm:grid-cols-2">
       {floors.map((floor, index) => {
         const preview = previews[index];
         const store = preview?.data;

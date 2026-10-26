@@ -150,7 +150,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
   const shownSites = listedSites.filter((s) => !storeNeedle || chosen.includes(s.id) || searchText(s.name).includes(storeNeedle));
 
   return (
-    <div className="grid gap-3 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
       <section className="panel flex flex-col gap-3 rounded-[1.4rem] p-4 text-sm">
         <h3 className="font-semibold">{t("onRunStores")}</h3>
         <p className="text-xs text-muted-foreground">{t("onRunStoresHint", { max: MAX_VARIANTS })}</p>
@@ -220,7 +220,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
             {scan.error && <p role="alert" className="text-xs text-destructive">{scan.error.message}</p>}
             {screened && scan.data && <p className="text-[0.7rem] text-muted-foreground">{t("onScanHint", { count: scan.data.shoppers })}</p>}
             {available.length === 0 ? <p className="text-xs text-muted-foreground">{t("onXpNone")}</p> : (
-              <div className={cn("grid gap-1", !screened && "sm:grid-cols-2")}>
+              <div className={cn("grid grid-cols-1 gap-1", !screened && "sm:grid-cols-2")}>
                 {available.map((x) => {
                   const on = experiments.some((e) => e.id === x.id);
                   return (
@@ -308,7 +308,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
 
       <section className="panel flex flex-col gap-3 rounded-[1.4rem] p-4 text-sm xl:col-span-2">
         <h3 className="font-semibold">{t("onRunHow")}</h3>
-        <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("onRunHow")}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("onRunHow")}>
           {(["rule", "vlm", "text"] as ShopperPolicyKind[]).map((p) => (
             <button key={p} type="button" role="radio" aria-checked={policy === p} onClick={() => setPolicy(p)}
               className={cn("rounded-xl border p-3 text-left", policy === p ? "border-primary bg-primary/8 ring-2 ring-primary/25" : "hover:bg-muted")}>

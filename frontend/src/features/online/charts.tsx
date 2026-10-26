@@ -45,7 +45,7 @@ export interface StatMetric {
 /** One tile per measure: every store's value as a bar on the measure's own scale, and its difference to control. */
 export function StatTiles({ metrics, names }: { metrics: StatMetric[]; names: string[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {metrics.map((m) => {
         const max = Math.max(...m.values.map((v) => v ?? 0), 1e-9);
         const control = m.values[0];

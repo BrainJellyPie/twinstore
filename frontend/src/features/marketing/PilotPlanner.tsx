@@ -24,7 +24,7 @@ export function PilotPlanner({ projectId, inputs, onChange, counts, onApply }: {
     <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={inputs.enabled} onChange={(e) => onChange({ ...inputs, enabled: e.target.checked })} />{t("mkPlanToggle")}</label>
     {inputs.enabled && <>
       <p className="text-xs text-muted-foreground">{t("mkPlanIntro")}</p>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-sm">{t("mkMinEffect")}<Input type="number" min={0.1} max={100} step="any" value={inputs.effect} onChange={(e) => onChange({ ...inputs, effect: e.target.value })} placeholder={t("mkMinEffectPlaceholder")} /></label>
         <label className="text-sm">{t("mkTargetPower")}<Input type="number" min={50} max={99} step="any" value={inputs.power} onChange={(e) => onChange({ ...inputs, power: e.target.value })} /></label>
         <label className="text-sm">{t("mkDailyEncounters")}<Input type="number" min={0.1} max={100000} step="any" value={inputs.daily} onChange={(e) => onChange({ ...inputs, daily: e.target.value })} /></label>

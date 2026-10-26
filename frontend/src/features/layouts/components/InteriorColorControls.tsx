@@ -14,7 +14,7 @@ export function InteriorColorControls({ design, colors, onChange }: {
   return <details className="space-y-2 rounded border p-2 text-xs">
     <summary className="cursor-pointer">{count > 0 ? t("layCustomColorsCount", { count }) : t("layCustomColors")}</summary>
     <p className="text-muted-foreground">{t("layCustomColorsHint")}</p>
-    <div className="grid gap-2 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {INTERIOR_COLOR_FIELDS.map(([key]) => <div key={key} className="space-y-1">
         <label className="flex items-center justify-between gap-2">{t(COLOR_LABELS[key])}
           <input type="color" value={palette[key]} className="h-8 w-12 shrink-0 cursor-pointer rounded border bg-background p-0.5"

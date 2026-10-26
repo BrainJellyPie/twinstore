@@ -43,9 +43,9 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
 
   return (
     <div className="border-t px-3 py-3">
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div className="section-title">{t("fidelityTitle")}</div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap justify-end gap-1">
           <Button
             variant="ghost"
             size="sm"

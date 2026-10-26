@@ -31,7 +31,7 @@ export function UnitPrices({ projectId }: { projectId: string }) {
   return <section aria-label={t("mkUpAria")} className="space-y-4 rounded-2xl border bg-card p-4 text-sm">
     <h2 className="text-lg font-semibold">{t("mkUpAria")}</h2>
     <p>{t("mkUpIntro")}</p>
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <label>{t("mkFocalRetailer")}<Input disabled={busy} maxLength={120} value={retailer} onChange={(e) => { clear(); setRetailer(e.target.value); }} /></label>
       <label>{t("mkAsOfDate")}<Input type="date" disabled={busy} value={asOf} onChange={(e) => { clear(); setAsOf(e.target.value); }} /></label>
       <label>{t("mkMaxAge")}<Input type="number" min={0} max={365} step={1} disabled={busy} value={age} onChange={(e) => { clear(); setAge(e.target.value); }} /></label>

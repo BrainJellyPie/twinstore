@@ -68,9 +68,9 @@ export function SidePanel({
       <Tabs value={activeTab === "shoppers" && mode !== "playback" ? "dashboard" : activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
         <div className="sticky top-0 z-10 border-b border-glass-border bg-[var(--glass-strong)] px-3 pt-3 pb-2.5 backdrop-blur-xl">
           <TabsList className="h-11 w-full rounded-xl">
-            <TabsTrigger value="dashboard" className="gap-1.5 rounded-[0.65rem] text-sm"><BarChart3 className="size-4" />{t("spResults")}</TabsTrigger>
-            {mode === "playback" && <TabsTrigger value="shoppers" className="gap-1.5 rounded-[0.65rem] text-sm"><UsersRound className="size-4" />{t("spShoppers")}</TabsTrigger>}
-            <TabsTrigger value="settings" className="gap-1.5 rounded-[0.65rem] text-sm"><Settings2 className="size-4" />{mode === "playback" ? t("store") : t("spStoreLayout")}</TabsTrigger>
+            <TabsTrigger value="dashboard" className="min-w-0 gap-1.5 rounded-[0.65rem] px-1.5 text-sm sm:px-2.5"><BarChart3 className="hidden size-4 sm:block" /><span className="truncate">{t("spResults")}</span></TabsTrigger>
+            {mode === "playback" && <TabsTrigger value="shoppers" className="min-w-0 gap-1.5 rounded-[0.65rem] px-1.5 text-sm sm:px-2.5"><UsersRound className="hidden size-4 sm:block" /><span className="truncate">{t("spShoppers")}</span></TabsTrigger>}
+            <TabsTrigger value="settings" className="min-w-0 gap-1.5 rounded-[0.65rem] px-1.5 text-sm sm:px-2.5"><Settings2 className="hidden size-4 sm:block" /><span className="truncate">{mode === "playback" ? t("store") : t("spStoreLayout")}</span></TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="dashboard" className="px-3">
