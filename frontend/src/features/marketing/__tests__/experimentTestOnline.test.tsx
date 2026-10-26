@@ -128,3 +128,23 @@ it("explains that a shelf sign has nothing to carry online", () => {
   expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
   expect(online.listSites).not.toHaveBeenCalled();
 });
+
+it("keeps category-wide changes available when the store carries none of the separately targeted SKUs", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([{ ...site("s1", "Tea outlet"), carries: 0 }]);
+  vi.mocked(online.variantFromTest).mockResolvedValue({
+    site: { id: "v1", name: "Tea outlet – Cheaper tea" } as online.OnlineSite,
+    applied: ["Tea prices reduced by 10%"], skipped: ["MISSING: no matching product"],
+  });
+  const mixed: marketing.Variant = { name: "Cheaper tea", changes: [
+    { kind: "price", sku: "MISSING", price: 249 },
+    { kind: "category_price", category: "Tea", percent: -10 },
+  ] };
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <ExperimentReportView projectId="p" report={report} variants={[mixed]} />
+  </QueryClientProvider>);
+  await screen.findByRole("option", { name: "Tea outlet" });
+  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  expect(await screen.findByText("Tea prices reduced by 10%")).toBeTruthy();
+  expect(screen.getByText("MISSING: no matching product")).toBeTruthy();
+  expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({ changes: mixed.changes }));
+});

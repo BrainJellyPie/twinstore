@@ -20,6 +20,12 @@
 - **Field pilots** offers **Open Staff scripts** next to its note that pilots
   are prepared from a completed script test; the note named the place but
   gave no way there.
+- Recognize explicit container quantities such as `6 BOTTLES`, `6 CANS`
+  and `6병` when interpreting a photographed unit price. A price per bottle
+  must not overwrite the selling price of the whole observed multipack.
+  Package reading also keeps those counts when filtering catalog matches,
+  so a visible multipack cannot be linked to a single-container product.
+
 - When a shelf test, concept test, conjoint study, staff-script test or a
   vision-shopper A/B test cannot start for want of a model, the studio offers
   the model setup (start or download the local model, or open Model settings)
@@ -33,6 +39,12 @@
 - Names cut short with "…" show in full on hover: studio tests, online stores
   and runs, products in rack details, top items and rack rankings, real-map
   shops, conjoint attributes and the home page's last store.
+
+- Keep a printed bottle/can/jar rate from becoming the exact price of a
+  recognized multipack. A `6 PACK` tagged `$1.00 / BOTTLE` now needs an
+  estimate or review; `$6.00 / PACK` and ordinary single-bottle prices stay
+  exact. Preserve an existing pack price when applying the capture.
+
 - An A/B test's results offer the **price × sign** 2×2 analysis only when the
   test has a price arm, a promotion-sign arm and an arm with both; a discount
   ladder offered it and then could only report that it did not apply.
@@ -49,7 +61,9 @@
   counterpart instead of offering a variant that could carry nothing. The
   online store list takes `sku` to say how many of those products each store
   sells (`carries`). After **Make an online variant**, focus moves to the
-  result rather than the top of the page.
+  result rather than the top of the page. A category-wide price change stays
+  available even when the store sells none of the individually targeted SKUs;
+  the server checks which category and product changes can actually apply.
 - In a price test's **Price response**, the control row no longer shows an
   interval ("1.7 [1.7, 1.7]"): the arms' intervals are measured from it. The
   app, Markdown and HTML reports agree, and the app names the control in the

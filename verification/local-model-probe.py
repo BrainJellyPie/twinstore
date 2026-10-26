@@ -32,7 +32,7 @@ from store_emulator.domain.persona import AGE_GROUPS, GENDERS, Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
-from store_emulator.engine.generators.persona import Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched
+from store_emulator.engine.generators.persona import HourlyProfile, Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched, generate_personas_for_day
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
 from store_emulator.engine.capture.detect import Detection
@@ -99,12 +99,12 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted",
-    "capture-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
+    "capture-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
@@ -500,7 +500,7 @@ try:
             address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
             profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
-        if args.case == "persona-nightmarket":
+        if args.case.startswith("persona-nightmarket"):
             expected_hour, customer_count = 23, 12
             categories = ["drinks", "snacks"]
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
@@ -513,13 +513,26 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or customer_count
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
-                batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency, supplemental_summary=evidence,
-                pace=lambda usual: Pace(daily_cap=customer_count, batch_size=persona_batch_size, sample_cap=customer_count), estimates=estimates))
+            if args.case == "persona-nightmarket-batch":
+                # A fixed observed cohort exercises the writer's batch boundary;
+                # an upstream traffic estimate may otherwise request just one.
+                area = TradeAreaProfile(keywords=["neighborhood", "night"],
+                    identities=["local resident", "night shift worker"], purposes=["buy snacks", "buy drinks"])
+                hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
+                people = asyncio.run(generate_personas_for_day(client, address, area, Weekday.MON, hourly,
+                    seed=4, batch_size=persona_batch_size, max_concurrent=1, categories=categories,
+                    currency=currency, customer_profile=profile))
+                result["source_stage"] = "customer_writer_only_with_fixed_cohort"
+            else:
+                people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
+                    batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency, supplemental_summary=evidence,
+                    pace=lambda usual: Pace(daily_cap=customer_count, batch_size=persona_batch_size, sample_cap=customer_count), estimates=estimates))
         written = [person for person in people if not person.twin_of]
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
+        if args.case == "persona-nightmarket-batch" and len(written) != customer_count:
+            issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
         if any(person.day != Weekday.MON or not opening <= person.arrival_hour < closing for person in people):
             issues.append("Arrival outside the open hours")
         if args.case == "persona-24h" and Counter(person.arrival_hour for person in people) != {hour: 1 for hour in range(24)}:
@@ -543,14 +556,19 @@ try:
         tags = {"capture-price": "$1.00", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00",
-                "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원"}
+                "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
+                "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
+                "capture-container-count-price": "$1.00 / BOTTLE"}
         currency = "KRW" if args.case.endswith("-krw") else "USD"
         fixture = Image.new("RGB", (448, 512), "#f5f1e9")
         drawing = ImageDraw.Draw(fixture)
         drawing.rounded_rectangle((138, 24, 310, 376), radius=28, fill="#553023", outline="black", width=3)
         drawing.rectangle((174, 12, 274, 44), fill="#ca3333")
         drawing.rectangle((140, 140, 308, 292), fill="#ca3333")
-        for text, y, size in [("ACME", 150, 26), ("COLA", 188, 42), ("500 ml", 246, 24)]:
+        package_size = "6 PACK" if args.case.startswith("capture-pack-") else "500 ml"
+        if args.case == "capture-container-count-price":
+            package_size = "6 BOTTLES"
+        for text, y, size in [("ACME", 150, 26), ("COLA", 188, 42), (package_size, 246, 24)]:
             drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
         drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
         drawing.text((224, 439), tags[args.case], fill="black", font=load_font(36, bold=True), anchor="mt")
@@ -567,8 +585,8 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-price", "capture-free-price"}:
-            expected_price = 0 if args.case == "capture-free-price" else 100
+        if args.case in {"capture-price", "capture-free-price", "capture-pack-price", "capture-bottle-price"}:
+            expected_price = {"capture-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100}[args.case]
             if item.price != expected_price or item.price_estimated:
                 issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:
@@ -581,7 +599,7 @@ try:
         if args.case == "pack-jam":
             picture = bundled_product_image("/api/catalog-images/starter-01/15.webp")
             assert picture is not None
-        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted"}:
+        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted"}:
             # A deterministic positive-control label, not a photograph or model-generated picture.
             drawing = ImageDraw.Draw(picture)
             drawing.rounded_rectangle((100, 110, 500, 740), radius=70, fill="#dbeed0", outline="#245737", width=6)
@@ -592,8 +610,9 @@ try:
                 labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "NET 500 g", 38), (560, "SERVING 100 ml", 30)]
             if args.case.startswith("pack-multipack"):
                 labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "6 x 500 ml", 42)]
-            if args.case.startswith("pack-multipack-count"):
-                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "500 ml", 42), (560, "6 PACK", 38)]
+            if args.case.startswith(("pack-multipack-count", "pack-multipack-container-count")):
+                count_text = "6 BOTTLES" if "container-count" in args.case else "6 PACK"
+                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "500 ml", 42), (560, count_text, 38)]
             for y, label, size in labels:
                 drawing.text((300, y), label, font=load_font(size, True), fill="#153d24", anchor="mt")
             products = ["Leafy Green Tea 1 L", "Leafy Black Tea 500 ml"]
@@ -611,12 +630,15 @@ try:
                     products.append("Leafy Green Tea 6 x 500 ml")
                 if args.case == "pack-multipack-count":
                     products.append("Leafy Green Tea 500 ml 6 pack")
+                if args.case == "pack-multipack-container-count":
+                    products.append("Leafy Green Tea 500 ml 6 bottles")
         picture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reading = asyncio.run(read_pack(client, picture, products))
         issues = []
         expected_match = ("Leafy Green Tea 6 x 500 ml" if args.case == "pack-multipack" else
             "Leafy Green Tea 500 ml 6 pack" if args.case == "pack-multipack-count" else
+            "Leafy Green Tea 500 ml 6 bottles" if args.case == "pack-multipack-container-count" else
             "Green Tea 500 ml — Leafy" if args.case == "pack-brand-suffix" else
             "Leafy Green Tea 500 ml" if args.case in {"pack-label", "pack-large-catalog"} else "")
         if reading.shelf_product != expected_match:

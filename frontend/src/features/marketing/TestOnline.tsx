@@ -28,7 +28,9 @@ export function TestOnline({ projectId, testName, variant, currency }: {
   // Stores that sell the most of the products first; one that sells none of them cannot take the changes.
   const usable = (sites.data ?? []).filter((s) => s.currency.toUpperCase() === currency.toUpperCase())
     .sort((a, b) => (b.carries ?? 0) - (a.carries ?? 0));
-  const sells = (s: SiteSummary) => !skus.length || s.carries == null || s.carries > 0;
+  // SKU counts cannot rule out a category-wide change; the server checks its category name.
+  const hasCategoryChange = variant.changes.some((c) => c.kind === "category_price");
+  const sells = (s: SiteSummary) => hasCategoryChange || !skus.length || s.carries == null || s.carries > 0;
   const [picked, setPicked] = useState("");
   const siteId = usable.some((s) => s.id === picked && sells(s)) ? picked : usable.find(sells)?.id ?? "";
   const store = usable.find((s) => s.id === siteId);
