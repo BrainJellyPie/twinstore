@@ -103,6 +103,8 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- Every Tab stop on the store screen shows where focus is: a results or
+  shoppers tab panel and the hourly timeline chart took focus without a mark.
 - The store-operations costs (a till hour, a refill round, a unit a day) line up
   along one row even when their labels wrap to different lengths.
 - Layout problems the floor editor reports on save name racks as the editor
