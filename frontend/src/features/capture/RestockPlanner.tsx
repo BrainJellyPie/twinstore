@@ -3,7 +3,7 @@ import { Download } from "lucide-react";
 
 import type { AuditReport, CaptureBox } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { planRestocking, restockCsv, type RestockAssumptions, type RestockEvidence } from "./restockPlanner";
@@ -51,7 +51,7 @@ export function RestockPlanner({ report, onFocus }: { report: AuditReport; onFoc
       <div className="mt-1 font-medium">{t("capNetContribution", { value: action.netContribution === null ? t("capRestockLabelNotEstimated") : formatMoney(action.netContribution, report.currency) })}</div>
       {action.netInterval && <p className="text-muted-foreground">{t("capInterval95", { low: formatMoney(action.netInterval[0], report.currency), high: formatMoney(action.netInterval[1], report.currency) })}</p>}
       <p>{t(LABEL[action.evidence])}</p>
-      {action.paybackTradingDays !== null && <p className="text-muted-foreground">{t("capPayback", { days: action.paybackTradingDays.toFixed(2) })}</p>}
+      {action.paybackTradingDays !== null && <p className="text-muted-foreground">{t("capPayback", { days: formatDecimal(action.paybackTradingDays, 2) })}</p>}
     </li>)}</ol>
     <p className="text-xs text-muted-foreground">{t("capRestockFooter")}</p>
     <Button size="sm" variant="outline" disabled={plan.error !== null || !plan.actions.length} onClick={download}>

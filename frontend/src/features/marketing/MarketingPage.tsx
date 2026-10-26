@@ -56,6 +56,7 @@ import { FieldPilots } from "./FieldPilots";
 import { StaffPitchBuilder } from "./StaffPitchBuilder";
 import { StaffPitchReportView } from "./StaffPitchReport";
 import { MARKETING_TOOLS, type MarketingTool } from "./tools";
+import { formatPercent } from "@/shared/utils/money";
 
 type JobTab = "ab" | "shelf" | "survey" | "conjoint" | "pitch";
 
@@ -303,7 +304,7 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
       <button type="button" onClick={onSelect} className="block w-full text-left">
         <span className="block truncate pr-6 text-sm font-medium" title={job.name || job.job_id}>{job.name || job.job_id}</span>
         <span className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
-          {busy(job.status) ? <><Loader2 className="size-3 animate-spin" /> {Math.round(job.progress * 100)}% · {job.stage}</>
+          {busy(job.status) ? <><Loader2 className="size-3 animate-spin" /> {formatPercent(job.progress, 0)} · {job.stage}</>
             : job.status === "failed" ? <><TriangleAlert className="size-3 text-destructive" /> {t("mkJobFailed")}</> : when}
         </span>
         {busy(job.status) && <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-foreground/[0.08]"><span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></span>}
@@ -326,7 +327,7 @@ function JobState({ job }: { job: JobStatus }) {
       <div className="w-72 space-y-2 text-center">
         <Loader2 className="mx-auto size-6 animate-spin text-primary" />
         <p className="text-sm font-medium">{job.name}</p>
-        <p className="text-xs text-muted-foreground">{job.stage || t("mkQueued")} · {Math.round(job.progress * 100)}%</p>
+        <p className="text-xs text-muted-foreground">{job.stage || t("mkQueued")} · {formatPercent(job.progress, 0)}</p>
         <span className="block h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]"><span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></span>
       </div>
     </div>

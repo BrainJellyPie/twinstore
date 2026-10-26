@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Percentages and decimals follow the chosen language across the reports,
+  studio, area, capture and settings pages: French and Spanish read "32,5 %",
+  "+0,4 pts" and "2,54" instead of "32.5%", "+0.4 pts" and "2.54". A value
+  that rounds to zero no longer shows as "-0.0%". The store timeline's
+  tooltip names the hour as the store clock does ("2:00 pm" rather than
+  "14:00" in English).
 - Number fields that have limits can be cleared and retyped: the online run's
   shopper count and step limit, the optimizer's candidates, shoppers, changes,
   vision panel and judged layouts, the area's vision visitors and the online

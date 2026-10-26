@@ -15,6 +15,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 import { BASELINE_SCENARIO } from "../scenarioDefaults";
+import { formatDecimal } from "@/shared/utils/money";
 
 const WEATHER: { value: Weather; icon: string; label: MessageKey }[] = [
   { value: "clear", icon: "☀️", label: "sitClear" },
@@ -385,11 +386,11 @@ function EffectsPreview({ effects }: { effects: api.ScenarioEffects }) {
   return (
     <div className="space-y-1.5 rounded-md bg-muted/40 px-3 py-2 text-xs">
       <div className="flex flex-wrap gap-x-3 gap-y-1 tabular-nums">
-        <span>{t("sitEffectTraffic", { value: effects.traffic.toFixed(2) })}{peak > 1.01 ? ` ${t("sitEffectPeak", { value: (effects.traffic * peak).toFixed(2) })}` : ""}</span>
-        {effects.dwell !== 1 && <span>{t("sitEffectDwell", { value: effects.dwell.toFixed(2) })}</span>}
-        {effects.impulse !== 1 && <span>{t("sitEffectImpulse", { value: effects.impulse.toFixed(2) })}</span>}
-        {effects.budget !== 1 && <span>{t("sitEffectBudget", { value: effects.budget.toFixed(2) })}</span>}
-        {effects.walkout !== 1 && <span>{t("sitEffectWalkouts", { value: effects.walkout.toFixed(2) })}</span>}
+        <span>{t("sitEffectTraffic", { value: formatDecimal(effects.traffic, 2) })}{peak > 1.01 ? ` ${t("sitEffectPeak", { value: formatDecimal(effects.traffic * peak, 2) })}` : ""}</span>
+        {effects.dwell !== 1 && <span>{t("sitEffectDwell", { value: formatDecimal(effects.dwell, 2) })}</span>}
+        {effects.impulse !== 1 && <span>{t("sitEffectImpulse", { value: formatDecimal(effects.impulse, 2) })}</span>}
+        {effects.budget !== 1 && <span>{t("sitEffectBudget", { value: formatDecimal(effects.budget, 2) })}</span>}
+        {effects.walkout !== 1 && <span>{t("sitEffectWalkouts", { value: formatDecimal(effects.walkout, 2) })}</span>}
       </div>
       {demand.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -401,7 +402,7 @@ function EffectsPreview({ effects }: { effects: api.ScenarioEffects }) {
                 m > 1 ? "tone-good" : "tone-bad",
               )}
             >
-              {m > 1 ? "▲" : "▼"} {CATEGORY_LABELS[cat] ? t(CATEGORY_LABELS[cat]) : cat} ×{m.toFixed(2)}
+              {m > 1 ? "▲" : "▼"} {CATEGORY_LABELS[cat] ? t(CATEGORY_LABELS[cat]) : cat} ×{formatDecimal(m, 2)}
             </span>
           ))}
         </div>

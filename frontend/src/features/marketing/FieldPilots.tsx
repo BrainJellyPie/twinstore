@@ -7,7 +7,7 @@ import type { PitchReport } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { PilotPlanner, PilotPlanningSummary } from "./PilotPlanner";
 import { emptyPlanningInputs, planningAssumptions } from "./pilotPlanning";
@@ -18,8 +18,8 @@ import { PilotTiming } from "./PilotTiming";
 import { PilotEconomics } from "./PilotEconomics";
 
 type Translate = ReturnType<typeof useI18n>["t"];
-const percent = (n: number | null, t: Translate) => n == null ? t("studioUnknown") : `${(n * 100).toFixed(1)}%`;
-const points = (n: number | null, t: Translate) => n == null ? t("mkNotAvailable") : t("studioPp", { value: `${n > 0 ? "+" : ""}${(n * 100).toFixed(1)}` });
+const percent = (n: number | null, t: Translate) => n == null ? t("studioUnknown") : formatPercent(n, 1);
+const points = (n: number | null, t: Translate) => n == null ? t("mkNotAvailable") : t("studioPp", { value: `${n > 0 ? "+" : ""}${formatDecimal(n * 100, 1)}` });
 
 /** `onOpenScripts`: where pilots come from, offered while there is no script test to prepare one from. */
 export function FieldPilots({ projectId, source, onOpenScripts }: { projectId: string; source?: PitchReport; onOpenScripts?: () => void }) {

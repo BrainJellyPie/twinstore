@@ -8,6 +8,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { BACKEND_LABEL, isPreparing, useLocalModelControl, useModelSetup } from "@/features/settings/useModelSetup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
+import { formatDecimal } from "@/shared/utils/money";
 
 const DISMISS_KEY = "twinstore.modelBanner.dismissed";
 
@@ -67,7 +68,7 @@ export function ModelSetupBanner() {
               </div>
               <span className="num min-w-0 break-words">
                 {progress !== null && data.local.total_mb > 0
-                  ? `${data.local.downloaded_mb.toFixed(0)} / ${data.local.total_mb.toFixed(0)} MB`
+                  ? `${formatDecimal(data.local.downloaded_mb, 0)} / ${formatDecimal(data.local.total_mb, 0)} MB`
                   : data.local.message}
               </span>
             </div>

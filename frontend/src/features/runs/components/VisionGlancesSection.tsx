@@ -4,7 +4,7 @@
 
 import { Camera, DoorOpen, Eye } from "lucide-react";
 
-import { formatPercent } from "@/shared/utils/money";
+import { formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -29,7 +29,7 @@ export function VisionGlancesSection({ projectId, runId }: { projectId: string; 
     { label: t("visionNoticed"), value: formatPercent(meta.noticed_rate ?? 0, 0), hint: t("visionOfAnswered") },
     {
       label: t("visionInterest"),
-      value: `${(meta.mean_interest ?? 0).toFixed(1)} / 10`,
+      value: `${formatDecimal(meta.mean_interest ?? 0, 1)} / 10`,
       hint: t("visionBuyScale", { scale: meta.buy_scale ?? "—" }),
     },
     {
@@ -67,7 +67,7 @@ export function VisionGlancesSection({ projectId, runId }: { projectId: string; 
           <div className="mb-1 flex items-center gap-1.5 font-medium"><DoorOpen className="size-3.5" aria-hidden /> {t("visionAtDoor")}</div>
           <div className="grid grid-cols-3 gap-2 tabular-nums">
             <div><div className="text-muted-foreground">{t("visionWentIn")}</div><div className="text-sm font-semibold">{formatPercent(meta.planning.enter_rate, 0)}</div></div>
-            <div><div className="text-muted-foreground">{t("visionItemsPlanned")}</div><div className="text-sm font-semibold">{meta.planning.mean_items_named.toFixed(1)}</div></div>
+            <div><div className="text-muted-foreground">{t("visionItemsPlanned")}</div><div className="text-sm font-semibold">{formatDecimal(meta.planning.mean_items_named, 1)}</div></div>
             <div><div className="text-muted-foreground">{t("visionFoundOnShelf")}</div><div className="text-sm font-semibold">{formatPercent(meta.planning.resolution_rate, 0)}</div></div>
           </div>
           {meta.planning.plan_errors > 0 && (

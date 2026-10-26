@@ -16,7 +16,7 @@ import {
 } from "@/shared/api/online";
 import { ApiError } from "@/shared/api/errors";
 import { cn } from "@/shared/utils/cn";
-import { currencyCode, formatMoney } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -162,7 +162,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
   const { t } = useI18n();
   const code = currencyCode(result.currency);
   const money = (x: number) => formatMoney(Math.round(x), code);
-  const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
+  const pct = (x: number) => formatPercent(x, 1);
   const v = result.variants;
   const names = v.map((s) => s.site_name);
   const rows: { label: MessageKey; value: (s: VariantSummary) => string }[] = [
@@ -174,12 +174,12 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
     { label: "onKpiAddToCart", value: (s) => pct(s.add_to_cart_rate) },
     { label: "onKpiAbandonment", value: (s) => pct(s.cart_abandonment) },
     { label: "onKpiBounce", value: (s) => pct(s.bounce_rate) },
-    { label: "onKpiSteps", value: (s) => s.avg_steps.toFixed(1) },
+    { label: "onKpiSteps", value: (s) => formatDecimal(s.avg_steps, 1) },
     { label: "onKpiSeconds", value: (s) => t("onSecondsShort", { seconds: Math.round(s.avg_seconds) }) },
     { label: "onKpiSearchShare", value: (s) => pct(s.search_share) },
     { label: "onKpiZeroResults", value: (s) => String(s.zero_result_searches) },
   ];
-  const points = (a: number, b: number) => `${a - b >= 0 ? "+" : "−"}${(Math.abs(a - b) * 100).toFixed(1)}${t("onPointsSuffix")}`;
+  const points = (a: number, b: number) => `${a - b >= 0 ? "+" : "−"}${formatDecimal(Math.abs(a - b) * 100, 1)}${t("onPointsSuffix")}`;
   const moneyDelta = (a: number, b: number) => `${a - b >= 0 ? "+" : "−"}${money(Math.abs(a - b))}`;
   const tiles: StatMetric[] = [
     { key: "conversion", label: t("onKpiConversion"), values: v.map((s) => s.conversion), format: pct, delta: points, better: "up" },
@@ -264,8 +264,8 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
                 const clear = d.ci_low !== null && d.ci_high !== null && (d.ci_low > 0 || d.ci_high < 0);
                 return {
                   key: d.metric, label: t(DELTA_LABELS[d.metric]), diff: d.diff, low: d.ci_low, high: d.ci_high,
-                  format: (x: number) => (isMoney ? money(x) : isRate ? `${(x * 100).toFixed(1)}${t("onPointsSuffix")}`
-                    : d.metric === "seconds" ? t("onSecondsShort", { seconds: Math.round(x) }) : x.toFixed(1)),
+                  format: (x: number) => (isMoney ? money(x) : isRate ? `${formatDecimal(x * 100, 1)}${t("onPointsSuffix")}`
+                    : d.metric === "seconds" ? t("onSecondsShort", { seconds: Math.round(x) }) : formatDecimal(x, 1)),
                   // Less taken by the rival is good for the store; time and clicks are neither.
                   upIsGood: d.metric === "seconds" || d.metric === "steps" ? null : d.metric !== "rival_revenue_per_session",
                   note: clear ? undefined : <Needed delta={d} />,
@@ -399,7 +399,7 @@ function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: numbe
                     <td className="tabular-nums">{ad.clicks}</td><td className="tabular-nums">{pct(ad.ctr)}</td>
                     <td className="tabular-nums">{ad.click_conversions}</td><td className="tabular-nums">{ad.view_conversions}</td>
                     <td className="tabular-nums">{money(ad.attributed_revenue)}</td><td className="tabular-nums">{money(ad.cost)}</td>
-                    <td className="tabular-nums">{ad.roas === null ? "—" : `${ad.roas.toFixed(2)}×`}</td>
+                    <td className="tabular-nums">{ad.roas === null ? "—" : `${formatDecimal(ad.roas, 2)}×`}</td>
                   </tr>
                 ))}
               </tbody>
@@ -426,7 +426,7 @@ function Ads({ result, money, pct }: { result: OnlineRunResult; money: (x: numbe
               <Stat label={t("onAdUnitsDiff")} value={`${lift.units_diff >= 0 ? "+" : "−"}${Math.abs(lift.units_diff)}`} />
               <Stat label={t("onAdRevenueDiff")} value={signedMoney(lift.revenue_diff)} />
               <Stat label={t("onAdOtherDiff")} value={signedMoney(lift.other_revenue_diff)} />
-              <Stat label={t("onAdIroas")} value={lift.iroas === null ? "—" : `${lift.iroas.toFixed(2)}×`} />
+              <Stat label={t("onAdIroas")} value={lift.iroas === null ? "—" : `${formatDecimal(lift.iroas, 2)}×`} />
               <div className="text-muted-foreground sm:col-span-2 lg:col-span-4">
                 {t("onAdUnitsLine", { withoutAd: lift.units_without, withAd: lift.units_with })} · {t("onAdCost")}: {money(lift.cost)}
               </div>
@@ -563,9 +563,9 @@ function Surveys({ variants, pct }: { variants: VariantSummary[]; pct: (x: numbe
           <div key={s.site_id} className="space-y-2 rounded-xl border p-3 text-xs">
             {variants.length > 1 && <div className="font-medium">{s.site_name}</div>}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Stat label={t("onSurveySatisfaction")} value={`${s.survey.satisfaction.toFixed(1)} / 7`} />
-              <Stat label={t("onSurveyEase")} value={`${s.survey.ease.toFixed(1)} / 7`} />
-              <Stat label={t("onSurveyNps")} value={`${s.survey.nps >= 0 ? "+" : ""}${s.survey.nps.toFixed(0)}`} />
+              <Stat label={t("onSurveySatisfaction")} value={`${formatDecimal(s.survey.satisfaction, 1)} / 7`} />
+              <Stat label={t("onSurveyEase")} value={`${formatDecimal(s.survey.ease, 1)} / 7`} />
+              <Stat label={t("onSurveyNps")} value={`${s.survey.nps >= 0 ? "+" : ""}${formatDecimal(s.survey.nps, 0)}`} />
               <Stat label={t("onSurveyReturn")} value={pct(s.survey.would_return)} />
             </div>
             <div className="text-muted-foreground">{t("onSurveyResponses", { count: s.survey.responses })}</div>

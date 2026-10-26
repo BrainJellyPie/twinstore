@@ -82,6 +82,17 @@ export function formatMoney(minor: number, code = "USD", opts: { compact?: boole
   }
 }
 
-export function formatPercent(ratio: number, digits = 1): string {
-  return `${(ratio * 100).toFixed(digits)}%`;
+/** A number with a fixed count of decimals in the app's selected language ("0.5", "0,5") unless `locale` is given. */
+export function formatDecimal(value: number, digits: number, locale: string = useLocale.getState().locale): string {
+  return cachedFormatter(`${locale}:decimal:${digits}`, () => new Intl.NumberFormat(locale, {
+    minimumFractionDigits: digits, maximumFractionDigits: digits,
+  })).format(value);
+}
+
+/** A ratio as a percentage in the app's selected language ("12.3%", "12,3 %") unless `locale` is given. */
+export function formatPercent(ratio: number, digits = 1, locale: string = useLocale.getState().locale): string {
+  // A value that rounds to zero shows as 0, without a minus sign.
+  return cachedFormatter(`${locale}:percent:${digits}`, () => new Intl.NumberFormat(locale, {
+    style: "percent", minimumFractionDigits: digits, maximumFractionDigits: digits,
+  })).format(Math.abs(ratio) < 0.5 / 10 ** (digits + 2) ? 0 : ratio);
 }

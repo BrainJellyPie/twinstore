@@ -9,7 +9,7 @@ import { conjointCsvUrl, conjointReportUrl, type ConjointReport as Report, type 
 import { Button } from "@/shared/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/shared/components/ui/chart";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { richText } from "@/shared/i18n/richText";
 
@@ -46,8 +46,8 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
           <div className="grid grid-cols-4 gap-2">
             <Stat label={t("mkRespondents")} value={r.respondents.toLocaleString(locale)} />
             <Stat label={t("mkChoices")} value={(r.fit?.choices ?? 0).toLocaleString(locale)} />
-            <Stat label={t("mkHitRate")} value={r.fit ? `${Math.round(r.fit.hit_rate * 100)}%` : "–"} sub={r.fit ? t("mkChance", { pct: Math.round(r.fit.chance_rate * 100) }) : ""} />
-            <Stat label={t("mkNone")} value={r.none_option ? `${Math.round(r.none_share * 100)}%` : "–"} sub={r.none_option ? t("mkOfChoices") : t("mkNotOffered")} />
+            <Stat label={t("mkHitRate")} value={r.fit ? formatPercent(r.fit.hit_rate, 0) : "–"} sub={r.fit ? t("mkChance", { pct: Math.round(r.fit.chance_rate * 100) }) : ""} />
+            <Stat label={t("mkNone")} value={r.none_option ? formatPercent(r.none_share, 0) : "–"} sub={r.none_option ? t("mkOfChoices") : t("mkNotOffered")} />
           </div>
           <ul className="mt-1 space-y-1 text-sm">
             {leads.map(({ attribute, best, base }) => (
@@ -88,7 +88,7 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
         <section className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkReadWithCare")}</h3>
           <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">{r.notes.map((n) => <li key={n}>{n}</li>)}</ul>
-          <p className="mt-2 text-xs text-muted-foreground">{t("mkConjointFooter", { model: r.model, options: r.options })}{r.none_option ? t("mkPlusNone") : ""}{t("mkSeconds", { seconds: r.seconds.toFixed(0) })}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("mkConjointFooter", { model: r.model, options: r.options })}{r.none_option ? t("mkPlusNone") : ""}{t("mkSeconds", { seconds: formatDecimal(r.seconds, 0) })}</p>
         </section>
       </div>
     </div>
@@ -103,14 +103,14 @@ function PartWorthRow({ p, span, money }: { p: PartWorth; span: number; money: (
   const wtp = p.wtp != null ? `${p.wtp >= 0 ? "+" : "−"}${money(Math.abs(p.wtp))}` : "";
   return (
     <div className="grid grid-cols-[minmax(5rem,8rem)_1fr_3.2rem_5.5rem] items-center gap-2"
-      title={t("mkPartWorthTitle", { level: p.level, utility: p.utility.toFixed(2), low: p.ci_low.toFixed(2), high: p.ci_high.toFixed(2) }) + (wtp ? t("mkWtp", { amount: wtp }) : "")}>
+      title={t("mkPartWorthTitle", { level: p.level, utility: formatDecimal(p.utility, 2), low: formatDecimal(p.ci_low, 2), high: formatDecimal(p.ci_high, 2) }) + (wtp ? t("mkWtp", { amount: wtp }) : "")}>
       <span className="truncate text-sm">{p.level}</span>
       <div className="relative h-5 rounded-[4px] bg-foreground/[0.035]">
         <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/25" />
         <div className="absolute inset-y-1" style={{ left: x(left), right: `calc(100% - ${x(right)})`, background: p.utility >= 0 ? "var(--viz-pos-2)" : "var(--viz-neg-2)", borderRadius: 3 }} />
         <div className="absolute top-1/2 h-px -translate-y-1/2 bg-foreground/60" style={{ left: x(p.ci_low), right: `calc(100% - ${x(p.ci_high)})` }} />
       </div>
-      <span className="num text-right text-xs">{p.utility >= 0 ? "+" : "−"}{Math.abs(p.utility).toFixed(2)}</span>
+      <span className="num text-right text-xs">{p.utility >= 0 ? "+" : "−"}{formatDecimal(Math.abs(p.utility), 2)}</span>
       <span className="num truncate text-right text-xs text-muted-foreground">{wtp}</span>
     </div>
   );
@@ -194,7 +194,7 @@ function Simulator({ report: r }: { report: Report }) {
                   <ReferenceLine x={products[0]!.price} stroke="var(--foreground)" strokeOpacity={0.3} strokeDasharray="3 3" />
                   <XAxis dataKey="price" type="number" domain={[lo, hi]} tickFormatter={money} tickCount={4}
                     tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                  <YAxis domain={[0, 1]} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} tickCount={3} tickLine={false} axisLine={false} width={36}
+                  <YAxis domain={[0, 1]} tickFormatter={(v: number) => formatPercent(v, 0)} tickCount={3} tickLine={false} axisLine={false} width={36}
                     tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
                   <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.25 }}
                     content={<ChartTooltipContent indicator="line" labelFormatter={(_v, payload) => {
@@ -243,7 +243,7 @@ function Segments({ report: r }: { report: Report }) {
                     </td>
                   );
                 })}
-                {r.none_option && <td className="text-right">{Math.round(s.none_share * 100)}%</td>}
+                {r.none_option && <td className="text-right">{formatPercent(s.none_share, 0)}</td>}
               </tr>
             ))}
           </tbody>

@@ -12,6 +12,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 
 import { Swatch } from "./charts";
 import { FUNNEL_LABELS, MISSION_LABELS, OUTCOME_COLORS, OUTCOME_LABELS, storeColor } from "./labels";
+import { formatPercent } from "@/shared/utils/money";
 
 const PER_ROW = 10;
 const PITCH_Y = 10;
@@ -96,7 +97,7 @@ export function ShopperRiver({ result, money, onWatch }: {
                 <div className="mb-1 flex items-center gap-2 text-xs">
                   <Swatch index={i} />
                   <span className="truncate font-semibold">{s.site_name}</span>
-                  <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{t("onHeroOrders", { count: s.purchases })} · {(s.conversion * 100).toFixed(1)}%</span>
+                  <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{t("onHeroOrders", { count: s.purchases })} · {formatPercent(s.conversion, 1)}</span>
                 </div>
                 <div className="relative [container-type:inline-size]" style={{ height }}>
                   {/* The pipe every shopper travels, a node at each stage. */}

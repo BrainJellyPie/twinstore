@@ -3,7 +3,7 @@
 
 import type { ScanRow } from "@/shared/api/online";
 import { cn } from "@/shared/utils/cn";
-import { currencyCode, formatMoney } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 
 export function ScanChip({ row, currency }: { row: ScanRow | undefined; currency: string }) {
@@ -14,7 +14,7 @@ export function ScanChip({ row, currency }: { row: ScanRow | undefined; currency
   const up = (revenue.ci_low ?? 0) > 0;
   const down = (revenue.ci_high ?? 0) < 0;
   const money = `${revenue.diff >= 0 ? "+" : "−"}${formatMoney(Math.round(Math.abs(revenue.diff)), currencyCode(currency))}`;
-  const points = conversion ? `${conversion.diff >= 0 ? "+" : "−"}${Math.abs(conversion.diff * 100).toFixed(1)}${t("onPointsSuffix")}` : "–";
+  const points = conversion ? `${conversion.diff >= 0 ? "+" : "−"}${formatDecimal(Math.abs(conversion.diff * 100), 1)}${t("onPointsSuffix")}` : "–";
   return (
     <span title={t("onScanChipTitle", { revenue: money, conversion: points, won: row.won, lost: row.lost })}
       className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium tabular-nums",

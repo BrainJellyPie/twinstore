@@ -12,7 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
-import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
@@ -130,9 +130,9 @@ function ResultView({ r }: { r: VLMSynergyResult }) {
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs">
-        <Tile label={t("areaVisitorsPerDay")} value={`${r.delta_visitors >= 0 ? "+" : ""}${r.delta_visitors.toFixed(1)}`} hint={t("areaVlmStraightFrom", { count: r.linked_visitors_from_venue.toFixed(1) })} />
+        <Tile label={t("areaVisitorsPerDay")} value={`${r.delta_visitors >= 0 ? "+" : ""}${formatDecimal(r.delta_visitors, 1)}`} hint={t("areaVlmStraightFrom", { count: formatDecimal(r.linked_visitors_from_venue, 1) })} />
         <Tile label={t("areaVlmSpendPerVisitor")} value={signed(r.delta_spend_per_visitor, money)} hint={ci || "—"} />
-        <Tile label={t("areaVlmConversion")} value={t("studioPp", { value: `${r.delta_conversion >= 0 ? "+" : ""}${(r.delta_conversion * 100).toFixed(1)}` })} hint={t("areaVlmAffected", { share: formatPercent(r.affected_share, 1) })} />
+        <Tile label={t("areaVlmConversion")} value={t("studioPp", { value: `${r.delta_conversion >= 0 ? "+" : ""}${formatDecimal(r.delta_conversion * 100, 1)}` })} hint={t("areaVlmAffected", { share: formatPercent(r.affected_share, 1) })} />
       </div>
       {shifts.length > 0 && (
         <div>

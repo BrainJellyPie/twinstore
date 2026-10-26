@@ -25,7 +25,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
+import { formatMoney, majorUnitText, minorUnitDivisor, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -280,8 +280,8 @@ export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
 }) {
   const { t } = useI18n();
   const pick = r.comparisons.find((c) => c.metric === "pick");
-  const pctf = (v: number) => `${(v * 100).toFixed(0)}%`;
-  const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}` });
+  const pctf = (v: number) => formatPercent(v, 0);
+  const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${formatDecimal(Math.abs(v * 100), 1)}` });
   const why = r.choices.filter((c) => c.arm === "test" && c.pick_sku === r.target_sku && c.why).slice(0, 8);
   const verdict = pick ? (pick.ci_low > 0 ? "more" : pick.ci_high < 0 ? "fewer" : null) : null;
   const topShare = Math.max(0.01, ...r.picks.flatMap((p) => [p.control, p.test]));

@@ -15,7 +15,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { formatMoney, minorUnitDivisor, toMinor, formatPercent } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -109,7 +109,7 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
           title={c.image_name}>
           <img src={api.captureImageUrl(projectId, c.capture_id)} alt="" className="h-full w-full object-cover" />
           <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-0.5 text-left text-[0.68rem] text-white">
-            {c.status === "completed" ? t("capStripProducts", { count: c.items }) : c.status === "failed" ? t("capStripFailed") : `${Math.round(c.progress * 100)}%`}
+            {c.status === "completed" ? t("capStripProducts", { count: c.items }) : c.status === "failed" ? t("capStripFailed") : formatPercent(c.progress, 0)}
           </span>
         </button>
       ))}
@@ -279,7 +279,7 @@ function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPi
                 {share > 0 && (
                   <text x={(all.x1 + all.x2) / 2} y={all.y1 + (all.y2 - all.y1) / 2} textAnchor="middle" dominantBaseline="central"
                     fontSize={Math.max(14, w / 30)} fontWeight={700} fill="white" stroke="black" strokeWidth={Math.max(1, w / 500)} paintOrder="stroke">
-                    {Math.round(share * 100)}%
+                    {formatPercent(share, 0)}
                   </text>
                 )}
               </g>

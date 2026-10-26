@@ -6,6 +6,7 @@ import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 import { planningAssumptions, type PlanningInputs } from "./pilotPlanning";
+import { formatDecimal } from "@/shared/utils/money";
 
 export function PilotPlanner({ projectId, inputs, onChange, counts, onApply }: {
   projectId: string; inputs: PlanningInputs; onChange: (inputs: PlanningInputs) => void;
@@ -51,11 +52,11 @@ export function PilotPlanningSummary({ plan }: { plan: PilotPlanningResult }) {
   const { t } = useI18n();
   const a = plan.assumptions;
   const meetsTarget = plan.planned_encounters >= plan.required_encounters;
-  const powerFloor = Math.min(99.9, Math.floor(plan.planned_power_lower_bound * 1000) / 10).toFixed(1);
+  const powerFloor = formatDecimal(Math.min(99.9, Math.floor(plan.planned_power_lower_bound * 1000) / 10), 1);
   return <div className="space-y-2 text-sm">
-    <p>{t("mkPlanAssumptions", { effect: (a.minimum_effect * 100).toFixed(1), power: (a.target_power * 100).toFixed(1), daily: String(a.eligible_per_day), days: String(a.available_days) })}</p>
+    <p>{t("mkPlanAssumptions", { effect: formatDecimal(a.minimum_effect * 100, 1), power: formatDecimal(a.target_power * 100, 1), daily: String(a.eligible_per_day), days: String(a.available_days) })}</p>
     <p className="font-medium">{t("mkCurrentPlan", { encounters: plan.planned_encounters, power: powerFloor, days: plan.planned_days })}</p>
-    <p>{t("mkHalfWidth", { value: (plan.planned_ci_half_width * 100).toFixed(1) })} {meetsTarget ? t("mkMeetsTarget") : t("mkMissesTarget")}</p>
+    <p>{t("mkHalfWidth", { value: formatDecimal(plan.planned_ci_half_width * 100, 1) })} {meetsTarget ? t("mkMeetsTarget") : t("mkMissesTarget")}</p>
     <p>{t("mkRequired", { encounters: plan.required_encounters, days: plan.required_days })}</p>
     {plan.planned_days > a.available_days && <p className="font-medium">{t("mkCurrentExceedsDays")}</p>}
     {plan.required_days > a.available_days && <p className="font-medium">{t("mkRequiredExceedsDays")}</p>}

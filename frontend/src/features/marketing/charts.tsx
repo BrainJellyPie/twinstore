@@ -7,7 +7,7 @@ import { CartesianGrid, ErrorBar, Line, LineChart, ReferenceArea, ReferenceLine,
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/shared/components/ui/chart";
 import type { PriceRange, PriceResponse } from "@/shared/api/marketing";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 
 // ── Lift with confidence interval ─────────────────────────────────────────
@@ -131,7 +131,7 @@ export function LikertBar({ counts }: { counts: number[] }) {
             {share >= 0.09 && <span className="num">{Math.round(share * 100)}</span>}
             {hover === i && (
               <span className="pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-[0.7rem] font-normal text-popover-foreground shadow-lg">
-                <b className="num">{Math.round(share * 100)}%</b>{t("mkLikertAnswered", { value: i + 1, count: c })}
+                <b className="num">{formatPercent(share, 0)}</b>{t("mkLikertAnswered", { value: i + 1, count: c })}
               </span>
             )}
           </div>
@@ -148,7 +148,7 @@ export function ShareBars({ rows }: { rows: { label: string; share: number; lo: 
   return (
     <div className="space-y-2">
       {rows.map((r) => (
-        <div key={r.label} className="grid grid-cols-[minmax(5rem,9rem)_1fr_7.5rem] items-center gap-3" title={t("mkShareTitle", { label: r.label, share: (r.share * 100).toFixed(0), low: (r.lo * 100).toFixed(0), high: (r.hi * 100).toFixed(0) })}>
+        <div key={r.label} className="grid grid-cols-[minmax(5rem,9rem)_1fr_7.5rem] items-center gap-3" title={t("mkShareTitle", { label: r.label, share: formatDecimal(r.share * 100, 0), low: formatDecimal(r.lo * 100, 0), high: formatDecimal(r.hi * 100, 0) })}>
           <span className="truncate text-sm font-medium">{r.label}</span>
           <div className="relative h-6 rounded-[4px] bg-foreground/[0.04]">
             <div className="absolute inset-y-0.5 left-0 rounded-r-[4px]" style={{ width: `${r.share * 100}%`, maxWidth: "100%", background: "var(--viz-1)" }} />
@@ -156,7 +156,7 @@ export function ShareBars({ rows }: { rows: { label: string; share: number; lo: 
               <div className="absolute top-1/2 h-px w-full -translate-y-1/2 bg-foreground/55" />
             </div>
           </div>
-          <span className="num text-right text-sm"><b>{(r.share * 100).toFixed(0)}%</b> <span className="text-xs text-muted-foreground">{(r.lo * 100).toFixed(0)}–{(r.hi * 100).toFixed(0)}</span></span>
+          <span className="num text-right text-sm"><b>{formatPercent(r.share, 0)}</b> <span className="text-xs text-muted-foreground">{formatDecimal(r.lo * 100, 0)}–{formatDecimal(r.hi * 100, 0)}</span></span>
         </div>
       ))}
     </div>
@@ -236,7 +236,7 @@ export function DemandChart({ response, currency, control }: { response: PriceRe
           }} formatter={(value) => (
             <div className="flex w-full items-center justify-between gap-3">
               <span className="text-muted-foreground">{t("mkColUnits100")}</span>
-              <span className="num font-semibold">{Number(value).toFixed(1)}</span>
+              <span className="num font-semibold">{formatDecimal(Number(value), 1)}</span>
             </div>
           )} />} />
         <Line dataKey="units" type="monotone" stroke="var(--color-units)" strokeWidth={2}

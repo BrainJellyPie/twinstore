@@ -14,7 +14,7 @@ import { Input } from "@/shared/components/ui/input";
 import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
-import { majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { majorUnitText, minorUnitDivisor, toMinor, formatDecimal } from "@/shared/utils/money";
 import { searchText } from "@/shared/utils/searchText";
 
 import { AdsEditor } from "./AdsEditor";
@@ -187,8 +187,8 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
         <Field label={t("onOptLoad")} hint={t("onOptLoadHint")}>
           <div className="flex items-center gap-2">
             <input type="range" min={50} max={15000} step={50} value={options.page_load_ms} onChange={(e) => set("page_load_ms", Number(e.target.value))} className="flex-1" aria-label={t("onOptLoad")}
-              aria-valuetext={`${(options.page_load_ms / 1000).toFixed(1)} s`} />
-            <span className="w-16 text-right text-xs tabular-nums">{(options.page_load_ms / 1000).toFixed(1)} s</span>
+              aria-valuetext={`${formatDecimal(options.page_load_ms / 1000, 1)} s`} />
+            <span className="w-16 text-right text-xs tabular-nums">{formatDecimal(options.page_load_ms / 1000, 1)} s</span>
           </div>
         </Field>
       </Card>

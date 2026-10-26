@@ -6,6 +6,7 @@ import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { parseTimeToSeconds } from "@/features/playback/utils/playback";
 import { useI18n } from "@/shared/i18n/i18n";
+import { clockTime } from "@/shared/i18n/timeFormat";
 
 interface Props {
   customers: CustomerResult[] | null;
@@ -17,7 +18,7 @@ const MARGIN = { top: 4, right: 4, bottom: 0, left: 4 };
 const PADDING = { left: 8, right: 8 };
 
 export function TimelineChart({ customers, minTime, maxTime }: Props) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const chartConfig = {
     visitors: { label: t("dashVisitors"), color: "var(--color-chart-1)" },
   } satisfies ChartConfig;
@@ -104,7 +105,7 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
             <ChartTooltip
               content={<ChartTooltipContent labelFormatter={(_v, payload) => {
                 const hour = payload?.[0]?.payload?.hour;
-                return typeof hour === "number" ? `${Math.floor(hour)}:00` : "";
+                return typeof hour === "number" ? clockTime(Math.floor(hour) * 3600, locale) : "";
               }} />}
               cursor={false}
             />
