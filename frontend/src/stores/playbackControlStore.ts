@@ -14,6 +14,8 @@ interface PlaybackControlState {
   togglePlay: () => void;
   setSpeed: (speed: PlaybackSpeed) => void;
   seek: (target: number) => void;
+  /** The end of the whole run (its last day's closing time), unlike a seek, which stays on the current day. */
+  skipToEnd: () => void;
   consumeSeek: () => number | null;
   setDay: (day: number) => void;
   nextDay: () => void;
@@ -34,6 +36,7 @@ export const usePlaybackControlStore = create<PlaybackControlState>((set, get) =
   togglePlay: () => set((s) => ({ playing: !s.playing })),
   setSpeed: (speed) => set({ speed }),
   seek: (target) => set({ seekTarget: target }),
+  skipToEnd: () => set({ seekTarget: Number.POSITIVE_INFINITY }),
   consumeSeek: () => {
     const target = get().seekTarget;
     if (target !== null) set({ seekTarget: null });

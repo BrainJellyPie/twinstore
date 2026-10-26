@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- In a run of several days, dragging the time slider to closing time, pressing
+  → near closing time, or clicking the last hour on the timeline now stays on
+  the day you are watching. Before, it jumped to the end of the last day and
+  skipped the days in between. The skip button still goes to the end of the
+  run.
+
 - In a shelf photo's product list, a price that cannot be read is outlined in
   red and tied to its error message, so it can be found in a long list; Shelf
   Lab's price fields do the same. Typing into an estimated price and then

@@ -212,3 +212,11 @@ it("folds by default on laptop-height windows too, on dense glass that hides the
   expect(screen.getByRole("button", { name: "Expand playback controls" })).toBeTruthy();
   expect(screen.getByRole("region", { name: "Playback controls" }).className).toMatch(/\bpanel\b/);
 });
+
+it("skips to the end of the run with its button, while the slider's far end is the current day's closing time", () => {
+  render(<TimeBar minTime={28800} maxTime={72000} />);
+  fireEvent.change(screen.getByRole("slider", { name: "Scrub through the day" }), { target: { value: "72000" } });
+  expect(usePlaybackControlStore.getState().seekTarget).toBe(72000);
+  fireEvent.click(screen.getByRole("button", { name: "Skip to closing time" }));
+  expect(usePlaybackControlStore.getState().seekTarget).toBe(Number.POSITIVE_INFINITY);
+});
