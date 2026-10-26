@@ -99,6 +99,10 @@ export const storeMessages = {
   // Results tab: live dashboard
   dashNoRunData: ["No data in this run", "이 실행에는 데이터가 없습니다", "本次运行没有数据", "この実行にはデータがありません", "Esta simulación no tiene datos", "Aucune donnée dans cette simulation"],
   dashDayComplete: ["Day complete", "하루 영업 완료", "当天已结束", "1日が終了しました", "Día completo", "Journée terminée"],
+  dashRunTeaser: ["This run", "이번 실행", "本次运行", "今回の実行", "Esta ejecución", "Cette simulation"],
+  dashTeaserRevenue: ["Revenue: {amount}", "매출: {amount}", "营收：{amount}", "売上：{amount}", "Ingresos: {amount}", "Chiffre d’affaires : {amount}"],
+  dashTeaserShoppers: ["Shoppers: {count}", "쇼핑객: {count}", "购物者：{count}", "買い物客：{count}", "Compradores: {count}", "Clients : {count}"],
+  dashTeaserOpen: ["See the results", "결과 보기", "查看结果", "結果を見る", "Ver los resultados", "Voir les résultats"],
   dashPressPlay: ["Press play to start the day", "재생을 눌러 하루를 시작하세요", "点击播放开始这一天", "再生を押して1日を始めましょう", "Pulsa reproducir para empezar el día", "Appuyez sur lecture pour lancer la journée"],
   dashPlaying: ["Playing — {percent}% of the day", "재생 중 — 하루의 {percent}%", "播放中——已过当天的 {percent}%", "再生中 — 1日の {percent}%", "Reproduciendo: {percent} % del día", "Lecture : {percent} % de la journée"],
   dashTimeline: ["Timeline", "시간대별 방문", "时间线", "時間帯別の来店", "Cronología", "Chronologie"],

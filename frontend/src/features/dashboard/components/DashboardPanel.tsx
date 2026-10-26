@@ -1,9 +1,9 @@
 import { useI18n } from "@/shared/i18n/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CustomerResult, Store } from "@/shared/types/domain";
 import type { RunStatus, RunSummary } from "@/shared/api/client";
 import type { SetupDetailWithBlocked } from "@/features/grid-editor/types";
-import { Lock } from "lucide-react";
+import { ArrowDown, Lock } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { RunProgress } from "@/features/runs/components/RunProgress";
 import { RunKpis } from "@/features/runs/components/RunKpis";
@@ -22,6 +22,10 @@ import { LibraryPhotos } from "@/features/products/LibraryPhotos";
 import { RackCopy } from "@/features/products/RackCopy";
 import { StarterFill } from "@/features/products/StarterFill";
 import { reasonIcon, reasonLabel, type Availability } from "@/views/simulation/availability";
+import { richText } from "@/shared/i18n/richText";
+import { currencyCode, formatMoney } from "@/shared/utils/money";
+import { usePlaybackControlStore } from "@/stores/playbackControlStore";
+import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { PlaybackStatus } from "./sections/PlaybackStatus";
 import { TimelineChart } from "./sections/TimelineChart";
 import { Summary } from "./sections/Summary";
@@ -78,13 +82,22 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
   // from the saved shoppers where it can, leaving the impulse share empty (null) when the run did not record it.
   const legacyRun = summary != null && summary.conversion_rate === undefined;
   const noImpulse = legacyRun || summary?.impulse_revenue_share === null;
+  // Before the day plays, the live figures are all zero: lead with what the run found, linked to its results.
+  const idle = useSimulationMetricsStore((s) => !s.finished && s.entered === 0 && s.revenue === 0 && s.currentMinute <= minTime);
+  const playing = usePlaybackControlStore((s) => s.playing);
+  const results = useRef<HTMLDivElement>(null);
   return (
     <div className="flex flex-col">
       <PlaybackStatus minTime={minTime} maxTime={maxTime} />
+      {summary && !legacyRun && idle && !playing && (
+        <RunTeaser summary={summary} onOpen={() => results.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+      )}
       <TimelineChart customers={customers} minTime={minTime} maxTime={maxTime} />
       <Summary legacyRun={noImpulse} />
       <CustomerBehavior legacyRun={legacyRun} />
-      {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
+      <div ref={results} className="scroll-mt-2">
+        {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
+      </div>
       {projectId && runId && <OperationsSection key={`operations:${projectId}:${runId}`} projectId={projectId} runId={runId} setupId={setupId} currency={summary?.currency} />}
       {projectId && runId && <RunAnalystSection key={`analyst:${projectId}:${runId}`} projectId={projectId} runId={runId} />}
       <RackRanking store={store} />
@@ -93,6 +106,26 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       {projectId && runId && <DiagnosticsSection projectId={projectId} runId={runId} />}
       {projectId && runId && <FidelitySection projectId={projectId} runId={runId} />}
       {projectId && runId && <MovementSection key={`${projectId}:${runId}`} projectId={projectId} runId={runId} />}
+    </div>
+  );
+}
+
+function RunTeaser({ summary, onOpen }: { summary: RunSummary; onOpen: () => void }) {
+  const { locale, t } = useI18n();
+  const figure = (value: string) => <b className="num font-semibold text-foreground">{value}</b>;
+  return (
+    <div className="px-3 pb-3">
+      <button type="button" onClick={onOpen}
+        className="flex w-full items-center gap-3 rounded-2xl border border-glass-border bg-foreground/[0.03] px-3 py-2.5 text-left text-sm transition-colors hover:bg-foreground/[0.06]">
+        <span className="min-w-0 flex-1">
+          <span className="eyebrow block">{t("dashRunTeaser")}</span>
+          <span className="mt-0.5 flex flex-wrap gap-x-3 text-muted-foreground">
+            <span>{richText(t("dashTeaserRevenue"), { amount: figure(formatMoney(summary.total_revenue, currencyCode(summary.currency))) })}</span>
+            <span>{richText(t("dashTeaserShoppers"), { count: figure(summary.total_customers.toLocaleString(locale)) })}</span>
+          </span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium">{t("dashTeaserOpen")} <ArrowDown className="size-3.5" aria-hidden /></span>
+      </button>
     </div>
   );
 }

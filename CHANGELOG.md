@@ -58,6 +58,9 @@
   field (or pick it in the command palette, whose footer now links it) for a
   sheet of every key that works without the mouse. On the store floor, **←** and
   **→** now step the day back or forward 15 minutes.
+- A finished run no longer opens on a wall of zeros: before the day plays, the
+  Results tab leads with **This run** (its revenue and shopper count) and a
+  **See the results** link to the run's totals, until playback starts.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
