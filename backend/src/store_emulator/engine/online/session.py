@@ -38,8 +38,10 @@ _EXTRA_SECONDS: dict[ActionKind, float] = {
     ActionKind.SIGN_IN: 12.0, ActionKind.GUEST_CHECKOUT: 5.0, ActionKind.PLACE_ORDER: 3.0, ActionKind.APPLY_COUPON: 8.0,
 }
 _SEED_MOD = 2**31 - 1
-# Reading time per page, scaled to the pace of real visits (about half a minute a page).
-_READING_PACE = 2.3
+# Reading time per page, scaled to the pace of real visits (about half a minute a page on average). Real time between
+# page views varies widely, between pages and between people, so the spread is wide and the pace sets the mean.
+_READING_PACE = 1.75
+_READING_SPREAD = 0.8
 
 
 def load_seconds(site: OnlineSite, rng: random.Random) -> float:
@@ -62,7 +64,7 @@ def read_seconds(page: Page, shopper: OnlineShopper, choice: Choice, rng: random
         base *= 1.1 if page.large_text else 1.3
     base *= (1.35 - 0.5 * shopper.tech_savvy) * _READING_PACE
     base += _EXTRA_SECONDS.get(choice.control.action.kind, 0.0) + 0.25 * len(choice.query)
-    return base * rng.lognormvariate(0, 0.3)
+    return base * rng.lognormvariate(0, _READING_SPREAD)
 
 
 def _want_views(shopper: OnlineShopper, rng: random.Random) -> int:

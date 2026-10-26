@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Report unanswered exit surveys separately for each online variant, including
+  runs with no usable survey answers. Missing responses remain excluded from
+  ratings; survey calls no longer dilute the reported browsing fallback rate.
+
 - Separate structured-response caches by output mode. Switching between JSON
   and JSON Schema now makes a fresh model request instead of replaying decisions
   from the other mode; same-mode repeats still reuse their answers. Old cache

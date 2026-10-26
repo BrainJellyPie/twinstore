@@ -691,8 +691,17 @@ def _run_job(pid: str, status: OnlineRunStatus, sites: list[OnlineSite], shopper
         if request.policy == "rule":
             notes.append("Rule shoppers follow illustrative, uncalibrated probabilities. Use a vision model to let "
                          "shoppers react to what each page actually shows.")
+        survey_requests = 0
+        if isinstance(policy, ModelPolicy) and request.exit_survey:
+            for site, sessions in zip(sites, variants, strict=True):
+                survey_requests += len(sessions)
+                missing = sum(session.survey is None for session in sessions)
+                if missing:
+                    notes.append(f"Exit surveys for {site.name}: {missing} of {len(sessions)} requested surveys "
+                                 "had no usable model answer. Survey summaries exclude missing answers.")
         if fallbacks:
-            notes.append(f"{fallbacks} of {requests} model decisions failed and were made by the rules instead.")
+            notes.append(f"{fallbacks} of {requests - survey_requests} model decisions failed "
+                         "and were made by the rules instead.")
         result = OnlineRunResult(
             run_id=status.run_id, name=status.name, policy=request.policy, model=model, currency=sites[0].currency,
             variants=summaries, comparisons=comparisons, shoppers=shoppers, model_requests=requests,
