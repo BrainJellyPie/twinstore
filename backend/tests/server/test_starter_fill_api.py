@@ -530,3 +530,15 @@ def test_saved_variant_keeps_operations_and_retry_preserves_later_settings(workf
     save_layout_operations(PID, child, changed)
     assert client.post(URL + "/save", json=body).json() == response.json()
     assert run_operations(PID, child, None, None) == changed
+
+
+def test_each_starter_draft_gets_a_name_of_its_own(workflow):
+    client, _ = workflow
+    body = request(client)
+    names = []
+    for request_id in ("b" * 32, "c" * 32, "d" * 32, "b" * 32):
+        saved = client.post(URL + "/save", json={**body, "request_id": request_id})
+        assert saved.status_code == 200, saved.text
+        names.append(read_setup(PID, saved.json()["setup_id"])["name"])
+    # A second draft made the same way is told apart; repeating a save returns the first draft unchanged.
+    assert names == ["Starter products", "Starter products 2", "Starter products 3", "Starter products"]

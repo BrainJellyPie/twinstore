@@ -5,7 +5,7 @@ from store_emulator.application.setups import setup_lock_path, setup_tree_transa
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.images import layout_image_url, load_manifest
-from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
+from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path, unique_setup_name
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import ProductEditsReceipt
 from store_emulator.domain.rack_copy import RackCopyOptions, RackCopyPreview, RackCopyRecord, RackCopyRequest, RackCopySave, RackCopySaved
@@ -60,7 +60,7 @@ def save(pid: str, sid: str, req: RackCopySave) -> RackCopySaved:
                 raise AppError("This draft was removed or its write was interrupted. Check Layouts, then start a new preview", 409)
             store, report = _prepare(pid, sid, req)
             result = RackCopySaved(setup_id=path.stem, placements_added=report.placements_added)
-            draft = new_setup_data("Reused shelf products", sid, store.model_dump(mode="json"),
+            draft = new_setup_data(unique_setup_name(pid, "Reused shelf products"), sid, store.model_dump(mode="json"),
                                    f"Copied existing products from {report.source_name} to {len(report.targets)} empty racks. Original preserved; no stock quantities inferred.")
             draft["id"] = path.stem
             draft["rack_copy_request"] = req.model_dump(mode="json")

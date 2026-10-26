@@ -6,7 +6,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
+from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path, unique_setup_name
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import (
     ProductCatalog, ProductEditsPreview, ProductEditsRecord,
@@ -66,7 +66,7 @@ def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
                 raise AppError("No product values changed; there is no draft to save", 422)
             result = ProductEditsSaved(setup_id=path.stem, changed_placements=report.changed_placements)
             draft = new_setup_data(
-                "Edited products", sid, store.model_dump(mode="json"),
+                unique_setup_name(pid, "Edited products"), sid, store.model_dump(mode="json"),
                 f"Explicit edits to {len(report.changes)} SKUs / {report.changed_placements} placements. Source layout preserved.",
             )
             draft["id"] = path.stem

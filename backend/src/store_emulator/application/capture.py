@@ -65,7 +65,7 @@ from .providers import PRESETS, assistive_vision_model, ensure_local_ready, reso
 from .setups import set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .storage import images as image_storage
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
-from .storage.setups import metadata_path, new_setup_data, read_setup, setup_path
+from .storage.setups import metadata_path, new_setup_data, read_setup, setup_path, unique_setup_name
 
 logger = logging.getLogger(__name__)
 
@@ -636,7 +636,7 @@ def apply_captures(
     if errors:
         raise AppError(f"the resulting layout is invalid: {errors[0].message}", 409)
     label = "shelf photo" if len(results) == 1 else f"{len(results)} shelf photos"
-    final_name = name or f"{source.get('name') or 'layout'} ({label})"
+    final_name = name or unique_setup_name(pid, f"{source.get('name') or 'layout'} ({label})")
     memo = _memo(capture_ids, results, report)
     new_setup = new_setup_data(final_name, setup_id, new_store.model_dump(mode="json"), memo[:1000])
     try:

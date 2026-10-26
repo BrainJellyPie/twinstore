@@ -8,7 +8,7 @@ from store_emulator.application.setups import setup_lock_path, setup_tree_transa
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.images import layout_image_url, load_manifest
-from store_emulator.application.storage.setups import new_setup_data, setup_path, read_setup
+from store_emulator.application.storage.setups import new_setup_data, setup_path, read_setup, unique_setup_name
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import ProductEditsReceipt
 from store_emulator.domain.starter_fill import (
@@ -107,7 +107,7 @@ def save(pid: str, sid: str, req: StarterFillSave) -> StarterSaved:
                 raise AppError("This draft was removed or its write was interrupted. Check Layouts, then start a new preview", 409)
             store, report = _prepare(pid, sid, req)
             result = StarterSaved(setup_id=path.stem, placements_added=report.placements_added)
-            draft = new_setup_data("Starter products", sid, store.model_dump(mode="json"),
+            draft = new_setup_data(unique_setup_name(pid, "Starter products"), sid, store.model_dump(mode="json"),
                                    f"Starter reference assortment: {len(report.racks)} racks, {report.placements_added} placements. Not actual inventory or prices. Original preserved.")
             draft["id"] = path.stem
             draft["starter_fill_request"] = req.model_dump(mode="json")

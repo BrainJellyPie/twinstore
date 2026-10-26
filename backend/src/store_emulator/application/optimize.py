@@ -41,7 +41,7 @@ from .setups import run_operations, set_active_setup, setup_lock_path, setup_sum
 from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
-from .storage.setups import new_setup_data, read_setup, setup_path
+from .storage.setups import new_setup_data, read_setup, setup_path, unique_setup_name
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +302,7 @@ def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[s
         except FileNotFoundError:
             raise AppError("The source layout no longer exists; this optimization cannot be saved.", 404) from None
         label = f"{view.result.validation_relative_improvement:+.1%}" if view.result.validation_relative_improvement is not None else ""
-        final_name = name or f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})"
+        final_name = name or unique_setup_name(pid, f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})")
         memo = "; ".join(view.result.applied_moves[:12])
         new_setup = new_setup_data(final_name, view.status.setup_id, view.result.best_store.model_dump(mode="json"), memo[:1000])
         # Keep the conditions used to judge this result, including explicit opt-out;

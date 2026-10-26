@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Layouts the app names itself get a number when the name is taken, so they
+  can be told apart in the layout tabs and pickers: a second starter, shelf-copy,
+  library-photo, product-edit or combined-shelf draft, a second optimized or
+  edited copy with the same result, become "Starter products 2" and so on.
+  Names typed by hand stay as typed.
+
 - Do not turn loyalty point counts into cash selling prices during shelf
   capture. Preserve point labels and mark fallback prices as estimated;
   explicit cash prices such as "$1.00 WITH POINTS" still apply.
