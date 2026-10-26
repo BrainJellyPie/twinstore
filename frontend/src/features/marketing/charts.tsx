@@ -214,7 +214,7 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
 // ── Demand curve (price sweep) ────────────────────────────────────────────
 
 /** Units of one product per 100 visitors at each tested price, with the arms' 95 % intervals. */
-export function DemandChart({ response, currency }: { response: PriceResponse; currency: string }) {
+export function DemandChart({ response, currency, control }: { response: PriceResponse; currency: string; control: string }) {
   const { t } = useI18n();
   const demandConfig = { units: { label: t("mkColUnits100"), color: "var(--viz-1)" } } satisfies ChartConfig;
   const data = response.points.map((p) => ({
@@ -232,7 +232,7 @@ export function DemandChart({ response, currency }: { response: PriceResponse; c
         <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.25 }}
           content={<ChartTooltipContent indicator="line" labelFormatter={(_v, payload) => {
             const d = payload?.[0]?.payload as { price?: number; arm?: string } | undefined;
-            return d?.price != null ? `${d.arm} · ${money(d.price)}` : "";
+            return d?.price != null ? `${d.arm === control ? t("mkControl") : d.arm} · ${money(d.price)}` : "";
           }} formatter={(value) => (
             <div className="flex w-full items-center justify-between gap-3">
               <span className="text-muted-foreground">{t("mkColUnits100")}</span>

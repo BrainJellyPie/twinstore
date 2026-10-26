@@ -27,9 +27,9 @@ const report: ExperimentReport = { experiment_id: "exp", name: "Tea test", setup
 const variants = [{ name: "Cheaper tea", changes: [{ kind: "price" as const, sku: "tea", price: 249 }] }];
 const site = (id: string, name: string, currency = "USD") => ({ id, name, currency }) as online.SiteSummary;
 
-function show() {
+function show(layoutName?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  render(<QueryClientProvider client={client}><ExperimentReportView projectId="p" report={report} variants={variants} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><ExperimentReportView projectId="p" report={report} variants={variants} layoutName={layoutName} /></QueryClientProvider>);
 }
 
 it("carries a tested variant to an online store in the test's currency and links to the comparison", async () => {
@@ -44,7 +44,8 @@ it("carries a tested variant to an online store in the test's currency and links
   expect([...picker.options].map((o) => o.text)).toEqual(["Tea shop", "Tea outlet"]);
   fireEvent.change(picker, { target: { value: "s3" } });
   fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
-  expect(await screen.findByText("Online variant ready: Tea outlet – Cheaper tea")).toBeTruthy();
+  const ready = await screen.findByText("Online variant ready: Tea outlet – Cheaper tea");
+  expect(document.activeElement).toBe(ready.parentElement);
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s3", {
     name: "Tea outlet – Cheaper tea", note: "Tea test: Cheaper tea", currency: "USD", changes: variants[0]!.changes,
   });
@@ -66,16 +67,19 @@ it("reviews a tested variant on its layout and keeps it as a new layout", async 
   vi.mocked(online.listSites).mockResolvedValue([]);
   vi.mocked(marketing.checkLayoutEdit).mockResolvedValue({ name: "Cheaper tea", source_sha256: "f".repeat(64), summary: "",
     changes: variants[0]!.changes, applied: ["Green tea: price 299 → 249"], warnings: ["a new package is only shown in tests, not saved to a layout"] });
-  vi.mocked(marketing.applyLayoutEdit).mockResolvedValue({ id: "setup_new", name: "Cheaper tea", applied: [], warnings: [] });
-  show();
+  vi.mocked(marketing.applyLayoutEdit).mockResolvedValue({ id: "setup_new", name: "Main floor · Cheaper tea", applied: [], warnings: [] });
+  show("Main floor");
   fireEvent.click(screen.getByRole("button", { name: "Review on the layout" }));
-  expect(await screen.findByText("· a new package is only shown in tests, not saved to a layout")).toBeTruthy();
-  expect(marketing.checkLayoutEdit).toHaveBeenCalledWith("p", "s", { name: "Cheaper tea", changes: variants[0]!.changes });
+  const note = await screen.findByText("· a new package is only shown in tests, not saved to a layout");
+  // The pressed button is gone; focus moves to the review that replaced it.
+  expect(document.activeElement).toBe(note.parentElement);
+  expect(marketing.checkLayoutEdit).toHaveBeenCalledWith("p", "s", { name: "Main floor · Cheaper tea", changes: variants[0]!.changes });
   fireEvent.click(screen.getByRole("button", { name: "Save as a new layout" }));
-  expect(await screen.findByText("Saved as a new layout: Cheaper tea")).toBeTruthy();
+  expect(await screen.findByText("Saved as a new layout: Main floor · Cheaper tea")).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByRole("status"));
   const [, setup, body] = vi.mocked(marketing.applyLayoutEdit).mock.calls[0]!;
   expect(setup).toBe("s");
-  expect(body).toMatchObject({ name: "Cheaper tea", changes: variants[0]!.changes, source_sha256: "f".repeat(64) });
+  expect(body).toMatchObject({ name: "Main floor · Cheaper tea", changes: variants[0]!.changes, source_sha256: "f".repeat(64) });
   expect(body.request_id).toMatch(/^[0-9a-f]{32}$/);
 });
 
@@ -92,4 +96,55 @@ it("offers the best tested price as an online variant", async () => {
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({
     name: "Tea shop – Best price $2.49", changes: [{ kind: "price", sku: "tea", price: 249 }],
   }));
+});
+
+it("puts the stores that sell the tested products first and keeps the others out of reach", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([
+    { ...site("s1", "Threadline"), carries: 0 }, { ...site("s2", "Tea outlet"), carries: 1 },
+  ]);
+  show();
+  await screen.findByRole("option", { name: "Tea outlet" });
+  expect(online.listSites).toHaveBeenCalledWith("p", expect.anything(), ["tea"]);
+  const picker = screen.getByRole("combobox", { name: "Online store" }) as HTMLSelectElement;
+  expect([...picker.options].map((o) => [o.text, o.disabled])).toEqual([
+    ["Tea outlet", false], ["Threadline — does not sell these products", true],
+  ]);
+  expect(picker.value).toBe("s2");
+});
+
+it("says so when no online store sells the tested products", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([{ ...site("s1", "Threadline"), carries: 0 }]);
+  show();
+  expect(await screen.findByText(/No online store in USD sells these products yet/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+});
+
+it("explains that a shelf sign has nothing to carry online", () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <ExperimentReportView projectId="p" report={report} variants={[{ name: "Cheaper tea", changes: [{ kind: "promo", sku: "tea", promo: "SALE" }] }]} />
+  </QueryClientProvider>);
+  expect(screen.getByText(/A shelf sign has no web counterpart/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+  expect(online.listSites).not.toHaveBeenCalled();
+});
+
+it("keeps category-wide changes available when the store carries none of the separately targeted SKUs", async () => {
+  vi.mocked(online.listSites).mockResolvedValue([{ ...site("s1", "Tea outlet"), carries: 0 }]);
+  vi.mocked(online.variantFromTest).mockResolvedValue({
+    site: { id: "v1", name: "Tea outlet – Cheaper tea" } as online.OnlineSite,
+    applied: ["Tea prices reduced by 10%"], skipped: ["MISSING: no matching product"],
+  });
+  const mixed: marketing.Variant = { name: "Cheaper tea", changes: [
+    { kind: "price", sku: "MISSING", price: 249 },
+    { kind: "category_price", category: "Tea", percent: -10 },
+  ] };
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <ExperimentReportView projectId="p" report={report} variants={[mixed]} />
+  </QueryClientProvider>);
+  await screen.findByRole("option", { name: "Tea outlet" });
+  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  expect(await screen.findByText("Tea prices reduced by 10%")).toBeTruthy();
+  expect(screen.getByText("MISSING: no matching product")).toBeTruthy();
+  expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({ changes: mixed.changes }));
 });

@@ -75,3 +75,33 @@ def test_a_lower_shelf_ends_the_list_and_a_move_along_the_shelf_is_skipped(clien
     assert result["site"]["products"][-1]["id"] == a["id"] and len(result["site"]["products"]) == len(site["products"])
     assert any("last in its category" in x for x in result["applied"])
     assert any("same shelf" in x for x in result["skipped"])
+
+
+def test_the_store_list_says_which_stores_sell_a_tests_products(client: TestClient) -> None:
+    mart = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "from_store"}).json()
+    fashion = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "fashion"}).json()
+    skus = [mart["products"][0]["sku"], mart["products"][1]["sku"], "NOT-HERE"]
+    listed = client.get(f"/api/projects/{PID}/online/sites", params={"sku": skus}).json()
+    carries = {s["id"]: s["carries"] for s in listed}
+    assert carries[mart["id"]] == 2 and carries[fashion["id"]] == 0
+    assert all(s["carries"] is None for s in client.get(f"/api/projects/{PID}/online/sites").json())
+
+
+def test_zero_matching_skus_does_not_rule_out_a_category_price_change(client: TestClient) -> None:
+    site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "from_store"}).json()
+    product = next(p for p in site["products"] if p["price"] > 100)
+    category = next(c for c in site["categories"] if c["id"] == product["category_id"])
+    listed = client.get(f"/api/projects/{PID}/online/sites", params={"sku": ["MISSING"]}).json()
+    assert next(s for s in listed if s["id"] == site["id"])["carries"] == 0
+    result = client.post(f"/api/projects/{PID}/online/sites/{site['id']}/from-test", json={
+        "currency": site["currency"], "changes": [
+            {"kind": "price", "sku": "MISSING", "price": 249},
+            {"kind": "category_price", "category": category["name"], "percent": -10},
+        ],
+    })
+    assert result.status_code == 200, result.text
+    body = result.json()
+    changed = next(p for p in body["site"]["products"] if p["id"] == product["id"])
+    assert changed["price"] == round(product["price"] * 0.9)
+    assert body["applied"] and any("MISSING" in message for message in body["skipped"])
+    assert client.get(f"/api/projects/{PID}/online/sites/{site['id']}").json()["products"] == site["products"]

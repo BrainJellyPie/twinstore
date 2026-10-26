@@ -2,9 +2,9 @@
 shoppers with web-analytics results."""
 
 from collections.abc import Callable
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.concurrency import run_in_threadpool
 
@@ -63,8 +63,9 @@ async def template_preview(template_id: str, currency: str = "USD") -> Response:
 
 
 @router.get("/projects/{pid}/online/sites", summary="The project's online stores", response_model=list[SiteSummary])
-def list_sites(pid: str) -> list[SiteSummary]:
-    return _call(lambda: online_service.list_sites(pid))
+def list_sites(pid: str, sku: Annotated[list[str] | None, Query(max_length=50)] = None) -> list[SiteSummary]:
+    """`sku` (repeatable): each store also says how many of these products it sells (`carries`)."""
+    return _call(lambda: online_service.list_sites(pid, None if sku is None else set(sku)))
 
 
 @router.post("/projects/{pid}/online/sites", summary="Create an online store from a template", response_model=OnlineSite)

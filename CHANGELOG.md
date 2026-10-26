@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- An A/B test's results offer the **price × sign** 2×2 analysis only when the
+  test has a price arm, a promotion-sign arm and an arm with both; a discount
+  ladder offered it and then could only report that it did not apply.
+- **Apply to the store** in an A/B test's results names the new layout after
+  the tested one too ("layout 2 · -20 %"; it was "-20 %" alone in the layout
+  lists). **Review on the layout** and **Save as a new layout** move focus to
+  what replaces them, here and under an online variant's prices; focus fell
+  back to the top of the page.
+- **Test it online** under an A/B variant lists first the online stores that
+  sell the tested products, picks one of them, and marks the others "does not
+  sell these products" (they could only fail with "no product with this SKU");
+  before, it picked the first store in the list, an apparel shop for a cola
+  test. A variant that only adds a shelf sign says a sign has no web
+  counterpart instead of offering a variant that could carry nothing. The
+  online store list takes `sku` to say how many of those products each store
+  sells (`carries`). After **Make an online variant**, focus moves to the
+  result rather than the top of the page. A category-wide price change stays
+  available even when the store sells none of the individually targeted SKUs;
+  the server checks which category and product changes can actually apply.
+- In a price test's **Price response**, the control row no longer shows an
+  interval ("1.7 [1.7, 1.7]"): the arms' intervals are measured from it. The
+  app, Markdown and HTML reports agree, and the app names the control in the
+  selected language there and in the chart's tooltip.
+
 - When the graphics driver resets the 3D store view (heavy work such as Photo
   mode's path tracing can cause it), the view says so and offers **Restart the
   3D view**, which brings the store back; Photo mode ends. Before, the store

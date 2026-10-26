@@ -109,6 +109,8 @@ export interface SiteSummary {
   photos: number; theme_color: string; device: Device | null; variant_of: string; note: string;
   cart_reminder?: boolean;
   created_at: string; updated_at: string;
+  /** How many of the SKUs the list was asked about (`listSites(…, skus)`) the store sells. */
+  carries?: number | null;
 }
 
 export interface PageRef {
@@ -292,8 +294,9 @@ export function templatePreviewUrl(templateId: string, currency: string): string
   return `${BASE}/api/online/templates/${encodeURIComponent(templateId)}/preview.png?currency=${encodeURIComponent(currency)}`;
 }
 
-export function listSites(pid: string, signal?: AbortSignal): Promise<SiteSummary[]> {
-  return fetchJson(`/api/projects/${pid}/online/sites`, { signal });
+export function listSites(pid: string, signal?: AbortSignal, skus?: string[]): Promise<SiteSummary[]> {
+  const query = skus?.length ? `?${skus.map((sku) => `sku=${encodeURIComponent(sku)}`).join("&")}` : "";
+  return fetchJson(`/api/projects/${pid}/online/sites${query}`, { signal });
 }
 
 export function createSite(pid: string, body: { template_id: string; name?: string; seed?: number; setup_id?: string | null }): Promise<OnlineSite> {

@@ -131,6 +131,7 @@ class SiteSummary(BaseModel):
     note: str
     created_at: str
     updated_at: str
+    carries: int | None = None  # how many of the SKUs the list was asked about (`sku`) the store sells
 
 
 class BrowseRequest(BaseModel):
@@ -206,24 +207,25 @@ def list_templates() -> list[OnlineTemplate]:
     return template_summaries()
 
 
-def _summary(site: OnlineSite) -> SiteSummary:
+def _summary(site: OnlineSite, skus: set[str] | None = None) -> SiteSummary:
     return SiteSummary(
         id=site.id, name=site.name, template_id=site.template_id, currency=site.currency,
         categories=len(site.categories), products=len(site.products),
         photos=sum(1 for p in site.products if p.image_url), theme_color=site.options.theme_color,
         device=site.options.device, variant_of=site.variant_of, note=site.note, created_at=site.created_at,
         updated_at=site.updated_at, cart_reminder=site.options.cart_reminder,
+        carries=None if skus is None else len(skus & {p.sku for p in site.products}),
     )
 
 
-def list_sites(pid: str) -> list[SiteSummary]:
+def list_sites(pid: str, skus: set[str] | None = None) -> list[SiteSummary]:
     folder = _root(pid) / "sites"
     if not folder.is_dir():
         return []
     out: list[SiteSummary] = []
     for path in folder.glob("*.json"):
         try:
-            out.append(_summary(OnlineSite.model_validate(read_json(path))))
+            out.append(_summary(OnlineSite.model_validate(read_json(path)), skus))
         except ValueError as e:  # one damaged site must not hide the others
             logger.warning(f"[online] skipping {pid}/{path.name}: {e}")
     return sorted(out, key=lambda s: s.created_at)

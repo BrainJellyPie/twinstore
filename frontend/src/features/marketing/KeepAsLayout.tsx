@@ -10,6 +10,9 @@ import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 
+// Stable, so a re-render does not pull focus back.
+const focusOnMount = (el: HTMLElement | null) => el?.focus();
+
 export function KeepAsLayout({ projectId, setupId, variant, currency, hint }: {
   projectId: string; setupId: string; variant: Variant;
   /** The currency of the variant's prices, checked against the layout's (changes made in another store). */
@@ -33,10 +36,13 @@ export function KeepAsLayout({ projectId, setupId, variant, currency, hint }: {
   return (
     <div className="mt-2 space-y-2 rounded-xl border border-dashed p-3 text-xs">
       <div className="flex items-center gap-1.5 font-semibold text-foreground"><Store className="size-3.5 text-primary" aria-hidden />{t("mkKeepTitle")}</div>
+      {/* The button pressed is replaced, so focus moves to what replaced it rather than dropping to the page. */}
       {save.data ? (
-        <p className="flex items-center gap-1.5 font-medium text-positive"><Check className="size-3.5" aria-hidden />{t("mkKeepSaved", { name: save.data.name })}</p>
+        <p ref={focusOnMount} tabIndex={-1} role="status" className="flex items-center gap-1.5 rounded-md font-medium text-positive outline-offset-4">
+          <Check className="size-3.5" aria-hidden />{t("mkKeepSaved", { name: save.data.name })}
+        </p>
       ) : review ? (
-        <div className="space-y-1.5">
+        <div ref={focusOnMount} tabIndex={-1} className="space-y-1.5 rounded-md outline-offset-4">
           {review.applied.length > 0
             ? <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">{review.applied.map((a) => <li key={a}>{a}</li>)}</ul>
             : <p className="text-muted-foreground">{t("editWordsNone")}</p>}
