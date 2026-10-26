@@ -31,6 +31,30 @@ from store_emulator.engine.package_reader import read_pack
     ('LEAFY GREEN TEA NET 500 ml 6 PACK PER 100 ml', '500 ml', 'Leafy Green Tea 6 pack', True),
     ('LEAFY GREEN TEA NET 500 ml 6 PACK PER 100 ml', '500 ml', 'Leafy Green Tea 100 ml 6 pack', False),
     ('LEAFY GREEN TEA NET 6 x 500 ml PER 100 ml', '6 x 500 ml', 'Leafy Green Tea 6 x 500 ml', True),
+    ('LEAFY GREEN TEA NET 0.5 L PER 100 ml', '0.5 L', 'Leafy Green Tea 100 ml', False),
+    ('LEAFY GREEN TEA NET 500 ml PER 1 L', '500 ml', 'Leafy Green Tea 1 L', False),
+    ('LEAFY GREEN TEA NET 50 cl PER 100 ml', '50 cl', 'Leafy Green Tea 100 ml', False),
+    ('LEAFY GREEN TEA NET 5 dl PER 1 L', '5 dl', 'Leafy Green Tea 1 L', False),
+    ('LEAFY GREEN TEA NET 0.5 kg PER 100 g', '0.5 kg', 'Leafy Green Tea 100 g', False),
+    ('LEAFY GREEN TEA NET 500 g PER 1 kg', '500 g', 'Leafy Green Tea 1 kg', False),
+    ('LEAFY GREEN TEA NET 0.5 g PER 100 mg', '0.5 g', 'Leafy Green Tea 100 mg', False),
+    ('LEAFY GREEN TEA NET 50 cl 0.5 L', '50 cl', 'Leafy Green Tea 0.5 L', True),
+    ('LEAFY GREEN TEA NET 0,5 L 500 ml', '0,5 L', 'Leafy Green Tea 500 ml', True),
+    ('LEAFY GREEN TEA NET 0.50 L 500.00 ml', '0.50 L', 'Leafy Green Tea 500.00 ml', True),
+    ('LEAFY GREEN TEA NET 500 g 0.5 kg', '500 g', 'Leafy Green Tea 0.5 kg', True),
+    ('LEAFY GREEN TEA NET 500 mg 0.5 g', '500 mg', 'Leafy Green Tea 0.5 g', True),
+    ('ＬＥＡＦＹ ＧＲＥＥＮ ＴＥＡ ＮＥＴ ０．５Ｌ ＰＥＲ １００ｍｌ', '0.5L', 'Leafy Green Tea 100 ml', False),
+    ('LEAFY GREEN TEA NET 500 ml PER 100 ml', '500 ml', 'Leafy Green Tea 0.5 L', False),
+    ('LEAFY GREEN TEA NET 1 L 1000 ml', '1 L', 'Leafy Green Tea 1000 ml', True),
+    ('LEAFY GREEN TEA NET 1 L 1,000 ml', '1 L', 'Leafy Green Tea 1,000 ml', True),
+    ('LEAFY GREEN TEA NET 1 L 1.000 ml', '1 L', 'Leafy Green Tea 1.000 ml', True),
+    ('LEAFY GREEN TEA NET 0.500 L PER 100 ml', '0.500 L', 'Leafy Green Tea 100 ml', False),
+    ('LEAFY GREEN TEA NET 0,500 kg PER 100 g', '0,500 kg', 'Leafy Green Tea 100 g', False),
+    ('LEAFY GREEN TEA NET 0.500 L 500 ml', '0.500 L', 'Leafy Green Tea 500 ml', True),
+    ('LEAFY GREEN TEA NET 1234567890123456789012345678 L PER 1234567890123456789012345678001 ml',
+     '1234567890123456789012345678 L', 'Leafy Green Tea 1234567890123456789012345678001 ml', False),
+    ('LEAFY GREEN TEA NET 1234567890123456789012345678 L 1234567890123456789012345678000 ml',
+     '1234567890123456789012345678 L', 'Leafy Green Tea 1234567890123456789012345678000 ml', True),
 ])
 def test_conflicting_net_size_is_filtered_before_matching(printed, size, name, supported):
     calls = []
@@ -51,15 +75,16 @@ def test_conflicting_net_size_is_filtered_before_matching(printed, size, name, s
 
 
 @pytest.mark.parametrize('mode', ['json', 'json_schema'])
+@pytest.mark.parametrize('size,reference', [('500 ml', '100 ml'), ('0.5 L', '100 ml'), ('0.5 kg', '100 g'), ('500 ml', '0.1 L')])
 @pytest.mark.parametrize('has_correct_product', [False, True])
 @pytest.mark.parametrize('malicious_match', [False, True])
-def test_net_size_filter_survives_wire_modes_and_cached_observations(monkeypatch, tmp_path, mode, has_correct_product, malicious_match):
+def test_net_size_filter_survives_wire_modes_and_cached_observations(monkeypatch, tmp_path, mode, size, reference, has_correct_product, malicious_match):
     import httpx
     from openai import AsyncOpenAI
     from store_emulator.domain.config import LLMConfig
     from store_emulator.engine import llm_client
 
-    correct, wrong = 'Leafy Green Tea 500 ml', 'Leafy Green Tea 100 ml'
+    correct, wrong = f'Leafy Green Tea {size}', f'Leafy Green Tea {reference}'
     products = [wrong, correct] if has_correct_product else [wrong]
     calls = []
     original = llm_client.litellm.acompletion
@@ -69,8 +94,8 @@ def test_net_size_filter_survives_wire_modes_and_cached_observations(monkeypatch
         calls.append(body)
         user = next(message['content'] for message in body['messages'] if message['role'] == 'user')
         if isinstance(user, list):
-            payload = dict(printed_text='LEAFY GREEN TEA NET 500 ml PER 100 ml', name='Green Tea',
-                           brand='Leafy', size='500 ml', category='Tea', confidence=1)
+            payload = dict(printed_text=f'LEAFY GREEN TEA NET {size} PER {reference}', name='Green Tea',
+                           brand='Leafy', size=size, category='Tea', confidence=1)
         else:
             assert json.loads(user)['store_products'] == [correct]
             if mode == 'json_schema':
@@ -93,7 +118,7 @@ def test_net_size_filter_survives_wire_modes_and_cached_observations(monkeypatch
             with Image.new('RGB', (2, 2)) as image:
                 result = await read_pack(client, image, products)
                 assert result.shelf_product == (correct if has_correct_product and not malicious_match else '')
-                assert result.size == '500 ml'
+                assert result.size == size
                 assert (await read_pack(client, image, products)).model_dump() == result.model_dump()
                 assert len(calls) == 1 + has_correct_product
                 # A new catalog reuses the image read without restoring its old link.

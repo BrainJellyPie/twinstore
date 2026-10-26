@@ -12,6 +12,18 @@
   llama-server에 불러온 모델" in Korean), instead of always in English. Brand
   names and names you gave a server stay as they are.
 
+- Require a resolvable shelf before accepting a generated shelf-purchase
+  condition. Missing or unknown shelf targets now request correction before
+  caching instead of silently dropping that part of a shopper search.
+
+- Compare package net quantities across metric units before linking a catalog
+  product. A 0.5 L package cannot become its printed 100 ml nutrition reference;
+  equivalent quantities remain usable when the catalog name has printed evidence.
+
+- Keep purchase limits and minimum/maximum quantities from becoming exact
+  captured selling prices. Preserve the printed tag, estimated-price review
+  and existing product prices; limited-offer cash prices remain usable.
+
 - The Area map key's note on rings and lines no longer starts with a stray
   "·" when it wraps onto its own line.
 

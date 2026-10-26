@@ -30,6 +30,13 @@ from tests.engine.test_scenario_target_matching import target_store
     ("100円から", "JPY"), ("100円以上", "JPY"),
     ("100円以下", "JPY"), ("100円未満", "JPY"), ("最低100円", "JPY"),
     ("CNY 10起", "CNY"), ("100¢ and up", "USD"),
+    ("LIMIT 2 PER CUSTOMER", "USD"), ("Limit: 2", "EUR"),
+    ("Limit of 2 per household", "GBP"), ("LIMIT $2", "USD"),
+    ("MAX 2 PER PERSON", "USD"), ("Max. 2", "EUR"), ("Maximum 2", "GBP"),
+    ("MIN 2 PER ORDER", "USD"), ("Min. 2", "EUR"), ("Minimum 2", "GBP"),
+    ("Maximum: USD 2", "USD"), ("Minimum: 1,000원", "KRW"),
+    ("$2 maximum", "USD"), ("$2 max.", "USD"), ("2 minimum", "JPY"), ("2 min.", "EUR"),
+    ("ＬＩＭＩＴ ２ ＰＥＲ ＣＵＳＴＯＭＥＲ", "USD"), ("ＭＡＸ．２", "USD"),
 ])
 @pytest.mark.parametrize("guess", [None, 1.0, 1000.0])
 def test_price_limits_cannot_be_overridden_by_a_model_guess(tag, currency, guess):
@@ -43,13 +50,16 @@ def test_price_limits_cannot_be_overridden_by_a_model_guess(tag, currency, guess
     ("Lowest price guaranteed: $1", "USD", 100),
     ("1,000원", "KRW", 1000), ("최저가 보장 1,000원", "KRW", 1000),
     ("100円", "JPY", 100), ("1,00 €", "EUR", 100), ("100¢", "USD", 100),
+    ("LIMITED OFFER $1.00", "USD", 100), ("Limitless $1", "USD", 100),
+    ("Mini $1", "USD", 100), ("Maxi $1", "USD", 100), ("Maxwell $1", "USD", 100),
+    ("Maximum flavor $1", "USD", 100), ("Minimum fuss $1", "USD", 100),
 ])
 def test_exact_cash_prices_and_product_names_are_preserved(tag, currency, expected):
     assert price_minor_units(ShelfItemLabel(price_text=tag), currency, 249) == expected
 
 
 @pytest.mark.parametrize("known", [False, True])
-@pytest.mark.parametrize("tag", ["FROM $1.00", "UNDER $1.00", "$1 and up"])
+@pytest.mark.parametrize("tag", ["FROM $1.00", "UNDER $1.00", "$1 and up", "LIMIT 2 PER CUSTOMER", "MAX 2", "MINIMUM 2"])
 def test_a_price_limit_preserves_capture_identity_and_an_existing_selling_price(known, tag):
     store = target_store()
     store.racks[0].slots[0].items[0].price = 799

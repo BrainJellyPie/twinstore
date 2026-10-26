@@ -239,6 +239,11 @@ async def find_shoppers(
     llm: StructuredLLM, text: str, customers: Mapping[str, CustomerResult], personas: Mapping[str, Persona],
     store: Store, currency: str,
 ) -> ShopperMatch:
+    shelves: dict[str, set[str]] = {}
+    for rack in store.product_racks:
+        if rack.rack_name.strip():
+            shelves.setdefault(rack.rack_name.strip().casefold(), set()).add(rack.id)
+
     class TimedFilter(_Filter):
         @field_validator("bought", "bought_there", "sort", mode="before")
         @classmethod
@@ -253,6 +258,16 @@ async def find_shoppers(
                 return [canonical_identifier(item, choices) if isinstance(item, str) else item
                         for item in cast(list[object], value)]
             return value
+
+        @model_validator(mode="after")
+        def shelf_purchase_target(self) -> Self:
+            if self.bought_there != "any" and not any(
+                resolve_listed(name, shelves) is not None for name in self.stopped_at
+            ):
+                raise ValueError("bought_there requires stopped_at with at least one listed shelf. "
+                                 "Copy the requested shelf from the supplied Shelves list; use bought_there=any "
+                                 "only when no shelf purchase condition was requested.")
+            return self
 
         @model_validator(mode="after")
         def ordered_ranges(self) -> Self:

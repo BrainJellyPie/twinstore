@@ -104,16 +104,41 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
     # The separate matching call still decides whether the identity agrees.
     label_tokens = re.compile(r"\d+(?:[.,]\d+)? [^\W\d_]+|[^ ]+")
     observed_tokens = Counter(label_tokens.findall(observed))
-    # A serving/reference amount can be printed beside the net size. A candidate
-    # stating a different amount in the same unit contradicts the observed size.
+    # A serving/reference amount can be printed beside the net size. Reject
+    # contradictory amounts, including exact conversions between metric units.
     quantities = re.compile(r"(\d+(?:[.,]\d+)?) ([^\W\d_]+)")
+    metric_units: dict[str, tuple[str, int]] = {
+        "ml": ("ml", 0), "cl": ("ml", 1), "dl": ("ml", 2), "l": ("ml", 3),
+        "mg": ("g", -3), "g": ("g", 0), "kg": ("g", 3),
+    }
+
+    def metric_quantity(amount: str, unit: str) -> tuple[str, Decimal] | None:
+        scale = metric_units.get(unit)
+        # 1,000 / 1.000 can be either a grouped integer or a decimal. Do not
+        # infer a cross-unit contradiction from an ambiguous printed separator.
+        if scale is None or re.fullmatch(r"[1-9]\d{0,2}[.,]\d{3}", amount):
+            return None
+        value = Decimal(amount.replace(",", ".")).as_tuple()
+        assert isinstance(value.exponent, int)  # The quantity regex permits only finite decimal numbers.
+        # Shifting a base-10 exponent is exact even beyond Decimal's current precision.
+        return scale[0], Decimal((value.sign, value.digits, value.exponent + scale[1]))
+
     net_quantities: dict[str, set[Decimal]] = {}
+    metric_net: dict[str, set[Decimal]] = {}
     for amount, unit in quantities.findall(printed_words(reading.size)):
         net_quantities.setdefault(unit, set()).add(Decimal(amount.replace(",", ".")))
+        metric = metric_quantity(amount, unit)
+        if metric is not None:
+            metric_net.setdefault(metric[0], set()).add(metric[1])
 
     def agrees_with_net_size(words: str) -> bool:
-        return all(unit not in net_quantities or Decimal(amount.replace(",", ".")) in net_quantities[unit]
-                   for amount, unit in quantities.findall(words))
+        for amount, unit in quantities.findall(words):
+            if unit in net_quantities and Decimal(amount.replace(",", ".")) not in net_quantities[unit]:
+                return False
+            metric = metric_quantity(amount, unit)
+            if metric is not None and metric[0] in metric_net and metric[1] not in metric_net[metric[0]]:
+                return False
+        return True
 
     # A visible multipack cannot be linked to its single-unit catalog entry,
     # even though every word in the single-unit name appears on the pack.
