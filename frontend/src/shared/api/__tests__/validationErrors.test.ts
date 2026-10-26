@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 
 import { createCapture, createStore, deleteCapture, deleteEdit, deletePackage, importFloorPlan, readReceipts, regeneratePersona, uploadPackage } from "../client";
-import { ApiError } from "../errors";
+import { ApiError, apiErrorMessage } from "../errors";
 import { askShopper } from "../interview";
 import { previewShelf } from "../marketing";
 
@@ -85,4 +85,11 @@ it.each([
   expect(error).toMatchObject({ message: "still in use", status: 409 });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 409, statusText: "Conflict" })));
   await expect(run()).rejects.toThrow("Delete failed (HTTP 409)");
+});
+
+it("names the issues a structured error lists, such as a layout without an exit", () => {
+  const body = JSON.stringify({ detail: { code: "validation_failed", message: "store layout has errors.",
+    details: { issues: [{ code: "no_exit", message: "no exit", severity: "error", details: {} }] } } });
+  expect(apiErrorMessage(body, "422")).toBe("store layout has errors: no exit.");
+  expect(apiErrorMessage(JSON.stringify({ detail: { message: "Nothing listed", details: {} } }), "422")).toBe("Nothing listed");
 });

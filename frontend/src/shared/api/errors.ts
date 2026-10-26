@@ -17,7 +17,14 @@ export function apiErrorMessage(body: string, fallback: string): string {
   const detail = parsed.detail;
   if (typeof detail === "string") return detail.trim() || fallback;
   if (detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string") {
-    return detail.message.trim() || fallback;
+    const message = detail.message.trim() || fallback;
+    // A structured error can list what is wrong ({details: {issues: [{message}]}}, e.g. a layout's "no exit"):
+    // say it, rather than only that something is.
+    const listed = "details" in detail && detail.details && typeof detail.details === "object" && "issues" in detail.details
+      && Array.isArray(detail.details.issues) ? detail.details.issues : [];
+    const issues = listed.flatMap((issue: unknown) => issue && typeof issue === "object" && "message" in issue
+      && typeof issue.message === "string" && issue.message.trim() ? [issue.message.trim()] : []);
+    return issues.length ? `${message.replace(/[.:]$/, "")}: ${issues.join("; ")}.` : message;
   }
   if (!Array.isArray(detail)) return fallback;
 

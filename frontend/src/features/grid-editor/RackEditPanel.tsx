@@ -247,7 +247,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
     const title =
       selectedCell == null
         ? t("rackEditNoCell")
-        : t(hasAnyRack ? "rackEditCell" : "rackEditAddCell", { x: String(selectedCell[0]), y: String(selectedCell[1]) });
+        : t(hasAnyRack ? "rackEditCell" : "rackEditAddCell", { x: String(selectedCell[0] + 1), y: String(selectedCell[1] + 1) });  // counted from 1, as under the grid
     // In gate mode, delete is per-cell — removes both entrance and exit. Otherwise single-rack.
     const showDelete = hasAnyRack;
 

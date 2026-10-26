@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The floor editor says why a layout cannot be saved: a missing exit read only
+  "store layout has errors." and now reads "Place at least one exit" (in the
+  chosen language; other layout problems show the server's reason). Other
+  structured API errors that list their issues name them too.
+- The floor editor counts cells from 1 everywhere: its panel said "Edit cell
+  (0, 6)" for the cell the grid called "column 1, row 7", and unnamed racks were
+  listed as "(0,0)".
 - A shopper's thought on the store floor wraps into a small card of at most
   three lines; a model's long thought ran as one line across the store and
   under the playback panel. Purchases still read on one line. Shoppers' group
