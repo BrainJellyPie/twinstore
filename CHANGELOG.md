@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Model providers** names each card's fields and buttons after its provider
+  for screen readers ("Save OpenAI key", "Test Anthropic (Claude)", "Ollama
+  endpoint"); every card's buttons read the same, and the endpoint and model
+  fields took their Save and Default buttons' words into their names
+  ("Endpoint Save", "Model Default").
 - A shelf capture's facing and remove buttons name their product for screen
   readers ("More facings of Coffee", "Remove Coffee"), as the row's category
   and price fields do; every row's buttons were read the same.

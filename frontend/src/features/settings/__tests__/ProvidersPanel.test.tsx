@@ -22,7 +22,7 @@ it("refreshes the run dialog's engine readiness after an API key is saved", asyn
   const invalidate = vi.spyOn(client, "invalidateQueries");
   render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
   fireEvent.change(await screen.findByLabelText("OpenAI API key"), { target: { value: " sk-test " } });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save OpenAI key" }));
   await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.engines() }));
   // The no-key banner and "needs a model" prompts follow the model setup, which a saved key changes.
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.modelSetup() });
@@ -37,7 +37,7 @@ it("shows a rejected key save on the card and keeps the typed key", async () => 
   render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
   const input = await screen.findByLabelText("OpenAI API key") as HTMLInputElement;
   fireEvent.change(input, { target: { value: "bad" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save OpenAI key" }));
   expect((await screen.findByRole("alert")).textContent).toBe("The key format is not valid for OpenAI.");
   expect(input.value).toBe("bad");
   client.clear();
@@ -48,7 +48,7 @@ it("shows a failed connection test without the error class name", async () => {
   vi.mocked(api.testModel).mockRejectedValue(new ApiError("Model gpt-mini is not available", 404));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
-  fireEvent.click(await screen.findByRole("button", { name: "Test" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Test OpenAI" }));
   expect(await screen.findByText("Model gpt-mini is not available")).toBeTruthy();
   expect(screen.queryByText(/ApiError/)).toBeNull();
   client.clear();
@@ -65,7 +65,7 @@ it("refreshes the provider badge after a failed test and shows the whole message
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
   expect(await screen.findByText("Ready")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Test" }));
+  fireEvent.click(screen.getByRole("button", { name: "Test OpenAI" }));
   expect(await screen.findByText("Key turned down")).toBeTruthy();
   expect(screen.queryByText("Ready")).toBeNull();
   const result = screen.getByTestId("provider-test-result");
@@ -94,8 +94,22 @@ it("moves focus to the key field after removing a saved key", async () => {
   vi.mocked(api.updateProvider).mockResolvedValue(openai);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
-  fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Remove OpenAI key" }));
   await waitFor(() => expect(api.updateProvider).toHaveBeenCalledWith("openai", { api_key: "" }));
   await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("OpenAI API key")));
+  client.clear();
+});
+
+it("names each field and button after its provider, without a button's text in a field's name", async () => {
+  const local: api.ProviderStatus = { ...openai, preset: { ...openai.preset, kind: "ollama" as never, label: "Ollama", default_api_base: "http://localhost:11434/v1", needs_key: false, local: true } };
+  vi.mocked(api.getProviders).mockResolvedValue([local]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+  expect(await screen.findByRole("textbox", { name: "Ollama endpoint" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Save Ollama endpoint" })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Ollama model" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Default Ollama model" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Test vision with Ollama" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Turn off Ollama" })).toBeTruthy();
   client.clear();
 });
