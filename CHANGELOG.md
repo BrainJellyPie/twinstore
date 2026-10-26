@@ -8,10 +8,13 @@
   The server trims a new name and refuses a blank one or one over 300
   characters.
 
-- The run dialog's summary names a custom situation and the ordinary day in the
-  selected language. It showed "Custom situation", or the server's English name
-  for the ordinary-day preset, in every language. Situations the user named keep
-  their names.
+- Keep package links from using a serving or nutrition-reference amount as
+  the product size. Exclude candidates that explicitly contradict the observed
+  net quantity in the same unit; preserve ordinary names and multipacks.
+
+- Keep calorie, energy and marked nutrition quantities from becoming exact
+  captured selling prices when no currency is printed. Preserve the label,
+  estimated-price review and existing product prices.
 
 - Keep bare product identifiers, batch numbers and marked expiry/manufacture
   dates from becoming exact captured selling prices. Preserve their printed
@@ -24,6 +27,11 @@
 - Give automatic starter-product selection readable currency amounts instead
   of unqualified stored integers, and require both ends of a requested price
   range. A cheaper product below the requested minimum is not a valid substitute.
+
+- The run dialog's summary names a custom situation and the ordinary day in the
+  selected language. It showed "Custom situation", or the server's English name
+  for the ordinary-day preset, in every language. Situations the user named keep
+  their names.
 
 - Shelf Lab's product slots can be filled from a list of the shelf's products
   as well as by clicking the photo, so a swap, extension or any other change
