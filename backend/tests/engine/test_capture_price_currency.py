@@ -26,6 +26,7 @@ CONFLICTS = [
     ("2.49 usd", "EUR"), ("２．４９ ＥＵＲ", "USD"), ("CAD $2.49", "USD"),
     ("CNY ¥300", "JPY"), ("USD 2.49 EUR", "USD"), ("$2.49 KRW", "KRW"),
     ("249 EUR cents", "USD"), ("₩", "USD"), ("USD", "KRW"),
+    ("CA$1.00", "USD"), ("HK$1.00", "USD"), ("US$1.00", "CAD"),
 ]
 
 
@@ -47,7 +48,7 @@ def test_matching_shared_or_unmarked_units_keep_existing_price_semantics(printed
 
 
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
-@pytest.mark.parametrize("printed,currency", CONFLICTS[:8])
+@pytest.mark.parametrize("printed,currency", CONFLICTS[:8] + CONFLICTS[-3:])
 def test_http_capture_and_cached_labels_keep_products_and_flag_foreign_prices(monkeypatch, tmp_path, mode, printed, currency):
     answer = dict(name="Cola 500ml", category="soft drink", price_text=printed, price=2.49, confidence=9)
     original, calls = llm_client.litellm.acompletion, []

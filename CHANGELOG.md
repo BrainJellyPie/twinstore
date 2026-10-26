@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recognize country-qualified dollar prices such as CA$, HK$ and US$ before
+  interpreting a captured tag. Foreign amounts remain estimated for review;
+  matching currencies keep their literal prices and existing discount/limit rules.
+
 - Retry structured model replies with duplicate JSON object keys instead of
   silently replacing earlier values, such as customer descriptions. Keep
   retries bounded and preserve usage accounting; older parsed-response caches

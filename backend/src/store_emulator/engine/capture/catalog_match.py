@@ -194,6 +194,9 @@ _PRICE_CURRENCY_SYMBOLS = {
 _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
+# These qualified dollar signs identify a currency; a bare dollar sign does not.
+_QUALIFIED_DOLLARS = {"US": "USD", "CA": "CAD", "AU": "AUD", "NZ": "NZD", "HK": "HKD", "SG": "SGD", "NT": "TWD"}
+_QUALIFIED_DOLLAR_RE = re.compile(rf"(?<![A-Za-z])({'|'.join(_QUALIFIED_DOLLARS)})\s*\$", re.IGNORECASE)
 _NON_SELLING_PREFIX_RE = re.compile(
     r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?"
     r"|earn(?:ed)?|rewards?|store\s+credit|points?|pts?\.?|was|msrp|rrp)"
@@ -336,6 +339,7 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
         # A bottle/can rate does not establish the price of the whole multipack.
         return None
     if (re.search(r"[-−–—]\s*(?:[$€£¥₩]|[A-Z]{3})?\s*$", before, re.IGNORECASE)
+            or re.search(r"[-−–—]\s*$", price_context[0])
             or after.startswith(("-", "−")) or before.endswith((".", ","))
             or "(" in before and ")" in after):
         return None
@@ -377,7 +381,10 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     reading is kept unless it is more than 6× off.
     """
     code = currency.upper()
-    printed = unicodedata.normalize("NFKC", label.price_text)
+    printed = _QUALIFIED_DOLLAR_RE.sub(
+        lambda match: _QUALIFIED_DOLLARS[match.group(1).upper()] + "$",
+        unicodedata.normalize("NFKC", label.price_text),
+    )
     if any(match.upper() != code for match in _PRICE_CURRENCY_CODE_RE.findall(printed)):
         return None
     if code in _PRICE_CURRENCY_SYMBOLS and any(
@@ -385,7 +392,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     ):
         return None
     zero_decimal = code in ZERO_DECIMAL
-    parsed = _parse_number(label.price_text, multipack=_is_multipack(label)) if label.price_text else None
+    parsed = _parse_number(printed, multipack=_is_multipack(label)) if printed else None
     if parsed is None and any(character.isdigit() for character in label.price_text):
         # A numeric guess must not override an explicitly ambiguous/negative printed tag.
         return None
