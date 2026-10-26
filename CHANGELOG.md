@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A **Skip to content** link is the first thing Tab reaches on every page,
+  jumping past the header and banner to the page itself. After the command
+  palette (or anything else) opens another page, keyboard focus continues in
+  that page instead of dropping back to the top of the document, so the next
+  Tab no longer starts at the logo.
 - Text on the app's cyan-violet-pink gradient is readable in both themes. In
   dark mode the gradient's bright colours carry dark text and icons (white
   read at 1.6–2.8:1): shopper initials, **Track a shopper**, the follow and

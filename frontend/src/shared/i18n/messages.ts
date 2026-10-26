@@ -67,6 +67,7 @@ export const messages = {
   jumpTo: ["Jump to…", "바로 이동…", "跳转到…", "移動…", "Ir a…", "Aller à…"],
   commandPalette: ["Command palette", "명령 검색", "命令面板", "コマンドパレット", "Paleta de comandos", "Palette de commandes"],
   commandDescription: ["Search stores, pages and actions", "매장, 화면, 작업을 검색하세요", "搜索门店、页面和操作", "店舗、ページ、操作を検索", "Busca tiendas, páginas y acciones", "Recherchez des magasins, pages et actions"],
+  skipToContent: ["Skip to content", "본문으로 건너뛰기", "跳到主要内容", "本文へスキップ", "Saltar al contenido", "Aller au contenu"],
   commandPlaceholder: ["Jump to a store, page or action…", "매장, 화면, 작업 검색…", "搜索门店、页面或操作…", "店舗、ページ、操作を検索…", "Busca una tienda, página o acción…", "Rechercher un magasin, une page, une action…"],
   command: ["Command", "명령", "命令", "コマンド", "Comando", "Commande"],
   commandResults: ["Commands", "명령 목록", "命令列表", "コマンド一覧", "Comandos", "Commandes"],
