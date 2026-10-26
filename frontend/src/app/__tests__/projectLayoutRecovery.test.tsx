@@ -161,3 +161,14 @@ it("offers another explicit retry after a repeated failure", async () => {
   expect((screen.getByRole("button", { name: "Reload layouts" }) as HTMLButtonElement).disabled).toBe(false);
   expect(screen.queryByRole("status")).toBeNull(); expect(api.getSetups).toHaveBeenCalledTimes(2);
 });
+
+it("says the layout is loading instead of leaving the store page blank", async () => {
+  const { client } = await mount([{ id: "a1", name: "a1", status: "draft", parentId: null, runId: null, created_at: "2026-01-01T00:00:00Z" } as api.SetupSummary]);
+  const pending = deferred<api.SetupDetail>();
+  client.removeQueries({ queryKey: queryKeys.setup("alpha", "a1") });
+  vi.mocked(api.getSetup).mockReturnValue(pending.promise);
+  await act(async () => { await client.resetQueries({ queryKey: queryKeys.setup("alpha", "a1") }); });
+  expect(await screen.findByText("Loading…")).toBeTruthy();
+  await act(async () => { pending.resolve(setup("a1")); });
+  expect(await screen.findByTestId("setup")).toBeTruthy();
+});

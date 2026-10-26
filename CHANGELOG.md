@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The store page says "Loading…" while it opens, while a layout not yet seen
+  loads and while a previous run opens, instead of going blank (header and
+  banner only) until the data arrives.
+
 - When a layout optimization finishes, keyboard focus moves to its verdict
   ("Validated on fresh shoppers …"), which replaces the Start button and the
   progress, instead of falling back to the dialog. A short search's chart
