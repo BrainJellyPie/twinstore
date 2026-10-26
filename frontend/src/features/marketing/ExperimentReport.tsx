@@ -12,7 +12,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import type { ExperimentReport as Report, FocusOutcome, Variant, VariantResult } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { visitorsPerDayText } from "@/shared/utils/estimate";
 import { useI18n } from "@/shared/i18n/i18n";
 import { richText } from "@/shared/i18n/richText";
@@ -24,7 +24,7 @@ import { TestOnline } from "./TestOnline";
 import { segmentLabel } from "@/shared/i18n/personaLabels";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 
-const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)}%`;
+const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${formatPercent(Math.abs(v), digits)}`;
 
 function metric(v: VariantResult, name: string) {
   return v.vs_control.find((m) => m.metric === name);
@@ -48,7 +48,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
   variants?: Variant[];
 }) {
   const { locale, t } = useI18n();
-  const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}` });
+  const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${formatDecimal(Math.abs(v * 100), 1)}` });
   const money = (v: number) => formatMoney(v, r.currency);
   const signedMoney = (v: number) => `${v >= 0 ? "+" : "−"}${formatMoney(Math.abs(v), r.currency)}`;
   const arms = [r.control, ...r.variants];
@@ -123,8 +123,8 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
               </div>
               <dl className="space-y-1.5 text-sm">
                 <Kpi label={t("mkRevenuePerVisitor")} value={money(a.revenue_per_visitor)} delta={spend ? spend.mean_a === 0 ? t("mkAmountFromZero", { amount: signedMoney(spend.diff) }) : pct(spend.rel_diff) : null} up={spend ? spend.ci_low > 0 : null} down={spend ? spend.ci_high < 0 : null} />
-                <Kpi label={t("mkConversion")} value={`${(a.conversion * 100).toFixed(1)}%`} delta={bought ? pp(bought.diff) : null} up={bought ? bought.ci_low > 0 : null} down={bought ? bought.ci_high < 0 : null} />
-                <Kpi label={t("mkUnitsPerVisitor")} value={a.units_per_visitor.toFixed(2)} delta={units ? units.mean_a === 0 ? t("mkAmountFromZero", { amount: `${units.diff >= 0 ? "+" : ""}${units.diff.toFixed(2)}` }) : pct(units.rel_diff) : null} up={units ? units.ci_low > 0 : null} down={units ? units.ci_high < 0 : null} />
+                <Kpi label={t("mkConversion")} value={formatPercent(a.conversion, 1)} delta={bought ? pp(bought.diff) : null} up={bought ? bought.ci_low > 0 : null} down={bought ? bought.ci_high < 0 : null} />
+                <Kpi label={t("mkUnitsPerVisitor")} value={formatDecimal(a.units_per_visitor, 2)} delta={units ? units.mean_a === 0 ? t("mkAmountFromZero", { amount: `${units.diff >= 0 ? "+" : ""}${formatDecimal(units.diff, 2)}` }) : pct(units.rel_diff) : null} up={units ? units.ci_low > 0 : null} down={units ? units.ci_high < 0 : null} />
               </dl>
               {r.operations && (
                 <p className="mt-2 text-xs text-muted-foreground tabular-nums">
@@ -151,7 +151,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
           <h3 className="text-sm font-semibold">{t("mkPriceResponse", { name: r.price_response.name })}</h3>
           <p className="mb-2 text-xs text-muted-foreground">
             {t("mkPriceResponseHint")}
-            {r.price_response.elasticity != null && richText(t("mkElasticity"), { value: <b className="num text-foreground">{r.price_response.elasticity.toFixed(2)}</b> })}
+            {r.price_response.elasticity != null && richText(t("mkElasticity"), { value: <b className="num text-foreground">{formatDecimal(r.price_response.elasticity, 2)}</b> })}
           </p>
           <DemandChart response={r.price_response} currency={r.currency} control={r.control.name} />
           <table className="mt-2 w-full text-xs">
@@ -161,7 +161,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
                 <tr key={p.arm} className="border-t border-foreground/[0.06]">
                   <td className="py-1">{p.arm === r.control.name ? t("mkControl") : p.arm}</td><td className="text-right">{money(p.price)}</td>
                   {/* The control is the reference the intervals are measured from; it has none of its own. */}
-                  <td className="text-right">{(p.units * 100).toFixed(1)}{p.arm !== r.control.name && <> <span className="text-muted-foreground">[{(p.units_low * 100).toFixed(1)}, {(p.units_high * 100).toFixed(1)}]</span></>}</td>
+                  <td className="text-right">{formatDecimal(p.units * 100, 1)}{p.arm !== r.control.name && <> <span className="text-muted-foreground">[{formatDecimal(p.units_low * 100, 1)}, {formatDecimal(p.units_high * 100, 1)}]</span></>}</td>
                   <td className="text-right">{money(p.revenue * 100)}{p.price === r.price_response!.best_price ? " ★" : ""}</td>
                 </tr>
               ))}
@@ -184,7 +184,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
             {focusSkus.map((sku) => (
               <div key={sku}>
                 <div className="mb-1 text-sm font-medium">{sku === "*" ? t("mkAllTracked") : focusName(sku)}</div>
-                <LiftChart rows={unitRows(sku)} format={(v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`} axisLabel={t("mkUnitsPer100Axis")} />
+                <LiftChart rows={unitRows(sku)} format={(v) => `${v >= 0 ? "+" : "−"}${formatDecimal(Math.abs(v), 1)}`} axisLabel={t("mkUnitsPer100Axis")} />
               </div>
             ))}
           </div>
@@ -229,7 +229,7 @@ function SegmentTable({ report: r }: { report: Report }) {
   const metrics = (["spend", "focus_units"] as const).filter((m) => r.variants.some((v) => v.segments?.some((s) => s.metric === m)));
   const segments = [...new Set(r.variants.flatMap((v) => (v.segments ?? []).map((s) => s.segment)))];
   if (!segments.length) return null;
-  const fmt = (m: string, d: number) => (m === "spend" ? `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), r.currency)}` : `${d >= 0 ? "+" : "−"}${Math.abs(d * 100).toFixed(1)}`);
+  const fmt = (m: string, d: number) => (m === "spend" ? `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), r.currency)}` : `${d >= 0 ? "+" : "−"}${formatDecimal(Math.abs(d * 100), 1)}`);
   return (
     <section className="rounded-2xl border bg-card p-4">
       <h3 className="text-sm font-semibold">{t("mkBySegment")}</h3>
@@ -310,7 +310,7 @@ function FocusTable({ variants, currency }: { variants: VariantResult[]; currenc
   const { t } = useI18n();
   const rows: (FocusOutcome & { arm: string })[] = variants.flatMap((v) => v.focus.filter((f) => f.metric !== "units").map((f) => ({ ...f, arm: v.name })));
   if (!rows.length) return null;
-  const fmt = (f: FocusOutcome, v: number) => (f.metric === "spend" ? formatMoney(v * 100, currency) : `${(v * 100).toFixed(1)}%`);
+  const fmt = (f: FocusOutcome, v: number) => (f.metric === "spend" ? formatMoney(v * 100, currency) : formatPercent(v, 1));
   return (
     <details className="mt-4">
       <summary className="cursor-pointer text-xs text-muted-foreground">{t("mkFocusTableSummary")}</summary>
@@ -328,7 +328,7 @@ function FocusTable({ variants, currency }: { variants: VariantResult[]; currenc
                 <td className="pr-3 text-right">{fmt(f, f.control)}</td>
                 <td className="pr-3 text-right">{fmt(f, f.variant)}</td>
                 <td className="pr-3 text-right">{t("mkRangeTo", { low: fmt(f, f.ci_low), high: fmt(f, f.ci_high) })}</td>
-                <td className="text-right">{Math.round(f.prob_better * 100)}%</td>
+                <td className="text-right">{formatPercent(f.prob_better, 0)}</td>
               </tr>
             ))}
           </tbody>

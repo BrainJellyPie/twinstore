@@ -22,6 +22,7 @@ import { ModelWaiting } from "@/shared/components/ModelWaiting";
 
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, labelOf, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
+import { formatPercent } from "@/shared/utils/money";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
 const DAY_LABELS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekday", weekend: "areaDayWeekend", holiday: "areaDayHoliday" };
@@ -326,8 +327,8 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaDensity")}</span>
           <input type="range" min={0} max={1} step={0.01} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary"
-            aria-valuetext={`${Math.round(spec.density * 100)}%`} />
-          <span className="w-14 text-right tabular-nums">{Math.round(spec.density * 100)}%</span>
+            aria-valuetext={formatPercent(spec.density, 0)} />
+          <span className="w-14 text-right tabular-nums">{formatPercent(spec.density, 0)}</span>
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRivals")}</span>
@@ -419,7 +420,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
     <div className="space-y-3 text-xs">
       <div className="grid grid-cols-2 gap-2">
         <Stat label={t("areaVisitorsPerDay")} value={Math.round(demand.total_daily_visitors).toLocaleString(locale)} hint={t("areaViaNearby", { count: Math.round(demand.linked_visitors) })} />
-        <Stat label={t("areaMarketShare")} value={`${(demand.market_share * 100).toFixed(1)}%`} hint={t("areaShareHint")} />
+        <Stat label={t("areaMarketShare")} value={formatPercent(demand.market_share, 1)} hint={t("areaShareHint")} />
         <Stat label={t("areaHalfWithin")} value={`${Math.round(demand.catchment_radius_50_m)} m`} hint={t("areaEightyWithin", { distance: Math.round(demand.catchment_radius_80_m) })} />
         <Stat label={t("areaAvgWalk")} value={`${Math.round(demand.avg_walk_distance_m)} m`} hint={t("areaWalkMinutes", { minutes: Math.max(1, Math.round(demand.avg_walk_distance_m / 80)) })} icon={Footprints} />
       </div>
@@ -484,7 +485,7 @@ function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppe
             </td>
             <td className="text-right tabular-nums text-muted-foreground">{Math.round(r.distance_m)} m</td>
             <td className={cn("text-right tabular-nums", r.role === "complement" ? "text-positive" : r.role === "competitor" ? "text-negative" : "text-muted-foreground")}>
-              {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{r.effect_on_focal_pct.toFixed(1)}%)
+              {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{formatPercent(r.effect_on_focal_pct / 100, 1)})
             </td>
             <td className="pl-1 text-right">
               <button type="button" onClick={() => onAskShoppers(r)} title={t("areaAskShoppers")}

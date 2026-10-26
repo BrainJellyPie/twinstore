@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getPilotCollection, pilotFollowupCsvUrl, pilotKeys, type CollectionCounts, type PilotCollectionReport } from "@/shared/api/fieldPilot";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
+import { formatPercent, formatDecimal } from "@/shared/utils/money";
 
-const rate = (value: number | null, unknown: string) => value == null ? unknown : `${(value * 100).toFixed(1)}%`;
+const rate = (value: number | null, unknown: string) => value == null ? unknown : formatPercent(value, 1);
 
 export function PilotCollectionChecks({ projectId, pilotId }: { projectId: string; pilotId: string }) {
   const { t } = useI18n();
@@ -50,7 +51,7 @@ function CollectionReport({ projectId, report: r }: { projectId: string; report:
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>{t("mkColArmShort")}</th><th>{t("mkColEnrolledPlanned")}</th><th>{t("mkColCompleteEnrolled")}</th><th>{t("mkColPurchaseUnknown")}</th><th>{t("mkColDeliveryUnknown")}</th><th>{t("mkColNonDelivery")}</th></tr></thead>
         <tbody><CountsRow label="A" counts={b.a} /><CountsRow label="B" counts={b.b} /></tbody>
       </table></div>
-      <p className="mt-2 text-xs text-muted-foreground">{t("mkMissingnessGap", { value: b.purchase_missing_gap == null ? t("studioUnknown") : t("studioPp", { value: (b.purchase_missing_gap * 100).toFixed(1) }) })}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{t("mkMissingnessGap", { value: b.purchase_missing_gap == null ? t("studioUnknown") : t("studioPp", { value: formatDecimal(b.purchase_missing_gap * 100, 1) }) })}</p>
     </details>)}</div>
     <section className="space-y-3">
       <h4 className="font-semibold">{t("mkFollowUp")}</h4>

@@ -5,6 +5,7 @@ import { Upload } from "lucide-react";
 import { getMovementReport, uploadMovement } from "@/shared/api/movement";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
+import { formatPercent, formatDecimal } from "@/shared/utils/money";
 
 function Heatmap({ values, denominator, label, width, height, maxValue }: {
   values: number[][]; denominator: number; label: string; width: number; height: number; maxValue: number;
@@ -17,7 +18,7 @@ function Heatmap({ values, denominator, label, width, height, maxValue }: {
         const value = denominator > 0 ? count / denominator : 0;
         return <rect key={`${x},${y}`} x={x} y={y} width={0.95} height={0.95}
           fill={value > 0 ? `rgba(14, 116, 144, ${0.15 + 0.85 * value / Math.max(maxValue, 1e-12)})` : "transparent"}>
-          <title>{`${label}: (${x}, ${y}) · ${(100 * value).toFixed(1)}%`}</title>
+          <title>{`${label}: (${x}, ${y}) · ${formatPercent(value, 1)}`}</title>
         </rect>;
       }))}
     </svg>
@@ -79,8 +80,8 @@ export function MovementSection({ projectId, runId }: { projectId: string; runId
     {report && real && sim && <div className="space-y-2 text-xs">
       <p>{t("movementSummary", { tracks: real.tracks, shoppers: sim.tracks, samples: real.samples })}</p>
       <div className="grid grid-cols-2 gap-2 rounded border p-2">
-        <span>{t("movementVisitation")} <b className="block tabular-nums">{report.visitation_similarity?.toFixed(3) ?? t("notAvailable")}</b></span>
-        <span>{t("movementOccupancy")} <b className="block tabular-nums">{report.occupancy_similarity?.toFixed(3) ?? t("notAvailable")}</b></span>
+        <span>{t("movementVisitation")} <b className="block tabular-nums">{report.visitation_similarity == null ? t("notAvailable") : formatDecimal(report.visitation_similarity, 3)}</b></span>
+        <span>{t("movementOccupancy")} <b className="block tabular-nums">{report.occupancy_similarity == null ? t("notAvailable") : formatDecimal(report.occupancy_similarity, 3)}</b></span>
       </div>
       <label>{t("movementMapLayer")}
         <select aria-label={t("movementMapLayerAria")} value={layer} onChange={(e) => setLayer(e.target.value as typeof layer)} className="ml-2 rounded border bg-background px-2 py-1">
@@ -92,14 +93,14 @@ export function MovementSection({ projectId, runId }: { projectId: string; runId
         <Heatmap values={real[layer]} denominator={denominatorReal} label={t("movementObserved")} width={report.grid_size[0]} height={report.grid_size[1]} maxValue={maxValue} />
         <Heatmap values={sim[layer]} denominator={denominatorSim} label={t("movementSimulated")} width={report.grid_size[0]} height={report.grid_size[1]} maxValue={maxValue} />
       </div>
-      <p className="text-muted-foreground">{t("movementScale", { max: (maxValue * 100).toFixed(1) })}</p>
-      <p>{t("movementRetained", { seconds: real.observed_seconds.toFixed(1), gaps: real.excluded_gaps, excluded: real.excluded_seconds.toFixed(1) })}</p>
+      <p className="text-muted-foreground">{t("movementScale", { max: formatDecimal(maxValue * 100, 1) })}</p>
+      <p>{t("movementRetained", { seconds: formatDecimal(real.observed_seconds, 1), gaps: real.excluded_gaps, excluded: formatDecimal(real.excluded_seconds, 1) })}</p>
       <table className="w-full text-left tabular-nums">
         <caption className="mb-1 text-left font-medium">{t("movementLargestGaps")}</caption>
         <thead><tr><th>{t("movementCell")}</th><th>{t("movementReal")}</th><th>{t("movementSim")}</th><th>{t("movementGap")}</th></tr></thead>
         <tbody>{report.largest_gaps.slice(0, 5).map((g) => <tr key={`${g.x},${g.y}`}>
-          <td>({g.x}, {g.y})</td><td>{(100 * g.observed_visit_rate).toFixed(1)}%</td><td>{(100 * g.simulated_visit_rate).toFixed(1)}%</td>
-          <td>{g.difference > 0 ? "+" : ""}{(100 * g.difference).toFixed(1)}</td>
+          <td>({g.x}, {g.y})</td><td>{formatPercent(g.observed_visit_rate, 1)}</td><td>{formatPercent(g.simulated_visit_rate, 1)}</td>
+          <td>{g.difference > 0 ? "+" : ""}{formatDecimal(100 * g.difference, 1)}</td>
         </tr>)}</tbody>
       </table>
       <details className="text-muted-foreground"><summary>{t("movementAssumptions")}</summary>

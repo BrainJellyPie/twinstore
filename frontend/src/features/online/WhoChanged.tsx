@@ -11,6 +11,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 import { OUTCOME_LABELS, PAGE_LABELS, segmentValueLabel } from "./labels";
+import { formatPercent, formatDecimal } from "@/shared/utils/money";
 
 const DIMENSIONS: { id: SegmentDimension; label: MessageKey }[] = [
   { id: "mission", label: "onSegMission" }, { id: "device", label: "onSegDevice" },
@@ -28,7 +29,7 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
   const [expanded, setExpanded] = useState(false);
   const control = result.variants[0]?.site_name ?? "";
   const names = new Map(result.shoppers.map((s) => [s.id, s.identity]));
-  const points = (x: number) => `${x >= 0 ? "+" : "−"}${(Math.abs(x) * 100).toFixed(1)}${t("onPointsSuffix")}`;
+  const points = (x: number) => `${x >= 0 ? "+" : "−"}${formatDecimal(Math.abs(x) * 100, 1)}${t("onPointsSuffix")}`;
   const signedMoney = (x: number) => `${x >= 0 ? "+" : "−"}${money(Math.abs(x))}`;
   const ending = (outcome: SwitchRow["control_outcome"], total: number, page: SwitchRow["control_exit"]) =>
     `${t(OUTCOME_LABELS[outcome])}${total ? ` · ${money(total)}` : ""} · ${t(PAGE_LABELS[page])}`;
@@ -76,8 +77,8 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
                       <tr key={s.value} className={cn("border-t", clear && (s.conversion_diff > 0 ? "tone-good" : "tone-bad"))}>
                         <td className="py-1 pr-2">{segmentValueLabel(dimension, s.value, t)}</td>
                         <td className="tabular-nums">{s.n}</td>
-                        <td className="tabular-nums">{(s.control_conversion * 100).toFixed(1)}%</td>
-                        <td className="tabular-nums">{(s.variant_conversion * 100).toFixed(1)}%</td>
+                        <td className="tabular-nums">{formatPercent(s.control_conversion, 1)}</td>
+                        <td className="tabular-nums">{formatPercent(s.variant_conversion, 1)}</td>
                         <td className="tabular-nums">
                           {points(s.conversion_diff)}
                           {s.ci_low !== null && s.ci_high !== null && (

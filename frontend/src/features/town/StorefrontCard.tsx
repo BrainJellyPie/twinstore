@@ -13,6 +13,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { richText } from "@/shared/i18n/richText";
 
 import { VENUE_LABELS } from "./townStyle";
+import { formatPercent, formatDecimal } from "@/shared/utils/money";
 
 const SCORES = [
   ["signage", "areaScoreSign"],
@@ -94,11 +95,11 @@ function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
           <div className="flex items-end justify-between">
             <div>
               <div className="eyebrow">{t("areaAppeal")}</div>
-              <div className="num text-3xl font-medium tracking-[-0.05em]">{appeal.overall.toFixed(1)}<span className="text-base text-muted-foreground">/10</span></div>
+              <div className="num text-3xl font-medium tracking-[-0.05em]">{formatDecimal(appeal.overall, 1)}<span className="text-base text-muted-foreground">/10</span></div>
             </div>
             <div className="text-right text-xs">
-              <div className="text-muted-foreground">{richText(t("areaPull"), { before: result!.previous_attractiveness.toFixed(2), after: <span className="num font-semibold text-foreground">{appeal.attractiveness.toFixed(2)}</span> })}</div>
-              <div className={cn("num font-semibold", delta >= 0 ? "text-positive" : "text-negative")}>{delta >= 0 ? "+" : ""}{Math.round(delta * 100)}%</div>
+              <div className="text-muted-foreground">{richText(t("areaPull"), { before: formatDecimal(result!.previous_attractiveness, 2), after: <span className="num font-semibold text-foreground">{formatDecimal(appeal.attractiveness, 2)}</span> })}</div>
+              <div className={cn("num font-semibold", delta >= 0 ? "text-positive" : "text-negative")}>{delta >= 0 ? "+" : ""}{formatPercent(delta, 0)}</div>
             </div>
           </div>
           {SCORES.map(([key, label]) => (
@@ -107,7 +108,7 @@ function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
                 <div className="aurora-gradient h-full rounded-full" style={{ width: `${appeal[key] * 10}%` }} />
               </div>
-              <span className="num w-7 text-right">{appeal[key].toFixed(0)}</span>
+              <span className="num w-7 text-right">{formatDecimal(appeal[key], 0)}</span>
             </div>
           ))}
           <p className="text-[0.72rem] text-muted-foreground">{appeal.method === "vlm" ? `${appeal.model}: ` : ""}{appeal.reasons}</p>

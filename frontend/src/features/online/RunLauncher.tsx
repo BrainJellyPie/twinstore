@@ -14,6 +14,7 @@ import {
 } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
 import { useI18n } from "@/shared/i18n/i18n";
@@ -256,11 +257,11 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
         <h3 className="font-semibold">{t("onRunWho")}</h3>
         <div className="grid grid-cols-3 gap-2 text-xs">
           <label className="flex flex-col gap-1"><span className="text-muted-foreground">{t("onRunShoppers")}</span>
-            <Input type="number" min={1} max={500} value={shoppers} onChange={(e) => setShoppers(Math.min(500, Math.max(1, Number(e.target.value) || 1)))} /></label>
+            <WholeNumberInput min={1} max={500} value={shoppers} onChange={setShoppers} /></label>
           <label className="flex flex-col gap-1"><span className="text-muted-foreground">{t("onRunSeed")}</span>
             <Input type="number" value={seed} onChange={(e) => setSeed(Math.trunc(Number(e.target.value) || 0))} /></label>
           <label className="flex flex-col gap-1"><span className="text-muted-foreground">{t("onRunMaxSteps")}</span>
-            <Input type="number" min={3} max={80} value={maxSteps} onChange={(e) => setMaxSteps(Math.min(80, Math.max(3, Number(e.target.value) || 3)))} /></label>
+            <WholeNumberInput min={3} max={80} value={maxSteps} onChange={setMaxSteps} /></label>
         </div>
         <fieldset className="space-y-1">
           <legend className="text-xs font-medium">{t("onRunMissions")}</legend>

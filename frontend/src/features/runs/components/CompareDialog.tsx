@@ -21,7 +21,7 @@ import {
 } from "@/shared/components/ui/select";
 import { explainComparison, type ComparisonReport, type MetricComparison, type RunListItem } from "@/shared/api/client";
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
-import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { messages, type Locale, type MessageKey } from "@/shared/i18n/messages";
 import { translate } from "@/shared/i18n/translate";
@@ -268,12 +268,12 @@ function signed(ratio: number): string {
 
 function signedChange(m: MetricComparison, delta: number, code: string, locale: Locale): string {
   if (m.mean_a) return signed(delta / m.mean_a);
-  const value = m.metric === "bought" ? formatPercent(delta).replace("%", translate(locale, "cmpPoints")) : fmt(m, delta, code);
+  const value = m.metric === "bought" ? `${formatDecimal(delta * 100, 1)}${translate(locale, "cmpPoints")}` : fmt(m, delta, code);
   return delta > 0 ? `+${value}` : value;
 }
 
 function fmt(m: MetricComparison, v: number, code: string): string {
   if (m.metric === "bought") return formatPercent(v);
   if (m.metric === "spend" || m.metric === "impulse_spend") return formatMoney(v, code);
-  return v.toFixed(v >= 100 ? 0 : 2);
+  return formatDecimal(v, v >= 100 ? 0 : 2);
 }

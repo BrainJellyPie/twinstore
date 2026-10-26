@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { useLocale } from "@/shared/i18n/i18n";
-import { currencyCode, formatMoney, formatPercent, majorUnitText, minorUnitDivisor, toMinor } from "../money";
+import { currencyCode, formatDecimal, formatMoney, formatPercent, majorUnitText, minorUnitDivisor, toMinor } from "../money";
 
 describe("money", () => {
   it("maps the legacy USD_CENTS label to USD", () => {
@@ -18,6 +18,12 @@ describe("money", () => {
     expect(formatMoney(549, "USD")).toContain("5.49");
     expect(formatMoney(1500, "KRW")).toContain("1,500");
     expect(formatPercent(0.1234)).toBe("12.3%");
+    expect(formatPercent(0.1234, 1, "fr").replace(/\s/g, " ")).toBe("12,3 %");
+    expect(formatPercent(0.375, 0, "ko")).toBe("38%");
+    expect(formatPercent(-0.0004)).toBe("0.0%");
+    expect(formatDecimal(0.5, 2)).toBe("0.50");
+    expect(formatDecimal(0.5, 1, "fr")).toBe("0,5");
+    expect(formatDecimal(1234.5, 1, "es").replace(/\s/g, " ")).toMatch(/^1[ .]?234,5$/);
   });
 });
 

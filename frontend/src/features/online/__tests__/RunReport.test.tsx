@@ -40,6 +40,7 @@ function mount(n: number, diff = 0.04, low: number | null = 0, high: number | nu
       attributed_revenue: 0, units_sold: 0, cost: 10, roas: 0 }];
     summary.survey = { responses: 1, satisfaction: 4, ease: 4, nps: 0, would_return: 1, frustrations: [], improvements: [] };
     view.result!.rival_name = "Other shop";
+    summary.clicks = [{ page: "home", kind: "open_product", device: "desktop", x: 0.5, y: 0.5 }];
   }
   vi.mocked(online.getRun).mockResolvedValue(view);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -102,7 +103,7 @@ it("continues keyboard focus in the section a report link jumps to", async () =>
   expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
 });
 
-it.each(["online-ads", "online-rival", "online-surveys"])("focuses the optional %s section after its link is activated", async (id) => {
+it.each(["online-ads", "online-rival", "online-surveys", "online-clicks"])("focuses the optional %s section after its link is activated", async (id) => {
   Element.prototype.scrollIntoView = vi.fn();
   mount(100, .04, 0, .08, true);
   await screen.findByText("Study");

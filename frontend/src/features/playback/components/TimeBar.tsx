@@ -10,6 +10,7 @@ import { paletteGradient } from "@/features/store-viewer/utils/heatmapPalette";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { clockTime, weekdayShort } from "@/shared/i18n/timeFormat";
+import { formatPercent } from "@/shared/utils/money";
 
 interface Props {
   minTime: number;
@@ -188,7 +189,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             aria-expanded={!collapsed}
             aria-label={collapsed ? t("pbExpand") : t("pbCollapse")}
           >
-            {Math.round(progress * 100)}% · {collapsed ? t("pbMore") : t("pbLess")}
+            {formatPercent(progress, 0)} · {collapsed ? t("pbMore") : t("pbLess")}
             <ChevronDown className={cn("size-3 transition-transform", !collapsed && "rotate-180")} />
           </button>
           <span>{clockTime(maxTime, locale)}</span>

@@ -176,7 +176,7 @@ function ProductCard({ projectId, asset, products, setupId, onDeleted }: {
           onClick={() => (confirm ? del.mutate() : setConfirm(true))}
           onBlur={() => setConfirm(false)}
           className={cn("absolute top-2 right-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.68rem] transition-opacity",
-            confirm ? "bg-destructive text-white dark:text-neutral-950" : "bg-black/55 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100")}
+            confirm ? "bg-destructive text-white dark:text-neutral-950" : "bg-black/55 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100")}
           aria-label={confirm ? t("mkDeleteConfirm") : t("mkDeleteJob", { name: asset.name })}
         >
           <Trash2 className="size-3" /> {confirm ? t("mkDeleteConfirm") : ""}

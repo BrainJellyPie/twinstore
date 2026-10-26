@@ -11,6 +11,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
 
 import { BACKEND_LABEL, isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
+import { formatPercent } from "@/shared/utils/money";
 
 const STATE_LABEL: Record<ModelSetup["local"]["state"], MessageKey> = {
   off: "localStateOff",
@@ -127,7 +128,7 @@ export function LocalModelPanel() {
             <div className="h-1.5 w-40 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
               <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${Math.round(local.progress * 100)}%` }} />
             </div>
-            <span className="num text-xs text-muted-foreground">{Math.round(local.progress * 100)}%</span>
+            <span className="num text-xs text-muted-foreground">{formatPercent(local.progress, 0)}</span>
           </div>
         )}
         {local.state === "ready" && <span className="text-xs text-muted-foreground">{t("localPickInRun", { model: local.model_ref })}</span>}

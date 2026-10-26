@@ -7,7 +7,7 @@ import { ArrowDownRight, ArrowUpRight, Columns2, Download, FileText, Maximize2, 
 import type { OnlineRunResult, OnlineRunStatus } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
-import { currencyCode, formatMoney } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { useCountUp } from "./useCountUp";
@@ -52,7 +52,7 @@ export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onComp
   const running = status.status === "pending" || status.status === "running";
   const v = result?.variants ?? [];
   const call = result ? verdict(result) : null;
-  const points = (x: number) => `${x >= 0 ? "+" : "−"}${(Math.abs(x) * 100).toFixed(1)}${t("onPointsSuffix")}`;
+  const points = (x: number) => `${x >= 0 ? "+" : "−"}${formatDecimal(Math.abs(x) * 100, 1)}${t("onPointsSuffix")}`;
   const chip = "rounded-full border border-white/15 bg-white/8 px-2.5 py-0.5 text-white/85 backdrop-blur";
 
   return (
@@ -191,7 +191,7 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
         </svg>
         <div className="absolute inset-0 grid place-items-center text-center">
           <div>
-            <div className="text-2xl font-semibold tabular-nums tracking-tight" aria-hidden>{(shown * 100).toFixed(1)}%</div>
+            <div className="text-2xl font-semibold tabular-nums tracking-tight" aria-hidden>{formatPercent(shown, 1)}</div>
             <div className="text-[0.68rem] tracking-wide text-white/70 uppercase" aria-hidden>{t("onKpiConversion")}</div>
           </div>
         </div>
@@ -203,7 +203,7 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
           {winner && <Trophy className="size-3.5 shrink-0 text-amber-300" aria-label={t("onVerdictBest")} />}
         </div>
         <div className="text-xs text-white/65">{index === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + index) })}</div>
-        <span className="sr-only">{t("onKpiConversion")}: {(conversion * 100).toFixed(1)}%</span>
+        <span className="sr-only">{t("onKpiConversion")}: {formatPercent(conversion, 1)}</span>
         <div className="mt-2 text-xl font-semibold tabular-nums tracking-tight">{formatMoney(Math.round(money), currencyCode(currency))}</div>
         <div className="text-xs text-white/70">{t("onKpiRevenue")} · {t("onHeroOrders", { count: orders })} · {t("onHeroOfVisits", { visits })}</div>
         {delta && (

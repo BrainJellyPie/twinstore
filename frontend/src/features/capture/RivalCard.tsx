@@ -10,7 +10,7 @@ import type { CaptureResult } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { richText } from "@/shared/i18n/richText";
 
@@ -37,7 +37,7 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
   const labeled = result.items.some((i) => i.labeled);
   const field = "h-9 rounded-xl border bg-card/60 px-2.5 text-xs";
   const pct = c?.price_index != null ? Math.round((c.price_index - 1) * 100) : null;
-  const priceIndex = c?.price_index == null ? "–" : c.price_index > 0 && c.price_index < 0.01 ? "<0.01" : c.price_index.toFixed(2);
+  const priceIndex = c?.price_index == null ? "–" : c.price_index > 0 && c.price_index < 0.01 ? `<${formatDecimal(0.01, 2)}` : formatDecimal(c.price_index, 2);
 
   return (
     <section className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3 text-sm">
@@ -70,7 +70,7 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
             </div>
             <div className="min-w-0 rounded-xl border border-glass-border p-2.5">
               <div className="eyebrow">{t("capOverlap")}</div>
-              <div className="num text-2xl font-medium tracking-[-0.04em]">{Math.round(c.overlap * 100)}%</div>
+              <div className="num text-2xl font-medium tracking-[-0.04em]">{formatPercent(c.overlap, 0)}</div>
               <div className="text-xs text-muted-foreground">{t("capOverlapCount", { matched: c.matched, total: c.rival_products })}</div>
             </div>
           </div>
@@ -99,11 +99,11 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
           {report?.match_note && <p className="text-xs text-muted-foreground">{report.match_note}</p>}
           {venueId && c.suggested_pull_factor != null && (
             <Button className="w-full gap-2" disabled={run.isPending} onClick={() => compare(true)}>
-              {t("capApplyPull", { factor: c.suggested_pull_factor.toFixed(2) })}
+              {t("capApplyPull", { factor: formatDecimal(c.suggested_pull_factor, 2) })}
             </Button>
           )}
           {report?.attractiveness != null && report.previous_attractiveness != null && report.attractiveness !== report.previous_attractiveness && (
-            <p className="text-xs text-muted-foreground">{richText(t("capRivalPull"), { before: report.previous_attractiveness.toFixed(2), after: <span className="font-semibold text-foreground">{report.attractiveness.toFixed(2)}</span> })}</p>
+            <p className="text-xs text-muted-foreground">{richText(t("capRivalPull"), { before: formatDecimal(report.previous_attractiveness, 2), after: <span className="font-semibold text-foreground">{formatDecimal(report.attractiveness, 2)}</span> })}</p>
           )}
         </div>
       )}

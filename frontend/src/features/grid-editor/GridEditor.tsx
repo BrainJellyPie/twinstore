@@ -12,6 +12,7 @@ import { GridCell } from "./GridCell";
 import { rackCells } from "@/shared/utils/grid";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { formatPercent } from "@/shared/utils/money";
 
 interface GridEditorProps {
   racks: Rack[];
@@ -108,7 +109,7 @@ export function GridEditor({
             disabled={cellSize <= 40} onClick={() => setCellSize((size) => size - 8)}>
             <Minus className="size-3" />
           </Button>
-          <output aria-label={t("gridZoom")} className="w-12 text-center">{Math.round(cellSize / 64 * 100)}%</output>
+          <output aria-label={t("gridZoom")} className="w-12 text-center">{formatPercent(cellSize / 64, 0)}</output>
           <Button type="button" variant="outline" size="icon-sm" aria-label={t("gridZoomIn")}
             disabled={cellSize >= 96} onClick={() => setCellSize((size) => size + 8)}>
             <Plus className="size-3" />

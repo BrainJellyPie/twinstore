@@ -41,7 +41,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { formatMoney, minorUnitDivisor, toMinor, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { visitorsPerDayText } from "@/shared/utils/estimate";
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -401,7 +401,7 @@ function useLabJob(projectId: string, captureId: string, jobId: string | null) {
 function Progress({ value, label }: { value: number; label: string }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex justify-between text-xs text-muted-foreground"><span>{label}</span><span className="num">{Math.round(value * 100)}%</span></div>
+      <div className="flex justify-between text-xs text-muted-foreground"><span>{label}</span><span className="num">{formatPercent(value, 0)}</span></div>
       <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
         <div className="aurora-gradient h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.max(3, value * 100)}%` }} />
       </div>
@@ -442,12 +442,12 @@ function Sim2RealView({ report }: { report: Sim2RealReport }) {
             <div>
               <div className="eyebrow">{t("capLabVsRender", { condition: t(CONDITION_LABEL[a.condition]) })}</div>
               {a.pairs > 0
-                ? <div className="num text-3xl font-medium tracking-[-0.05em]">{Math.round(a.same_pick * 100)}%</div>
+                ? <div className="num text-3xl font-medium tracking-[-0.05em]">{formatPercent(a.same_pick, 0)}</div>
                 : <p className="mt-1 text-xs text-muted-foreground">{t("capLabNoPairs")}</p>}
             </div>
             <div className="text-right text-xs text-muted-foreground">
               {t("capLabSamePick", { n: a.pairs })}<br />
-              {t("capLabInterest", { value: a.interest_spearman == null ? "–" : a.interest_spearman.toFixed(2) })}
+              {t("capLabInterest", { value: a.interest_spearman == null ? "–" : formatDecimal(a.interest_spearman, 2) })}
             </div>
           </div>
           {a.pairs > 0 && <div className="relative mt-2 h-2 rounded-full bg-foreground/10">
@@ -602,7 +602,7 @@ function ComplianceRing({ value }: { value: number }) {
       <circle cx="42" cy="42" r={r} fill="none" stroke="url(#ring-aurora)" strokeWidth="9" strokeLinecap="round"
         strokeDasharray={`${c * value} ${c}`} className="transition-[stroke-dasharray] duration-700" />
       <text x="42" y="42" textAnchor="middle" dominantBaseline="central" className="num rotate-90 fill-foreground text-[17px] font-semibold" style={{ transformOrigin: "42px 42px" }}>
-        {Math.round(value * 100)}%
+        {formatPercent(value, 0)}
       </text>
     </svg>
   );

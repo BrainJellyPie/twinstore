@@ -6,6 +6,7 @@ import { pilotSensitivityQuery } from "@/services/queries/fieldSensitivity";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { formatPercent, formatDecimal } from "@/shared/utils/money";
 
 const scopes: { key: SensitivityScope; label: MessageKey }[] = [
   { key: "staff", label: "mkSensStaff" },
@@ -15,7 +16,7 @@ const scopes: { key: SensitivityScope; label: MessageKey }[] = [
 
 export function PilotSensitivity({ projectId, pilotId, revision, eligible }: { projectId: string; pilotId: string; revision: number; eligible: boolean }) {
   const { t } = useI18n();
-  const points = (value: number | null) => value == null ? t("mkNotEstimable") : t("studioPp", { value: `${value > 0 ? "+" : ""}${(value * 100).toFixed(2)}` });
+  const points = (value: number | null) => value == null ? t("mkNotEstimable") : t("studioPp", { value: `${value > 0 ? "+" : ""}${formatDecimal(value * 100, 2)}` });
   const [requested, setRequested] = useState(false);
   const query = useQuery(pilotSensitivityQuery(projectId, pilotId, revision, eligible && requested));
   const report = !query.error && requested && eligible ? query.data : undefined;
@@ -36,7 +37,7 @@ export function PilotSensitivity({ projectId, pilotId, revision, eligible }: { p
           <summary className="cursor-pointer text-sm font-medium">{t(label)}{summary && t("mkSensOpposite", { opposite: summary.opposite_sign_count, estimable: summary.estimable })}</summary>
           {summary && <p className="my-2 text-xs">{t("mkSensRange", { min: points(summary.minimum), max: points(summary.maximum), change: points(summary.max_absolute_change), unavailable: summary.groups - summary.estimable })}</p>}
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>{t("mkColExcluded")}</th><th>{t("mkColRemoved")}</th><th>{t("mkColRemaining")}</th><th>{t("mkColAfterRemoval")}</th><th>{t("mkColChangeFull")}</th><th>{t("mkColOpposite")}</th></tr></thead>
-            <tbody>{report.groups.filter((group) => group.scope === key).map((group) => <tr key={`${group.staff_id}:${group.shift_id}`} className="border-t"><th className="py-2 text-left">{[group.staff_id, group.shift_id].filter(Boolean).join(" / ")}</th><td>{group.removed_encounters} / {(group.removed_weight * 100).toFixed(1)}%</td><td>{group.remaining_encounters}</td><td>{points(group.difference)}</td><td>{points(group.change)}</td><td>{group.opposite_sign == null ? t("mkNotEstimable") : group.opposite_sign ? t("studioYes") : t("studioNo")}</td></tr>)}</tbody>
+            <tbody>{report.groups.filter((group) => group.scope === key).map((group) => <tr key={`${group.staff_id}:${group.shift_id}`} className="border-t"><th className="py-2 text-left">{[group.staff_id, group.shift_id].filter(Boolean).join(" / ")}</th><td>{group.removed_encounters} / {formatPercent(group.removed_weight, 1)}</td><td>{group.remaining_encounters}</td><td>{points(group.difference)}</td><td>{points(group.change)}</td><td>{group.opposite_sign == null ? t("mkNotEstimable") : group.opposite_sign ? t("studioYes") : t("studioNo")}</td></tr>)}</tbody>
           </table></div>
         </details>;
       })}

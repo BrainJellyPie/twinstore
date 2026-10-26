@@ -19,3 +19,14 @@ it("offers to ask the run analyst about the shelf only when a run can answer", (
   fireEvent.click(screen.getByRole("button", { name: "Ask about this shelf" }));
   expect(onAsk).toHaveBeenCalledTimes(1);
 });
+
+it("closes on Escape, but not on one a dialog over it already handled", () => {
+  const onClose = vi.fn();
+  render(<RackDetailPanel rack={rack} open onClose={onClose} />);
+  const handled = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  handled.preventDefault();
+  window.dispatchEvent(handled);
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});

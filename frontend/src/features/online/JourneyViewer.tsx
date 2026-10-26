@@ -9,7 +9,7 @@ import { getSession, journeyGifUrl, onlineKeys, stepScreenshotUrl, type SessionV
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { cn } from "@/shared/utils/cn";
-import { currencyCode, formatMoney } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 
@@ -210,7 +210,7 @@ function Journey({ projectId, runId, view, currency, rival, play, onRival }: {
                 </div>
                 {step.thought && <p className="mt-1 italic">“{step.thought}”</p>}
                 <p className="mt-1 text-muted-foreground">
-                  {t("onStepTime", { seconds: step.seconds.toFixed(1), load: step.load_seconds.toFixed(1), options: step.options })}
+                  {t("onStepTime", { seconds: formatDecimal(step.seconds, 1), load: formatDecimal(step.load_seconds, 1), options: step.options })}
                   {" · "}{t(step.source === "model" ? "onSourceModel" : step.source === "fallback" ? "onSourceFallback" : "onSourceRule")}
                   {step.ads.length > 0 && <>{" · "}{t("onStepAds", { count: step.ads.length })}</>}
                 </p>

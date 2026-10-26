@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import type { RunSummary } from "@/shared/api/client";
-import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
@@ -45,11 +45,11 @@ export function RunKpis({ summary, days }: { summary: RunSummary; days: number }
         <Tile label={t("kpiConversion")} value={formatPercent(summary.conversion_rate)} hint={t("kpiConversionHint")} />
         <Tile label={t("kpiRevenuePerVisitor")} value={formatMoney(summary.revenue_per_visitor ?? 0, code)} />
         <Tile label={t("kpiBasketValue")} value={formatMoney(summary.avg_basket_value ?? 0, code)} hint={t("kpiBasketHint")} />
-        <Tile label={t("kpiUnitsPerBuyer")} value={(summary.avg_units_per_buyer ?? 0).toFixed(2)} />
+        <Tile label={t("kpiUnitsPerBuyer")} value={formatDecimal(summary.avg_units_per_buyer ?? 0, 2)} />
         <Tile label={t("dashImpulseShare")} value={summary.impulse_revenue_share === null ? "—" : formatPercent(summary.impulse_revenue_share ?? 0)}
           hint={t("dashImpulseHint")} />
         <Tile label={t("kpiAvgVisit")} value={t("kpiSeconds", { seconds: Math.round(summary.avg_visit_sec ?? 0) })}
-          hint={t("kpiTilesWalked", { tiles: (summary.avg_path_tiles ?? 0).toFixed(1) })} />
+          hint={t("kpiTilesWalked", { tiles: formatDecimal(summary.avg_path_tiles ?? 0, 1) })} />
       </div>
       <SegmentBreakdown summary={summary} />
     </div>

@@ -11,6 +11,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 import { isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
+import { formatPercent } from "@/shared/utils/money";
 
 const COMING: Partial<Record<ModelSetup["local"]["state"], MessageKey>> = {
   preparing: "localStatePreparing", downloading: "localStateDownloading", starting: "localStateStarting",
@@ -24,7 +25,7 @@ export function NeedsModel({ settings = true, purpose = "customers" }: { setting
   const { start } = useLocalModelControl();
   if (!data || data.cloud_providers.length > 0 || data.local.state === "ready") return null;
   const busy = isPreparing(data);
-  const progress = busy && data.local.progress !== null ? ` ${Math.round(data.local.progress * 100)}%` : "";
+  const progress = busy && data.local.progress !== null ? ` ${formatPercent(data.local.progress, 0)}` : "";
   return (
     <div role="status" className="space-y-2 rounded-lg border p-3 text-sm" data-testid="needs-model">
       <p>{t(purpose === "assist"

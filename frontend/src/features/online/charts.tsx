@@ -9,6 +9,7 @@ import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { FUNNEL_LABELS, OUTCOME_COLORS, OUTCOME_LABELS, storeColor } from "./labels";
+import { formatPercent } from "@/shared/utils/money";
 
 export function Swatch({ index, className }: { index: number; className?: string }) {
   return <span className={cn("inline-block size-2.5 shrink-0 rounded-[3px]", className)} style={{ background: storeColor(index) }} aria-hidden />;
@@ -168,8 +169,8 @@ export function FunnelChart({ variants }: { variants: VariantSummary[] }) {
                     <div className="h-full rounded-r-[4px] transition-[width] duration-700" style={{ width: `${Math.max(0.8, (f?.share ?? 0) * 100)}%`, background: storeColor(i) }} />
                   </div>
                   <span className="w-28 shrink-0 text-right text-[0.7rem] tabular-nums">
-                    {f?.sessions ?? 0} · {((f?.share ?? 0) * 100).toFixed(0)}%
-                    {kept !== null && kept < 1 && <span className="ml-1 text-muted-foreground">↓{((1 - kept) * 100).toFixed(0)}%</span>}
+                    {f?.sessions ?? 0} · {formatPercent(f?.share ?? 0, 0)}
+                    {kept !== null && kept < 1 && <span className="ml-1 text-muted-foreground">↓{formatPercent(1 - kept, 0)}</span>}
                   </span>
                 </div>
               );
@@ -204,8 +205,8 @@ export function OutcomeBars({ variants }: { variants: VariantSummary[] }) {
               if (!n) return null;
               return (
                 <span key={o} className={cn("flex items-center justify-center text-[0.7rem] font-semibold", OUTCOME_INK[o], OUTCOME_COLORS[o])}
-                  style={{ width: `${share * 100}%` }} title={`${t(OUTCOME_LABELS[o])}: ${n} (${(share * 100).toFixed(1)}%)`}>
-                  {share >= 0.09 ? `${Math.round(share * 100)}%` : ""}
+                  style={{ width: `${share * 100}%` }} title={`${t(OUTCOME_LABELS[o])}: ${n} (${formatPercent(share, 1)})`}>
+                  {share >= 0.09 ? formatPercent(share, 0) : ""}
                 </span>
               );
             })}

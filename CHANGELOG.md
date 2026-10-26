@@ -2,11 +2,20 @@
 
 ## Unreleased
 
+- If another setting replaces a number while its field is being edited,
+  show the new value and discard the old typed text so leaving the field
+  cannot silently restore the previous number.
+
 - Distinguish an additional discount on the current selling price from a
   discount against the original regular price. Automatic layout edits and
   A/B drafts can now retain the original reference while reducing an already
   discounted price; the experiment editor exposes the same choice, and
   physical and online stores apply it consistently.
+
+- On phones and tablets, the delete buttons of studies, library products and
+  saved interview groups are shown; they appeared only when a mouse hovered
+  over the card, so a touch screen never showed them. The online report's
+  **Click heatmap** link also moves keyboard focus to the heatmap.
 
 - Report section links also move focus into optional advertising, competitor
   and survey results; those sections previously scrolled while focus stayed
@@ -25,7 +34,22 @@
 
 - Keep waiting for playback to accept focus when its Play button appears
   before it becomes usable, within the existing five-second limit.
-
+- Percentages and decimals follow the chosen language across the reports,
+  studio, area, capture and settings pages: French and Spanish read "32,5 %",
+  "+0,4 pts" and "2,54" instead of "32.5%", "+0.4 pts" and "2.54". A value
+  that rounds to zero no longer shows as "-0.0%". The store timeline's
+  tooltip names the hour as the store clock does ("2:00 pm" rather than
+  "14:00" in English).
+- Number fields that have limits can be cleared and retyped: the online run's
+  shopper count and step limit, the optimizer's candidates, shoppers, changes,
+  vision panel and judged layouts, the area's vision visitors and the online
+  designer's numbers. Emptying one snapped it to its minimum while typing, so
+  typing 60 into a cleared shopper count gave 160 and a step limit of 24
+  became 80. A number outside the limits now waits until the field is left,
+  and an emptied field keeps its last number.
+- Pressing Escape to close the command palette or another dialog opened over a
+  shelf's detail panel no longer closes the shelf panel too; a second Escape
+  closes it.
 - In Windows high-contrast mode the language picker shows when it has
   keyboard focus; its ring is a shadow, which that mode removes, and the
   list itself is transparent over the **EN** chip.

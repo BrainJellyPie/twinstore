@@ -12,10 +12,11 @@ import type { JudgeSpec, OptimizeAlgorithm, OptimizeObjective, OptimizeScope, Op
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { Locale, MessageKey } from "@/shared/i18n/messages";
@@ -221,15 +222,15 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-muted-foreground">{t("optCandidatesToTry")}</span>
-              <Input type="number" min={6} max={1000} value={spec.budget} onChange={(e) => setSpec({ ...spec, budget: Math.max(1, Number(e.target.value) || 1) })} className="h-8" />
+              <WholeNumberInput min={6} max={1000} value={spec.budget} onChange={(budget) => setSpec({ ...spec, budget })} className="h-8" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-muted-foreground">{t("optShoppersPerCandidate")}</span>
-              <Input type="number" min={50} max={3000} step={50} value={spec.eval_customers} onChange={(e) => setSpec({ ...spec, eval_customers: Math.max(10, Number(e.target.value) || 10) })} className="h-8" />
+              <WholeNumberInput min={50} max={3000} step={50} value={spec.eval_customers} onChange={(eval_customers) => setSpec({ ...spec, eval_customers })} className="h-8" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-muted-foreground">{t("optMaxChanges")}</span>
-              <Input type="number" min={1} max={50} value={spec.constraints.max_moves} onChange={(e) => setSpec({ ...spec, constraints: { ...spec.constraints, max_moves: Math.max(1, Number(e.target.value) || 1) } })} className="h-8" />
+              <WholeNumberInput min={1} max={50} value={spec.constraints.max_moves} onChange={(max_moves) => setSpec({ ...spec, constraints: { ...spec.constraints, max_moves } })} className="h-8" />
             </label>
             <label className="mt-5 flex items-center gap-2">
               <input type="checkbox" className="accent-primary" checked={spec.constraints.keep_fridges_on_walls} onChange={(e) => setSpec({ ...spec, constraints: { ...spec.constraints, keep_fridges_on_walls: e.target.checked } })} />
@@ -258,11 +259,11 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
               <div className="grid grid-cols-1 gap-3 text-xs min-[400px]:grid-cols-2 sm:grid-cols-3">
                 <label className="flex flex-col gap-1">
                   <span className="text-muted-foreground">{t("optVisionPerLayout")}</span>
-                  <Input type="number" min={4} max={400} value={judge.vlm_customers} onChange={(e) => setJudge({ ...judge, vlm_customers: Math.min(400, Math.max(4, Number(e.target.value) || 4)) })} className="h-8" />
+                  <WholeNumberInput min={4} max={400} value={judge.vlm_customers} onChange={(vlm_customers) => setJudge({ ...judge, vlm_customers })} className="h-8" />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-muted-foreground">{t("optCandidatesJudged")}</span>
-                  <Input type="number" min={1} max={8} value={judge.top_k} onChange={(e) => setJudge({ ...judge, top_k: Math.min(8, Math.max(1, Number(e.target.value) || 1)) })} className="h-8" />
+                  <WholeNumberInput min={1} max={8} value={judge.top_k} onChange={(top_k) => setJudge({ ...judge, top_k })} className="h-8" />
                 </label>
                 <label className="flex items-center gap-2 sm:mt-5">
                   <input type="checkbox" checked={judge.calibrate} onChange={(e) => setJudge({ ...judge, calibrate: e.target.checked })} />
@@ -405,9 +406,9 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
             {([
               ["kpiRevenuePerVisitor", (s: api.RunSummary) => formatMoney(s.revenue_per_visitor ?? 0, code)],
               ["kpiConversion", (s: api.RunSummary) => formatPercent(s.conversion_rate ?? 0, 1)],
-              ["kpiUnitsPerBuyer", (s: api.RunSummary) => (s.avg_units_per_buyer ?? 0).toFixed(2)],
+              ["kpiUnitsPerBuyer", (s: api.RunSummary) => formatDecimal(s.avg_units_per_buyer ?? 0, 2)],
               ["dashImpulseShare", (s: api.RunSummary) => formatPercent(s.impulse_revenue_share ?? 0, 1)],
-              ["optWalkTiles", (s: api.RunSummary) => (s.avg_path_tiles ?? 0).toFixed(1)],
+              ["optWalkTiles", (s: api.RunSummary) => formatDecimal(s.avg_path_tiles ?? 0, 1)],
             ] as const).map(([label, f]) => (
               <tr key={label} className="border-t"><td className="py-1">{t(label)}</td><td className="text-right tabular-nums">{f(result.baseline_summary!)}</td><td className="text-right tabular-nums">{f(result.best_summary!)}</td></tr>
             ))}
@@ -464,7 +465,7 @@ function JudgeView({ report, result, status, code, apply, onRestart }: {
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
           {t("optJudgeShoppers", { count: report.customers })} · {report.model}
-          {report.spearman != null ? ` · ${t("optAgreement", { rho: report.spearman.toFixed(2) })}` : ""}
+          {report.spearman != null ? ` · ${t("optAgreement", { rho: formatDecimal(report.spearman, 2) })}` : ""}
           {` · ${t("optModelCalls", { calls: report.vlm_requests, minutes: Math.round(report.seconds / 60) })}`}
         </div>
         {improved && !sure && <div className="mt-1 text-xs">{t("optStillUnsure")}</div>}
@@ -500,13 +501,13 @@ function JudgeView({ report, result, status, code, apply, onRestart }: {
           <div className="mb-1 font-medium">{t("optCalibrated")}</div>
           <div className="grid grid-cols-3 gap-2 tabular-nums">
             <div className="text-muted-foreground">{t("optImpulseBuys")}</div>
-            <div>{t("optVisionValue", { value: cal.target.impulse_rate.toFixed(2) })}</div>
-            <div>{t("optRuleValue", { before: cal.before.impulse_rate.toFixed(2), after: cal.after.impulse_rate.toFixed(2) })}</div>
+            <div>{t("optVisionValue", { value: formatDecimal(cal.target.impulse_rate, 2) })}</div>
+            <div>{t("optRuleValue", { before: formatDecimal(cal.before.impulse_rate, 2), after: formatDecimal(cal.after.impulse_rate, 2) })}</div>
             <div className="text-muted-foreground">{t("optImpulseRevenueShare")}</div>
             <div>{t("optVisionValue", { value: formatPercent(cal.target.impulse_revenue_share, 1) })}</div>
             <div>{t("optRuleValue", { before: formatPercent(cal.before.impulse_revenue_share, 1), after: formatPercent(cal.after.impulse_revenue_share, 1) })}</div>
           </div>
-          <div className="mt-1 text-muted-foreground">{t("optMismatch", { before: cal.gap_before.toFixed(2), after: cal.gap_after.toFixed(2), settings: cal.grid_points })}</div>
+          <div className="mt-1 text-muted-foreground">{t("optMismatch", { before: formatDecimal(cal.gap_before, 2), after: formatDecimal(cal.gap_after, 2), settings: cal.grid_points })}</div>
         </div>
       )}
 
@@ -534,12 +535,12 @@ function JudgeView({ report, result, status, code, apply, onRestart }: {
 function scoreText(objective: OptimizeObjective, value: number, code: string): string {
   if (objective === "revenue_per_visitor" || objective === "total_revenue" || objective === "impulse_revenue") return formatMoney(value, code);
   if (objective === "conversion_rate") return formatPercent(value);
-  return value.toFixed(objective === "units_per_visitor" ? 2 : 1);
+  return formatDecimal(value, objective === "units_per_visitor" ? 2 : 1);
 }
 
 /** A difference in the objective's unit, signed; a conversion difference reads in percentage points. */
 function signedScore(objective: OptimizeObjective, value: number, code: string, locale: Locale): string {
-  const text = objective === "conversion_rate" ? formatPercent(value).replace("%", translate(locale, "cmpPoints")) : scoreText(objective, value, code);
+  const text = objective === "conversion_rate" ? `${formatDecimal(value * 100, 1)}${translate(locale, "cmpPoints")}` : scoreText(objective, value, code);
   return value > 0 ? `+${text}` : text;
 }
 

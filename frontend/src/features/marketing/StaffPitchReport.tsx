@@ -2,7 +2,7 @@ import { Download } from "lucide-react";
 
 import { pitchCsvUrl, type PitchReport, type PitchComparison } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -10,7 +10,7 @@ import { personaLabel, segmentLabel } from "@/shared/i18n/personaLabels";
 import { StudyReading } from "./StudyReading";
 
 const labels: Record<PitchComparison["metric"], MessageKey> = { purchase_intent: "mkMetricIntent", trust: "mkMetricTrust", pressure: "mkMetricPressure" };
-const signed = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(2)}`;
+const signed = (x: number) => `${x > 0 ? "+" : ""}${formatDecimal(x, 2)}`;
 
 export function StaffPitchReportView({ projectId, report: r }: { projectId: string; report: PitchReport }) {
   const { t } = useI18n();
@@ -33,7 +33,7 @@ export function StaffPitchReportView({ projectId, report: r }: { projectId: stri
         <thead><tr className="text-left"><th className="py-2">{t("mkColMetric")}</th><th>{t("mkColAMean")}</th><th>{t("mkColBMean")}</th><th>B − A</th><th>{t("mkColPaired95")}</th></tr></thead>
         <tbody>{r.comparisons.map((c) => <tr key={c.metric} className="border-t">
           <th className="py-3 text-left font-medium">{t(labels[c.metric])}<span className="block text-xs font-normal text-muted-foreground">{c.metric === "purchase_intent" ? t("mkPrimaryOutcome") : t("mkGuardrail")}</span></th>
-          <td>{c.a_mean.toFixed(2)}</td><td>{c.b_mean.toFixed(2)}</td><td>{signed(c.diff)}</td>
+          <td>{formatDecimal(c.a_mean, 2)}</td><td>{formatDecimal(c.b_mean, 2)}</td><td>{signed(c.diff)}</td>
           <td>{c.ci_low == null || c.ci_high == null ? t("mkInsufficientPairs") : t("mkRangeTo", { low: signed(c.ci_low), high: signed(c.ci_high) })}</td>
         </tr>)}</tbody>
       </table></div>
