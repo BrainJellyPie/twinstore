@@ -236,3 +236,20 @@ it("says once that no visitors are expected instead of showing zero distances an
   expect((await screen.findByText(/No visitors are expected on a weekend/)).getAttribute("role")).toBe("status");
   expect(screen.queryByText("0 m")).toBeNull();
 });
+
+it("says what a slow map import is doing, with the time it has taken", async () => {
+  vi.mocked(api.getTown).mockResolvedValue(null);
+  vi.mocked(api.importTownFromMap).mockImplementation(() => new Promise(() => {}));
+  await mount();
+  fireEvent.change(await screen.findByPlaceholderText("Address, e.g. 84 Heukseok-ro, Seoul"), { target: { value: "Seoul" } });
+  vi.useFakeTimers();
+  try {
+    fireEvent.click(screen.getByRole("button", { name: "Import buildings, shops and roads" }));
+    expect(screen.getByText("Downloading buildings, shops and roads…")).toBeTruthy();
+    await act(async () => { vi.advanceTimersByTime(20_000); });
+    expect(screen.getByText(/Busy map servers can take a few minutes/)).toBeTruthy();
+    expect(screen.getByText("(20 s)")).toBeTruthy();
+  } finally {
+    vi.useRealTimers();
+  }
+});

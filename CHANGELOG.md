@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A real-map import says what it is doing while it runs ("Downloading
+  buildings, shops and roads…"), and after 15 seconds that busy map servers can
+  take a few minutes, with the time so far. When every server was slow, the
+  only sign for almost five minutes was a spinner.
 - The command palette finds each marketing studio tool by name in any of the six
   languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
   before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`
