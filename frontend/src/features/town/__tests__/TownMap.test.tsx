@@ -107,3 +107,17 @@ it("stops intercepting wheel input after the map is unmounted", () => {
   fireEvent(svg, event);
   expect(event.defaultPrevented).toBe(false);
 });
+
+it("stops panning once a venue is closed, so the next mouse move leaves the map still", () => {
+  const remove = vi.fn();
+  const venue = { id: "cafe", name: "Corner café", category: "cafe", x: 200, y: 600, is_focal: false } as Town["venues"][number];
+  render(<TownMap town={{ ...town, venues: [venue] }} mode="remove" onPlace={vi.fn()} onRemove={remove} />);
+  const svg = screen.getByRole("img", { name: "Map of Test town" });
+  Object.defineProperty(svg, "getScreenCTM", { value: () => ({ inverse: () => ({ a: 4, b: 0, c: 0, d: 4, e: 0, f: 0 }) }) });
+  const dot = svg.querySelector("g[transform] circle")!;
+  fireEvent.pointerDown(dot, { clientX: 70, clientY: 180 });
+  fireEvent.pointerUp(dot, { clientX: 70, clientY: 180 });
+  expect(remove).toHaveBeenCalledWith(venue);
+  fireEvent.pointerMove(svg, { clientX: 160, clientY: 90 });
+  expect(svg.getAttribute("viewBox")).toBe("0 0 800 800");
+});

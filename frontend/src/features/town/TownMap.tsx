@@ -189,6 +189,8 @@ export function TownMap({
             transform={`translate(${v.x},${fy(v.y)})`}
             onPointerUp={(e) => {
               if (mode === "remove" && !v.is_focal) {
+                // The map's own pointer-up never runs: end its drag here, or the next plain move pans the map.
+                drag.current = null;
                 e.stopPropagation();
                 onRemove(v);
               }

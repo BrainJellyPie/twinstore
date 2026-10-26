@@ -67,6 +67,8 @@
   that opened it (such as **Watch a shopper**), so Tab carries on from there.
   Most dialogs open from a plain button, and focus used to drop to the start
   of the page.
+- After **Close venue** on the neighborhood map, the map no longer follows the
+  mouse around without a button held (it slid about 90 px on the next click).
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
