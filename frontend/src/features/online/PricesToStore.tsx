@@ -4,15 +4,25 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { FlaskConical } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { getRunStoreChanges, onlineKeys } from "@/shared/api/online";
 import { queryKeys } from "@/shared/queries/keys";
+import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import { KeepAsLayout } from "@/features/marketing/KeepAsLayout";
+import { useExperimentDraft } from "@/stores/experimentDraftStore";
+
+// What one A/B variant may hold (the marketing API's limits).
+const AB_MAX_CHANGES = 20;
+const AB_NAME_LENGTH = 40;
 
 export function PricesToStore({ projectId, runId, variant }: { projectId: string; runId: string; variant: number }) {
   const { t } = useI18n();
+  const navigate = useNavigate();
+  const sendDraft = useExperimentDraft((s) => s.send);
   const found = useQuery({
     queryKey: onlineKeys.storeChanges(projectId, runId, variant),
     queryFn: ({ signal }) => getRunStoreChanges(projectId, runId, variant, signal),
@@ -46,6 +56,22 @@ export function PricesToStore({ projectId, runId, variant }: { projectId: string
       </label>
       <KeepAsLayout key={setupId} projectId={projectId} setupId={setupId} currency={changes.currency} hint={t("onKeepHint")}
         variant={{ name: changes.name, changes: changes.changes }} />
+      {changes.changes.length <= AB_MAX_CHANGES ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] text-muted-foreground">
+          <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => {
+            sendDraft(projectId, {
+              setup_id: setupId, engine: "rule", panel: 300, focus_skus: [],
+              variants: [{ name: Array.from(changes.name).slice(0, AB_NAME_LENGTH).join("").trimEnd(), changes: changes.changes }],
+            });
+            void navigate({ to: "/marketing/$pid", params: { pid: projectId } });
+          }}>
+            <FlaskConical className="size-3.5" aria-hidden /> {t("onTestInStore")}
+          </Button>
+          <span>{t("onTestInStoreHint")}</span>
+        </div>
+      ) : (
+        <p className="mt-1.5 text-[0.7rem] text-muted-foreground">{t("onTestInStoreTooMany", { count: changes.changes.length })}</p>
+      )}
       {changes.skipped.length > 0 && (
         <div className="mt-1.5 text-[0.7rem] text-muted-foreground">
           <span className="font-medium">{t("onKeepStaysOnline")}</span>{" "}

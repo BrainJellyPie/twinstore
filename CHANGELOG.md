@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.8.1 — An online price change becomes an in-store test
+
+- From an online variant to an in-store test: the online report's **Keep it in
+  the store** block has **Test it in the store**, which opens the marketing
+  studio's A/B builder with the variant's price changes on the chosen layout,
+  ready to run on the same store shoppers. A variant with more changes than an
+  A/B test holds (20) says so and points to keeping it as a layout instead.
+- The Compare runs table no longer shows its metric column as a white block on
+  the dialog's tinted glass; it stays opaque only on narrow screens, where the
+  table scrolls sideways under it.
+- The Results tab's timeline draws its bars as soon as the run is loaded,
+  instead of staying empty for several seconds while the 3D store was still
+  being built (the chart waited to measure the panel).
+- The new-store format list shows about four rows of formats instead of two
+  and a half, so browsing 82 formats takes less scrolling inside a small box.
 - Read actual online-shopper choices wrapped in `properties` without substituting
   a rule-based action. Required choices, visible option numbers and search text
   remain validated; copied schema definitions are not clicks. CPU checkout probes

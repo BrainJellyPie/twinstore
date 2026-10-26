@@ -192,7 +192,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         onClick={() => void templatesQuery.refetch()}>{t(templatesQuery.isFetching ? "tryingAgain" : "tryAgain")}</button></p>}
       <p id={`${customizationId}-keyboard`} className="sr-only">{t("formatKeyboardHint")}</p>
       <RadioGroupPrimitive.Root ref={formatList} value={value.templateId} onValueChange={selectFormat}
-        loop className="grid min-w-0 max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label={t("storeFormats")}
+        loop className="grid min-w-0 max-h-72 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label={t("storeFormats")}
         aria-describedby={`${customizationId}-keyboard`}>
         {filtered.map((format, index) => (
           <RadioGroupPrimitive.Item key={format.id} value={format.id}

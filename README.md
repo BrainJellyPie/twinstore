@@ -238,6 +238,10 @@ ambiguous name is not guessed; and nothing runs until you press start.
 What shoppers say stays a hypothesis until a test runs. Without a key for the app's text model, these helpers fall
 back to a fast model of a provider that has one; simulation runs and studies keep the model you chose.
 
+Press <kbd>?</kbd> outside a text field for every keyboard shortcut; on the store floor <kbd>Space</kbd> plays the day
+and <kbd>←</kbd> <kbd>→</kbd> step it by 15 minutes. Start a run and keep working: a notice in the corner says when it
+finishes or fails and opens its results.
+
 ## Simulate, compare, optimize
 
 The **Floor** page is the store's day. **Run simulation** asks:
@@ -261,7 +265,7 @@ The **Floor** page is the store's day. **Run simulation** asks:
   sold-out items) or your own, plus customer sample, seed and preview-or-final. Vision runs start with at most 30
   customers and language-model runs with at most 300.
 
-**Results** fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
+**Results** open on the run's totals and fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
 caught the vision shoppers' eye and at which shelf level, who walked in, and run diagnostics (failed customers,
 dropped over-budget or hallucinated buys, cost). Export every customer as CSV, validate a run against your POS export
 (CSV or XLSX) or receipts, and compare observed movement tracks with simulated occupancy.
@@ -435,7 +439,7 @@ decide the same way whatever the style.
 | **Search, products, clicks** | What people searched for (and found nothing), product views/adds/sales, a click map of the screenshots. |
 | **Replays and data** | Every visit page by page with the shopper's thoughts, played back as an animation or side by side across two stores, downloadable as a GIF, and a conversation with the shopper about it; segments by mission, device, age, gender, eyesight and traffic source; a clickstream CSV and a print-ready report page to share. |
 | **Ask about the run** | Questions answered from the report's own numbers, each answer listing the report lines it used (figures not in the report are dropped), each line a link to its chart; ask in the report or from the command bar. |
-| **Both twins** | Marketing A/B variants, shelf tests, price tests and concept-test packages become online variants by SKU (an eye-level shelf becomes first in its category); an online variant's prices go back to a store layout as a new layout after a review. When a run's online shoppers are the store's own customers, the report reads each one next to a store run of the same people: bought in both, only in the store, only online or nowhere, with spend per channel by age and gender. |
+| **Both twins** | Marketing A/B variants, shelf tests, price tests and concept-test packages become online variants by SKU (an eye-level shelf becomes first in its category); an online variant's prices go back to a store layout as a new layout after a review, or open as an in-store A/B test on the same shoppers. When a run's online shoppers are the store's own customers, the report reads each one next to a store run of the same people: bought in both, only in the store, only online or nowhere, with spend per channel by age and gender. |
 
 ## How it works
 
