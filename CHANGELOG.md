@@ -63,6 +63,10 @@
   shopper, a group, an online shopper) say up front when no model is set up,
   with **Download local model** and **Model settings** buttons, in the chosen
   language. Before, the first sign was an English error after sending.
+- Closing a dialog, sheet or confirmation returns keyboard focus to the button
+  that opened it (such as **Watch a shopper**), so Tab carries on from there.
+  Most dialogs open from a plain button, and focus used to drop to the start
+  of the page.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
