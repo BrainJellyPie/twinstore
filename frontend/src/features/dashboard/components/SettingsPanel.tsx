@@ -9,6 +9,7 @@ import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelCo
 import { RackDetailView } from "./RackDetailView";
 import { currencyCode } from "@/shared/utils/money";
 import { LayoutEditInWords } from "./LayoutEditInWords";
+import { DeleteLayout } from "@/features/layouts/components/DeleteLayout";
 import { formatWeeklyHours } from "@/features/layouts/weeklyHours";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -201,6 +202,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
             </Button>
           </SheetTrigger>
           {projectId && setupId && <LayoutEditInWords key={setupId} projectId={projectId} setupId={setupId} />}
+          {projectId && setupId && <DeleteLayout key={`delete:${setupId}`} projectId={projectId} setupId={setupId} />}
         </section>
       </div>
 

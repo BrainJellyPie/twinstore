@@ -752,12 +752,13 @@ def delete_setup_with_descendants(project_id: str, setup_id: str) -> list[str]:
         except FileNotFoundError:
             raise AppError(f"setup not found: {setup_id}", 404)
 
-        if not setup.get("parentId"):
-            raise AppError("the initial setup cannot be deleted.", 409)
         if setup["status"] == "running":
             raise AppError("cannot delete a setup that is currently running.", 409)
 
         deleted_ids = [*find_descendants(project_id, setup_id), setup_id]
+        # A store keeps at least one layout; any other layout, top-level or derived, may go.
+        if not any(other["id"] not in deleted_ids for other in list_setups(project_id)):
+            raise AppError("a store keeps at least one layout: add another before deleting this one.", 409)
         deadline = time.monotonic() + 10
         try:
             with ExitStack() as locks:

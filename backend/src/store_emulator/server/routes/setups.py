@@ -274,9 +274,10 @@ async def regenerate_persona(pid: str, sid: str) -> RegeneratePersonaResponse:
 async def delete_setup_endpoint(pid: str, sid: str) -> DeletedResponse:
     """Delete a setup along with all descendant branches.
 
-    **Constraints:** the root setup (parentId=null) cannot be deleted (409). A
-    setup in `running` state cannot be deleted (409). If the deleted setup was
-    active, the first remaining setup becomes active automatically."""
+    **Constraints:** a store keeps at least one layout, so deleting the last
+    remaining one (with its branches) is refused (409). A setup in `running`
+    state cannot be deleted (409). If the deleted setup was active, the first
+    remaining setup becomes active automatically."""
     try:
         deleted_ids = await run_in_threadpool(setup_service.delete_setup_with_descendants, pid, sid)
     except AppError as e:

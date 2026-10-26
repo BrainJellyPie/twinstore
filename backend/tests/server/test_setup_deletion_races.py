@@ -116,3 +116,17 @@ def test_running_status_is_rechecked_after_waiting_for_saves(tree, monkeypatch, 
     assert error.value.status_code == 409
     assert all(setup_path(PID, item).exists() for item in [ROOT, PARENT, CHILD])
     assert read_json(state_path(PID))["activeSetupId"] == CHILD
+
+
+def test_a_top_level_layout_can_go_while_another_stays(tree):
+    write_json(setup_path(PID, "setup_other"), {"id": "setup_other", "name": "Other", "status": "draft", "parentId": None, "store": None})
+    deleted = setups.delete_setup_with_descendants(PID, ROOT)
+    assert sorted(deleted) == sorted([ROOT, PARENT, CHILD])
+    assert read_json(state_path(PID))["activeSetupId"] == "setup_other"
+
+
+def test_the_last_layout_of_a_store_stays(tree):
+    with pytest.raises(AppError) as refused:
+        setups.delete_setup_with_descendants(PID, ROOT)  # the root and its branches are every layout of the store
+    assert refused.value.status_code == 409
+    assert read_setup(PID, ROOT)["id"] == ROOT

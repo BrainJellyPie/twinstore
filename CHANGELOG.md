@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Delete a layout**: the Store & layout tab ends with **Delete this layout**,
+  which asks first and says how many layouts made from it go too. Before, no
+  screen could delete a layout, and the API refused every top-level layout as
+  "the initial setup" (every layout added from scratch, a template or a floor
+  plan is top-level). `DELETE …/setups/{id}` now refuses only what would leave
+  the store without a layout.
 - The floor editor says why a layout cannot be saved: a missing exit read only
   "store layout has errors." and now reads "Place at least one exit" (in the
   chosen language; other layout problems show the server's reason). Other
