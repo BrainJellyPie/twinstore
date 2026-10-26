@@ -2,13 +2,16 @@
 
 ## Unreleased
 
+## 0.8.0 — Readable on every screen, and runs that say when they are done
+
 - Stop vision A/B tests, layout judging and venue comparisons when every response
   in an attempted entry or shelf phase fails. Successful calls in the other phase
   no longer hide the missing measurements. Partial failures with usable responses
   and phases with no attempted calls keep their existing behavior.
-
-## 0.8.0 — Readable on every screen, and runs that say when they are done
-
+- The store's **Synthetic customers** list shows each group as a bar with its
+  share of everyone, in one colour, instead of colour dots that repeated after
+  ten groups and said nothing; **View detail** is a button rather than text
+  that read as a label.
 - Recover actual shelf judgments that small JSON-mode models wrap in `properties`.
   Compact shelf schemas retain their constraints while removing copied metadata;
   missing scores and schema definitions remain errors, and saved answers stay flat.
