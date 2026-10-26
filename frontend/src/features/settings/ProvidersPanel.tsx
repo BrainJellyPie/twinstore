@@ -64,6 +64,8 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
       void qc.invalidateQueries({ queryKey: queryKeys.providers() });
       void qc.invalidateQueries({ queryKey: queryKeys.models() });
       void qc.invalidateQueries({ queryKey: queryKeys.engines() });
+      // Whether any key is set decides the no-key banner, the local model's role and "needs a model" prompts.
+      void qc.invalidateQueries({ queryKey: queryKeys.modelSetup() });
     },
   });
   const test = useMutation({
@@ -75,6 +77,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
       void qc.invalidateQueries({ queryKey: queryKeys.providers() });
       void qc.invalidateQueries({ queryKey: queryKeys.models() });
       void qc.invalidateQueries({ queryKey: queryKeys.engines() });
+      void qc.invalidateQueries({ queryKey: queryKeys.modelSetup() });
     },
   });
 
@@ -148,7 +151,9 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             {t("providerSave")}
           </Button>
           {status.key_source === "settings" && (
-            <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => save.mutate({ api_key: "" })}>
+            <Button type="button" size="sm" variant="outline" className="h-8"
+              // The button goes with the key; focus moves to the field to paste another.
+              onClick={(e) => { const field = e.currentTarget.form?.querySelector("input"); save.mutate({ api_key: "" }, { onSuccess: () => field?.focus() }); }}>
               {t("remove")}
             </Button>
           )}

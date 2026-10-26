@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Saving or removing an API key in **Model providers** updates the "Explore
+  without an API key" banner, the local model's role and the "needs a model"
+  prompts at once; they stayed as before until the page was reloaded. After
+  **Remove**, focus moves to the key field.
 - A pack's delete button in **Products** is named "Delete?" while it asks, as
   in the studies list, so screen readers hear that a second press deletes; after
   deleting, focus moves to the drop zone instead of the top of the page.

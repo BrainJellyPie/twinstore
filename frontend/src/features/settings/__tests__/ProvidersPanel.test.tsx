@@ -24,6 +24,8 @@ it("refreshes the run dialog's engine readiness after an API key is saved", asyn
   fireEvent.change(await screen.findByLabelText("OpenAI API key"), { target: { value: " sk-test " } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.engines() }));
+  // The no-key banner and "needs a model" prompts follow the model setup, which a saved key changes.
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.modelSetup() });
   expect(api.updateProvider).toHaveBeenCalledWith("openai", { api_key: "sk-test" });
   client.clear();
 });
@@ -84,5 +86,16 @@ it("says a local server is not running when nothing answers at its saved address
   render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
   expect(await screen.findByText("Not running")).toBeTruthy();
   expect(screen.queryByText("Ready")).toBeNull();
+  client.clear();
+});
+
+it("moves focus to the key field after removing a saved key", async () => {
+  vi.mocked(api.getProviders).mockResolvedValue([{ ...openai, has_key: true, key_source: "settings", key_hint: "…123", ready: true }]);
+  vi.mocked(api.updateProvider).mockResolvedValue(openai);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
+  await waitFor(() => expect(api.updateProvider).toHaveBeenCalledWith("openai", { api_key: "" }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("OpenAI API key")));
   client.clear();
 });
