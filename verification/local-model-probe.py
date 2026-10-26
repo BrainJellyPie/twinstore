@@ -32,7 +32,7 @@ from store_emulator.domain.persona import AGE_GROUPS, GENDERS, Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
-from store_emulator.engine.generators.persona import Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched
+from store_emulator.engine.generators.persona import HourlyProfile, Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched, generate_personas_for_day
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
 from store_emulator.engine.capture.detect import Detection
@@ -104,7 +104,7 @@ parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setu
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
@@ -500,7 +500,7 @@ try:
             address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
             profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
-        if args.case == "persona-nightmarket":
+        if args.case.startswith("persona-nightmarket"):
             expected_hour, customer_count = 23, 12
             categories = ["drinks", "snacks"]
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
@@ -513,13 +513,26 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or customer_count
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
-                batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency, supplemental_summary=evidence,
-                pace=lambda usual: Pace(daily_cap=customer_count, batch_size=persona_batch_size, sample_cap=customer_count), estimates=estimates))
+            if args.case == "persona-nightmarket-batch":
+                # A fixed observed cohort exercises the writer's batch boundary;
+                # an upstream traffic estimate may otherwise request just one.
+                area = TradeAreaProfile(keywords=["neighborhood", "night"],
+                    identities=["local resident", "night shift worker"], purposes=["buy snacks", "buy drinks"])
+                hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
+                people = asyncio.run(generate_personas_for_day(client, address, area, Weekday.MON, hourly,
+                    seed=4, batch_size=persona_batch_size, max_concurrent=1, categories=categories,
+                    currency=currency, customer_profile=profile))
+                result["source_stage"] = "customer_writer_only_with_fixed_cohort"
+            else:
+                people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
+                    batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency, supplemental_summary=evidence,
+                    pace=lambda usual: Pace(daily_cap=customer_count, batch_size=persona_batch_size, sample_cap=customer_count), estimates=estimates))
         written = [person for person in people if not person.twin_of]
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
+        if args.case == "persona-nightmarket-batch" and len(written) != customer_count:
+            issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
         if any(person.day != Weekday.MON or not opening <= person.arrival_hour < closing for person in people):
             issues.append("Arrival outside the open hours")
         if args.case == "persona-24h" and Counter(person.arrival_hour for person in people) != {hour: 1 for hour in range(24)}:
