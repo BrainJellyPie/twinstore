@@ -238,6 +238,10 @@ ambiguous name is not guessed; and nothing runs until you press start.
 What shoppers say stays a hypothesis until a test runs. Without a key for the app's text model, these helpers fall
 back to a fast model of a provider that has one; simulation runs and studies keep the model you chose.
 
+Press <kbd>?</kbd> outside a text field for every keyboard shortcut; on the store floor <kbd>Space</kbd> plays the day
+and <kbd>←</kbd> <kbd>→</kbd> step it by 15 minutes. Start a run and keep working: a notice in the corner says when it
+finishes or fails and opens its results.
+
 ## Simulate, compare, optimize
 
 The **Floor** page is the store's day. **Run simulation** asks:
@@ -261,7 +265,7 @@ The **Floor** page is the store's day. **Run simulation** asks:
   sold-out items) or your own, plus customer sample, seed and preview-or-final. Vision runs start with at most 30
   customers and language-model runs with at most 300.
 
-**Results** fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
+**Results** open on the run's totals and fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
 caught the vision shoppers' eye and at which shelf level, who walked in, and run diagnostics (failed customers,
 dropped over-budget or hallucinated buys, cost). Export every customer as CSV, validate a run against your POS export
 (CSV or XLSX) or receipts, and compare observed movement tracks with simulated occupancy.
