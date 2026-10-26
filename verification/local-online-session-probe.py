@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import base64
 import json
+import shutil
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -30,10 +31,13 @@ parser.add_argument('--case', choices=['purchase', 'unavailable'], default='unav
 parser.add_argument('--device', choices=['desktop', 'mobile'], default='mobile')
 parser.add_argument('--structured-output', choices=['json', 'json_schema'], default='json_schema')
 parser.add_argument('--max-steps', type=int, default=8)
+parser.add_argument('--cache-from', type=Path, help='Explicitly replay a saved model cache directory while testing a changed stage')
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
 args = parser.parse_args()
 root = args.output.resolve() / f'online-session-{args.case}-{args.device}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
+if args.cache_from:
+    shutil.copytree(args.cache_from.resolve(), root/'cache')
 site = build_site('fashion', site_id='cpu_session', currency='USD')
 site.options.welcome_popup = 'none'
 site.options.cookie_banner = False
@@ -85,6 +89,7 @@ async def traced(self, request, *a, **kw):
 (root/'shopper.json').write_text(shopper.model_dump_json(indent=2))
 started = time.perf_counter()
 result = {'case': args.case, 'device': args.device, 'structured_output': args.structured_output,
+          'cache_replay_from': str(args.cache_from) if args.cache_from else None,
           'technical_success': False, 'semantic_review': 'Inspect the saved actions, thoughts and survey against the actual visit.'}
 try:
     with patch.object(httpx.AsyncClient, 'send', traced):

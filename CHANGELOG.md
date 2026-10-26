@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Separate structured-response caches by output mode. Switching between JSON
+  and JSON Schema now makes a fresh model request instead of replaying decisions
+  from the other mode; same-mode repeats still reuse their answers. Old cache
+  files without mode identity remain on disk but are not assumed compatible.
+
 - Keep the currency of imported A/B prices through editing and submission.
   A draft for another currency cannot be relabelled or run on the chosen layout;
   use a matching layout or replace it with a newly drafted test. New saved tests

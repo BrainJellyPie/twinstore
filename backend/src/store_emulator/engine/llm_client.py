@@ -266,6 +266,7 @@ class LiteLLMClient:
         self.max_parallel = config.max_parallel
         self._chat_template_thinking = config.chat_template_thinking
         self._structured_sdk_retries = config.structured_sdk_retries
+        self._structured_output = config.structured_output
         self._slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
         mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
         self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
@@ -462,7 +463,7 @@ class LiteLLMClient:
             self._usage = TokenUsage()
 
     # ── response cache ────────────────────────────────────────────────
-    # Content-addressed: identical (model, sampling params, seed, schema, prompts) → identical
+    # Content-addressed: identical (model, sampling params, seed, output mode, schema, prompts) → identical
     # response. Makes reruns free, keeps paired experiments exact, and survives crashes.
 
     def _cache_path(
@@ -489,6 +490,7 @@ class LiteLLMClient:
             {
                 **extra,
                 "structured_parser": "final-think-v2",
+                "structured_output": self._structured_output,
                 "model": self.model,
                 # Two local servers often share a placeholder model id; the endpoint tells them apart.
                 "api_base": self.api_base or "",
