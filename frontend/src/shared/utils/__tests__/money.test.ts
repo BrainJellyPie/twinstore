@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { useLocale } from "@/shared/i18n/i18n";
-import { currencyCode, formatDecimal, formatMoney, formatPercent, majorUnitText, minorUnitDivisor, toMinor } from "../money";
+import { currencyCode, formatDecimal, formatMoney, formatPercent, majorUnitText, minorUnitDivisor, splitPriceList, toMinor } from "../money";
 
 describe("money", () => {
   it("maps the legacy USD_CENTS label to USD", () => {
@@ -83,4 +83,20 @@ it("keeps cached formatters apart per locale and honours an explicit locale", ()
   } finally {
     useLocale.getState().setLocale(previous);
   }
+});
+
+it.each([["fr", "2,50", 250], ["es", "0,5", 50], ["fr", "12,99", 1299], ["fr", "1,500", 150000], ["es", "2.50", 250]] as const)(
+  "reads a decimal comma typed in %s (%s), keeping a three-digit group as thousands", (locale, text, minor) => {
+    expect(toMinor(text, 100, locale)).toBe(minor);
+  },
+);
+
+it("keeps rejecting a decimal comma where the language writes a decimal point", () => {
+  expect(toMinor("2,50", 100, "en")).toBeNull();
+  expect(toMinor("2,50", 100, "ko")).toBeNull();
+});
+
+it("splits a typed price list by the language's list separator", () => {
+  expect(splitPriceList("1,49, 1,79 ; 1.99;2,5", "fr")).toEqual(["1,49", "1,79", "1.99", "2,5"]);
+  expect(splitPriceList("1.49,1.79, 1,500", "en")).toEqual(["1.49", "1.79", "1", "500"]);
 });

@@ -25,8 +25,12 @@ export function majorUnitText(minor: number, code: string, opts: { fixed?: boole
   return digits ? `${whole}.${digits}` : whole;
 }
 
-export function toMinor(text: string, divisor: number): number | null {
-  const amount = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
+// Languages that write decimals with a comma ("2,50"). A comma before exactly three digits stays a thousands separator.
+const DECIMAL_COMMA = new Set(["es", "fr"]);
+
+export function toMinor(text: string, divisor: number, locale: string = useLocale.getState().locale): number | null {
+  const typed = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
+  const amount = DECIMAL_COMMA.has(locale) && /^\d+,\d{1,2}$/.test(typed) ? typed.replace(",", ".") : typed;
   if (!/^(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$/.test(amount)) return null;
   if (!Number.isSafeInteger(divisor) || divisor <= 0) return null;
   const [whole = "", fraction = ""] = amount.replace(/,/g, "").split(".");
@@ -35,6 +39,12 @@ export function toMinor(text: string, divisor: number): number | null {
   const scaled = BigInt(whole + fraction) * BigInt(divisor);
   const minor = Number((scaled + scale / 2n) / scale);
   return Number.isSafeInteger(minor) && minor >= 0 ? minor : null;
+}
+
+/** A typed list of prices. Where the language writes a decimal comma, prices are separated by ";" or by a comma and a
+ *  space, so "1,49, 1,79" is two prices, not four. */
+export function splitPriceList(text: string, locale: string = useLocale.getState().locale): string[] {
+  return text.split(DECIMAL_COMMA.has(locale) ? /;|,\s+/ : ",").map((p) => p.trim()).filter(Boolean);
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();

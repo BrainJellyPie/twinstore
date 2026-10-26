@@ -6,6 +6,16 @@
   tags. Foreign amounts remain estimates for review, while a matching INR
   amount such as `₹100` retains its literal 100-rupee value.
 
+- In Spanish, the online stores list counts its runs with the same word as
+  its Runs section ("Ejecuciones"), instead of a second word for them.
+
+- In Spanish and French, price fields accept a decimal comma ("2,50"), as
+  those languages write it, instead of calling it an invalid price. A comma
+  before three digits ("1,500") is still a thousands separator, and the other
+  languages read prices as before. A conjoint study's price levels in those
+  languages are separated by ";" or a comma and a space, so "1,49, 2,79" is
+  two prices instead of four (1, 49, 2 and 79).
+
 - Keep item/reference numbers and hash-prefixed codes from becoming captured
   selling prices. Preserve their printed labels and estimated-price review;
   an explicit cash tag such as `ITEM $1.00` still supplies its literal price.

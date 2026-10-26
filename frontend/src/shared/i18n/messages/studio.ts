@@ -976,7 +976,7 @@ export const studioMessages = {
   mkLevelsPlaceholder: ["Regular, Less sugar, Zero sugar", "일반, 저당, 제로 슈거", "常规, 少糖, 无糖", "通常, 微糖, 無糖", "Normal, Menos azúcar, Sin azúcar", "Normal, Moins sucré, Zéro sucre"],
   mkLevelCount: ["{count} lvl", "{count}수준", "{count} 个", "{count} 水準", "{count} niv.", "{count} niv."],
   mkRemoveNamed: ["Remove {name}", "{name} 삭제", "删除 {name}", "{name} を削除", "Quitar {name}", "Retirer {name}"],
-  mkPricesPlaceholder: ["1.49, 1.79, 1.99 (optional)", "1.49, 1.79, 1.99 (선택)", "1.49, 1.79, 1.99（可选）", "1.49, 1.79, 1.99（任意）", "1.49, 1.79, 1.99 (opcional)", "1.49, 1.79, 1.99 (facultatif)"],
+  mkPricesPlaceholder: ["1.49, 1.79, 1.99 (optional)", "1.49, 1.79, 1.99 (선택)", "1.49, 1.79, 1.99（可选）", "1.49, 1.79, 1.99（任意）", "1,49; 1,79; 1,99 (opcional)", "1,49 ; 1,79 ; 1,99 (facultatif)"],
   mkPriceLevels: ["Price levels", "가격 수준", "价格水平", "価格の水準", "Niveles de precio", "Niveaux de prix"],
   mkAddAttribute: ["Add attribute", "속성 추가", "添加属性", "属性を追加", "Añadir atributo", "Ajouter un attribut"],
   mkSampleTask: ["A sample choice task", "선택 과제 예시", "选择任务示例", "選択課題の例", "Una tarea de elección de ejemplo", "Exemple de tâche de choix"],
