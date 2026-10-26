@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The new-store format list shows about four rows of formats instead of two
+  and a half, so browsing 82 formats takes less scrolling inside a small box.
+
 ## 0.8.0 — Readable on every screen, and runs that say when they are done
 
 - Stop vision A/B tests, layout judging and venue comparisons when every response
