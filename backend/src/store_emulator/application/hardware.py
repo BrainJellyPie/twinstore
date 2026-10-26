@@ -311,4 +311,4 @@ def downgrade(plan: LocalVLMPlan, hw: HardwareProfile) -> LocalVLMPlan:
     """The CPU plan, for when a GPU build does not start (missing driver, too old a GPU)."""
     cpu_only = hw.model_copy(update={"gpus": []})
     out = recommend(cpu_only)
-    return out.model_copy(update={"reason": f"{plan.backend} did not start; {out.reason}"})
+    return out.model_copy(update={"reason": f"{plan.backend} did not start; {out.reason}", "reason_code": None, "reason_gb": 0})

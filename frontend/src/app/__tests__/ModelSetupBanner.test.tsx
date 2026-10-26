@@ -73,6 +73,15 @@ it("offers retry for a failed model and settings for a disabled model", async ()
   expect(screen.getByRole("link", { name: "Model settings" })).toBeTruthy();
 });
 
+it.each([false, true])("does not suggest starting or downloading a disabled model (downloaded=%s)", async (downloaded) => {
+  await show({ ...base, local: { ...base.local, state: "disabled", downloaded } });
+  expand();
+  expect(screen.getByText(/No API key is set and the local model is disabled/)).toBeTruthy();
+  expect(screen.queryByText(/or start the local model/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /local model/ })).toBeNull();
+  expect(screen.getByRole("link", { name: "Model settings" })).toBeTruthy();
+});
+
 it("does not show a warning after a provider is connected", async () => {
   await show({ ...base, warning: null, cloud_providers: ["openai"] });
   expect(screen.queryByRole("status")).toBeNull();

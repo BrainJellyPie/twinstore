@@ -26,6 +26,17 @@
   Space; what was pressed was replaced by the run and focus fell back to the
   top of the page. Each previous run's **View** button names its run for
   screen readers ("View Rule-based · seed 0 · preview · 03:12 PM").
+- Keep the actual model-selection reason visible for a manual model override
+  or a GPU-to-CPU fallback, instead of replacing it with the automatic
+  recommendation. A disabled local model's setup guidance directs users to
+  settings without advertising an unavailable start or download.
+
+- A photographed bottle-deposit amount such as `DEPOSIT $0.10` or
+  `$0.10 DEPOSIT` no longer becomes the product's exact selling price.
+  Keep its recognized identity and original tag, estimate the missing
+  selling price, and preserve an existing product price on placement.
+  Explicit deposit-inclusive selling prices remain usable.
+
 - **Model providers** says why it chose the local model in the selected
   language ("CPU 코어: 4, 여유 메모리: 14GB — 실행을 빠르게 유지하는 0.8B 모델");
   the reason was the server's English in every language. The local model plan

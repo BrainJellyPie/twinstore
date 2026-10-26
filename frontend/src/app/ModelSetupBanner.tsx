@@ -80,6 +80,7 @@ export function ModelSetupBanner() {
             <div className="mt-2 space-y-2 border-t border-glass-border pt-2">
               {/* Said here in the reader's language from the setup's state; the server's own warning is English. */}
               <p className="break-words text-xs leading-relaxed text-muted-foreground">{(() => {
+                if (state === "disabled") return t("setupWarnDisabled");
                 const model = t("localModelOn", { model: data.plan.model.label, backend: BACKEND_LABEL[data.plan.backend] });
                 return ready ? t("setupWarnReady", { model }) : busy ? t("setupWarnBusy", { model })
                   : data.local.downloaded === false ? t("setupWarnOffDownload", { model, size: data.plan.model.download_gb })
