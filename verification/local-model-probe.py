@@ -123,7 +123,7 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
     "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
@@ -156,10 +156,14 @@ if args.case == "cafe":
         products_per_category=1, excluded_categories=["beer_alcohol"],
         requirements="No alcoholic products. One product per category. Preserve the cafe and bakery shelf purposes.")
     description = "近所の住民が訪れる小さなカフェ。パンとコーヒー。"
-elif args.case == "book":
+elif args.case in {"book", "book-repurpose", "book-excluded"}:
     options = TemplateLayoutRequest(template_id="bookstore", width=8, height=6, currency="USD",
         products_per_category=2, requirements="Books and stationery for local residents; no food or drinks.")
     description = "Petite librairie de quartier, livres et papeterie."
+    if args.case == "book-repurpose":
+        options = options.model_copy(update={"requirements": "Repurpose every shelf for gift wrapping products only. Use gift_wrapping for every section, overriding the books and stationery shelf signs. Select at most two products. No other categories."})
+    elif args.case == "book-excluded":
+        options = options.model_copy(update={"excluded_categories": ["stationery"], "requirements": "Sell only books. Replace the stationery section with books and keep existing book sections. No food, drinks or other categories."})
 elif args.case == "hypermarket":
     options = TemplateLayoutRequest(template_id="hypermarket", width=32, height=26, currency="KRW",
         products_per_category=1, excluded_categories=["beer_alcohol"],
@@ -756,6 +760,14 @@ try:
                 issues.append({"error": "The large template collapsed to at most 16 departments."})
             if categories & set(options.excluded_categories) or any(len(row.skus) != 1 for row in choices):
                 issues.append({"error": "The assortment violated category exclusions or the one-product limit."})
+        if args.case in {"book", "book-repurpose", "book-excluded", "cafe"}:
+            replacement = {"book-repurpose": "gift_wrapping", "book-excluded": "books"}.get(args.case)
+            expected = {rack.id: replacement or rack.rack_desc for rack in store.racks}
+            mismatches = [{"rack": row.rack_id, "expected": expected[row.rack_id], "actual": row.category}
+                          for row in choices if row.category != expected[row.rack_id]]
+            result["category_mismatches"] = mismatches
+            if mismatches:
+                issues.append({"error": "The category choices ignored this fixture's explicit requirements or shelf purposes."})
         result.update(success=not issues, choices=[choice.model_dump(mode="json") for choice in choices], issues=issues)
         (output / "store.json").write_text(stocked.model_dump_json(indent=2))
 except Exception as error:

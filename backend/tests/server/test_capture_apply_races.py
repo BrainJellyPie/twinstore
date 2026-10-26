@@ -88,3 +88,16 @@ def test_concurrent_applications_keep_both_capture_links(workflow, monkeypatch):
     expected = {first.json()["setup_id"], second.json()["setup_id"]}
     assert len(expected) == 2
     assert set(capture.get_capture(PID, cid).status.applied_setup_ids) == expected
+
+
+@pytest.mark.parametrize('mode', ['single', 'multiple'])
+def test_simultaneously_prepared_photo_drafts_get_distinct_generated_names(workflow, monkeypatch, mode):
+    client, form, _ = workflow
+    cid = form['capture_ids'][0]
+    url = ROOT + f'/{cid}/apply' if mode == 'single' else ROOT + '/apply'
+    body = {'setup_id': BASE, 'new_rack': True} if mode == 'single' else form
+    save = lambda: client.post(url, json=body)
+    first, second = overlap(monkeypatch, capture, 'new_setup_data', save, save)
+    assert first.status_code == second.status_code == 200
+    names = [read_setup(PID, response.json()['setup_id'])['name'] for response in (first, second)]
+    assert len(set(names)) == 2

@@ -24,6 +24,11 @@
   runs, building floors and alternatives, and sign text. Cutting through an
   emoji left half of it, and the server then refused to save.
 
+- Guide automatic starter selection to retain suitable shelf categories unless
+  the store requirements override them. Put the actual store task after the
+  catalog vocabulary, reducing unrelated assortment substitutions by small
+  local models. Extend CPU probes to check shelf purposes as well as valid IDs.
+
 - Answer a request whose text ends in half an emoji with a readable validation
   error instead of a server error. The echoed input shows a replacement mark
   where the broken character was.
@@ -43,7 +48,9 @@
   can be told apart in the layout tabs and pickers: a second starter, shelf-copy,
   library-photo, product-edit or combined-shelf draft, a second optimized or
   edited copy with the same result, become "Starter products 2" and so on.
-  Names typed by hand stay as typed.
+  Names typed by hand stay as typed. Edited names keep their number within
+  the length limit, and simultaneously prepared photo drafts choose names
+  while holding the save lock.
 
 - Do not turn loyalty point counts into cash selling prices during shelf
   capture. Preserve point labels and mark fallback prices as estimated;

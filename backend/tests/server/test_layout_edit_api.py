@@ -346,3 +346,25 @@ def test_a_tested_variant_is_reviewed_on_the_layout_and_kept_as_a_new_one(client
                                                                          "source_sha256": d["source_sha256"], "request_id": "b" * 32})
     assert saved.status_code == 200, saved.text
     assert len(client.get(f"/api/projects/{PID}/setups").json()) == before + 1
+
+
+@pytest.mark.parametrize('source_name', ['Short layout', 'A' * 80, '가' * 80, '🛒' * 80])
+def test_generated_edit_names_stay_distinct_at_the_length_limit(client, source_name):
+    from store_emulator.application.storage.io import write_json
+    from store_emulator.application.storage.setups import read_setup, setup_path
+    source = read_setup(PID, SETUP)
+    source['name'] = source_name
+    write_json(setup_path(PID, SETUP), source)
+    names = []
+    for index in range(3):
+        body = _save_body(name='', request_id=f'{index:032x}')
+        saved = client.post(f'/api/projects/{PID}/setups/{SETUP}/edit', json=body)
+        assert saved.status_code == 200, saved.text
+        name = read_setup(PID, saved.json()['id'])['name']
+        assert len(name) <= 80 and name != source_name
+        name.encode('utf-8')
+        names.append(name)
+        replay = client.post(f'/api/projects/{PID}/setups/{SETUP}/edit', json=body)
+        assert replay.status_code == 200 and replay.json() == saved.json()
+    assert len(set(names)) == 3
+    assert read_setup(PID, SETUP)['name'] == source_name
