@@ -60,7 +60,7 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
             <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => { setFilter(f.id); setLimit(PAGE); }}
               className={cn("rounded-full border px-3 py-1 text-xs transition-colors",
                 filter === f.id ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-card/60 hover:bg-muted")}>
-              {t(f.label)} <span className="ml-0.5 tabular-nums opacity-70">{found.filter((sh) => passes(sh, f.id)).length}</span>
+              {t(f.label)} <span className="ml-1 rounded-full bg-current/10 px-1.5 tabular-nums">{found.filter((sh) => passes(sh, f.id)).length}</span>
             </button>
           ))}
         </div>

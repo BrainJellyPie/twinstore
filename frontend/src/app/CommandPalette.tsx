@@ -10,6 +10,7 @@ import {
   Camera,
   CornerDownLeft,
   Globe2,
+  Keyboard,
   KeyRound,
   LayoutGrid,
   Map,
@@ -38,7 +39,7 @@ import { searchText } from "@/shared/utils/searchText";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 
-import { useCommandPalette } from "./commandPalette";
+import { useCommandPalette, useShortcutsSheet } from "./commandPalette";
 import { quitLauncher, useLauncher } from "./launcher";
 import { projectIdFromPath, rememberedStore } from "./paths";
 import { useTheme } from "./theme";
@@ -92,6 +93,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const open = useCommandPalette((s) => s.open);
   const { data: projects } = useProjects();
   const { theme, setTheme } = useTheme();
+  const showShortcuts = useShortcutsSheet((s) => s.setOpen);
   const launched = useLauncher();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -163,11 +165,12 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         ? localize({ id: "theme", group: "commandAppearance", label: "switchDay", hint: "commandLightHint", icon: Sun, run: () => setTheme("light") })
         : localize({ id: "theme", group: "commandAppearance", label: "switchNight", hint: "commandDarkHint", icon: Moon, run: () => setTheme("dark") }),
     );
+    list.push(localize({ id: "shortcuts", group: "commandApp", label: "kbTitle", hint: "kbHint", icon: Keyboard, run: () => showShortcuts(true) }));
     if (launched) {
       list.push(localize({ id: "quit", group: "commandApp", label: "quitTwinStore", hint: "commandQuitHint", icon: Power, run: () => void quitLauncher({ title: translate(locale, "quitStoppedTitle"), body: translate(locale, "quitStoppedBody") }) }));
     }
     return list;
-  }, [navigate, pid, storeId, projects, theme, setTheme, launched, locale]);
+  }, [navigate, pid, storeId, projects, theme, setTheme, showShortcuts, launched, locale]);
 
   // A sentence typed in a store's palette can be handed to the right tool, which drafts from the same words.
   const [asking, setAsking] = useState(false);
@@ -363,6 +366,9 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         <span className="flex items-center gap-1.5">
           <kbd className="num rounded border px-1">↵</kbd> {t("commandOpen")}
         </span>
+        <button type="button" onClick={() => { onDone(); showShortcuts(true); }} className="flex items-center gap-1.5 rounded hover:text-foreground">
+          <kbd className="num rounded border px-1">?</kbd> {t("kbTitle")}
+        </button>
         <span className="ml-auto aurora-text font-medium">twinstore</span>
       </div>
     </div>

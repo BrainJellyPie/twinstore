@@ -137,6 +137,27 @@ it.each(["altKey", "ctrlKey", "metaKey"])("ignores modified Space shortcuts (%s)
   expect(usePlaybackControlStore.getState().playing).toBe(false);
 });
 
+it("steps 15 minutes with the arrow keys, within the day", () => {
+  render(<TimeBar minTime={28800} maxTime={72000} />);
+  useSimulationMetricsStore.getState().setCurrentMinute(36000);
+  fireEvent.keyDown(window, { key: "ArrowRight" });
+  expect(usePlaybackControlStore.getState().seekTarget).toBe(36900);
+  useSimulationMetricsStore.getState().setCurrentMinute(29000);
+  fireEvent.keyDown(window, { key: "ArrowLeft" });
+  expect(usePlaybackControlStore.getState().seekTarget).toBe(28800);
+});
+
+it("leaves the arrow keys to controls that use them", () => {
+  render(<TimeBar minTime={28800} maxTime={72000} />);
+  const slider = document.createElement("div");
+  slider.setAttribute("role", "slider");
+  document.body.append(slider);
+  try {
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    expect(usePlaybackControlStore.getState().seekTarget).toBeNull();
+  } finally { slider.remove(); }
+});
+
 it("stops responding to shortcuts after unmount", () => {
   const view = render(<TimeBar minTime={28800} maxTime={72000} />);
   view.unmount();

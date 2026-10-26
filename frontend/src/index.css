@@ -133,7 +133,7 @@ body {
   --muted-foreground: #565d6d;
   --accent: #e9ebf0;
   --accent-foreground: #0a0b0e;
-  --destructive: #e1253f;
+  --destructive: #c81d38;
   --border: #e1e4ea;
   --input: #d5d9e1;
   --ring: #6b4dff;
@@ -149,8 +149,8 @@ body {
   --heat-2: #6b4dff;
   --heat-3: #e0429b;
   --tag: #c6ff3a;
-  --positive: #0d9768;
-  --negative: #e1253f;
+  --positive: #067a55;
+  --negative: #c81d38;
   --glass: rgb(255 255 255 / 0.74);
   --glass-strong: rgb(255 255 255 / 0.9);
   --glass-border: rgb(10 11 14 / 0.08);
@@ -569,7 +569,7 @@ body {
 @theme inline {
   --color-warn: var(--warn);
 }
-:root { --warn: #b45309; }
+:root { --warn: #a84d08; }
 .dark { --warn: #ffb547; }
 
 /* Status tones: good / caution / bad, readable in both themes. */
