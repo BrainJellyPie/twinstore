@@ -34,6 +34,7 @@ from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
 from store_emulator.engine.generators.persona import Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
+from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.generators.store_setup_writer import draft_store_setup
 from store_emulator.engine.generators.profile_writer import draft_profile
@@ -94,7 +95,7 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-large-catalog", "pack-wrong-variant", "pack-blank",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -139,6 +140,7 @@ client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_k
 send = httpx.AsyncClient.send
 calls = 0
 attempts = 0
+wire_output_modes: set[str] = set()
 
 
 async def traced_send(self, request, *positional, **keywords):
@@ -149,6 +151,8 @@ async def traced_send(self, request, *positional, **keywords):
         attempts += 1
         attempt = attempts
         payload = json.loads(request.content)
+        response_format = payload.get("response_format", {})
+        wire_output_modes.add(str(response_format.get("type", "unspecified")))
         for message in payload.get("messages", []):
             if isinstance(message.get("content"), list):
                 for part in message["content"]:
@@ -536,24 +540,32 @@ try:
         if args.case == "pack-jam":
             picture = bundled_product_image("/api/catalog-images/starter-01/15.webp")
             assert picture is not None
-        elif args.case in {"pack-label", "pack-large-catalog", "pack-wrong-variant"}:
+        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant"}:
             # A deterministic positive-control label, not a photograph or model-generated picture.
             drawing = ImageDraw.Draw(picture)
             drawing.rounded_rectangle((100, 110, 500, 740), radius=70, fill="#dbeed0", outline="#245737", width=6)
             drawing.rounded_rectangle((220, 30, 380, 140), radius=15, fill="#245737")
             drawing.rectangle((110, 280, 490, 630), fill="white")
-            for y, label, size in [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "500 ml", 48)]:
+            labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "500 ml", 48)]
+            if args.case == "pack-mixed-quantities":
+                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "NET 500 g", 38), (560, "SERVING 100 ml", 30)]
+            for y, label, size in labels:
                 drawing.text((300, y), label, font=load_font(size, True), fill="#153d24", anchor="mt")
             products = ["Leafy Green Tea 1 L", "Leafy Black Tea 500 ml"]
             if args.case in {"pack-label", "pack-large-catalog"}:
                 products.insert(0, "Leafy Green Tea 500 ml")
+            if args.case == "pack-brand-suffix":
+                products.insert(0, "Green Tea 500 ml — Leafy")
+            if args.case == "pack-mixed-quantities":
+                products = ["Green Tea 500 ml — Leafy", "Leafy Green Tea 100 g"]
             if args.case == "pack-large-catalog":
                 products = [f"Unrelated product {i:03d}" for i in range(180)] + products
         picture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reading = asyncio.run(read_pack(client, picture, products))
         issues = []
-        expected_match = "Leafy Green Tea 500 ml" if args.case in {"pack-label", "pack-large-catalog"} else ""
+        expected_match = ("Green Tea 500 ml — Leafy" if args.case == "pack-brand-suffix" else
+            "Leafy Green Tea 500 ml" if args.case in {"pack-label", "pack-large-catalog"} else "")
         if reading.shelf_product != expected_match:
             issues.append(f"Expected product match {expected_match!r}, received {reading.shelf_product!r}")
         if args.case in {"pack-jam", "pack-blank"} and (reading.brand or reading.size):
@@ -562,11 +574,38 @@ try:
     else:
         result.update(layout=options.model_dump(mode="json"), description=description)
         store = generate_store(options.template_id, currency=options.currency, options=options)
+        original = store.model_dump(mode="json")
+        (output / "source-store.json").write_text(store.model_dump_json(indent=2))
         # Inject the real loopback client at the provider-selection seam, without editing saved settings.
         with patch.object(template_assortment, "assistive_client", return_value=client), \
                 patch.object(httpx.AsyncClient, "send", traced_send):
             stocked, choices = template_assortment.select_initial_assortment(SimulationConfig(), store, options, description)
         issues = [issue.model_dump(mode="json") for issue in validate(stocked)]
+        if store.model_dump(mode="json") != original:
+            issues.append({"error": "Automatic stocking mutated its source layout."})
+        choices_by_rack = {row.rack_id: row for row in choices}
+        if len(choices_by_rack) != len(choices):
+            issues.append({"error": "A rack was assigned more than once."})
+        placed = set()
+        selected = {sku for row in choices for sku in row.skus or []}
+        for rack in stocked.racks:
+            row = choices_by_rack.get(rack.id)
+            if row is None:
+                continue
+            limit = options.category_product_limits.get(row.category, options.products_per_category or 16)
+            if row.category in options.excluded_categories or not row.skus or len(row.skus) > limit:
+                issues.append({"error": f"{rack.id}: category exclusion or product limit violated."})
+            catalog = {p.sku: p for entry in CATALOG[row.category]
+                       for p in [catalog_slot_item(entry, options.currency)]}
+            for slot in rack.slots:
+                for item in slot.items:
+                    placed.add(item.sku)
+                    if item.sku not in (row.skus or []) or item != catalog.get(item.sku):
+                        issues.append({"error": f"{rack.id}: placed product differs from its selected catalog identity or price."})
+        if selected != placed:
+            issues.append({"error": "Selected and actually placed product identities differ."})
+        result.update(selected_skus=len(selected), placed_skus=len(placed),
+            placements=sum(len(slot.items) for rack in stocked.racks if rack.id in choices_by_rack for slot in rack.slots))
         if args.case == "hypermarket":
             original_categories = {rack.id: rack.rack_desc for rack in store.racks}
             categories = {row.category for row in choices}
@@ -582,7 +621,7 @@ try:
 except Exception as error:
     result.update(success=False, error=repr(error))
 result.update(seconds=round(time.perf_counter() - started, 2), calls=calls, attempted_calls=attempts,
-              usage=client.get_usage().model_dump(mode="json"))
+              wire_output_modes=sorted(wire_output_modes), usage=client.get_usage().model_dump(mode="json"))
 (output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
 print(json.dumps({"output": str(output), **{key: result[key] for key in ("success", "seconds", "calls", "attempted_calls", "usage")}}, indent=2))
 raise SystemExit(0 if result["success"] else 1)
