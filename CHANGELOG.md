@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Give automatic A/B drafts an operation-specific response schema: require
+  product targets for product edits, category targets for category edits,
+  and the appropriate price, discount, sign, shelf or package value. This
+  prevents the observed local-model drafts that omitted every product and
+  repeated the same unusable response on retry.
+
 - Compact large response schemas in loopback JSON requests so small local
   models can complete combined edits without excessive schema text. Preserve
   every constraint and leave small schemas and native JSON-schema requests
