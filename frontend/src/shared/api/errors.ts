@@ -1,3 +1,7 @@
+import { useLocale } from "@/shared/i18n/i18n";
+import { translate } from "@/shared/i18n/translate";
+import { UserMessageError } from "@/shared/i18n/userMessage";
+
 /** A non-2xx API response; `status` lets callers react to a specific code such as 409. */
 export class ApiError extends Error {
   status: number;
@@ -38,4 +42,17 @@ export function apiErrorMessage(body: string, fallback: string): string {
     messages.push(field ? `${field}: ${issue.msg}` : issue.msg);
   }
   return messages.join("; ") || fallback;
+}
+
+/** fetch() for the backend. A request that cannot reach it at all (it stopped, or the connection dropped) fails with
+ * a message saying so in the user's language instead of the browser's "Failed to fetch"; a cancelled one stays as is. */
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (init?.signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
+    const unreachable = new UserMessageError("serverUnreachable");
+    unreachable.message = translate(useLocale.getState().locale, "serverUnreachable");
+    throw unreachable;
+  }
 }

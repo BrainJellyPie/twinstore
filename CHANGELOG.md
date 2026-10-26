@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- When TwinStore's server cannot be reached (it was stopped, or the connection
+  dropped), pages say so in the chosen language ("Can't reach TwinStore.
+  Check that it is still running, then try again.") instead of the browser's
+  English "Failed to fetch".
+
 - With reduced motion turned on in the system, the report's section links,
   **See the results**, **Your stores**, the analyst and other jumps move
   straight to their place instead of gliding there.

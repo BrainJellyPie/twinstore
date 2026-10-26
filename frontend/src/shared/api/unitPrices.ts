@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export interface PriceScope { focal_retailer: string; as_of: string; max_age_days: number }
 export interface PriceUpload extends PriceScope { file: File }
@@ -21,7 +21,7 @@ export interface UnitPriceReport {
   rows: OfferReview[]; comparisons: PriceComparison[]; notes: string[];
 }
 export async function unitPriceTemplate(pid: string): Promise<Blob> {
-  const response = await fetch(`${BASE}/api/projects/${pid}/unit-prices/template.csv`);
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/unit-prices/template.csv`);
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Offer template failed"));
   return response.blob();
 }
@@ -30,7 +30,7 @@ async function requestPrices(pid: string, req: PriceUpload | PriceExport): Promi
   body.append("as_of", req.as_of); body.append("max_age_days", String(req.max_age_days));
   const csv = "source_sha256" in req;
   if (csv) body.append("source_sha256", req.source_sha256);
-  const response = await fetch(`${BASE}/api/projects/${pid}/unit-prices/${csv ? "export.csv" : "preview"}`, { method: "POST", body });
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/unit-prices/${csv ? "export.csv" : "preview"}`, { method: "POST", body });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Unit-price review failed"));
   return response;
 }

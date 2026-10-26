@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export type DataStage = "not_collected" | "collected_unseen" | "results_seen";
 export interface ProtocolPlan {
@@ -24,7 +24,7 @@ export interface ProtocolListing {
 }
 const root = (pid: string) => `${BASE}/api/projects/${pid}/protocols`;
 async function request(url: string, init?: RequestInit): Promise<Response> {
-  const response = await fetch(url, init);
+  const response = await apiFetch(url, init);
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Protocol request failed"));
   return response;
 }

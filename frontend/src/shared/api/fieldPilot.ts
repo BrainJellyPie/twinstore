@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 import type { PitchVariant } from "./marketing";
 
 export interface PilotRequest {
@@ -86,7 +86,7 @@ export interface PilotSummary {
 }
 const root = (pid: string) => `${BASE}/api/projects/${pid}/staff-pilots`;
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await apiFetch(url, init);
   if (!response.ok) {
     throw new Error(apiErrorMessage(await response.text(), `Field pilot request failed (${response.status}). Check the entered values.`));
   }

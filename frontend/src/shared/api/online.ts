@@ -5,10 +5,10 @@
 import { BASE, type EnsembleConfig } from "./client";
 import type { VariantChange } from "./marketing";
 import type { AnalystThread, InterviewMessage } from "./interview";
-import { ApiError, apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage, apiFetch } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
+  const res = await apiFetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new ApiError(apiErrorMessage(body, `${res.status} ${res.statusText}`), res.status);
@@ -362,7 +362,7 @@ export function designChat(pid: string, siteId: string, body: { messages: Design
 
 /** The home page with a design that is not saved yet, as a data URL. */
 export async function draftPreview(pid: string, siteId: string, options: SiteOptions, device: Device, signal?: AbortSignal): Promise<string> {
-  const res = await fetch(`${BASE}/api/projects/${pid}/online/sites/${siteId}/preview.png`, {
+  const res = await apiFetch(`${BASE}/api/projects/${pid}/online/sites/${siteId}/preview.png`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options, device }), signal,
   });
   if (!res.ok) throw new Error(apiErrorMessage(await res.text().catch(() => ""), `${res.status} ${res.statusText}`));

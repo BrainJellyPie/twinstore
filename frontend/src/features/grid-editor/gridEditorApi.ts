@@ -9,6 +9,7 @@
 //   `code: "non_json_response"`, `reason: "transport_error"`.
 
 import { BASE } from "@/shared/api/client";
+import { apiFetch } from "@/shared/api/errors";
 import type {
   SaveSetupResult,
   SetupUpdatePayload,
@@ -88,7 +89,7 @@ export async function loadSetup(
   sid: string,
   signal?: AbortSignal,
 ): Promise<LoadSetupResult> {
-  const res = await fetch(`${BASE}/api/projects/${pid}/setups/${sid}`, {
+  const res = await apiFetch(`${BASE}/api/projects/${pid}/setups/${sid}`, {
     method: "GET",
     signal,
   });
@@ -135,7 +136,7 @@ export async function saveSetup(
   payload: SetupUpdatePayload,
   signal?: AbortSignal,
 ): Promise<SaveSetupResult> {
-  const res = await fetch(`${BASE}/api/projects/${pid}/setups/${sid}`, {
+  const res = await apiFetch(`${BASE}/api/projects/${pid}/setups/${sid}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ setup: payload }),

@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 import type { Store } from "@/shared/types/domain";
 export interface CaptureBatchRequest {
   capture_ids: string[];
@@ -35,7 +35,7 @@ async function request<T>(
   action: string,
   body: CaptureBatchRequest | CaptureBatchSave,
 ): Promise<T> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${BASE}/api/projects/${pid}/captures/${action}`,
     {
       method: "POST",

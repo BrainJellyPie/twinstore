@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 import type { VariantChange } from "./marketing";
 
 export type FactorialMetric = "spend" | "units" | "bought";
@@ -20,12 +20,12 @@ export interface FactorialReport {
 }
 const root = (pid: string, eid: string) => `${BASE}/api/projects/${pid}/experiments/${eid}/factorial`;
 export async function getFactorialSource(pid: string, eid: string, signal?: AbortSignal): Promise<FactorialSource> {
-  const response = await fetch(`${root(pid, eid)}/source`, { signal });
+  const response = await apiFetch(`${root(pid, eid)}/source`, { signal });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Could not load paired source"));
   return response.json() as Promise<FactorialSource>;
 }
 async function request(pid: string, eid: string, req: FactorialRequest, suffix: string): Promise<Response> {
-  const response = await fetch(`${root(pid, eid)}/${suffix}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(req) });
+  const response = await apiFetch(`${root(pid, eid)}/${suffix}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(req) });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Factorial review failed"));
   return response;
 }
