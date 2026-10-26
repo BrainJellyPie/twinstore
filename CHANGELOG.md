@@ -6,6 +6,9 @@
   ("Validated on fresh shoppers …"), which replaces the Start button and the
   progress, instead of falling back to the dialog. A short search's chart
   numbers every candidate on its axis; it showed only "1" until the tenth.
+  Saving the result as a new layout continues from that layout's tab; the
+  button that opened the optimizer goes away with the run, and focus fell to
+  the page.
 
 - Keep a coupon's face value, such as "$1.00 COUPON", from becoming an exact
   product price during shelf capture. Preserve the printed text, mark the
