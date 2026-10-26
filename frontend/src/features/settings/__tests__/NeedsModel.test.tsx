@@ -42,6 +42,13 @@ it("asks for a key or the local model's download, and downloads only on the clic
   await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
 });
 
+it("words the hint for a model helper such as the designer or an analyst", async () => {
+  await show(noKey, <NeedsModel purpose="assist" />);
+  expect(screen.getByTestId("needs-model").textContent).toContain("This needs a model.");
+  expect(screen.getByTestId("needs-model").textContent).not.toContain("virtual customers");
+  expect(screen.getByRole("link", { name: "Model settings" }).getAttribute("href")).toBe("/settings");
+});
+
 it("offers one settings action after customer generation fails and keeps local-model recovery", async () => {
   const onOpenSettings = vi.fn();
   vi.mocked(api.startLocalModel).mockResolvedValue({ ...noKey.local, state: "downloading" });

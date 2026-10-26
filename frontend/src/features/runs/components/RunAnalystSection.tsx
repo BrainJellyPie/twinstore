@@ -13,6 +13,7 @@ import { useAssistStore } from "@/stores/assistStore";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 const STARTERS: MessageKey[] = ["analystStarterShelf", "analystStarterBusy", "analystStarterSpenders"];
 
@@ -133,6 +134,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
           ))}
         </div>
       )}
+      <div className="mt-2"><NeedsModel purpose="assist" /></div>
       <form className="mt-2 flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <input value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))} placeholder={t("analystPlaceholder")}
           aria-label={t("analystQuestion")}

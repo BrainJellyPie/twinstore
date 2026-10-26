@@ -15,6 +15,7 @@ import { cn } from "@/shared/utils/cn";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 const OPENERS: Record<SessionOutcome, MessageKey> = {
   purchased: "onAskWhyBought", abandoned_cart: "onAskWhyCart", left: "onAskWhyLeft", bounced: "onAskWhyBounced",
@@ -103,6 +104,7 @@ export function ShopperChat({ projectId, runId, variant, shopper, outcome, onSte
           ))}
         </div>
       )}
+      <NeedsModel purpose="assist" />
       <form className="flex items-end gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <textarea value={text} rows={2} aria-label={t("interviewAskPlaceholder", { name })}
           onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))}

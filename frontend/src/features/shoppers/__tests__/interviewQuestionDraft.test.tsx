@@ -10,7 +10,12 @@ vi.mock("@/shared/api/interview", async (original) => ({
   ...await original<typeof import("@/shared/api/interview")>(),
   askShopper: vi.fn(), clearInterview: vi.fn(), getInterview: vi.fn(), suggestQuestions: vi.fn(),
 }));
-vi.mock("@/shared/api/client", () => ({ BASE: "", getModels: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/shared/api/client", () => ({
+  BASE: "", getModels: vi.fn().mockResolvedValue([]),
+  // A provider is set up, so no "needs a model" hint shows.
+  getModelSetup: vi.fn().mockResolvedValue({ cloud_providers: ["openai"], local: { state: "off" } }),
+  startLocalModel: vi.fn(), stopLocalModel: vi.fn(),
+}));
 
 const journey: Journey = {
   run_id: "r", day: 1, arrival_time: "09:00:00", leave_time: "09:01:00", engine_type: "rule_based",

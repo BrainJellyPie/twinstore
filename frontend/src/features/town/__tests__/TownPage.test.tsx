@@ -223,3 +223,16 @@ it("creates the first neighborhood without asking", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Generate" }));
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledOnce());
 });
+
+it("says once that no visitors are expected instead of showing zero distances and walks", async () => {
+  vi.mocked(api.getTown).mockResolvedValue(town);
+  vi.mocked(api.getTownDemand).mockImplementation(async (_pid, day) => day === "weekend"
+    ? { ...demand, day_type: day, total_daily_visitors: 0, direct_visitors: 0, linked_visitors: 0, hourly_totals: Array(24).fill(0),
+        catchment_radius_50_m: 0, catchment_radius_80_m: 0, avg_walk_distance_m: 0, market_share: 0 }
+    : demand);
+  await mount();
+  expect(await screen.findByText("137", { exact: true })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "weekend" }));
+  expect((await screen.findByText(/No visitors are expected on a weekend/)).getAttribute("role")).toBe("status");
+  expect(screen.queryByText("0 m")).toBeNull();
+});

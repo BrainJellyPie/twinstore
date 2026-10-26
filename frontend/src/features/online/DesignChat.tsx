@@ -18,6 +18,7 @@ import { useAssistStore } from "@/stores/assistStore";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { ScanChip } from "./ScanChip";
 
@@ -172,6 +173,7 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
           <div ref={end} />
         </div>
         {ask.error && <p role="alert" className="text-xs text-destructive">{ask.error.message}</p>}
+        <NeedsModel purpose="assist" />
         <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(text); }}>
           <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, 1200))} rows={2}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(text); } }}

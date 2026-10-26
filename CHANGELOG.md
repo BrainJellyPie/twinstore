@@ -63,6 +63,20 @@
   the list or submitting a search, focus moves to the new page's **Options on
   this page** heading, one Tab before its first option. Before, focus fell back
   to the page body and every step began again from the top of the app.
+- The online designer, both run analysts and the shopper interviews (one
+  shopper, a group, an online shopper) say up front when no model is set up,
+  with **Download local model** and **Model settings** buttons, in the chosen
+  language. Before, the first sign was an English error after sending.
+- Closing a dialog, sheet or confirmation returns keyboard focus to the button
+  that opened it (such as **Watch a shopper**), so Tab carries on from there.
+  Most dialogs open from a plain button, and focus used to drop to the start
+  of the page.
+- After **Close venue** on the neighborhood map, the map no longer follows the
+  mouse around without a button held (it slid about 90 px on the next click).
+- When a neighborhood expects no visitors on a weekend or holiday (the sample
+  store's layout is closed at weekends), the panel says so and points to the
+  layout's opening hours, instead of showing 0 visitors, "half within 0 m", a
+  "≈ 1 min" walk and an empty hourly chart.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

@@ -15,6 +15,7 @@ import { formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 const SEGMENTS: { id: GroupSegment; label: MessageKey; question: MessageKey }[] = [
   { id: "empty_handed", label: "shopperSortNothing", question: "groupAskEmptyHanded" },
@@ -110,6 +111,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
           <input type="range" min={Math.min(4, maxSize)} max={maxSize} step={1} value={askedSize} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" aria-label={t("groupSize")} />
           <span className="num w-6 text-right font-semibold text-foreground">{askedSize}</span>
         </div>
+        <NeedsModel purpose="assist" />
         <div className="flex items-center gap-2">
           <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("model")}>
             <option value="">{t("interviewAppModel")}</option>

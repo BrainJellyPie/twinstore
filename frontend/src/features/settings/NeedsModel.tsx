@@ -16,8 +16,9 @@ const COMING: Partial<Record<ModelSetup["local"]["state"], MessageKey>> = {
   preparing: "localStatePreparing", downloading: "localStateDownloading", starting: "localStateStarting",
 };
 
-/** `settings`: also link to the model settings (off where the screen already has that button). */
-export function NeedsModel({ settings = true }: { settings?: boolean }) {
+/** `settings`: also link to the model settings (off where the screen already has that button).
+ *  `purpose`: what the model is for — generating customers, or a helper such as the designer or an analyst. */
+export function NeedsModel({ settings = true, purpose = "customers" }: { settings?: boolean; purpose?: "customers" | "assist" }) {
   const { t } = useI18n();
   const { data } = useModelSetup();
   const { start } = useLocalModelControl();
@@ -26,7 +27,9 @@ export function NeedsModel({ settings = true }: { settings?: boolean }) {
   const progress = busy && data.local.progress !== null ? ` ${Math.round(data.local.progress * 100)}%` : "";
   return (
     <div role="status" className="space-y-2 rounded-lg border p-3 text-sm" data-testid="needs-model">
-      <p>{t(data.local.state === "disabled" ? "needsModelDisabledHint" : "needsModelHint")}</p>
+      <p>{t(purpose === "assist"
+        ? (data.local.state === "disabled" ? "needsModelAssistDisabledHint" : "needsModelAssistHint")
+        : (data.local.state === "disabled" ? "needsModelDisabledHint" : "needsModelHint"))}</p>
       {busy ? (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" aria-hidden /> {t(COMING[data.local.state] ?? "localStatePreparing")}{progress}

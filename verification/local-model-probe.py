@@ -34,6 +34,7 @@ from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
 from store_emulator.engine.generators.persona import Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
+from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.generators.store_setup_writer import draft_store_setup
 from store_emulator.engine.generators.profile_writer import draft_profile
@@ -570,11 +571,38 @@ try:
     else:
         result.update(layout=options.model_dump(mode="json"), description=description)
         store = generate_store(options.template_id, currency=options.currency, options=options)
+        original = store.model_dump(mode="json")
+        (output / "source-store.json").write_text(store.model_dump_json(indent=2))
         # Inject the real loopback client at the provider-selection seam, without editing saved settings.
         with patch.object(template_assortment, "assistive_client", return_value=client), \
                 patch.object(httpx.AsyncClient, "send", traced_send):
             stocked, choices = template_assortment.select_initial_assortment(SimulationConfig(), store, options, description)
         issues = [issue.model_dump(mode="json") for issue in validate(stocked)]
+        if store.model_dump(mode="json") != original:
+            issues.append({"error": "Automatic stocking mutated its source layout."})
+        choices_by_rack = {row.rack_id: row for row in choices}
+        if len(choices_by_rack) != len(choices):
+            issues.append({"error": "A rack was assigned more than once."})
+        placed = set()
+        selected = {sku for row in choices for sku in row.skus or []}
+        for rack in stocked.racks:
+            row = choices_by_rack.get(rack.id)
+            if row is None:
+                continue
+            limit = options.category_product_limits.get(row.category, options.products_per_category or 16)
+            if row.category in options.excluded_categories or not row.skus or len(row.skus) > limit:
+                issues.append({"error": f"{rack.id}: category exclusion or product limit violated."})
+            catalog = {p.sku: p for entry in CATALOG[row.category]
+                       for p in [catalog_slot_item(entry, options.currency)]}
+            for slot in rack.slots:
+                for item in slot.items:
+                    placed.add(item.sku)
+                    if item.sku not in (row.skus or []) or item != catalog.get(item.sku):
+                        issues.append({"error": f"{rack.id}: placed product differs from its selected catalog identity or price."})
+        if selected != placed:
+            issues.append({"error": "Selected and actually placed product identities differ."})
+        result.update(selected_skus=len(selected), placed_skus=len(placed),
+            placements=sum(len(slot.items) for rack in stocked.racks if rack.id in choices_by_rack for slot in rack.slots))
         if args.case == "hypermarket":
             original_categories = {rack.id: rack.rack_desc for rack in store.racks}
             categories = {row.category for row in choices}

@@ -9,7 +9,12 @@ import { GroupInterviewPanel } from "../GroupInterview";
 vi.mock("@/shared/api/interview", async (original) => ({
   ...await original<typeof import("@/shared/api/interview")>(), listGroups: vi.fn(), askGroup: vi.fn(), deleteGroup: vi.fn(), suggestGroupQuestions: vi.fn(),
 }));
-vi.mock("@/shared/api/client", () => ({ BASE: "", getModels: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/shared/api/client", () => ({
+  BASE: "", getModels: vi.fn().mockResolvedValue([]),
+  // A provider is set up, so no "needs a model" hint shows.
+  getModelSetup: vi.fn().mockResolvedValue({ cloud_providers: ["openai"], local: { state: "off" } }),
+  startLocalModel: vi.fn(), stopLocalModel: vi.fn(),
+}));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const answer = (id: string, theme: number): GroupAnswer => ({
