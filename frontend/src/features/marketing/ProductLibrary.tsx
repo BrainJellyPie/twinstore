@@ -118,21 +118,26 @@ export function ProductLibrary({ projectId, products, setupId }: { projectId: st
   const { t } = useI18n();
   const packages = usePackages(projectId);
   const list = packages.data ?? [];
+  // A deleted card held focus; it moves to the drop zone at the top of the library.
+  const drop = useRef<HTMLDivElement>(null);
+  const focusDrop = () => drop.current?.querySelector("button")?.focus();
   return (
     <div className="space-y-4">
-      <ProductDrop projectId={projectId} setupId={setupId} />
+      <div ref={drop}><ProductDrop projectId={projectId} setupId={setupId} /></div>
       {list.length === 0 ? (
         <p className="px-1 text-sm text-muted-foreground">{t("mkNoImages")}</p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-3">
-          {list.map((p) => <ProductCard key={`${projectId}:${p.asset_id}`} projectId={projectId} asset={p} products={products} setupId={setupId} />)}
+          {list.map((p) => <ProductCard key={`${projectId}:${p.asset_id}`} projectId={projectId} asset={p} products={products} setupId={setupId} onDeleted={focusDrop} />)}
         </div>
       )}
     </div>
   );
 }
 
-function ProductCard({ projectId, asset, products, setupId }: { projectId: string; asset: PackageAsset; products: Product[]; setupId?: string }) {
+function ProductCard({ projectId, asset, products, setupId, onDeleted }: {
+  projectId: string; asset: PackageAsset; products: Product[]; setupId?: string; onDeleted: () => void;
+}) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [nameDraft, setNameDraft] = useState<string | null>(null);
@@ -153,6 +158,7 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
   });
   const del = useMutation({
     mutationFn: () => api.deletePackage(projectId, asset.asset_id),
+    onSuccess: onDeleted,
     onSettled: () => qc.invalidateQueries({ queryKey: marketingKeys.packages(projectId) }),
   });
   const linked = products.find((p) => p.sku === asset.sku);
@@ -171,7 +177,7 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
           onBlur={() => setConfirm(false)}
           className={cn("absolute top-2 right-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.68rem] transition-opacity",
             confirm ? "bg-destructive text-white" : "bg-black/55 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100")}
-          aria-label={t("mkDeleteJob", { name: asset.name })}
+          aria-label={confirm ? t("mkDeleteConfirm") : t("mkDeleteJob", { name: asset.name })}
         >
           <Trash2 className="size-3" /> {confirm ? t("mkDeleteConfirm") : ""}
         </button>

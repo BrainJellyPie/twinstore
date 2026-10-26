@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A pack's delete button in **Products** is named "Delete?" while it asks, as
+  in the studies list, so screen readers hear that a second press deletes; after
+  deleting, focus moves to the drop zone instead of the top of the page.
 - Deleting an online store or run moves focus to the list entry that opens in
   its place; focus fell back to the top of the page.
 - Deleting a study from the studio's list moves focus to the list's **New

@@ -9,7 +9,7 @@ import { ProductDrop, ProductLibrary } from "../ProductLibrary";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(),
-  uploadPackage: vi.fn(), readPackage: vi.fn(), listPackages: vi.fn(), updatePackage: vi.fn(), getModelSetup: vi.fn(),
+  uploadPackage: vi.fn(), readPackage: vi.fn(), listPackages: vi.fn(), updatePackage: vi.fn(), getModelSetup: vi.fn(), deletePackage: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
@@ -100,4 +100,14 @@ it("offers model setup when packs could not be read for want of a model", async 
   fireEvent.change(container.querySelector("input[type=file]")!, { target: { files: [new File(["x"], "pack.png", { type: "image/png" })] } });
   expect(await screen.findByText(/1 pack could not be read/)).toBeTruthy();
   expect(await screen.findByTestId("needs-model")).toBeTruthy();
+});
+
+it("asks before deleting a pack, then moves focus to the drop zone", async () => {
+  vi.mocked(api.deletePackage).mockResolvedValue(undefined as never);
+  wrap(<ProductLibrary projectId="p" products={[]} />);
+  fireEvent.click(screen.getByRole("button", { name: "Delete IMG 2041" }));
+  expect(api.deletePackage).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Delete?" }));
+  await waitFor(() => expect(api.deletePackage).toHaveBeenCalledWith("p", "pkg_1"));
+  await waitFor(() => expect(document.activeElement?.textContent).toContain("Drop product images"));
 });
