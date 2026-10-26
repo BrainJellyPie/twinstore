@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- When uploaded packs could not be read for want of a model, the uploader
+  offers the model setup under its note that they kept their file names.
 - **New store** shows the store type it starts with, or the one a template
   sets, by its name in the selected language ("편의점", "Convenience store")
   instead of the internal id "convenience"; the id is still what is saved

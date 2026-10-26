@@ -9,7 +9,10 @@ import { ProductDrop, ProductLibrary } from "../ProductLibrary";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(),
-  uploadPackage: vi.fn(), readPackage: vi.fn(), listPackages: vi.fn(), updatePackage: vi.fn(),
+  uploadPackage: vi.fn(), readPackage: vi.fn(), listPackages: vi.fn(), updatePackage: vi.fn(), getModelSetup: vi.fn(),
+}));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
 }));
 vi.mock("../hooks", () => ({ usePackages: () => ({ data: [ASSET] }) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -87,4 +90,14 @@ it("refreshes the library even when every file is rejected", async () => {
   expect((await screen.findByRole("alert")).textContent).toContain("2 images could not be uploaded:");
   await waitFor(() => expect(invalidate).toHaveBeenCalled());
   expect(uploaded).not.toHaveBeenCalled();
+});
+
+it("offers model setup when packs could not be read for want of a model", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(api.uploadPackage).mockImplementation(async (_p, file) => ({ ...ASSET, asset_id: file.name, name: file.name }));
+  vi.mocked(api.readPackage).mockRejectedValue(new Error("No model API key is set."));
+  const { container } = wrap(<ProductDrop projectId="p" setupId="s1" />);
+  fireEvent.change(container.querySelector("input[type=file]")!, { target: { files: [new File(["x"], "pack.png", { type: "image/png" })] } });
+  expect(await screen.findByText(/1 pack could not be read/)).toBeTruthy();
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });

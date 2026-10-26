@@ -12,6 +12,7 @@ import { marketingKeys } from "@/shared/api/marketing";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { usePackages } from "./hooks";
 import type { Product } from "./products";
@@ -107,6 +108,8 @@ export function ProductDrop({ projectId, compact = false, onUploaded, setupId }:
       {unread > 0 && !upload.isPending && (
         <p className="text-xs text-muted-foreground">{t(unread > 1 ? "mkUnreadMany" : "mkUnreadOne", { count: unread })}</p>
       )}
+      {/* Reading a pack takes a model; with none set up, say how to get one (nothing shows once one answers). */}
+      {unread > 0 && !upload.isPending && <NeedsModel purpose="assist" />}
     </div>
   );
 }
