@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Validate against real sales** names its metrics in plain words in the
+  selected language ("Product mix similarity", "Top 10 best sellers match"),
+  instead of ids such as "sku js similarity". Hovering a name still shows the
+  statistic's id.
+
 - **Find layout** shows each layout's store format by its name in the selected
   language ("University campus store"), not by its internal id ("campus cvs"),
   and finds layouts by that name in any of the six languages.

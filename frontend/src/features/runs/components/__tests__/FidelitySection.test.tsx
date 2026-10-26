@@ -61,3 +61,20 @@ it.each(["receipts", "sales"] as const)("ignores a late %s response after switch
   expect(screen.queryByRole("region", { name: "Review receipt readings" })).toBeNull();
   expect(screen.queryByText(/7 real receipts/)).toBeNull();
 });
+
+it("names metrics in plain words in the selected language and keeps the statistic's id in the tooltip", async () => {
+  const { useLocale } = await import("@/shared/i18n/i18n");
+  useLocale.getState().setLocale("ko");
+  try {
+    const metric = (name: string) => ({ name, value: 0.5, better: "higher", description: "" });
+    vi.mocked(uploadFidelity).mockResolvedValue({ ...report, metrics: [metric("sku_js_similarity"), metric("sku_ndcg@10"), metric("new_metric_x")] });
+    const { container } = render(<FidelitySection projectId="p" runId="r" />, { wrapper });
+    fireEvent.change(container.querySelector('input[type="file"]:not([multiple])')!, { target: { files: [new File(["csv"], "sales.csv")] } });
+    const label = await screen.findByText("상품 구성 유사도");
+    expect(label.getAttribute("title")).toBe("sku_js_similarity");
+    expect(screen.getByText("상위 10개 인기 상품 일치 (NDCG)")).toBeTruthy();
+    expect(screen.getByText("new metric x")).toBeTruthy();
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
+});
