@@ -59,6 +59,10 @@
   the list or submitting a search, focus moves to the new page's **Options on
   this page** heading, one Tab before its first option. Before, focus fell back
   to the page body and every step began again from the top of the app.
+- The online designer, both run analysts and the shopper interviews (one
+  shopper, a group, an online shopper) say up front when no model is set up,
+  with **Download local model** and **Model settings** buttons, in the chosen
+  language. Before, the first sign was an English error after sending.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

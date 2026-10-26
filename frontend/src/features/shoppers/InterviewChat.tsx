@@ -12,6 +12,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { suggestedQuestions } from "./shopperStats";
 
@@ -127,6 +128,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
           </span>
         )}
       </div>
+      <NeedsModel purpose="assist" />
       <form className="flex items-end gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <textarea
           value={text}

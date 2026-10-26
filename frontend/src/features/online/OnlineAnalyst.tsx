@@ -14,6 +14,7 @@ import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
 import { useAssistStore } from "@/stores/assistStore";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { experimentsForAnswer } from "./answerExperiments";
 import { experimentsFor, QUICK_EXPERIMENTS } from "./experiments";
@@ -211,6 +212,7 @@ export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry
           ))}
         </div>
       )}
+      <NeedsModel purpose="assist" />
       <form className="flex items-center gap-1.5 rounded-2xl border bg-card/60 p-1.5 focus-within:ring-2 focus-within:ring-ring/40"
         onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <input value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))} placeholder={t("onAnalystPlaceholder")}
