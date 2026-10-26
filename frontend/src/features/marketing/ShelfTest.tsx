@@ -261,10 +261,11 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         {target && changes.length === 0 && <span className="text-sm text-muted-foreground">{t("mkChangeSomething")}</span>}
         {invalidPrice && <p role="alert" className="text-sm text-destructive">{t("mkInvalidPriceCurrent")}</p>}
         {preview.error && <p role="alert" className="text-sm text-destructive">{preview.error.message}</p>}
-        {run.error && <p className="text-sm text-destructive">{run.error.message}</p>}
+        {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
         <Button size="lg" disabled={!target || invalidPrice || changes.length === 0 || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rows3 className="size-4" />} {t("mkRunShelf")}
         </Button>
+        {run.error && <div className="basis-full"><NeedsModel /></div>}
       </div>
     </div>
   );

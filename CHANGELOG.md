@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- When a shelf test, concept test, conjoint study, staff-script test or a
+  vision-shopper A/B test cannot start for want of a model, the studio offers
+  the model setup (start or download the local model, or open Model settings)
+  under the error, as drafting from a question already did. The error alone
+  pointed to Settings in words.
 - The studio's file reviews (price checks, unit prices, inventory, pilot
   timing, pilot observations and till records) bring their result into view
   and move focus to its summary when it is ready. The result opened below the

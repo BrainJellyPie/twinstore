@@ -337,6 +337,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Grid3x3 className="size-4" />}
           {t("mkFieldStudy")}
         </Button>
+        {run.error && <div className="basis-full"><NeedsModel /></div>}
       </div>
     </div>
   );

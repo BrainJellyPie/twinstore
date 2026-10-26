@@ -222,11 +222,12 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
-        {run.error && <p className="text-sm text-destructive">{run.error.message}</p>}
+        {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
         <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || invalidPrice || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}
           {t("mkFieldSurvey")}
         </Button>
+        {run.error && <div className="basis-full"><NeedsModel /></div>}
       </div>
     </div>
   );

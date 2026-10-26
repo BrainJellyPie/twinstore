@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,10 +10,14 @@ import { ShelfTestBuilder } from "../ShelfTest";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]),
+  getModelSetup: vi.fn().mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } }),
 }));
 vi.mock("@/shared/api/marketing", async (original) => ({
   ...await original<typeof import("@/shared/api/marketing")>(), startShelfTest: vi.fn(), designShelfTest: vi.fn(),
   previewShelf: vi.fn().mockResolvedValue({ face: "N", control: "control.png", test: "test.png", applied: [], warnings: [] }),
+}));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: ReactNode }) => <a href="/settings">{children}</a>,
 }));
 vi.mock("../hooks", () => ({ usePackages: () => ({ data: [{ asset_id: "pkg_gold", name: "Gold label" }] }) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -55,4 +60,15 @@ it("drafts once from a request routed by the command palette", async () => {
   expect(await screen.findByText(/One sign\./)).toBeTruthy();
   expect(designShelfTest).toHaveBeenCalledTimes(1);
   expect((screen.getByLabelText("Question for the shelf test") as HTMLInputElement).value).toBe("Would a SALE sign make the cola stand out?");
+});
+
+it("offers model setup when a run fails for want of a model", async () => {
+  vi.mocked(startShelfTest).mockRejectedValue(new Error("No model server answers at http://127.0.0.1:8081/v1"));
+  mount();
+  fireEvent.change(screen.getByRole("combobox", { name: "Product under test" }), { target: { value: "cola" } });
+  fireEvent.change(screen.getByPlaceholderText(/leave empty to keep/), { target: { value: "1.99" } });
+  fireEvent.click(screen.getByRole("button", { name: "Run shelf test" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("No model server answers");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Start local model/ })).toBeTruthy();
 });
