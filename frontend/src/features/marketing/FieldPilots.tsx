@@ -59,7 +59,7 @@ export function FieldPilots({ projectId, source, onOpenScripts }: { projectId: s
 export function PilotBuilder({ projectId, source, onCreated }: { projectId: string; source: PitchReport; onCreated: (id: string) => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [name, setName] = useState(() => t("mkPilotDefaultName", { name: source.name.slice(0, 65) }));
+  const [name, setName] = useState(() => t("mkPilotDefaultName", { name: Array.from(source.name).slice(0, 65).join("") }));
   const [eligibility, setEligibility] = useState("");
   const [window, setWindow] = useState(() => t("mkPilotDefaultWindow"));
   const [seed, setSeed] = useState("1");

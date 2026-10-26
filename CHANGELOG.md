@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep a whole emoji when the app shortens a generated name or note to its
+  limit: online variants and ads, marketing variant copies, pilots and test
+  runs, building floors and alternatives, and sign text. Cutting through an
+  emoji left half of it, and the server then refused to save.
+
 - Answer a request whose text ends in half an emoji with a readable validation
   error instead of a server error. The echoed input shows a replacement mark
   where the broken character was.

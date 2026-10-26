@@ -36,7 +36,7 @@ export function TestOnline({ projectId, testName, variant, currency }: {
   const store = usable.find((s) => s.id === siteId);
   const make = useMutation({
     mutationFn: () => variantFromTest(projectId, siteId, {
-      name: `${store?.name ?? ""} – ${variant.name}`.slice(0, 60), note: `${testName}: ${variant.name}`.slice(0, 400),
+      name: Array.from(`${store?.name ?? ""} – ${variant.name}`).slice(0, 60).join(""), note: Array.from(`${testName}: ${variant.name}`).slice(0, 400).join(""),
       currency, changes: variant.changes,
     }),
     onSuccess: () => Promise.all([
