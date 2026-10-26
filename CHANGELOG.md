@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A shopper's journey reads "Heads to Snacks 1" for a walk to a shelf; it read
+  "Heads over Snacks 1".
 - The enlarged shelf picture in a shopper's journey opens with focus on
   **Close**, is announced as a modal dialog, and gives focus back to the
   picture when it closes; focus stayed on the page behind it.
