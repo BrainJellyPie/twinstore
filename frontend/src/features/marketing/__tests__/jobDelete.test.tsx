@@ -53,6 +53,8 @@ it("asks before deleting a finished study and deletes it on the second click", a
   expect(marketing.deleteExperiment).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Delete?" }));
   await waitFor(() => expect(marketing.deleteExperiment).toHaveBeenCalledWith("p", "exp_1"));
+  // The deleted item held focus; it moves to the list's New test button.
+  await waitFor(() => expect(document.activeElement?.textContent).toContain("New A/B test"));
 });
 
 it("leaving the delete button cancels the question", async () => {

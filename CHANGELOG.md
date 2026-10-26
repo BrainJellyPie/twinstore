@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Deleting a study from the studio's list moves focus to the list's **New
+  test** button; the deleted item held focus, which then fell back to the top
+  of the page.
 - When uploaded packs could not be read for want of a model, the uploader
   offers the model setup under its note that they kept their file names.
 - **New store** shows the store type it starts with, or the one a template
