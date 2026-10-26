@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A shelf capture's facing buttons name their product for screen readers
+  ("More facings of Coffee"), as the row's category and price fields do;
+  every row's buttons were read the same.
 - **All shoppers** (back from a shopper's journey) gives focus back to that
   shopper's row in the list; focus fell to the top of the page.
 - A shopper's journey in English reads "Heads to Snacks 1", "Takes from

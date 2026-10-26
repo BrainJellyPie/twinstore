@@ -72,6 +72,7 @@ it("keeps untouched estimated prices estimated when saving another correction", 
   // Each row's fields carry the product's name, so a list of many rows stays tellable apart by ear.
   expect(screen.getByRole("textbox", { name: "Price of Coffee" })).toBe(coffee);
   expect(screen.getByRole("combobox", { name: "Category of Tea" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "More facings of Coffee" })).toBeTruthy();
   fireEvent.change(screen.getAllByPlaceholderText("Product name")[0]!, { target: { value: "Green tea" } });
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(api.updateCapture).toHaveBeenCalledWith("project", "cap_test", [
