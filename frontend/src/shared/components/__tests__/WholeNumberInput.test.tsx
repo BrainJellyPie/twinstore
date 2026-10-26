@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { WholeNumberInput } from "../WholeNumberInput";
 
@@ -41,4 +41,20 @@ it("keeps the last number when the field is left empty", () => {
   fireEvent.change(field, { target: { value: "" } });
   fireEvent.blur(field);
   expect((field as HTMLInputElement).value).toBe("24");
+});
+
+it.each(["40", "", "500"])("follows an external value change while the field contains %j", (text) => {
+  const onChange = vi.fn();
+  const { rerender } = render(<WholeNumberInput aria-label="Steps" min={3} max={80} value={24} onChange={onChange} />);
+  const field = screen.getByRole("spinbutton", { name: "Steps" }) as HTMLInputElement;
+  fireEvent.change(field, { target: { value: text } });
+  // Accept a valid manual edit, then apply a separately supplied setting.
+  if (text === "40") rerender(<WholeNumberInput aria-label="Steps" min={3} max={80} value={40} onChange={onChange} />);
+  rerender(<WholeNumberInput aria-label="Steps" min={3} max={80} value={12} onChange={onChange} />);
+  expect(field.value).toBe("12");
+  fireEvent.blur(field);
+  expect(onChange).toHaveBeenLastCalledWith(12);
+  // Returning to the previous value must not revive the discarded text.
+  rerender(<WholeNumberInput aria-label="Steps" min={3} max={80} value={24} onChange={onChange} />);
+  expect(field.value).toBe("24");
 });

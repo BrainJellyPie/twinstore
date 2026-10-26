@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, m
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.store import Store
 from store_emulator.engine.marketing.experiment_design import (
+    DISCOUNT_BASIS_PROMPT,
     _Change,  # pyright: ignore[reportPrivateUsage]
     _ChangeTextDefaults,  # pyright: ignore[reportPrivateUsage]
     _Draft,  # pyright: ignore[reportPrivateUsage]
@@ -40,7 +41,7 @@ def _edit_change_schema(schema: dict[str, JsonValue]) -> None:
     assert isinstance(definitions, dict)
     variants: list[JsonValue] = []
     for kind, names in {
-        "price": ("product", "price"), "discount": ("product", "percent"), "promo": ("product", "promo"),
+        "price": ("product", "price"), "discount": ("product", "discount_basis", "percent"), "promo": ("product", "promo"),
         "move": ("product", "shelf", "level"), "category_price": ("category", "percent"),
     }.items():
         fields: dict[str, JsonValue] = {"kind": {"type": "string", "const": kind}}
@@ -72,6 +73,8 @@ class _EditChange(_ChangeTextDefaults):
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
     percent: float | None = Field(default=None, ge=-100, le=300, description="discount (negative) or category_price change")
+    discount_basis: Literal["regular", "current"] = Field(default="regular",
+        description="regular: set a discount from the original regular price; current: take an additional discount from the current selling price")
     promo: str = Field(default="", max_length=24, description="promo: the sign text, e.g. '1+1', 'SALE', '-30%'")
     shelf: str = Field(default="", max_length=80, description="move: the listed shelf, exactly as listed")
     level: int | None = Field(default=None, ge=1, le=4, description="move: shelf level, 3 = eye level, 1 = bottom")
@@ -79,8 +82,8 @@ class _EditChange(_ChangeTextDefaults):
 
 
 class _EditDraft(BaseModel):
-    name: str = Field(max_length=40, description="a short name for the edited layout")
     changes: list[_EditChange] = Field(min_length=1, max_length=12)
+    name: str = Field(max_length=40, description="a short name for the edited layout")
     summary: str = Field(default="", max_length=400, description="one or two sentences on what the edits do")
 
     @field_validator("summary", mode="before")
@@ -124,7 +127,7 @@ Use the exact lowercase operation kinds above, including the underscore in categ
 Name the edited layout in a few words and summarize the edits. Use "" instead of null for an absent summary.
 If a listed product or shelf name exceeds its field's character limit, copy its prefix up to that limit.
 The prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
-Write in English."""
+Write in English.""" + "\n" + DISCOUNT_BASIS_PROMPT
 
 
 def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:

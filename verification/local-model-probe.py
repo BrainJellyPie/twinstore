@@ -118,7 +118,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -592,7 +592,7 @@ try:
     elif args.case.startswith("capture-"):
         tags = {"capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
-                "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00",
+                "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00", "capture-coupon-value": "$1.00 COUPON",
                 "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
                 "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
                 "capture-container-count-price": "$1.00 / BOTTLE", "capture-deposit-price": "DEPOSIT $0.10",

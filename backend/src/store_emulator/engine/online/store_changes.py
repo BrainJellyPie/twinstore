@@ -85,9 +85,12 @@ def apply_store_changes(site: OnlineSite, changes: list[VariantChange], *, minor
                 skipped.append(f"{product.name}: a discount needs a negative percentage")
                 continue
             regular = product.list_price or old
-            product.price = max(0, round(regular * (1 + change.percent / 100)))
+            basis = old if change.discount_basis == "current" else regular
+            product.price = max(0, round(basis * (1 + change.percent / 100)))
             product.list_price = regular
-            applied.append(f"{product.name}: {change.percent:g} % off, was {money(regular)}")
+            applied.append(f"{product.name}: {change.percent:g} % off the current price, was {money(regular)}"
+                           if change.discount_basis == "current" else
+                           f"{product.name}: {change.percent:g} % off, was {money(regular)}")
         else:  # package
             uri = (package_uris or {}).get(change.asset_id)
             if uri is None:

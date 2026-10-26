@@ -2,12 +2,14 @@
 import pytest
 from PIL import Image
 
-from store_emulator.domain.capture import ShelfItemLabel
+from store_emulator.domain.capture import CaptureResult, ShelfItemLabel
 from store_emulator.engine.capture.catalog_match import price_minor_units, typical_price
 from store_emulator.engine.capture.detect import Detection
 from store_emulator.engine.capture.frame import make_frame
 from store_emulator.engine.capture.pipeline import build_items
+from store_emulator.engine.capture.planogram import replace_rack_face
 from store_emulator.engine.capture.recognize import FacingGroup, describe
+from tests.engine.test_scenario_target_matching import target_store
 
 
 SAVINGS = [
@@ -27,6 +29,9 @@ SAVINGS = [
     ("$1.00 CASH BACK", "USD"), ("$1.00 cash-back", "USD"),
     ("SAVE UP TO $0.00", "USD"), ("$0.00 CASH BACK", "USD"),
     ("ＳＡＶＥ ＵＰ ＴＯ ＄１．００", "USD"),
+    ("$1.00 COUPON", "USD"), ("1.00 USD coupon", "USD"), ("100¢ coupon", "USD"),
+    ("1,000원 COUPON", "KRW"), ("0,00 € coupon value", "EUR"),
+    ("＄１．００ ＣＯＵＰＯＮ", "USD"), ("$1.00 coupon.", "USD"),
 ]
 
 
@@ -45,13 +50,16 @@ def test_savings_text_cannot_be_overridden_by_a_numeric_model_guess(tag, currenc
     ("NOW $1.00", "USD", 100), ("Our price: $1.00", "USD", 100), ("Wasabi $1.00", "USD", 100),
     ("Cash price $1.00", "USD", 100), ("Cashback price $1.00", "USD", 100),
     ("Save Mart $1.00", "USD", 100), ("$1.00 after cashback", "USD", 100),
+    ("$1.00 COUPON PRICE", "USD", 100), ("$1.00 after coupon", "USD", 100),
+    ("$1.00 coupon applied", "USD", 100), ("$1.00 including coupon", "USD", 100),
+    ("$1.00 with coupon discount", "USD", 100),
 ])
 def test_explicit_sale_prices_and_ordinary_prices_keep_their_amount(tag, currency, amount):
     assert price_minor_units(ShelfItemLabel(price_text=tag), currency, 999) == amount
 
 
 @pytest.mark.parametrize("guess", [None, 1.0])
-@pytest.mark.parametrize("tag", ["SAVE $1.00", "SAVE UP TO $1.00", "$1.00 CASH BACK"])
+@pytest.mark.parametrize("tag", ["SAVE $1.00", "SAVE UP TO $1.00", "$1.00 CASH BACK", "$1.00 COUPON"])
 def test_capture_preserves_product_and_tag_but_marks_savings_fallback_estimated(guess, tag):
     with Image.new("RGB", (100, 80), "white") as photo:
         frame = make_frame(photo)
@@ -67,3 +75,24 @@ def test_capture_preserves_product_and_tag_but_marks_savings_fallback_estimated(
     assert items[0].name == "Cola" and items[0].price_text == tag
     assert items[0].price_estimated and items[0].price == typical_price("soft_drinks", "Cola", "USD")[0]
     assert items[1].price == 125 and not items[1].price_estimated
+
+
+@pytest.mark.parametrize("known", [False, True])
+def test_coupon_face_value_cannot_replace_an_existing_product_price(known):
+    store = target_store()
+    store.racks[0].slots[0].items[0].price = 799
+    if not known:
+        store.racks[0].slots = []
+    original = store.model_dump_json()
+    with Image.new("RGB", (100, 80), "white") as photo:
+        detection = Detection(x1=0, y1=0, x2=40, y2=60, band=0)
+        label = ShelfItemLabel(name="Cola 500ml", category="soft drink", price_text="$1.00 COUPON", price=1)
+        group = FacingGroup(band=0, facings=[detection], descriptor=describe(photo, detection), label=label)
+        items, _ = build_items(make_frame(photo), [group], [3], currency="USD", rack_type="shelf")
+        assert items[0].price_estimated
+        updated, report = replace_rack_face(store, CaptureResult(image_size=photo.size, currency="USD", items=items), "r1")
+    placed = [item for slot in updated.racks[0].slots for item in slot.items]
+    expected = 799 if known else typical_price("soft_drinks", "Cola 500ml", "USD")[0]
+    assert len(placed) == 1 and placed[0].price == expected
+    assert report.placed_items == 1 and not report.dropped
+    assert store.model_dump_json() == original and updated.racks[1] == store.racks[1]
