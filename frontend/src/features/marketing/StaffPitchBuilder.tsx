@@ -11,6 +11,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { productNamedIn } from "./productMatch";
@@ -144,7 +145,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
       <label className="space-y-1 text-sm">{t("mkTextModel")}
         <select value={model} onChange={(e) => setModel(e.target.value)} className="block h-10 w-full rounded-xl border bg-card px-2">
           <option value="">{t("studioAppTextModel")}</option>
-          {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+          {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
         </select>
       </label>
       <label className="space-y-1 text-sm">{t("mkTestNameOptional")}

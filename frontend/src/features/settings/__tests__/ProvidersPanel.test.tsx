@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
 import { queryKeys } from "@/shared/queries/keys";
+import { useLocale } from "@/shared/i18n/i18n";
 import { ProvidersPanel } from "../ProvidersPanel";
 
 vi.mock("@/shared/api/client", () => ({ getProviders: vi.fn(), updateProvider: vi.fn(), testModel: vi.fn() }));
@@ -112,4 +113,21 @@ it("names each field and button after its provider, without a button's text in a
   expect(screen.getByRole("button", { name: "Test vision with Ollama" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Turn off Ollama" })).toBeTruthy();
   client.clear();
+});
+
+it("names a local server and its model in the selected language", async () => {
+  useLocale.getState().setLocale("ko");
+  try {
+    vi.mocked(api.getProviders).mockResolvedValue([{ ...openai, preset: { ...openai.preset, kind: "llamacpp", label: "llama.cpp server",
+      api_key_env: null, needs_key: false, local: true, models: [{ id: "local", label: "Model loaded in llama-server", vision: true, note: "" }] },
+      key_source: "not needed" }]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+    expect(await screen.findByText("llama.cpp 서버")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /llama-server에 불러온 모델/ })).toBeTruthy();
+    expect(screen.queryByText(/llama\.cpp server|Model loaded in/)).toBeNull();
+    client.clear();
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
 });

@@ -12,6 +12,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import { useAssistStore } from "@/stores/assistStore";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { NeedsModel } from "@/features/settings/NeedsModel";
@@ -226,7 +227,7 @@ export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry
       <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
         <select value={model} onChange={(e) => setModel(e.target.value)} className="h-7 min-w-0 max-w-[16rem] flex-1 rounded-lg border bg-card/60 px-1.5" aria-label={t("model")}>
           <option value="">{t("interviewAppModel")}</option>
-          {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+          {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
         </select>
         {messages.length > 0 && (
           <button type="button" onClick={() => clear.mutate()} disabled={busy} className="ml-auto inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50">

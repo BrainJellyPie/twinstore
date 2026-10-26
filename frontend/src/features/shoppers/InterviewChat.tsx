@@ -12,6 +12,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { suggestedQuestions } from "./shopperStats";
@@ -147,7 +148,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
         <select value={model} onChange={(e) => setModel(e.target.value)} className="h-7 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5" aria-label={t("model")}>
           <option value="">{t("interviewAppModel")}</option>
-          {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+          {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
         </select>
         {messages.length > 0 && (
           <button type="button" onClick={() => reset.mutate()} disabled={busy} className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"><RotateCcw className="size-3" /> {t("interviewStartOver")}</button>

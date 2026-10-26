@@ -8,6 +8,7 @@ import { Eye, Users } from "lucide-react";
 import type { EngineType, EnsembleConfig } from "@/shared/api/client";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel, providerLabel } from "@/shared/i18n/providerLabels";
 import { Button } from "@/shared/components/ui/button";
 import { useAvailableModels } from "../hooks";
 import { cn } from "@/shared/utils/cn";
@@ -123,7 +124,7 @@ export function ModelPicker({
           {value.model && !usable.some((model) => model.ref === value.model) && <option value={value.model} disabled>{t("unavailableModel", { model: value.model })}</option>}
           {usable.map((m) => (
             <option key={m.ref} value={m.ref}>
-              {m.provider} · {m.label}
+              {providerLabel(m.ref.split(":")[0]!, m.provider, t)} · {modelLabel(m.ref, m.label, t)}
             </option>
           ))}
         </select>
@@ -167,7 +168,7 @@ export function ModelPicker({
                   />
                   <label htmlFor={`ens-${m.ref}`} className="flex min-w-0 flex-1 items-center gap-1 truncate">
                     {m.vision && <Eye className="size-3 shrink-0 text-muted-foreground" aria-label={t("visionShoppers")} />}
-                    <span className="truncate">{m.provider} · {m.label}</span>
+                    <span className="truncate">{providerLabel(m.ref.split(":")[0]!, m.provider, t)} · {modelLabel(m.ref, m.label, t)}</span>
                   </label>
                   {w !== undefined && (
                     <Input

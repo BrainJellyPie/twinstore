@@ -12,6 +12,7 @@ import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel, providerLabel } from "@/shared/i18n/providerLabels";
 
 export function ProvidersPanel() {
   const { t } = useI18n();
@@ -52,6 +53,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const { preset } = status;
+  const name = providerLabel(preset.kind, preset.label, t);
   const [key, setKey] = useState("");
   const [base, setBase] = useState(status.api_base ?? "");
   const [model, setModel] = useState(status.default_model ?? preset.models[0]?.id ?? "");
@@ -99,7 +101,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="font-medium">{preset.label}</div>
+          <div className="font-medium">{name}</div>
           <div className="text-xs text-muted-foreground">
             {status.key_source === "env" && t("providerKeyFromEnv", { env: preset.api_key_env ?? "" })}
             {status.key_source === "settings" && t("providerKeyStored", { hint: status.key_hint })}
@@ -111,7 +113,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           )}
           {status.key_rejected && (
             <div role="alert" className="mt-1 text-xs text-destructive">
-              {t("providerKeyRejectedHint", { provider: preset.label })}
+              {t("providerKeyRejectedHint", { provider: name })}
             </div>
           )}
         </div>
@@ -123,7 +125,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
               variant={status.enabled ? "outline" : "default"}
               className="h-6 px-2 text-xs"
               onClick={() => save.mutate({ enabled: !status.enabled, ...(base ? { api_base: base } : {}) })}
-              aria-label={t(status.enabled ? "providerTurnOffOf" : "providerTurnOnOf", { provider: preset.label })}
+              aria-label={t(status.enabled ? "providerTurnOffOf" : "providerTurnOnOf", { provider: name })}
             >
               {status.enabled ? t("providerTurnOff") : t("providerTurnOn")}
             </Button>
@@ -146,13 +148,13 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             value={key}
             onChange={(e) => setKey(e.target.value)}
             className="h-8"
-            aria-label={t("providerApiKey", { provider: preset.label })}
+            aria-label={t("providerApiKey", { provider: name })}
           />
-          <Button type="submit" size="sm" className="h-8" disabled={!key.trim() || save.isPending} aria-label={t("providerSaveKey", { provider: preset.label })}>
+          <Button type="submit" size="sm" className="h-8" disabled={!key.trim() || save.isPending} aria-label={t("providerSaveKey", { provider: name })}>
             {t("providerSave")}
           </Button>
           {status.key_source === "settings" && (
-            <Button type="button" size="sm" variant="outline" className="h-8" aria-label={t("providerRemoveKey", { provider: preset.label })}
+            <Button type="button" size="sm" variant="outline" className="h-8" aria-label={t("providerRemoveKey", { provider: name })}
               // The button goes with the key; focus moves to the field to paste another.
               onClick={(e) => { const field = e.currentTarget.form?.querySelector("input"); save.mutate({ api_key: "" }, { onSuccess: () => field?.focus() }); }}>
               {t("remove")}
@@ -167,12 +169,12 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           <span className="text-muted-foreground" aria-hidden>{t("providerEndpoint")}</span>
           <div className="flex gap-2">
             <Input value={base} placeholder="http://host:port/v1" onChange={(e) => setBase(e.target.value)} className="h-8 font-mono text-xs"
-              aria-label={t("providerEndpointOf", { provider: preset.label })} />
+              aria-label={t("providerEndpointOf", { provider: name })} />
             <Button
               size="sm"
               variant="outline"
               className="h-8"
-              aria-label={t("providerSaveEndpoint", { provider: preset.label })}
+              aria-label={t("providerSaveEndpoint", { provider: name })}
               disabled={save.isPending || base === (status.api_base ?? "")}
               onClick={() => save.mutate({ api_base: base })}
             >
@@ -186,10 +188,10 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
         <span className="text-muted-foreground" aria-hidden>{t("model")}</span>
         <div className="flex gap-2">
           <Input list={listId} value={model} onChange={(e) => setModel(e.target.value)} className="h-8 font-mono text-xs"
-            aria-label={t("providerModelOf", { provider: preset.label })} />
+            aria-label={t("providerModelOf", { provider: name })} />
           <datalist id={listId}>
             {preset.models.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
+              <option key={m.id} value={m.id}>{modelLabel(`${preset.kind}:${m.id}`, m.label, t)}</option>
             ))}
           </datalist>
           <Button
@@ -199,7 +201,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             disabled={!model || save.isPending || model === status.default_model}
             onClick={() => save.mutate({ default_model: model })}
             title={t("providerDefaultHint")}
-            aria-label={t("providerDefaultOf", { provider: preset.label })}
+            aria-label={t("providerDefaultOf", { provider: name })}
           >
             {t("providerDefault")}
           </Button>
@@ -218,18 +220,18 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             )}
           >
             {m.vision && <Eye className="size-3" aria-label={t("providerVision")} />}
-            {m.label}
+            {modelLabel(`${preset.kind}:${m.id}`, m.label, t)}
           </button>
         ))}
       </div>
 
       <div className="flex items-center gap-2">
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(false)}
-          aria-label={t("providerTestOf", { provider: preset.label })}>
+          aria-label={t("providerTestOf", { provider: name })}>
           {test.isPending ? <Loader2 className="size-3 animate-spin" /> : null} {t("providerTest")}
         </Button>
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(true)}
-          aria-label={t("providerTestVisionOf", { provider: preset.label })}>
+          aria-label={t("providerTestVisionOf", { provider: name })}>
           <Eye className="size-3" /> {t("providerTestVision")}
         </Button>
       </div>

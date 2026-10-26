@@ -10,6 +10,7 @@ import {
 } from "@/services/mutations/captureUpload";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { checkRecoveryRevision, forgetRecovery, queueIntent, readRecovery, recoveryErrorMessage, restoreRecovery, saveRecovery,
   type RecoveryCopy, type RecoveryOptions } from "./queueRecovery";
@@ -361,7 +362,7 @@ export function CaptureUploadQueue({
               .filter((m) => m.vision)
               .map((m) => (
                 <option key={m.ref} value={m.ref}>
-                  {m.label}
+                  {modelLabel(m.ref, m.label, t)}
                 </option>
               ))}
             <option value="none">{t("capDontRead")}</option>

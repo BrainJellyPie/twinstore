@@ -15,6 +15,7 @@ import { cn } from "@/shared/utils/cn";
 import { formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { visitorsPerDayText } from "@/shared/utils/estimate";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import { richText } from "@/shared/i18n/richText";
 
 import { DemandChart, LiftChart, type LiftRow } from "./charts";
@@ -283,7 +284,7 @@ function ReportBar({ projectId, experimentId }: { projectId: string; experimentI
       <Button asChild variant="outline" size="sm"><a href={experimentMarkdownUrl(projectId, experimentId)} download>Markdown</a></Button>
       <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 max-w-[11rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("mkCommentaryModel")}>
         <option value="">{t("studioAppTextModel")}</option>
-        {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+        {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
       </select>
       <Button variant="outline" size="sm" disabled={write.isPending} onClick={() => write.mutate()} title={t("mkCommentaryTitle")}>
         {write.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkAddCommentary")}
