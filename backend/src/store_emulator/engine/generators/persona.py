@@ -462,6 +462,7 @@ async def generate_personas_for_day(
     purpose_list = "\n".join(f"  - {p}" for p in purposes)
     identity_choices: dict[str, JsonValue] = {"enum": [*identities]}
     purpose_choices: dict[str, JsonValue] = {"enum": [*purposes]}
+    category_choices = list(dict.fromkeys(categories or []))
     scale = minor_unit_scale(currency)
 
     def budget_schema(schema: dict[str, JsonValue]) -> None:
@@ -477,12 +478,26 @@ async def generate_personas_for_day(
                 "description": f"Amount in {currency.upper()}, before conversion to stored money units.",
             }
         schema["required"] = [*required, "preferred_categories", "budget_min_major", "budget_max_major"]
+        if category_choices:
+            preferences = cast(dict[str, JsonValue], properties["preferred_categories"])
+            preferences["items"] = {"type": "string", "maxLength": 80, "enum": [*category_choices]}
 
     class LabelledPersona(GeneratedPersona):
         model_config = ConfigDict(json_schema_extra=budget_schema)
         # Keep enums inline: llama.cpp resolves a $ref before its sibling constraints.
         identity: str = Field(max_length=120, json_schema_extra=identity_choices)
         purpose: str = Field(max_length=120, json_schema_extra=purpose_choices)
+
+        @field_validator("preferred_categories")
+        @classmethod
+        def supplied_categories(cls, values: list[str]) -> list[str]:
+            if not category_choices:
+                return values
+            selected = [canonical_identifier(value, category_choices) for value in values]
+            if any(value not in category_choices for value in selected):
+                raise ValueError("Choose only supplied category labels for preferred_categories; "
+                                 "do not invent or translate labels. Use [] for no preferences.")
+            return selected
 
         @model_validator(mode="before")
         @classmethod

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep generated customer preferences within the supplied department list in
+  both the model grammar and response/cache validation. Repair unknown labels
+  before accepting a customer; preserve browsing and inference when no list is supplied.
+
 - Give automatic starter-product selection readable currency amounts instead
   of unqualified stored integers, and require both ends of a requested price
   range. A cheaper product below the requested minimum is not a valid substitute.

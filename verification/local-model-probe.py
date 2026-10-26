@@ -128,7 +128,7 @@ parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setu
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -564,6 +564,9 @@ try:
         elif args.case == "persona-bookstore":
             address, currency, categories, budget = "Lyon, France", "EUR", ["books", "stationery"], (500, 2000)
             profile = "Une librairie de quartier pour les habitants qui achètent des livres et de la papeterie. Le budget par visite est de 5 à 20 euros."
+        elif args.case == "persona-category-labels":
+            address, currency, categories, budget = "Seoul, South Korea", "KRW", ["Books — 새책·헌책", "Stationery / 紙もの 🌿"], (3000, 10000)
+            profile = "Neighborhood residents buy books and stationery. Their per-visit budget is 3,000–10,000 KRW. Copy the supplied department names exactly; do not translate or shorten them."
         elif args.case == "persona-us":
             address, currency, categories, budget = "Austin, Texas, USA", "USD", ["snacks", "drinks"], (300, 1000)
             profile = "Una tienda de barrio para vecinos que compran aperitivos y bebidas. El presupuesto por visita es de 3 a 10 dólares estadounidenses."
@@ -584,11 +587,14 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches"}:
+            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels"}:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
                     identities=["local resident", "night shift worker"], purposes=["buy snacks", "buy drinks"])
+                if args.case == "persona-category-labels":
+                    area = TradeAreaProfile(keywords=["neighborhood", "reading"],
+                        identities=["local resident", "student"], purposes=["buy books", "buy stationery"])
                 hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
                 people = asyncio.run(generate_personas_for_day(client, address, area, Weekday.MON, hourly,
                     seed=4, batch_size=persona_batch_size, max_concurrent=1, categories=categories,
@@ -602,7 +608,7 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches"} and len(written) != customer_count:
+        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels"} and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
         if any(person.day != Weekday.MON or not opening <= person.arrival_hour < closing for person in people):
             issues.append("Arrival outside the open hours")
