@@ -408,7 +408,7 @@ export function CaptureUploadQueue({
           void pick(Array.from(e.dataTransfer.files));
         }}
       >
-        <span className="grid size-12 place-items-center rounded-2xl heat-gradient text-white shadow-[0_10px_28px_-12px_var(--heat-2)] transition-transform group-hover:scale-105" aria-hidden>
+        <span className="grid size-12 place-items-center rounded-2xl heat-gradient text-white dark:text-neutral-950 shadow-[0_10px_28px_-12px_var(--heat-2)] transition-transform group-hover:scale-105" aria-hidden>
           <ImagePlus className="size-6" />
         </span>
         <span className="text-base font-semibold text-foreground">{t("capChooseOrDrop")}</span>

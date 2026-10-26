@@ -37,7 +37,7 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
   return (
     <section className="reveal panel space-y-3 rounded-[1.6rem] p-4 text-sm sm:p-5">
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white dark:text-neutral-950 shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
           <ArrowLeftRight className="size-4.5" />
         </span>
         <div className="min-w-0">

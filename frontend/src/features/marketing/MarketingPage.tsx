@@ -311,7 +311,7 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
       {!busy(job.status) && <button type="button" onClick={() => (confirm ? del.mutate() : setConfirm(true))} onBlur={() => setConfirm(false)}
         disabled={del.isPending} aria-label={confirm ? t("mkDeleteConfirm") : t("mkDeleteJob", { name: job.name })}
         className={cn("absolute top-2 right-2 inline-flex items-center gap-1 rounded-md p-1 text-[0.68rem] transition-opacity",
-          confirm ? "bg-destructive text-white opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100")}>
+          confirm ? "bg-destructive text-white opacity-100 dark:text-neutral-950" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100")}>
         <Trash2 className="size-3.5" /> {confirm ? t("mkDeleteConfirm") : ""}
       </button>}
     </div>

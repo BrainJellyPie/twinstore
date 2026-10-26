@@ -117,7 +117,7 @@ export function RunHero({ status, result, heroRef, wide, onWide, onWatch, onComp
               <button type="button" onClick={onWatch} title={t("onWatchShopperHint")}
                 className="group relative inline-flex h-12 items-center gap-2.5 overflow-hidden rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 shadow-[0_0_0_1px_rgb(255_255_255/0.4),0_12px_40px_-8px_var(--heat-1)] transition-transform hover:scale-[1.03] active:scale-[0.98]">
                 <span className="absolute inset-0 -z-0 bg-[linear-gradient(110deg,transparent_30%,rgb(255_255_255/0.0)_40%,color-mix(in_oklab,var(--heat-1)_35%,transparent)_50%,transparent_60%)] bg-[length:250%_100%] animate-shimmer" aria-hidden />
-                <span className="relative grid size-7 place-items-center rounded-full heat-gradient text-white shadow-[0_0_18px_var(--heat-2)]"><Play className="size-3.5 fill-current" aria-hidden /></span>
+                <span className="relative grid size-7 place-items-center rounded-full heat-gradient text-white dark:text-neutral-950 shadow-[0_0_18px_var(--heat-2)]"><Play className="size-3.5 fill-current" aria-hidden /></span>
                 <span className="relative">{t("onWatchShopperCta")}</span>
               </button>
             )}
@@ -160,7 +160,7 @@ function Verdict({ call, result, points }: { call: Verdict; result: OnlineRunRes
   return (
     <div className="flex min-w-0 flex-1 basis-[22rem] items-center gap-3">
       <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl shadow-lg",
-        call.kind === "win" || call.kind === "holds" ? "bg-gradient-to-br from-amber-300 to-amber-500 text-neutral-950 shadow-amber-500/30" : "heat-gradient text-white")} aria-hidden>
+        call.kind === "win" || call.kind === "holds" ? "bg-gradient-to-br from-amber-300 to-amber-500 text-neutral-950 shadow-amber-500/30" : "heat-gradient text-white dark:text-neutral-950")} aria-hidden>
         <Icon className="size-6" />
       </span>
       <p className="min-w-0 text-[clamp(1.05rem,1.8vw,1.45rem)] font-semibold leading-snug tracking-[-0.015em]">{text}</p>

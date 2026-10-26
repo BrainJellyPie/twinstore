@@ -144,7 +144,7 @@ export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry
             </div>
           ) : (
             <div key={i} className="flex gap-2.5">
-              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full heat-gradient text-white shadow-[0_6px_18px_-6px_var(--heat-2)]" aria-hidden>
+              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full heat-gradient text-white dark:text-neutral-950 shadow-[0_6px_18px_-6px_var(--heat-2)]" aria-hidden>
                 <Sparkles className="size-3.5" />
               </span>
               <div className="min-w-0 max-w-[92%] space-y-2 rounded-2xl rounded-tl-md border bg-card px-3.5 py-2.5">
@@ -218,7 +218,7 @@ export function OnlineAnalyst({ projectId, runId, compared, controlSiteId, onTry
         <input value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))} placeholder={t("onAnalystPlaceholder")}
           aria-label={t("analystQuestion")} className="h-9 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none" />
         <button type="submit" disabled={Array.from(text.trim()).length < 2 || busy} aria-label={t("analystAsk")}
-          className="grid size-9 place-items-center rounded-xl heat-gradient text-white transition-opacity disabled:opacity-40">
+          className="grid size-9 place-items-center rounded-xl heat-gradient text-white dark:text-neutral-950 transition-opacity disabled:opacity-40">
           {ask.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
         </button>
       </form>

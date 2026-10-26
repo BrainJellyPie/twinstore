@@ -192,7 +192,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted, onUnsaved }: {
               + ` · ${Object.prototype.hasOwnProperty.call(DETECTORS, result.detector) ? t(DETECTORS[result.detector]!) : result.detector === "gdino" ? "Grounding DINO" : result.detector}${result.model ? ` + ${result.model}` : ""}` : ""}
           </span>
           {!processing && (
-            <button type="button" className={cn("flex shrink-0 items-center gap-1 rounded-md px-1 hover:text-destructive disabled:opacity-50", confirmDelete && "bg-destructive text-white hover:text-white")}
+            <button type="button" className={cn("flex shrink-0 items-center gap-1 rounded-md px-1 hover:text-destructive disabled:opacity-50", confirmDelete && "bg-destructive text-white hover:text-white dark:text-neutral-950 dark:hover:text-neutral-950")}
               disabled={del.isPending} onBlur={() => setConfirmDelete(false)} onClick={() => (confirmDelete ? del.mutate() : setConfirmDelete(true))}>
               {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} {confirmDelete ? t("mkDeleteConfirm") : t("studioDelete")}
             </button>

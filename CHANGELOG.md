@@ -10,11 +10,30 @@
 - Keep waiting for playback to accept focus when its Play button appears
   before it becomes usable, within the existing five-second limit.
 
+- A **Skip to content** link is the first thing Tab reaches on every page,
+  jumping past the header and banner to the page itself. After the command
+  palette (or anything else) opens another page, keyboard focus continues in
+  that page instead of dropping back to the top of the document, so the next
+  Tab no longer starts at the logo.
+- Text on the app's cyan-violet-pink gradient is readable in both themes. In
+  dark mode the gradient's bright colours carry dark text and icons (white
+  read at 1.6–2.8:1): shopper initials, **Track a shopper**, the follow and
+  send buttons and the run headline's badge. In light mode the gradient's cyan
+  and pink are a shade deeper, so white text stays above 4.5:1 across it and
+  the gradient headings read better on the pale page.
+- The percentages inside an online report's outcome bars, and the red
+  **Delete?** confirmations, use dark text in dark mode, where those colours
+  turn light (white was 1.7–3:1); the violet "ran out of time" share uses dark
+  text in both themes.
 - Distinguish delivery fees from free-delivery thresholds in AI design edits,
   including zero and fractional thresholds. Give JSON-mode models a concrete
   result-format reminder to avoid copying the response schema. Report explicit
   threshold claims as unapplied when the model only set the delivery fee.
 
+- The store view's North, South, East and West labels are drawn in full
+  secondary-text colour instead of at 45 % opacity, so they are readable
+  (about 5:1 instead of 2:1), and the floor setup's **Edit** link uses a
+  lighter blue in dark mode (it was 3:1 on the dark card).
 - In Windows high-contrast (forced colors) mode, buttons, fields and cards show
   where focus is, outlined in the system's highlight colour; their focus rings
   are drawn as shadows, which that mode removes, so focus was invisible.
