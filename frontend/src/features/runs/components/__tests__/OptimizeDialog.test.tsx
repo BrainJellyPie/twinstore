@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
@@ -12,9 +13,10 @@ vi.mock("@/shared/api/client", () => ({
   applyOptimization: vi.fn(), cancelOptimization: vi.fn(),
 }));
 const originalCurrency = useSimulationStore.getState().currency;
-afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); useSimulationStore.setState({ currency: originalCurrency }); });
+const originalSelectedSetupId = useSimulationStore.getState().selectedSetupId;
+afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); useSimulationStore.setState({ currency: originalCurrency, selectedSetupId: originalSelectedSetupId }); });
 
-async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeObjective = "revenue_per_visitor", options: { state?: "pending" | "running"; loadError?: Error; currency?: string; ci?: [number, number]; summaries?: [api.RunSummary, api.RunSummary] } = {}) {
+async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeObjective = "revenue_per_visitor", options: { state?: "pending" | "running"; loadError?: Error; currency?: string; ci?: [number, number]; summaries?: [api.RunSummary, api.RunSummary]; closeable?: boolean } = {}) {
   useLocale.getState().setLocale("en");
   useSimulationStore.setState({ currency: options.currency ?? "USD" });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -62,7 +64,12 @@ async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeO
   vi.mocked(api.getOptimization).mockResolvedValue({ status, result: options.state ? null : result });
   if (options.loadError) vi.mocked(api.getOptimization).mockRejectedValueOnce(options.loadError);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={client}><OptimizeDialog open onOpenChange={() => {}} projectId="p" setupId="s1" /></QueryClientProvider>);
+  // A host that really closes the dialog, with the tab a saved layout opens in.
+  function Host() {
+    const [open, setOpen] = useState(true);
+    return <><button type="button" role="tab" data-layout-id="s2">Optimized layout</button><OptimizeDialog open={open} onOpenChange={setOpen} projectId="p" setupId="s1" /></>;
+  }
+  render(<QueryClientProvider client={client}>{options.closeable ? <Host /> : <OptimizeDialog open onOpenChange={() => {}} projectId="p" setupId="s1" />}</QueryClientProvider>);
   fireEvent.click(screen.getByRole("button", { name: "Start" }));
   if (options.loadError) await waitFor(() => expect(api.getOptimization).toHaveBeenCalled());
   else await screen.findByRole("button", { name: options.state ? "Stop" : "Try other settings" });
@@ -173,4 +180,35 @@ it.each(["rule", "vlm"] as const)("moves focus to the %s verdict that replaces t
   const focused = document.activeElement!;
   expect(focused.getAttribute("role")).not.toBe("dialog");
   expect(focused.textContent).toMatch(kind === "vlm" ? /Vision shoppers prefer/ : /Validated on fresh shoppers/);
+});
+
+it.each(["rule", "vlm"] as const)("continues from the saved layout's tab after saving the %s winner", async (kind) => {
+  await show(kind, 100, "revenue_per_visitor", { closeable: true });
+  vi.mocked(api.applyOptimization).mockResolvedValueOnce({ id: "s2" } as Awaited<ReturnType<typeof api.applyOptimization>>);
+  fireEvent.click(screen.getByRole("button", { name: kind === "vlm" ? "Save the winner as a new layout" : "Save as new layout" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Optimized layout" })));
+});
+
+it.each(["closed", "unmounted", "selection changed"])("keeps the current layout when a delayed save finishes after the dialog is %s", async state => {
+  useSimulationStore.setState({ selectedSetupId: "s1" });
+  const client = await show("rule", 100, "revenue_per_visitor", { closeable: true });
+  let finish!: (value: { id: string; name: string }) => void;
+  const response = new Promise<{ id: string; name: string }>(resolve => { finish = resolve; });
+  vi.mocked(api.applyOptimization).mockReturnValueOnce(response);
+  const invalidated = vi.spyOn(client, "invalidateQueries");
+  fireEvent.click(screen.getByRole("button", { name: "Save as new layout" }));
+  await waitFor(() => expect(api.applyOptimization).toHaveBeenCalledOnce());
+  if (state === "closed") {
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  } else if (state === "unmounted") {
+    cleanup();
+  } else {
+    act(() => useSimulationStore.getState().setSelectedSetupId("other-layout"));
+  }
+  await act(async () => { finish({ id: "s2", name: "Optimized" }); await response; });
+  await waitFor(() => expect(invalidated).toHaveBeenCalled());
+  expect(useSimulationStore.getState().selectedSetupId).toBe(state === "selection changed" ? "other-layout" : "s1");
+  client.clear();
 });

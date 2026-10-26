@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Finishing an optimization save after closing its dialog, leaving the
+  screen or selecting another layout no longer replaces the current layout
+  selection. The saved result still refreshes its original store's list.
+
 - Keep earned rewards and store-credit amounts out of captured selling
   prices, including Korean "1,000원 적립" tags. Preserve the tag and mark the
   fallback as estimated; explicit rewards prices still retain their amount.
@@ -15,6 +19,9 @@
   ("Validated on fresh shoppers …"), which replaces the Start button and the
   progress, instead of falling back to the dialog. A short search's chart
   numbers every candidate on its axis; it showed only "1" until the tenth.
+  Saving the result as a new layout continues from that layout's tab; the
+  button that opened the optimizer goes away with the run, and focus fell to
+  the page.
 
 - Keep a coupon's face value, such as "$1.00 COUPON", from becoming an exact
   product price during shelf capture. Preserve the printed text, mark the

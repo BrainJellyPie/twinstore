@@ -2,7 +2,7 @@
 // the search, then judge the result by its validation on fresh customers — the search score is
 // optimistic (it was tuned on the same shoppers), the validated number is the one to trust.
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, Loader2, Sparkles, Square, TriangleAlert, Wand2, Zap } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -54,17 +54,24 @@ export function OptimizeDialog({
   /** A goal routed from the command palette: filled in and read once. */
   goalPrefill?: { id: number; text: string };
 }) {
+  const saved = useRef<string | null>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[720px]">
-        <OptimizeBody key={JSON.stringify([projectId, setupId])} projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[720px]" onCloseAutoFocus={(event) => {
+        // The saved layout opens in place of the run, and of the button that opened this: continue from its tab.
+        const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"][data-layout-id]')].find((el) => el.dataset.layoutId === saved.current);
+        saved.current = null;
+        if (tab) { event.preventDefault(); tab.focus(); }
+      }}>
+        <OptimizeBody key={JSON.stringify([projectId, setupId])} active={open} projectId={projectId} setupId={setupId} goalPrefill={goalPrefill}
+          onClose={(savedLayout) => { saved.current = savedLayout ?? null; onOpenChange(false); }} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
-  projectId: string; setupId: string; goalPrefill?: { id: number; text: string }; onClose: () => void;
+function OptimizeBody({ active, projectId, setupId, goalPrefill, onClose }: {
+  active: boolean; projectId: string; setupId: string; goalPrefill?: { id: number; text: string }; onClose: (savedLayout?: string) => void;
 }) {
   const { t } = useI18n();
   const [spec, setSpec] = useState<OptimizeSpec>(DEFAULT_SPEC);
@@ -280,7 +287,7 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
           <p className="text-xs text-muted-foreground">{t(judge.judge === "vlm" ? "optSearchTimeVision" : "optSearchTime", { seconds: Math.max(20, seconds) })}</p>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+            <Button variant="outline" onClick={() => onClose()}>{t("cancel")}</Button>
             <Button onClick={() => { if (modelError === null && !reader.isPending) start.mutate(); }} disabled={start.isPending || reader.isPending || modelError !== null}>
               {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("optStart")}
             </Button>
@@ -293,27 +300,35 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
         <p role="alert" className="text-destructive">{job.error instanceof Error ? job.error.message : t("optStatusFailed")}</p>
         <Button variant="outline" disabled={job.isFetching} onClick={() => void job.refetch()}>{t("optRetryStatus")}</Button>
       </div>}
-      {jobId && job.data && <JobView projectId={projectId} view={job.data} onClose={onClose} onRestart={() => setJobId(null)} />}
+      {jobId && job.data && <JobView active={active} projectId={projectId} view={job.data} onClose={onClose} onRestart={() => setJobId(null)} />}
     </div>
   );
 }
 
-function JobView({ projectId, view, onClose, onRestart }: { projectId: string; view: OptimizationView; onClose: () => void; onRestart: () => void }) {
+function JobView({ active, projectId, view, onClose, onRestart }: { active: boolean; projectId: string; view: OptimizationView; onClose: (savedLayout?: string) => void; onRestart: () => void }) {
   const { locale, t } = useI18n();
   const qc = useQueryClient();
   const setSelectedSetupId = useSimulationStore((s) => s.setSelectedSetupId);
   const viewedCurrency = useSimulationStore((s) => s.currency);
+  const activeView = useRef(false);
+  useLayoutEffect(() => {
+    activeView.current = active;
+    return () => { activeView.current = false; };
+  }, [active]);
   const { status, result } = view;
   // Revenue scores are in the currency's minor unit; the optimized runs carry it, the viewed run is the fallback.
   const code = currencyCode(result?.baseline_summary?.currency ?? result?.best_summary?.currency ?? viewedCurrency);
   const objective = status.spec.objective;
   const score = (value: number) => scoreText(objective, value, code);
   const apply = useMutation({
+    onMutate: () => ({ selectedId: useSimulationStore.getState().selectedSetupId }),
     mutationFn: () => api.applyOptimization(projectId, status.job_id),
-    onSuccess: async (setup) => {
+    onSuccess: async (setup, _variables, context) => {
       await qc.invalidateQueries({ queryKey: queryKeys.setups(projectId) });
+      // A completed save still refreshes its list, but must not navigate after the user leaves.
+      if (!activeView.current || !context || useSimulationStore.getState().selectedSetupId !== context.selectedId) return;
       setSelectedSetupId(setup.id);
-      onClose();
+      onClose(setup.id);
     },
   });
   const cancel = useMutation({ mutationFn: () => api.cancelOptimization(projectId, status.job_id) });
