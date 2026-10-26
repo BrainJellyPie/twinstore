@@ -55,6 +55,10 @@
 - Browsing an online shop no longer shifts the page and options list sideways
   by a scrollbar's width when moving between a long page and a short one
   (such as product page to cart).
+- Browsing an online shop from the keyboard: after choosing an option from
+  the list or submitting a search, focus moves to the new page's **Options on
+  this page** heading, one Tab before its first option. Before, focus fell back
+  to the page body and every step began again from the top of the app.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

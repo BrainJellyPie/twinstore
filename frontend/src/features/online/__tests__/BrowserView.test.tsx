@@ -124,3 +124,19 @@ it("starts with the store's mobile page on a phone-sized screen", async () => {
   await waitFor(() => expect(online.browse).toHaveBeenCalledWith("p1", "s1", expect.objectContaining({ state: null, device: "mobile" })));
   vi.unstubAllGlobals();
 });
+
+it("brings keyboard focus back to the options after choosing one from the list or searching", async () => {
+  mount();
+  const listed = (await screen.findAllByRole("button", { name: /Open product: Canvas Tote Bag/ })).find((b) => b.tabIndex !== -1)!;
+  listed.focus();
+  vi.mocked(online.browse).mockResolvedValueOnce(home);
+  fireEvent.click(listed);
+  await waitFor(() => expect(document.activeElement?.textContent).toBe("Options on this page: 2"));
+
+  fireEvent.click(screen.getAllByRole("button", { name: /Search box/ }).find((b) => b.tabIndex !== -1)!);
+  fireEvent.change(screen.getByRole("textbox", { name: "What does the shopper type?" }), { target: { value: "tote" } });
+  (document.activeElement as HTMLElement).blur();
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  await waitFor(() => expect(online.browse).toHaveBeenLastCalledWith("p1", "s1", expect.objectContaining({ query: "tote" })));
+  await waitFor(() => expect(document.activeElement?.textContent).toBe("Options on this page: 2"));
+});
