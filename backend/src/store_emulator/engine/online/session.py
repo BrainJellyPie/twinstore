@@ -8,6 +8,7 @@ by how often the shopper has been there: a variant that adds a popup or a banner
 every decision after it.
 """
 
+import math
 import random
 from collections import Counter
 
@@ -42,6 +43,17 @@ _SEED_MOD = 2**31 - 1
 # page views varies widely, between pages and between people, so the spread is wide and the pace sets the mean.
 _READING_PACE = 1.75
 _READING_SPREAD = 0.8
+# Real visitors sometimes pause between pages (another tab, a call). A pause runs the visit's clock but not the
+# shopper's patience, and the shopper is not told about it, so it changes nothing they decide.
+_PAUSE_CHANCE = 0.3
+_PAUSE_MEDIAN = 40.0
+_PAUSE_SPREAD = 1.2
+
+
+def pause_seconds(rng: random.Random) -> float:
+    if rng.random() >= _PAUSE_CHANCE:
+        return 0.0
+    return rng.lognormvariate(math.log(_PAUSE_MEDIAN), _PAUSE_SPREAD)
 
 
 def load_seconds(site: OnlineSite, rng: random.Random) -> float:
@@ -112,6 +124,7 @@ async def run_session(
     exit_thought = ""
     requests = fallbacks = addon_paid = discount = 0
     spent = 0.0  # seconds of the visits before the current one
+    paused = 0.0  # pauses between pages, on the clock but not on the shopper's patience
     reminded = False
     returned_at: int | None = None
     visits: Counter[str] = Counter()
@@ -149,12 +162,14 @@ async def run_session(
                 fallbacks += 1
             seconds = load + read_seconds(page, shopper, choice, step_rng)
             memory.elapsed += seconds
+            pause = pause_seconds(random.Random(stable_seed(seed, "online-pause", shopper.id, index)))
+            paused += pause
             action = choice.control.action
             steps.append(SessionStep(
                 index=index, url=page.url, page=page.kind, state=state, options=len(numbers),
                 choice=PageOption(kind=action.kind, target=action.target, label=action.label, ad_id=action.ad_id,
                                   number=numbers[choice.control.index], box=boxes.get(choice.control.index)),
-                search_text=choice.query, thought=choice.thought[:240], seconds=round(seconds, 2), load_seconds=round(load, 2),
+                search_text=choice.query, thought=choice.thought[:240], seconds=round(seconds + pause, 2), load_seconds=round(load, 2),
                 source=choice.source, error=choice.error, mark_seed=mark_seed, screen=screen, ads=shown,
             ))
             memory.steps.append(_history_line(page, choice))
@@ -222,7 +237,7 @@ async def run_session(
     return SessionResult(
         shopper_id=shopper.id, site_id=site.id, outcome=outcome, steps=steps, order=order,
         subtotal=sum(line.price * line.quantity for line in order), order_total=state.order_total,
-        seconds=round(spent + memory.elapsed, 1), reached=[s for s in FUNNEL_STAGES if s in reached], viewed_products=viewed,
+        seconds=round(spent + memory.elapsed + paused, 1), reached=[s for s in FUNNEL_STAGES if s in reached], viewed_products=viewed,
         searches=searches, exit_page=steps[-1].page if steps else PageKind.HOME, exit_thought=exit_thought[:240],
         model_requests=requests, fallbacks=fallbacks, survey=survey, addon_paid=addon_paid, discount=discount,
         reminded=reminded, returned_at=returned_at,
