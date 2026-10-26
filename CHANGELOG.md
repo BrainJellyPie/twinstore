@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Read actual online-shopper choices wrapped in `properties` without substituting
+  a rule-based action. Required choices, visible option numbers and search text
+  remain validated; copied schema definitions are not clicks. CPU checkout probes
+  now fail explicitly on fallback responses and orders beyond their stated budget.
+
 ## 0.8.0 — Readable on every screen, and runs that say when they are done
 
 - Stop vision A/B tests, layout judging and venue comparisons when every response
