@@ -9,6 +9,8 @@
 - The floor editor counts cells from 1 everywhere: its panel said "Edit cell
   (0, 6)" for the cell the grid called "column 1, row 7", and unnamed racks were
   listed as "(0,0)".
+- Fill empty shelves counts its racks as "Racks shown: 1" instead of "1 racks
+  shown" (and likewise in Spanish and French).
 - A shopper's thought on the store floor wraps into a small card of at most
   three lines; a model's long thought ran as one line across the store and
   under the playback panel. Purchases still read on one line. Shoppers' group

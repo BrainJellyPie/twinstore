@@ -163,7 +163,7 @@ it("requires explicit categories when a rack has no known suggestion", async () 
 it("invalidates preview after density or selection changes and retains hidden selections", async () => {
   await open(); await preview();
   fireEvent.change(screen.getByLabelText("Search shelves"), { target: { value: "Stocked" } });
-  expect(screen.getByText(/1 selected across all filters/)).toBeTruthy();
+  expect(screen.getByText(/Selected across all filters: 1\./)).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Products per shelf section"), { target: { value: "4" } });
   expect(screen.queryByRole("button", { name: "Save stocked layout" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
