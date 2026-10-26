@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- In an online run's report, each shopper's buttons name the shopper for
+  screen readers ("Side by side for Retired teacher", "Watch Retired
+  teacher's visit to No fee", "Replay Retired teacher in Control store");
+  every card's buttons read the same.
 - Sliders are heard by screen readers as they are shown: the playback scrubber
   as the store clock ("10:00 am") instead of seconds since midnight
   ("36000"), the online run's shopper missions and traffic sources as each

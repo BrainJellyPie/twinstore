@@ -102,7 +102,8 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
                     <li key={r.shopper_id} className="grid grid-cols-1 gap-1 rounded-lg border p-2 text-xs sm:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)]">
                       <span className="flex flex-col items-start gap-0.5">
                         <span className="font-medium">{names.get(r.shopper_id) ?? r.shopper_id}</span>
-                        <Button variant="outline" size="xs" onClick={() => onCompare(ci + 1, r.shopper_id)} title={t("onSideHint")}>
+                        <Button variant="outline" size="xs" onClick={() => onCompare(ci + 1, r.shopper_id)} title={t("onSideHint")}
+                          aria-label={t("onSideBySideOf", { shopper: names.get(r.shopper_id) ?? r.shopper_id })}>
                           <Columns2 aria-hidden /> {t("onSideBySide")}
                         </Button>
                       </span>
@@ -112,7 +113,7 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
                           <div className="flex flex-wrap items-center gap-1">
                             <span className={cn("rounded px-1", outcome === "purchased" ? "tone-good" : "bg-muted")}>{ending(outcome, total, page)}</span>
                             <Button variant="ghost" size="xs" onClick={() => onReplay(variant, r.shopper_id)}
-                              aria-label={t("onWhoReplay", { store: variant === 0 ? control : c.site_name })}>{t("onOpenJourney")}</Button>
+                              aria-label={t("onWhoReplay", { store: variant === 0 ? control : c.site_name, shopper: names.get(r.shopper_id) ?? r.shopper_id })}>{t("onOpenJourney")}</Button>
                           </div>
                           {thought && <p className="truncate italic text-muted-foreground" title={thought}>“{thought}”</p>}
                         </div>

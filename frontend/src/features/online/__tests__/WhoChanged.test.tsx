@@ -60,10 +60,10 @@ it("shows orders won and lost, the groups a change helps, and why each changed v
   expect(screen.getByText("Listed (largest order changes first): 1")).toBeTruthy();
   expect(screen.getByText("“A service fee at the very end? Forget it.”")).toBeTruthy();
   expect(screen.getByText(/Ordered · \$42\.00/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Replay in No fee" }));
+  fireEvent.click(screen.getByRole("button", { name: "Replay Retired teacher in No fee" }));
   expect(replay).toHaveBeenCalledWith(1, "os0001");
-  fireEvent.click(screen.getByRole("button", { name: "Replay in Control store" }));
+  fireEvent.click(screen.getByRole("button", { name: "Replay Retired teacher in Control store" }));
   expect(replay).toHaveBeenLastCalledWith(0, "os0001");
-  fireEvent.click(screen.getByRole("button", { name: "Side by side" }));
+  fireEvent.click(screen.getByRole("button", { name: "Side by side for Retired teacher" }));
   expect(compare).toHaveBeenCalledWith(1, "os0001");
 });
