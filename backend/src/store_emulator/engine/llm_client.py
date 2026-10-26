@@ -240,6 +240,20 @@ def _final_structured_content(response: object) -> None:
             setattr(message, "content", final_answer_text(content))
 
 
+def _compact_json_schema_prompt(pretty: str, compact: str, messages: object) -> None:
+    """Minify the SDK's exact schema text, leaving its meaning and other messages intact."""
+    if not isinstance(messages, list):
+        return
+    for item in cast(list[object], messages):
+        if not isinstance(item, dict):
+            continue
+        # Instructor's provider kwargs contain untyped mutable message dictionaries.
+        message = cast(dict[str, object], item)
+        content = message.get("content")
+        if message.get("role") == "system" and isinstance(content, str):
+            message["content"] = content.replace(pretty, compact)
+
+
 class LiteLLMClient:
 
     def __init__(self, config: LLMConfig, *, reroute: Reroute | None = None, max_reroutes: int = _MAX_REROUTES):
@@ -354,6 +368,26 @@ class LiteLLMClient:
     def _openai_hosted(self) -> bool:
         return self.model.startswith("openai/gpt-") and "api.openai.com" in (self.api_base or "api.openai.com")
 
+    def _is_loopback(self) -> bool:
+        if not self.api_base:
+            return False
+        try:
+            host = urlsplit(self.api_base).hostname
+            return host in {"localhost", "localhost."} or bool(host and ipaddress.ip_address(host).is_loopback)
+        except ValueError:
+            return False
+
+    def _compact_schema_text(self, response_model: type[BaseModel]) -> tuple[str, str] | None:
+        if self._structured_output != "json" or not self._is_loopback():
+            return None
+        schema = response_model.model_json_schema()
+        pretty = json.dumps(schema, indent=2, ensure_ascii=False)
+        # Shortening small schemas can change model decisions without a meaningful
+        # context saving; retain their established prompt format.
+        if len(pretty) < 4096:
+            return None
+        return pretty, json.dumps(schema, separators=(",", ":"), ensure_ascii=False)
+
     def _ollama_direct_answer(self) -> bool:
         # The recommended Qwen3.5 renderer defaults to thinking and supports an
         # explicit false. Other families can require reasoning or named levels.
@@ -377,13 +411,7 @@ class LiteLLMClient:
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
-        loopback = False
-        if self.api_base:
-            try:
-                host = urlsplit(self.api_base).hostname
-                loopback = host in {"localhost", "localhost."} or bool(host and ipaddress.ip_address(host).is_loopback)
-            except ValueError:
-                loopback = False
+        loopback = self._is_loopback()
         if structured and (loopback or self._structured_sdk_retries is not None):
             # Instructor already owns this call's attempt budget, including
             # named self-hosted servers on another machine.
@@ -472,6 +500,8 @@ class LiteLLMClient:
         if self.cache_dir is None:
             return None
         extra: dict[str, str] = {"reasoning": "none"} if self._openai_hosted() else {}
+        if self._compact_schema_text(response_model) is not None:
+            extra["json_schema_prompt"] = "compact-v1"
         if self.model.startswith("ollama_chat/"):
             # Older SDKs accepted native length cutoffs as successful replies.
             extra["ollama_finish_reason"] = "native-v1"
@@ -552,10 +582,13 @@ class LiteLLMClient:
                 budget_configuration = self._configuration
             kwargs = self._call_kwargs(seed, budget, structured=True)
             calls = 0
+            schema_text = self._compact_schema_text(response_model)
 
-            def request_started(*_args: object, **_kwargs: object) -> None:
+            def request_started(*_args: object, **request_kwargs: object) -> None:
                 nonlocal calls
                 calls += 1
+                if schema_text is not None:
+                    _compact_json_schema_prompt(*schema_text, request_kwargs.get("messages"))
 
             hooks = Hooks()
             hooks.on("completion:kwargs", request_started)
@@ -601,10 +634,13 @@ class LiteLLMClient:
                     budget_configuration = configuration
                 kwargs = self._call_kwargs(seed, budget, structured=True)
                 calls = 0
+                schema_text = self._compact_schema_text(response_model)
 
-                def request_started(*_args: object, **_kwargs: object) -> None:
+                def request_started(*_args: object, **request_kwargs: object) -> None:
                     nonlocal calls
                     calls += 1
+                    if schema_text is not None:
+                        _compact_json_schema_prompt(*schema_text, request_kwargs.get("messages"))
 
                 hooks = Hooks()
                 hooks.on("completion:kwargs", request_started)

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Compact large response schemas in loopback JSON requests so small local
+  models can complete combined edits without excessive schema text. Preserve
+  every constraint and leave small schemas and native JSON-schema requests
+  unchanged; do not reuse cached answers from the previous prompt format.
+
 - Keep waiting for playback to accept focus when its Play button appears
   before it becomes usable, within the existing five-second limit.
 
