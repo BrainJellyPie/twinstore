@@ -83,3 +83,14 @@ it("offers the way back to the list for a deleted run, and shows other failures 
   render(<QueryClientProvider client={client}><RunReport projectId="p1" runId="r1" onDeleted={onDeleted} /></QueryClientProvider>);
   expect((await screen.findByRole("alert")).textContent).toBe("disk unreadable");
 });
+
+it("continues keyboard focus in the section a report link jumps to", async () => {
+  Element.prototype.scrollIntoView = vi.fn();
+  mount(100);
+  await screen.findByText("Study");
+  fireEvent.click(screen.getByRole("link", { name: "Key numbers" }));
+  expect(document.activeElement).toBe(document.getElementById("online-kpis"));
+  fireEvent.click(screen.getByRole("link", { name: "Funnel" }));
+  expect(document.activeElement).toBe(document.getElementById("online-funnel"));
+  expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+});

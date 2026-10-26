@@ -90,12 +90,15 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
     <div className="flex flex-col">
       <PlaybackStatus minTime={minTime} maxTime={maxTime} />
       {summary && !legacyRun && idle && !playing && (
-        <RunTeaser summary={summary} onOpen={() => results.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+        <RunTeaser summary={summary} onOpen={() => {
+          results.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          results.current?.focus({ preventScroll: true });
+        }} />
       )}
       <TimelineChart customers={customers} minTime={minTime} maxTime={maxTime} />
       <Summary legacyRun={noImpulse} />
       <CustomerBehavior legacyRun={legacyRun} />
-      <div ref={results} className="scroll-mt-2">
+      <div ref={results} tabIndex={-1} className="scroll-mt-2 outline-none">
         {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
       </div>
       {projectId && runId && <OperationsSection key={`operations:${projectId}:${runId}`} projectId={projectId} runId={runId} setupId={setupId} currency={summary?.currency} />}

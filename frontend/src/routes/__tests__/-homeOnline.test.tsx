@@ -91,3 +91,13 @@ it("offers no shortcut before there is a store", async () => {
   await screen.findByRole("button", { name: "Online stores" });
   expect(screen.queryByText("Continue where you left off")).toBeNull();
 });
+
+it("moves keyboard focus to the store list that its button scrolls to", async () => {
+  projects.list = [store("old", "Old shop", "2026-10-01T00:00:00Z"), store("new", "New shop", "2026-10-20T00:00:00Z")];
+  await mount();
+  const heading = document.body.appendChild(Object.assign(document.createElement("h2"), { id: "stores-heading", tabIndex: -1 }));
+  heading.scrollIntoView = vi.fn();
+  fireEvent.click(screen.getByRole("button", { name: "Your stores: 2" }));
+  expect(document.activeElement).toBe(heading);
+  heading.remove();
+});

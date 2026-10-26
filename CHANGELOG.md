@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Links and buttons that scroll to a part of the page now take keyboard
+  focus there too, as an ordinary in-page link does: the online report's
+  section bar and its **Shopper stream** and **Ask about this run** links,
+  the store dashboard's **See the results** and the home page's **Your
+  stores** button. The next Tab used to continue from the link, back where
+  the page had scrolled away from.
 - On a store's floor page, the first Tab after the page loads reaches **Skip
   to content** and the header again. Keeping the selected layout in view
   scrolled it with a call that, in Chrome and Edge, also moved where Tab

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { RunSummary } from "@/shared/api/client";
 import type { Store } from "@/shared/types/domain";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
@@ -63,6 +63,16 @@ it("leads with the run's totals before the day plays, and drops them once it doe
   expect(teaser.textContent).toContain("Shoppers: 10");
   act(() => useSimulationMetricsStore.getState().setMetrics({ entered: 1 }));
   expect(screen.queryByRole("button", { name: /See the results/ })).toBeNull();
+});
+
+it("moves keyboard focus to the results the teaser opens", () => {
+  Element.prototype.scrollIntoView = vi.fn();
+  act(() => useSimulationMetricsStore.getState().reset());
+  show(current);
+  fireEvent.click(screen.getByRole("button", { name: /See the results/ }));
+  const focused = document.activeElement!;
+  expect(focused).not.toBe(document.body);
+  expect(focused.contains(screen.getByText("Run results"))).toBe(true);
 });
 
 it("offers no totals teaser for a run made before the conversion KPIs", () => {
