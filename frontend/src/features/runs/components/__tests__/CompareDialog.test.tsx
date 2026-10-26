@@ -173,3 +173,24 @@ it("says the server's notes in the user's language, and keeps unknown ones as se
     useLocale.getState().setLocale("en");
   }
 });
+
+it.each([
+  [0, 2290, "2,290 customers only in s1 — LLM · final · Oct 21 were excluded"],
+  [5, 0, "5 customers only in"],
+  [5, 7, "5 customers only in"],
+])("names only the run that left customers out (%i and %i unpaired)", (onlyA, onlyB, expected) => {
+  show();
+  state.report = {
+    ...state.report!,
+    notes: ["English fallback"],
+    note_codes: [{ code: "unpaired", params: { onlyA, runA: "run_a", onlyB, runB: "run_a" } }],
+  };
+  cleanup();
+  render(<QueryClientProvider client={new QueryClient()}>
+    <CompareDialog open onOpenChange={() => {}} projectId="p" layouts={[]} defaultRunId="run_b" />
+  </QueryClientProvider>);
+  const text = screen.getByRole("dialog").textContent ?? "";
+  expect(text).toContain(expected);
+  expect(text).not.toMatch(/\b0 customers only in|and 0 only in/);
+  if (onlyA && onlyB) expect(text).toContain("and 7 only in");
+});

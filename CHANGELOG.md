@@ -10,6 +10,27 @@
   captured selling prices. Preserve the printed tag, estimated-price review
   and existing product prices; limited-offer cash prices remain usable.
 
+- The Area map key's note on rings and lines no longer starts with a stray
+  "·" when it wraps onto its own line.
+
+- **Validate against real sales** names its metrics in plain words in the
+  selected language ("Product mix similarity", "Top 10 best sellers match"),
+  instead of ids such as "sku js similarity". Hovering a name still shows the
+  statistic's id.
+
+- **Find layout** shows each layout's store format by its name in the selected
+  language ("University campus store"), not by its internal id ("campus cvs"),
+  and finds layouts by that name in any of the six languages.
+
+- The numbered spots on a shopper's journey map list their steps in the
+  selected language ("2. Looks at", "3. Takes Cola"), instead of the internal
+  action names "browse" and "buy". Unnamed racks on the map, and in the floor
+  editor's "outside this grid" message, are named by their type in the selected
+  language (입구, sortie) instead of "entrance" or "exit".
+
+- **Compare runs** names only the run that left customers out of the pairing,
+  instead of starting with "0 customers only in" the other run.
+
 - Keep local JSON correction prompts focused on the current validation error
   instead of repeating SDK response dumps and transport metadata. Preserve
   the conversation, full failure diagnostics, retry limits and usage counts.

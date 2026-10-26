@@ -26,6 +26,21 @@ const VERDICT_CLASS = {
 } as const;
 const VERDICT_LABEL: Record<keyof typeof VERDICT_CLASS, MessageKey> = { good: "fidelityGood", fair: "fidelityFair", poor: "fidelityPoor" };
 
+// A metric by a plain name in the selected language; its id (a statistic such as "sku_ndcg@10") stays in the tooltip.
+const METRIC_LABELS: Record<string, MessageKey> = {
+  sku_spearman: "fidelityMetric_sku_spearman", sku_js_similarity: "fidelityMetric_sku_js_similarity",
+  "sku_ndcg@all": "fidelityMetric_sku_ndcg_all", rack_spearman: "fidelityMetric_rack_spearman",
+  rack_js_similarity: "fidelityMetric_rack_js_similarity", basket_units_w1: "fidelityMetric_basket_units_w1",
+  basket_units_mean_ratio: "fidelityMetric_basket_units_mean_ratio", basket_units_var_ratio: "fidelityMetric_basket_units_var_ratio",
+  basket_value_w1: "fidelityMetric_basket_value_w1", basket_value_mean_ratio: "fidelityMetric_basket_value_mean_ratio",
+  hourly_js_similarity: "fidelityMetric_hourly_js_similarity",
+};
+function metricLabel(name: string, t: (key: MessageKey, params?: Record<string, string | number>) => string): string {
+  const top = /^sku_ndcg@(\d+)$/.exec(name);
+  if (top) return t("fidelityMetric_sku_ndcg_top", { k: Number(top[1]) });
+  return Object.prototype.hasOwnProperty.call(METRIC_LABELS, name) ? t(METRIC_LABELS[name]!) : name.replace(/_/g, " ");
+}
+
 // Validate a run against a real POS export of the same store.
 export function FidelitySection({ projectId, runId }: { projectId: string; runId: string }) {
   const { locale, t } = useI18n();
@@ -120,7 +135,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
               const v = verdict(m);
               return (
                 <li key={m.name} className="flex items-center justify-between gap-2 text-xs" title={m.description}>
-                  <span className="truncate" title={m.name.replace(/_/g, " ")}>{m.name.replace(/_/g, " ")}</span>
+                  <span className="truncate" title={m.name}>{metricLabel(m.name, t)}</span>
                   <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
                     {m.value === null ? t("notAvailable") : m.value.toLocaleString(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     {v && <span className={`rounded px-1 text-[0.72rem] ${VERDICT_CLASS[v]}`}>{t(VERDICT_LABEL[v])}</span>}

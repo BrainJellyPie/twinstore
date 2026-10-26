@@ -10,6 +10,7 @@ import { cn } from "@/shared/utils/cn";
 import { rackBounds } from "@/shared/utils/grid";
 import { formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { rackTypeLabel } from "@/shared/i18n/rackTypeLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 
@@ -42,7 +43,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
         return (
           <rect key={r.id} x={r.position[0] + 0.08} y={r.position[1] + 0.08} width={b.w - 0.16} height={b.d - 0.16} rx={0.12}
             className={cn(journey.shelves[r.id] ? "fill-foreground/25" : "fill-foreground/10")}>
-            <title>{r.rack_name || r.type}</title>
+            <title>{r.rack_name || rackTypeLabel(r.type, t)}</title>
           </rect>
         );
       })}
@@ -54,7 +55,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
         const label = group.length > 1 ? `${s.index}+` : String(s.index);
         return (
           <g key={s.index} onPointerEnter={() => onHover(s.index)} onPointerLeave={() => onHover(null)} className="cursor-default">
-            <title>{group.map((g) => `${g.index}. ${g.action}${g.product_name ? ` ${g.product_name}` : ""}`).join("\n")}</title>
+            <title>{group.map((g) => `${g.index}. ${VERB[g.action] ? t(VERB[g.action]) : g.action}${g.product_name ? ` ${g.product_name}` : ""}`).join("\n")}</title>
             <circle cx={s.x + 0.5} cy={s.y + 0.5} r={on ? 0.44 : 0.34}
               fill={bought ? "var(--viz-2)" : "var(--viz-1)"} stroke="var(--card)" strokeWidth={0.08} />
             <text x={s.x + 0.5} y={s.y + 0.5} textAnchor="middle" dominantBaseline="central" fontSize={label.length > 2 ? 0.27 : 0.33} fill="#fff" fontWeight={700}>{label}</text>
