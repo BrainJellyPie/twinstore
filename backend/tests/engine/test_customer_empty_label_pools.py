@@ -40,10 +40,16 @@ def test_empty_pools_keep_coherent_labels_through_traffic_customers_and_cache(mo
         else:
             bounds = body["response_format"]["json_schema"]["schema"]["properties"] if provider != "json" else {}
             if provider != "json":
-                assert bounds["identities"]["minItems"] == bounds["purposes"]["minItems"] == 1
+                for field in ("identities", "purposes"):
+                    assert bounds[field]["type"] == "object"
+                    assert bounds[field]["required"] == [str(i) for i in range(1, 17)]
             identity = "resident" if missing == "purposes" or provider == "schema" else ""
             purpose = "groceries" if missing == "identities" or provider == "schema" else ""
             payload = {"keywords": [], "identities": [identity] if identity else [], "purposes": [purpose] if purpose else []}
+            if provider == "schema":
+                payload = {"keywords": {str(i): "nearby" for i in range(1, 9)},
+                           "identities": {str(i): identity for i in range(1, 17)},
+                           "purposes": {str(i): purpose for i in range(1, 17)}}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
                 "message": {"role": "assistant", "content": json.dumps(payload)}}]})

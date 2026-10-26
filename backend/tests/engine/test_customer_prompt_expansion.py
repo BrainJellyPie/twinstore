@@ -23,7 +23,8 @@ def test_repeated_customer_inputs_have_the_same_label_bound(field, character, le
     else:
         assert getattr(schema.model_validate(data), field) == [value]
     output_schema = schema.model_json_schema()
-    item_schema = output_schema['properties'][field]['items']
+    pool_schema = output_schema['properties'][field]
+    item_schema = pool_schema['properties']['1'] if field == 'keywords' else pool_schema['items']
     if '$ref' in item_schema:
         item_schema = output_schema['$defs'][item_schema['$ref'].rsplit('/', 1)[1]]
     assert item_schema['maxLength'] == 120

@@ -25,13 +25,39 @@ logger = logging.getLogger(__name__)
 
 type PersonaLabel = Annotated[str, Field(max_length=120)]
 
+_PROFILE_POOL_SIZES = {"keywords": 8, "identities": 16, "purposes": 16}
+
+
+def _numbered_profile_schema(schema: dict[str, JsonValue]) -> None:
+    properties = cast(dict[str, JsonValue], schema["properties"])
+    for field, count in _PROFILE_POOL_SIZES.items():
+        keys = [str(i) for i in range(1, count + 1)]
+        properties[field] = {
+            "type": "object", "additionalProperties": False,
+            "required": [key for key in keys],
+            "properties": {key: {"type": "string", "maxLength": 120} for key in keys},
+        }
+
 
 # Upper bounds well above what the prompts ask for. Schema-constrained local models (llama.cpp) are held to them, so a
 # small model cannot repeat itself for minutes (one listed every hour four times).
 class TradeAreaProfile(BaseModel):
+    model_config = ConfigDict(json_schema_extra=_numbered_profile_schema)
     keywords: list[PersonaLabel] = Field(max_length=20)
     identities: list[PersonaLabel] = Field(max_length=40, json_schema_extra={"minItems": 1})
     purposes: list[PersonaLabel] = Field(max_length=40, json_schema_extra={"minItems": 1})
+
+    @field_validator("keywords", "identities", "purposes", mode="before")
+    @classmethod
+    def _ordered_labels(cls, value: object, info: ValidationInfo) -> object:
+        if not isinstance(value, dict):
+            return value  # Existing providers and canonical caches retain arrays.
+        assert info.field_name is not None
+        keys = [str(i) for i in range(1, _PROFILE_POOL_SIZES[info.field_name] + 1)]
+        values = cast(dict[str, object], value)
+        if set(values) != set(keys):
+            raise ValueError(f"Fill every numbered {info.field_name} key from 1 to {len(keys)}; do not omit or add keys.")
+        return [values[key] for key in keys]
 
     @field_validator("keywords", "identities", "purposes")
     @classmethod
@@ -244,10 +270,11 @@ type WriteProgress = Callable[[int, int], None]
 
 
 PROFILE_PROMPT = """Analyze the supplied neighborhood and shop description across the whole week.
-Return three arrays of distinct, short English labels (at most 120 characters each):
-- keywords: 5–10 characteristics of the area and shop.
-- identities: 15–30 kinds of individual PEOPLE who might visit. A shop, product, or reason to visit is not a person type.
-- purposes: 15–30 things customers want to DO at this shop. Use short action phrases starting with a verb; a person type is not a purpose.
+Return three objects of distinct, short English labels (at most 120 characters each).
+Use the numbered keys shown in the schema; put one label in each value. Fill every key exactly once and stop at the last key. Do not output arrays or add more keys:
+- keywords: 8 characteristics of the area and shop, using keys "1" through "8".
+- identities: 16 kinds of individual PEOPLE who might visit, using keys "1" through "16". A shop, product, or reason to visit is not a person type.
+- purposes: 16 things customers want to DO at this shop, using keys "1" through "16". Use short action phrases starting with a verb; a person type is not a purpose.
 Reflect the supplied country and city. Include plausible weekday, weekend and time-of-day differences. Do not repeat labels or synonyms to fill a list.
 Return field values, not JSON schema definitions.
 ## 언어
