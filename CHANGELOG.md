@@ -61,6 +61,10 @@
 - A finished run no longer opens on a wall of zeros: before the day plays, the
   Results tab leads with **This run** (its revenue and shopper count) and a
   **See the results** link to the run's totals, until playback starts.
+- The neighborhood map's legend sits on a solid card, so venue dots and
+  buildings no longer show through its labels, and the area's figure tiles
+  wrap their notes to two lines instead of cutting them off ("of convenience
+  trips in to…").
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
