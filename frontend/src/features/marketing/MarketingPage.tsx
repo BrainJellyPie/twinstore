@@ -286,10 +286,13 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
       : job.kind === "shelf" ? deleteShelfTest(projectId, job.job_id) : job.kind === "conjoint" ? deleteConjoint(projectId, job.job_id)
         : deleteSurvey(projectId, job.job_id)),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId)
+      const list = job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId)
         : job.kind === "shelf" ? marketingKeys.shelfTests(projectId) : job.kind === "conjoint" ? marketingKeys.conjoints(projectId)
-          : marketingKeys.surveys(projectId) });
+          : marketingKeys.surveys(projectId);
+      // Leave the deleted study and drop its own query rather than refetching it into a 404; only the list changes.
       onDeleted(active);
+      qc.removeQueries({ queryKey: [...list, job.job_id], exact: true });
+      await qc.invalidateQueries({ queryKey: list, exact: true });
     },
   });
   // A finished study took model calls to make: the first click asks, the second deletes; leaving the button cancels.
