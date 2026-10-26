@@ -65,6 +65,10 @@
   buildings no longer show through its labels, and the area's figure tiles
   wrap their notes to two lines instead of cutting them off ("of convenience
   trips in to…").
+- Shopper cards on a phone show the whole name and age, gender and device
+  (even "Graduate student" was cut off); the shopping mission moves to the
+  start of the goal line there. Long online run names and goals show in full
+  on hover.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a

@@ -195,7 +195,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
                   className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", runId === r.run_id ? "border-primary bg-primary/8" : "hover:bg-muted")}>
                   <span className="flex items-center gap-2 font-medium">
                     {busy(r) ? <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden /> : <BarChart3 className="size-3.5 shrink-0" aria-hidden />}
-                    <span className="truncate">{r.name || r.site_names.join(" vs ")}</span>
+                    <span className="truncate" title={r.name || r.site_names.join(" vs ")}>{r.name || r.site_names.join(" vs ")}</span>
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {r.status === "failed" ? t("onRunFailed") : busy(r) ? t("onRunProgress", { done: r.done, total: r.total })

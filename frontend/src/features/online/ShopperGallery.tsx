@@ -83,14 +83,18 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
                 <div className="flex items-center gap-2.5">
                   <span className="heat-gradient grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold text-white shadow-inner" aria-hidden>{initials(sh.identity)}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{sh.identity}</div>
+                    <div className="truncate text-sm font-semibold" title={sh.identity}>{sh.identity}</div>
                     <div className="truncate text-[0.7rem] text-muted-foreground">
                       {personaLabel(sh.age_group, t)} · {personaLabel(sh.gender, t)} · {t(DEVICE_LABELS[sh.device])}
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary">{t(MISSION_LABELS[sh.mission])}</span>
+                  <span className="hidden shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary sm:inline">{t(MISSION_LABELS[sh.mission])}</span>
                 </div>
-                <p className="line-clamp-2 text-xs text-muted-foreground">{sh.goal}</p>
+                {/* On a phone card the mission leads the goal line, leaving the name the header's width. */}
+                <p className="line-clamp-2 text-xs text-muted-foreground" title={sh.goal}>
+                  <span className="mr-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary sm:hidden">{t(MISSION_LABELS[sh.mission])}</span>
+                  {sh.goal}
+                </p>
                 <ul className="space-y-1">
                   {stores.map((store, i) => (
                     <li key={i} className="flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs">
