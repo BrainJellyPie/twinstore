@@ -485,3 +485,21 @@ it.each([{ isComposing: true }, { keyCode: 229 }])("does not send a design reque
   fireEvent.keyDown(box, { key: "Enter" });
   await waitFor(() => expect(online.designChat).toHaveBeenCalledOnce());
 });
+
+it.each([
+  { label: "emoji after Korean text", expected: "가".repeat(1199) + "🛒" },
+  { label: "all emoji", expected: "🛒".repeat(1200) },
+  { label: "ordinary text", expected: "a".repeat(1200) },
+])("keeps the API's 1200-character limit without splitting $label", async ({ expected }) => {
+  vi.mocked(online.designChat).mockResolvedValue({ reply: "Done.", model: "fake", options: source.options, changed: [], unapplied: [] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <SiteDesigner projectId="p1" siteId="s1" onCopied={vi.fn()} onDeleted={vi.fn()} onTest={vi.fn()} />
+  </QueryClientProvider>);
+  const box = await screen.findByRole("textbox", { name: "Describe a change… (Enter to send)" });
+  fireEvent.change(box, { target: { value: expected + "discarded" } });
+  expect((box as HTMLTextAreaElement).value).toBe(expected);
+  fireEvent.keyDown(box, { key: "Enter" });
+  await waitFor(() => expect(online.designChat).toHaveBeenCalledOnce());
+  expect(vi.mocked(online.designChat).mock.calls[0]![2].messages).toEqual([{ role: "owner", text: expected }]);
+});

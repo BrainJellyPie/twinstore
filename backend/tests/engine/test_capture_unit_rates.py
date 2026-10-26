@@ -1,4 +1,4 @@
-"""A price per measure is not an exact price for the observed package."""
+"""Measure rates and bare quantities do not establish a package selling price."""
 import pytest
 from PIL import Image
 
@@ -33,16 +33,38 @@ def test_product_unit_prices_remain_exact(tag):
     assert price_minor_units(ShelfItemLabel(price_text=tag), "USD", 249) == 100
 
 
-def test_unit_rate_preserves_the_product_and_an_existing_package_price():
+@pytest.mark.parametrize("tag,currency", [
+    ("500 ml", "USD"), ("NET 500 mL", "EUR"), ("0.5 L", "GBP"),
+    ("500 g", "JPY"), ("500㎖", "KRW"), ("500그램", "KRW"), ("1 kg", "USD"),
+    ("500 mg", "USD"), ("12 fl oz", "USD"), ("6 PACK", "USD"), ("1 pack", "USD"),
+    ("pack of 6", "USD"), ("6 pk", "USD"), ("6 bottles", "USD"), ("6병", "KRW"),
+    ("6本入り", "JPY"), ("6 count", "USD"), ("0 ml", "USD"),
+])
+@pytest.mark.parametrize("guess", [None, 1.0, 500.0])
+def test_bare_sizes_and_pack_counts_are_not_selling_prices(tag, currency, guess):
+    assert price_minor_units(ShelfItemLabel(price_text=tag, price=guess), currency, 249) is None
+
+
+@pytest.mark.parametrize("tag,currency,expected", [
+    ("$6 PACK", "USD", 600), ("USD 6 pack", "USD", 600), ("6 USD pack", "USD", 600),
+    ("$1 BOTTLE", "USD", 100), ("1,000원 병", "KRW", 1000),
+    ("500", "USD", 500), ("$500", "USD", 50000), ("249¢", "USD", 249),
+])
+def test_cash_units_and_unqualified_numeric_tags_keep_existing_interpretations(tag, currency, expected):
+    assert price_minor_units(ShelfItemLabel(price_text=tag), currency, 249) == expected
+
+
+@pytest.mark.parametrize("tag", ["$1.00 / L", "500 ml", "6 PACK", "pack of 6"])
+def test_non_selling_measure_preserves_the_product_and_an_existing_package_price(tag):
     store = target_store()
     store.racks[0].slots[0].items[0].price = 375
     before = store.model_dump_json()
     with Image.new("RGB", (100, 80), "white") as photo:
         detection = Detection(x1=0, y1=0, x2=40, y2=60, band=0)
-        label = ShelfItemLabel(name="Cola 500ml", category="soft drink", price_text="$1.00 / L", price=1)
+        label = ShelfItemLabel(name="Cola 500ml", category="soft drink", price_text=tag, price=1)
         group = FacingGroup(band=0, facings=[detection], descriptor=describe(photo, detection), label=label)
         items, _ = build_items(make_frame(photo), [group], [3], currency="USD", rack_type="shelf")
-        assert items[0].labeled and items[0].price_estimated and items[0].price_text == "$1.00 / L"
+        assert items[0].labeled and items[0].price_estimated and items[0].price_text == tag
         updated, report = replace_rack_face(store, CaptureResult(image_size=photo.size, currency="USD", items=items), "r1")
     placed = [item for slot in updated.racks[0].slots for item in slot.items]
     assert len(placed) == 1 and placed[0].price == 375

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Keep advertised price limits ("FROM $1.00", "UNDER $1.00", "1,000원부터")
+  from becoming exact captured selling prices. Preserve the printed label,
+  mark the fallback as estimated and retain existing matched-product prices.
+
+- Count complete Unicode characters in the online design chat's 1,200-character
+  limit, matching the API and command palette. Pasting a long request no longer
+  splits an emoji or cuts emoji-only input to half the allowed length.
+
+- Keep bare package sizes and counts, such as "500 ml" and "6 PACK", from
+  becoming exact captured prices. Explicit cash amounts such as "$6 PACK"
+  and ordinary numeric price tags retain their existing interpretation.
 - Layouts the app names itself get a number when the name is taken, so they
   can be told apart in the layout tabs and pickers: a second starter, shelf-copy,
   library-photo, product-edit or combined-shelf draft, a second optimized or
@@ -24,6 +35,7 @@
   including half-cent and half-won boundaries. Block out-of-range discount
   and category percentages with localized correction guidance while keeping
   fractional discounts and valid boundary values available.
+
 - The online design chat no longer sends a half-typed Korean, Japanese or
   Chinese request when Enter ends the input method's composition in browsers
   that mark that key only with the legacy composition code (Safari).

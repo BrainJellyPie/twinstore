@@ -175,7 +175,7 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
         {ask.error && <p role="alert" className="text-xs text-destructive">{ask.error.message}</p>}
         <NeedsModel purpose="assist" />
         <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-          <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, 1200))} rows={2}
+          <textarea value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 1200).join(""))} rows={2}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); send(text); } }}
             placeholder={t("onAiPlaceholder")} aria-label={t("onAiPlaceholder")}
             className="min-h-[2.75rem] flex-1 resize-none rounded-xl border bg-card px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50" />
