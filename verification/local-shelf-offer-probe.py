@@ -27,8 +27,9 @@ from store_emulator.engine.simulation.engines.vlm_glance.prompt import shelf_gla
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output',type=Path,default=Path('.data/local-model-probes'))
 parser.add_argument('--shuffle-seed',type=int,default=7)
+parser.add_argument('--structured-output',choices=['json_schema','json'],default='json_schema')
 args=parser.parse_args()
-root=args.output.resolve()/f'shelf-offers-{args.shuffle_seed}-{time.time_ns()}'
+root=args.output.resolve()/f'shelf-offers-{args.shuffle_seed}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
 original=httpx.AsyncClient.send
 calls=0
@@ -54,7 +55,7 @@ async def run():
         (root/f'{case}.png').write_bytes(view.png)
         shopper=Persona(id='resident',identity='Nearby resident',age_group='30s',gender='Female',description='A thirsty resident seeking the cheapest water.',intent='Choose the free water offer only.' if price==0 else 'Choose the one-dollar water offer only.',purpose='Buy one water bottle.',usual_products=['Mineral Water 500ml'],budget_min=budget,budget_max=budget,basket_size=1)
         prompt=user_prompt(shopper,BehaviorCue(state='목마름'),next(p for p in BEHAVIOR_PATTERNS if p.id=='purposeful'),view,basket=[],money_left=budget,currency=currency)
-        client=LiteLLMClient(LLMConfig(model='openai/local-model',api_base='http://127.0.0.1:8081/v1',api_key=SecretStr('local'),temperature=0,seed=0,max_tokens=240,timeout_sec=180,max_parallel=1,chat_template_thinking=False,structured_output='json_schema',structured_sdk_retries=0,cache_dir=str(root/case)))
+        client=LiteLLMClient(LLMConfig(model='openai/local-model',api_base='http://127.0.0.1:8081/v1',api_key=SecretStr('local'),temperature=0,seed=0,max_tokens=240,timeout_sec=180,max_parallel=1,chat_template_thinking=False,structured_output=args.structured_output,structured_sdk_retries=0,cache_dir=str(root/case)))
         start=time.perf_counter()
         try:
             answer=await client.generate_structured_with_image_async(shelf_glance_model(view),glance_system_prompt(),prompt,view.data_url(),seed=0,max_retries=1)

@@ -4,6 +4,9 @@
 
 ## 0.8.0 — Readable on every screen, and runs that say when they are done
 
+- Recover actual shelf judgments that small JSON-mode models wrap in `properties`.
+  Compact shelf schemas retain their constraints while removing copied metadata;
+  missing scores and schema definitions remain errors, and saved answers stay flat.
 - Convert generated customer budgets from explicit currency amounts into stored
   units in code, so small models do not have to calculate cents. Existing saved
   integer budgets keep their units. Customer prompts distinguish people, visit
@@ -54,8 +57,6 @@
   the shopper filter counts are no longer dimmed.
 - Screen readers name the playback progress bar after its status ("Press play",
   "Playing 40 %"), and the local-model hardware list is a valid definition list.
-  Every page and tab now passes axe-core's WCAG 2.1 A/AA checks in light and
-  dark mode.
 - **Keyboard shortcuts** in one place: press **?** anywhere outside a text
   field (or pick it in the command palette, whose footer now links it) for a
   sheet of every key that works without the mouse. On the store floor, **←** and
