@@ -4,6 +4,7 @@ layout it shows. Replaces names guessed from file names ("IMG_2041") with what t
 import json
 import re
 import unicodedata
+from collections import Counter
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -93,10 +94,17 @@ async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str])
         reading.brand = ""
     if not size_words or f" {size_words} " not in f" {observed} ":
         reading.size = ""
+    # Labels and catalog display names can put the same brand/size words in
+    # different orders. Require every full token, including repeated words,
+    # and keep quantities together: "500 g 100 ml" does not prove "500 ml".
+    # The separate matching call still decides whether the identity agrees.
+    label_tokens = re.compile(r"\d+(?:[.,]\d+)? [^\W\d_]+|[^ ]+")
+    observed_tokens = Counter(label_tokens.findall(observed))
     # Bound the matching prompt after evidence filtering: unrelated early
     # catalog entries must not hide an observed product later in the store.
     listed = [name for name in dict.fromkeys(products)
-              if (words := printed_words(name.strip()[:120])) and f" {words} " in f" {observed} "][:MAX_LISTED]
+              if (words := printed_words(name.strip()[:120])) and
+              (f" {words} " in f" {observed} " or Counter(label_tokens.findall(words)) <= observed_tokens)][:MAX_LISTED]
     if listed:
         names: list[JsonValue] = ["", *dict.fromkeys(name.strip()[:120] for name in listed)]
 

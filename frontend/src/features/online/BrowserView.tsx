@@ -26,6 +26,11 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
   const [query, setQuery] = useState("");
   const [clicks, setClicks] = useState<string[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const optionsRef = useRef<HTMLHeadingElement>(null);
+  // A choice made from the options panel disables its button while the page loads, which drops focus to the
+  // page body: bring a keyboard user back to the new page's options instead.
+  const refocus = useRef(false);
   const go = useMutation({
     mutationFn: (step: Step) => browse(projectId, siteId, {
       state: step.state, option: step.option ?? null, query: step.query ?? "", mark_seed: step.markSeed,
@@ -34,6 +39,10 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
     onSuccess: (next, step) => {
       setView(next); setMarkSeed(step.markSeed); setDevice(step.device); setVision(step.vision); setSearching(null); setQuery("");
       if (step.state === null) setClicks([]);
+      if (refocus.current) {
+        refocus.current = false;
+        requestAnimationFrame(() => optionsRef.current?.focus());
+      }
     },
   });
   const start = go.mutate;
@@ -57,11 +66,13 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
       return;
     }
     setClicks((c) => [...c.slice(-30), `${t(PAGE_LABELS[view.page])} → [${option.number}] ${option.label}`]);
+    refocus.current = asideRef.current?.contains(document.activeElement) ?? false;
     go.mutate({ state: view.state, option: option.number, markSeed, device, vision });
   };
   const submitSearch = () => {
     if (!view || !searching || !query.trim() || go.isPending) return;
     setClicks((c) => [...c.slice(-30), `${t(PAGE_LABELS[view.page])} → [${searching.number}] “${query.trim()}”`]);
+    refocus.current = true;
     go.mutate({ state: view.state, option: searching.number, query: query.trim(), markSeed, device, vision });
   };
 
@@ -117,7 +128,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
         )}
       </section>
 
-      <aside className="panel flex min-w-0 flex-col gap-3 rounded-[1.6rem] p-3 text-sm xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
+      <aside ref={asideRef} className="panel flex min-w-0 flex-col gap-3 rounded-[1.6rem] p-3 text-sm xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
         {view && (
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground">{t(PAGE_LABELS[view.page])}</div>
@@ -131,7 +142,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
           </form>
         )}
         <div>
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onOptions", { count: view?.options.length ?? 0 })}</h3>
+          <h3 ref={optionsRef} tabIndex={-1} className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none">{t("onOptions", { count: view?.options.length ?? 0 })}</h3>
           <ol className="space-y-1">
             {view?.options.map((o) => (
               <li key={o.number}>

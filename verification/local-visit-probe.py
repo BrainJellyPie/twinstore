@@ -1,6 +1,6 @@
 """Run real CPU VLM visits through planning, shelf images, execution and shared stock.
 
-Requires the loopback vision server at port 8081. No model replies or purchase
+Requires a loopback vision server (port 8081 by default). No model replies or purchase
 choices are mocked. Saves request images, raw replies, decisions and final
 receipts. The deliberately small fixtures separate invariants from whether the
 model made enough purchases to exercise a boundary. No saved user stores change.
@@ -11,6 +11,7 @@ import base64
 import json
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 from unittest.mock import patch
 
 import httpx
@@ -35,7 +36,11 @@ parser.add_argument('--output', type=Path, default=Path('.data/local-model-probe
 parser.add_argument('--structured-output', choices=['json_schema', 'json'], default='json_schema')
 parser.add_argument('--cache-from', type=Path, help='Explicitly replay cached model replies for diagnostic repairs')
 parser.add_argument('--seed', type=int, default=4)
+parser.add_argument('--endpoint', default='http://127.0.0.1:8081/v1')
 args = parser.parse_args()
+endpoint = urlsplit(args.endpoint)
+if endpoint.scheme != 'http' or endpoint.hostname not in {'localhost', '127.0.0.1', '::1'}:
+    parser.error('Use an HTTP loopback endpoint for the local model.')
 root = args.output.resolve() / f'visit-{args.case}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
 currency, price, budget = ('KRW', 0, 1) if args.case in {'free', 'free-same-sku'} else ('USD', 100, 100)
@@ -61,7 +66,7 @@ people = [Persona(id=f'P{i+1}', day=Weekday.MON, arrival_hour=9, identity='Nearb
     description=intent if no_purchase else 'A thirsty resident making a short trip for one water bottle.', intent=intent, purpose=intent,
     preferred_categories=[] if no_purchase else ['Water'], usual_products=[] if no_purchase else ['Mineral Water 500ml'],
     budget_min=0, budget_max=budget, basket_size=0 if no_purchase or args.case == 'plan-disabled' else 1) for i in range(count)]
-live_config = LLMConfig(model='openai/local-model', api_base='http://127.0.0.1:8081/v1', api_key=SecretStr('local-probe'),
+live_config = LLMConfig(model='openai/local-model', api_base=args.endpoint, api_key=SecretStr('local-probe'),
     temperature=0, seed=0, max_tokens=160, timeout_sec=180, max_parallel=1, chat_template_thinking=False,
     structured_output=args.structured_output, structured_sdk_retries=0, cache_dir=str(args.cache_from.resolve() if args.cache_from else root/'cache'))
 client = LiteLLMClient(live_config)
@@ -87,13 +92,14 @@ if errors:
     raise RuntimeError(str(errors))
 send = httpx.AsyncClient.send
 calls = 0
+attempts = 0
 async def traced(self, request, *a, **kw):
-    global calls
+    global calls, attempts
     started = time.perf_counter()
-    response = await send(self, request, *a, **kw)
-    if request.url.host == '127.0.0.1':
-        await response.aread()
-        calls += 1
+    local = request.url.host == endpoint.hostname
+    if local:
+        attempts += 1
+        attempt = attempts
         body = json.loads(request.content)
         pictures = 0
         for message in body.get('messages', []):
@@ -101,17 +107,24 @@ async def traced(self, request, *a, **kw):
                 for part in message['content']:
                     if part.get('type') == 'image_url':
                         pictures += 1
-                        image_path = root/f'call-{calls}-image-{pictures}.png'
+                        image_path = root/f'call-{attempt}-image-{pictures}.png'
                         image_path.write_bytes(base64.b64decode(part['image_url']['url'].split(',', 1)[1]))
                         part['image_url'] = {'url': image_path.name}
-        row = {'call': calls, 'seconds': round(time.perf_counter()-started, 3), 'status': response.status_code,
+        with (root/'requests.jsonl').open('a') as handle:
+            handle.write(json.dumps({'attempt': attempt, 'request': body}, ensure_ascii=False)+'\n')
+    response = await send(self, request, *a, **kw)
+    if local:
+        await response.aread()
+        calls += 1
+        row = {'call': calls, 'attempt': attempt, 'seconds': round(time.perf_counter()-started, 3), 'status': response.status_code,
                'request': body, 'response': response.json()}
         with (root/'http.jsonl').open('a') as handle:
             handle.write(json.dumps(row, ensure_ascii=False)+'\n')
         print(json.dumps({k: row[k] for k in ['call','seconds','status']}), flush=True)
     return response
 start = time.perf_counter()
-result = {'case': args.case, 'seed': args.seed, 'success': False, 'cache_replay_from': str(args.cache_from) if args.cache_from else None}
+result = {'case': args.case, 'seed': args.seed, 'endpoint': args.endpoint, 'success': False,
+          'cache_replay_from': str(args.cache_from) if args.cache_from else None}
 try:
     with patch.object(httpx.AsyncClient, 'send', traced):
         aggregated, customers = asyncio.run(runner.run(store, people, max_concurrent=1, path_heatmap=False,
@@ -142,6 +155,8 @@ try:
     if args.case == 'plan-disabled':
         coverage = bool(engine.plan_log) and bool(engine.glance_log)
     model_issues = []
+    if len(engine.plan_log) != count:
+        model_issues.append('Missing one or more entrance model decisions')
     for plan in engine.plan_log:
         if no_purchase or args.case == 'plan-disabled':
             if plan.items:
@@ -163,7 +178,8 @@ try:
         plans=len(engine.plan_log))
 except Exception as error:
     result['error'] = repr(error)
-result.update(seconds=round(time.perf_counter()-start, 2), calls=calls, usage=client.get_usage().model_dump(mode='json'))
+result.update(seconds=round(time.perf_counter()-start, 2), calls=calls, attempted_calls=attempts,
+              usage=client.get_usage().model_dump(mode='json'))
 (root/'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
 print(json.dumps({'output': str(root), **result}, ensure_ascii=False, indent=2), flush=True)
 raise SystemExit(0 if result['success'] else 1)

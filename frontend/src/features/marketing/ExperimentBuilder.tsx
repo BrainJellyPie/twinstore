@@ -346,7 +346,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
               </span>
             ))}
           </div>
-          <ProductSelect products={products} value="" onChange={(s) => s && setExtraFocus((f) => [...new Set([...f, s])])} placeholder={t("mkTrackAnother")} small />
+          <ProductSelect products={products} value="" onChange={(s) => s && setExtraFocus((f) => [...new Set([...f, s])])} placeholder={t("mkTrackAnother")} label={t("mkTrackAnotherLabel")} small />
         </div>
       </section>
 
@@ -362,8 +362,10 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   );
 }
 
-function ProductSelect({ products, value, onChange, placeholder, small = false }: {
-  products: Product[]; value: string; onChange: (sku: string) => void; placeholder: string; small?: boolean;
+function ProductSelect({ products, value, onChange, placeholder, label, small = false }: {
+  products: Product[]; value: string; onChange: (sku: string) => void; placeholder: string;
+  /** Its accessible name when no visible label wraps it. */
+  label?: string; small?: boolean;
 }) {
   const { t, locale } = useI18n();
   const other = t("mkOtherGroup");
@@ -376,7 +378,7 @@ function ProductSelect({ products, value, onChange, placeholder, small = false }
     return [...g.entries()].sort(([a], [b]) => a.localeCompare(b, locale));
   }, [products, other, locale]);
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className={cn("w-full min-w-0 rounded-xl border bg-card/60 px-2.5", small ? "h-8 text-xs" : "h-10 text-sm")}>
+    <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={cn("w-full min-w-0 rounded-xl border bg-card/60 px-2.5", small ? "h-8 text-xs" : "h-10 text-sm")}>
       <option value="">{placeholder}</option>
       {groups.map(([rack, ps]) => (
         <optgroup key={rack} label={rack}>
@@ -449,7 +451,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {c.kind !== "category_price" && (
-          <div className="min-w-[11rem] flex-1"><ProductSelect products={products} value={c.sku ?? ""} onChange={(sku) => onPatch({ sku })} placeholder={t("mkProductEllipsis")} small /></div>
+          <div className="min-w-[11rem] flex-1"><ProductSelect products={products} value={c.sku ?? ""} onChange={(sku) => onPatch({ sku })} placeholder={t("mkProductEllipsis")} label={t("mkChangeProduct")} small /></div>
         )}
         {c.kind === "price" && (
           <Input value={priceText} inputMode="decimal" placeholder={product ? t("mkNowPrice", { price: formatMoney(product.price, currency) }) : t("mkPrice")} className="num h-8 w-28 text-xs"
@@ -470,7 +472,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
               </button>
             ))}
             <Input type="number" value={c.percent ?? ""} onChange={(e) => onPatch({ percent: e.target.value === "" ? null : Number(e.target.value) })}
-              className="num h-7 w-16 text-xs" aria-label={t("mkPercent")} />
+              className="num h-7 w-20 px-2 text-xs md:text-xs" aria-label={t("mkPercent")} />
           </div>
         )}
         {c.kind === "discount" && product && c.percent != null && c.percent < 0 && (

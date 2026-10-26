@@ -127,7 +127,7 @@ def _table(header: list[str], rows: list[list[str]], numeric_from: int = 1) -> s
     head = "".join(f"<th{' class=n' if j >= numeric_from else ''}>{escape(h)}</th>" for j, h in enumerate(header))
     body = "".join("<tr>" + "".join(f"<td{' class=n' if j >= numeric_from else ''}>{escape(c)}</td>" for j, c in enumerate(r)) + "</tr>"
                    for r in rows)
-    return f"<table><tr>{head}</tr>{body}</table>"
+    return f"<div class=tbl><table><tr>{head}</tr>{body}</table></div>"
 
 
 _CSS = """
@@ -155,7 +155,7 @@ th{color:var(--muted);font-weight:600}.n{text-align:right;font-variant-numeric:t
 .stack{display:flex;height:18px;border-radius:6px;overflow:hidden;gap:2px;margin:4px 0 10px}.stack i{display:block;height:100%}
 .qa{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}.qa .q{font-weight:600}
 .qa ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:12px}
-footer{margin-top:30px;color:var(--muted);font-size:11.5px}.body>h2:first-child{border-top:0}
+footer{margin-top:30px;color:var(--muted);font-size:11.5px}.body>h2:first-child{border-top:0}.tbl{overflow-x:auto}
 @media (max-width:640px){main{margin:0;border-radius:0}.hero{padding:28px 18px 24px}.hero h1{font-size:26px}.body{padding:4px 18px 28px}
 .frow{grid-template-columns:1fr}table{font-size:11.5px}th,td{padding:6px 4px}}
 @media print{body{background:#fff}main{box-shadow:none;margin:0;max-width:none;border-radius:0}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}

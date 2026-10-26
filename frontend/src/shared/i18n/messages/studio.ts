@@ -676,6 +676,8 @@ export const studioMessages = {
   mkDuplicateVariant: ["Duplicate variant", "변형 복제", "复制变体", "バリアントを複製", "Duplicar variante", "Dupliquer la variante"],
   mkRemoveVariant: ["Remove variant", "변형 삭제", "删除变体", "バリアントを削除", "Quitar variante", "Retirer la variante"],
   mkRemoveChange: ["Remove change", "변경 삭제", "删除更改", "変更を削除", "Quitar cambio", "Retirer la modification"],
+  mkChangeProduct: ["Product to change", "바꿀 상품", "要更改的商品", "変更する商品", "Producto que cambia", "Produit modifié"],
+  mkTrackAnotherLabel: ["Track another product", "다른 상품 추적", "跟踪其他商品", "別の商品を追跡", "Seguir otro producto", "Suivre un autre produit"],
   mkProductEllipsis: ["Product…", "상품…", "商品…", "商品…", "Producto…", "Produit…"],
   mkNowPrice: ["now {price}", "현재 {price}", "现价 {price}", "現在 {price}", "ahora {price}", "actuellement {price}"],
   mkPrice: ["Price", "가격", "价格", "価格", "Precio", "Prix"],

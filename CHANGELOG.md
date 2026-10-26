@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep package matches when the catalog puts the printed brand or size in a
+  different order. Still require the observed words and preserve quantity/unit
+  pairs, so a label with “500 g / 100 ml” does not support a 500 ml product.
+
 - Whole-shop browsers no longer keep a hidden single-category target that
   biased rule browsing and incorrectly excluded otherwise suitable rivals.
 
@@ -40,6 +44,25 @@
   over each other ("MCorporate executivesrs").
 - A shopper's facts (came for, budget, spent) wrap to two lines instead of
   cutting off at one ("Spent: $35.73 · 7 i…").
+- The A/B builder's percent field shows a whole value such as "-10" (it cut
+  to "-1"), the store-operations number fields fit their digits, and the
+  builder's product pickers for a variant change and a tracked product have
+  accessible names.
+- Reports read on a phone: the A/B, concept, shelf and conjoint reports kept
+  desktop margins that left 263 px for content, so the page ran sideways and
+  the lift chart's text shrank to about 5 px. They now use the phone's width,
+  set their totals two to a row and let wide charts scroll. A wide table in an
+  online run report (such as Ads) scrolls on its own instead of widening the
+  page.
+- An online shop's search page with one match reads "1 result", not
+  "1 results", in the page shoppers and models see.
+- Browsing an online shop no longer shifts the page and options list sideways
+  by a scrollbar's width when moving between a long page and a short one
+  (such as product page to cart).
+- Browsing an online shop from the keyboard: after choosing an option from
+  the list or submitting a search, focus moves to the new page's **Options on
+  this page** heading, one Tab before its first option. Before, focus fell back
+  to the page body and every step began again from the top of the app.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
