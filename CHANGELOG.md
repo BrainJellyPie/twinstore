@@ -103,6 +103,10 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- The floor editor's grid is one Tab stop: the arrow keys move between cells,
+  Home and End go to a row's ends, and Enter selects. Before, every cell was a
+  Tab stop (1,600 on a 40 by 40 floor). Cells read their place as "column 3,
+  row 3" for screen readers, as the panel shows it, instead of "2,2".
 - The floor editor opens at the largest zoom (up to 100 %) that shows every row:
   an 8 by 8 floor opened at 100 % with its last row cut off. A floor too deep
   to fit opens at the smallest zoom and scrolls.

@@ -87,3 +87,21 @@ it("opens a floor small enough to fit with every row in view, and a deep one at 
   render(<GridEditor racks={[]} gridSize={[40, 40]} blockedFaces={[]} selectedCell={null} onCellClick={vi.fn()} />);
   expect(screen.getByTestId("grid-canvas").style.gridAutoRows).toBe("40px");
 });
+
+it("takes one Tab stop and moves between cells with the arrow, Home and End keys", () => {
+  const select = vi.fn();
+  render(<GridEditor racks={[]} gridSize={[6, 5]} blockedFaces={[]} selectedCell={null} onCellClick={select} />);
+  const cells = screen.getAllByRole("button").filter((b) => b.dataset.testid?.startsWith("grid-cell-"));
+  expect(cells.filter((c) => c.tabIndex === 0).map((c) => c.dataset.testid)).toEqual(["grid-cell-0-0"]);
+  const first = screen.getByTestId("grid-cell-0-0");
+  expect(first.getAttribute("aria-label")).toBe("empty cell, column 1, row 1");
+  first.focus();
+  for (const [key, id] of [["ArrowRight", "1-0"], ["ArrowDown", "1-1"], ["End", "5-1"], ["ArrowRight", "5-1"], ["Home", "0-1"], ["ArrowUp", "0-0"]]) {
+    fireEvent.keyDown(document.activeElement!, { key });
+    expect(document.activeElement).toBe(screen.getByTestId(`grid-cell-${id}`));
+  }
+  expect(cells.filter((c) => c.tabIndex === 0).map((c) => c.dataset.testid)).toEqual(["grid-cell-0-0"]);
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  fireEvent.click(document.activeElement!);
+  expect(select).toHaveBeenCalledWith([0, 1]);
+});

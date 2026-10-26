@@ -42,6 +42,9 @@ export function GridEditor({
   const { t } = useI18n();
   const [width, height] = gridSize;
   const [cellSize, setCellSize] = useState(() => fittingCellSize(height));
+  // One Tab stop for the whole grid (the cell last moved to, else the selected one); the arrow keys move from there.
+  const [current, setCurrent] = useState<string | null>(null);
+  const stop = current ?? (selectedCell ? `${selectedCell[0]},${selectedCell[1]}` : "0,0");
 
   // Position-keyed lookup: `${x},${y}` → rack[]. A cell may hold two racks (entrance + exit).
   const racksByCell = useMemo(() => {
@@ -85,7 +88,8 @@ export function GridEditor({
           racks={cellRacks}
           blockedFaces={cellBlocked}
           selected={selectedKey === key}
-          onClick={() => onCellClick([x, y])}
+          onClick={() => { setCurrent(key); onCellClick([x, y]); }}
+          tabIndex={stop === key ? 0 : -1}
         />,
       );
     }
@@ -114,7 +118,21 @@ export function GridEditor({
         data-testid="grid-scroll-area"
         className={cn("max-h-[55vh] min-h-40 overflow-auto rounded-md border p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", placing && "[&_button]:cursor-crosshair")}
       >
-        <div className="grid w-max gap-1" data-testid="grid-canvas"
+        <div className="grid w-max gap-1" data-testid="grid-canvas" onKeyDown={(event) => {
+          const cell = (event.target as HTMLElement).closest<HTMLElement>("[data-testid^='grid-cell-']");
+          const at = cell?.dataset.testid?.split("-").slice(2).map(Number);
+          if (!at || at.length !== 2) return;
+          const [x, y] = at as [number, number];
+          const next: [number, number] | null = event.key === "ArrowRight" ? [Math.min(width - 1, x + 1), y]
+            : event.key === "ArrowLeft" ? [Math.max(0, x - 1), y]
+              : event.key === "ArrowDown" ? [x, Math.min(height - 1, y + 1)]
+                : event.key === "ArrowUp" ? [x, Math.max(0, y - 1)]
+                  : event.key === "Home" ? [0, y] : event.key === "End" ? [width - 1, y] : null;
+          if (!next) return;
+          event.preventDefault();
+          setCurrent(`${next[0]},${next[1]}`);
+          event.currentTarget.querySelector<HTMLElement>(`[data-testid='grid-cell-${next[0]}-${next[1]}']`)?.focus();
+        }}
           style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)`, gridAutoRows: `${cellSize}px` }}>
           {cells}
         </div>

@@ -146,10 +146,10 @@ it("shows the floor editor's dimensions, cells and screen-reader labels in Korea
   expect(screen.getByRole("spinbutton", { name: "깊이" })).toBeTruthy();
   expect(dialog.textContent).toContain("한 변에 5~40칸");
   expect(screen.getByTestId("grid-cancel-button").textContent).toBe("취소");
-  expect(screen.getByRole("button", { name: "빈 칸 0,0" })).toBeTruthy();
-  const rack = screen.getByRole("button", { name: "진열대 Drinks, 1,1" });
+  expect(screen.getByRole("button", { name: "빈 칸, 1열 1행" })).toBeTruthy();
+  const rack = screen.getByRole("button", { name: "진열대 Drinks, 2열 2행" });
   expect(rack.textContent).toContain("진열대");
-  expect(screen.getByRole("button", { name: "출입구 입구+출구, 0,3" }).textContent).toBe("입구출구");
+  expect(screen.getByRole("button", { name: "출입구 입구+출구, 1열 4행" }).textContent).toBe("입구출구");
   expect(dialog.textContent).not.toMatch(/Width|Depth|cells per side|Cancel|\bIn\b|\bOut\b|Open|Door|Counter/);
   expect(dialog.querySelector('[aria-label^="empty cell"], [aria-label^="shelf "], [aria-label^="gate "]')).toBeNull();
 });

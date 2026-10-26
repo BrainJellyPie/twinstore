@@ -23,7 +23,7 @@ it("shows the complete furniture footprint and lets every cell select it", () =>
   render(<GridEditor racks={[table]} gridSize={[8, 6]} blockedFaces={[]} onCellClick={onCellClick} />);
   const cells = screen.getAllByRole("button", { name: /table Window table/ });
   expect(cells).toHaveLength(4);
-  fireEvent.click(screen.getByRole("button", { name: "table Window table at 3,3" }));
+  fireEvent.click(screen.getByRole("button", { name: "table Window table, column 4, row 4" }));
   expect(onCellClick).toHaveBeenCalledWith([3, 3]);
 });
 

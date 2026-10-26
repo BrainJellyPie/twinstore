@@ -22,6 +22,8 @@ interface GridCellProps {
   blockedFaces: BlockedFaceDetail[]; // already filtered to this cell's racks
   selected: boolean;
   onClick: () => void;
+  /** 0 for the one cell the grid's Tab stop lands on; the arrow keys move between the others. */
+  tabIndex: number;
 }
 
 interface RackVisual {
@@ -91,6 +93,7 @@ export function GridCell({
   blockedFaces,
   selected,
   onClick,
+  tabIndex,
 }: GridCellProps) {
   const { t } = useI18n();
   const [x, y] = position;
@@ -101,6 +104,7 @@ export function GridCell({
       <button
         type="button"
         data-testid={`grid-cell-${x}-${y}`}
+        tabIndex={tabIndex}
         data-empty="true"
         aria-pressed={selected}
         onClick={onClick}
@@ -110,7 +114,7 @@ export function GridCell({
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
           selected && "ring-2 ring-primary",
         )}
-        aria-label={t("gridEmptyCell", { x: String(x), y: String(y) })}
+        aria-label={t("gridEmptyCell", { x: String(x + 1), y: String(y + 1) })}
       />
     );
   }
@@ -121,6 +125,7 @@ export function GridCell({
       <button
         type="button"
         data-testid={`grid-cell-${x}-${y}`}
+        tabIndex={tabIndex}
         data-rack-ids={racks.map((r) => r.id).join(",")}
         data-rack-type="entrance_exit"
         aria-pressed={selected}
@@ -131,7 +136,7 @@ export function GridCell({
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
           selected && "ring-2 ring-primary",
         )}
-        aria-label={t("gridGateCell", { types: racks.map((r) => typeLabel(r.type)).join("+"), x: String(x), y: String(y) })}
+        aria-label={t("gridGateCell", { types: racks.map((r) => typeLabel(r.type)).join("+"), x: String(x + 1), y: String(y + 1) })}
       >
         {racks.map((rack) => {
           const visual = RACK_VISUALS[rack.type];
@@ -176,6 +181,7 @@ export function GridCell({
     <button
       type="button"
       data-testid={`grid-cell-${x}-${y}`}
+        tabIndex={tabIndex}
       data-rack-id={rack.id}
       data-rack-type={rack.type}
       aria-pressed={selected}
@@ -188,7 +194,7 @@ export function GridCell({
         visual?.bgClass ?? "bg-muted",
         selected && "ring-2 ring-primary",
       )}
-      aria-label={t("gridRackCell", { type: typeLabel(rack.type), name: rack.rack_name || rack.id, x: String(x), y: String(y) })}
+      aria-label={t("gridRackCell", { type: typeLabel(rack.type), name: rack.rack_name || rack.id, x: String(x + 1), y: String(y + 1) })}
     >
       {Icon ? (
         <Icon
