@@ -84,3 +84,14 @@ it("keeps cached formatters apart per locale and honours an explicit locale", ()
     useLocale.getState().setLocale(previous);
   }
 });
+
+it.each([["fr", "2,50", 250], ["es", "0,5", 50], ["fr", "12,99", 1299], ["fr", "1,500", 150000], ["es", "2.50", 250]] as const)(
+  "reads a decimal comma typed in %s (%s), keeping a three-digit group as thousands", (locale, text, minor) => {
+    expect(toMinor(text, 100, locale)).toBe(minor);
+  },
+);
+
+it("keeps rejecting a decimal comma where the language writes a decimal point", () => {
+  expect(toMinor("2,50", 100, "en")).toBeNull();
+  expect(toMinor("2,50", 100, "ko")).toBeNull();
+});

@@ -25,8 +25,12 @@ export function majorUnitText(minor: number, code: string, opts: { fixed?: boole
   return digits ? `${whole}.${digits}` : whole;
 }
 
-export function toMinor(text: string, divisor: number): number | null {
-  const amount = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
+// Languages that write decimals with a comma ("2,50"). A comma before exactly three digits stays a thousands separator.
+const DECIMAL_COMMA = new Set(["es", "fr"]);
+
+export function toMinor(text: string, divisor: number, locale: string = useLocale.getState().locale): number | null {
+  const typed = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
+  const amount = DECIMAL_COMMA.has(locale) && /^\d+,\d{1,2}$/.test(typed) ? typed.replace(",", ".") : typed;
   if (!/^(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$/.test(amount)) return null;
   if (!Number.isSafeInteger(divisor) || divisor <= 0) return null;
   const [whole = "", fraction = ""] = amount.replace(/,/g, "").split(".");

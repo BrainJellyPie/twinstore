@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- In Spanish and French, price fields accept a decimal comma ("2,50"), as
+  those languages write it, instead of calling it an invalid price. A comma
+  before three digits ("1,500") is still a thousands separator, and the other
+  languages read prices as before.
+
 - In a run of several days, dragging the time slider to closing time, pressing
   → near closing time, or clicking the last hour on the timeline now stays on
   the day you are watching. Before, it jumped to the end of the last day and
