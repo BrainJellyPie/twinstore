@@ -11,6 +11,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { queryKeys } from "@/shared/queries/keys";
 
 import { useLayouts } from "../hooks/useLayouts";
+import { smoothScroll } from "@/shared/utils/motion";
 
 export function DeleteLayout({ projectId, setupId }: { projectId: string; setupId: string }) {
   const { t } = useI18n();
@@ -19,7 +20,7 @@ export function DeleteLayout({ projectId, setupId }: { projectId: string; setupI
   const [confirming, setConfirming] = useState(false);
   const confirmBox = useRef<HTMLDivElement>(null);
   // The control sits at the end of a long panel: bring the question and its buttons into view.
-  useEffect(() => { if (confirming) confirmBox.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }); }, [confirming]);
+  useEffect(() => { if (confirming) confirmBox.current?.scrollIntoView?.({ block: "nearest", behavior: smoothScroll() }); }, [confirming]);
   const remove = useMutation({
     mutationFn: () => deleteSetup(projectId, setupId),
     onSuccess: async () => {

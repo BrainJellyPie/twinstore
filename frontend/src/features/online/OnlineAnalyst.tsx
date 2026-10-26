@@ -19,11 +19,12 @@ import { NeedsModel } from "@/features/settings/NeedsModel";
 import { experimentsForAnswer } from "./answerExperiments";
 import { experimentsFor, QUICK_EXPERIMENTS } from "./experiments";
 import { figureSection } from "./figureSections";
+import { smoothScroll } from "@/shared/utils/motion";
 
 function showSection(id: string) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  el.scrollIntoView?.({ behavior: smoothScroll(), block: "start" });
   el.classList.remove("figure-flash");
   void el.offsetWidth;  // restart the highlight when the same section is shown again
   el.classList.add("figure-flash");

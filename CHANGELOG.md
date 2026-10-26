@@ -17,6 +17,19 @@
   discounted price; the experiment editor exposes the same choice, and
   physical and online stores apply it consistently.
 
+- With reduced motion turned on in the system, the report's section links,
+  **See the results**, **Your stores**, the analyst and other jumps move
+  straight to their place instead of gliding there.
+
+- Tabbing through an online run's report no longer leaves the focused button
+  under the floating **Watch a shopper** bar at the bottom, or (on a phone,
+  going back with Shift+Tab) under the sticky section bar at the top. The
+  online and studio pages also stop announcing a second "main" region inside
+  the app's own. On the store page, what Tab reaches in the side panel no
+  longer scrolls in under its sticky Results / Shoppers / Store tabs, and on a
+  phone the online template gallery's create bar is two rows instead of three
+  and no longer covers the gallery's **Cancel** as Tab reaches it.
+
 - On phones and tablets, the delete buttons of studies, library products and
   saved interview groups are shown; they appeared only when a mouse hovered
   over the card, so a touch screen never showed them. The online report's

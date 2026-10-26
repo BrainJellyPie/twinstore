@@ -23,6 +23,7 @@ import { RunLauncher } from "./RunLauncher";
 import { RunReport } from "./RunReport";
 import { SiteDesigner } from "./SiteDesigner";
 import { TemplateGallery } from "./TemplateGallery";
+import { smoothScroll } from "@/shared/utils/motion";
 
 type Tab = "browse" | "design" | "simulate";
 const TABS: { id: Tab; label: MessageKey; icon: typeof Globe2 }[] = [
@@ -82,7 +83,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   // On a narrow screen the store list sits above the work area; bring what was opened into view.
   const main = useRef<HTMLElement>(null);
   const reveal = () => {
-    if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: smoothScroll(), block: "start" });
   };
   const [picks, setPicks] = useState<string[]>([]);
   const [listOpen, setListOpen] = useState(false);
@@ -130,7 +131,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); setListOpen(false); reveal(); };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 scroll-pt-16 scroll-pb-40 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <aside ref={aside} hidden={wide && !!runId} className="panel m-3 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mr-0 lg:w-[320px] lg:overflow-y-auto">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3" aria-hidden /> {t("areaBackToStore")}
@@ -227,7 +228,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         </div>
       </aside>
 
-      <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
+      <section ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 scroll-pt-16 scroll-pb-24 flex-col gap-3 lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
         {runId ? (
           <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { refocus.current = true; setListOpen(true); setRunId(null); setWide(false); }}
             wide={wide} onWide={() => setWide((w) => !w)}
@@ -275,7 +276,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
             {sites.isPending ? t("studioLoading") : t("onEmpty")}
           </div>
         )}
-      </main>
+      </section>
     </div>
   );
 }

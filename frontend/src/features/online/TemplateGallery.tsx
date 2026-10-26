@@ -106,13 +106,13 @@ export function TemplateGallery({
 
       {chosen && (
         <div className="sticky bottom-0 flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-3 shadow-lg">
-          <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs">
+          <label className="flex min-w-0 flex-1 basis-40 flex-col gap-1 text-xs">
             <span className="text-muted-foreground">{t("onStoreName")}</span>
             <Input value={name} maxLength={60} onChange={(e) => setName(e.target.value)}
               placeholder={chosen === FROM_STORE ? t("onFromStore") : templates.find((tpl) => tpl.id === chosen)?.name} />
           </label>
           {chosen === FROM_STORE && (
-            <label className="flex min-w-48 flex-col gap-1 text-xs">
+            <label className="flex min-w-0 flex-1 basis-40 flex-col gap-1 text-xs">
               <span className="text-muted-foreground">{t("onFromLayout")}</span>
               <select className="h-9 rounded-md border bg-background px-2 text-sm" value={setupId} onChange={(e) => setSetupId(e.target.value)}>
                 <option value="">{t("onActiveLayout")}</option>
