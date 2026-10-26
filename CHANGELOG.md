@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Distinguish delivery fees from free-delivery thresholds in AI design edits,
+  including zero and fractional thresholds. Give JSON-mode models a concrete
+  result-format reminder to avoid copying the response schema. Report explicit
+  threshold claims as unapplied when the model only set the delivery fee.
 - The store view's North, South, East and West labels are drawn in full
   secondary-text colour instead of at 45 % opacity, so they are readable
   (about 5:1 instead of 2:1), and the floor setup's **Edit** link uses a
