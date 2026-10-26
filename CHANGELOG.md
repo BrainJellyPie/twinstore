@@ -9,6 +9,9 @@
 - The floor editor counts cells from 1 everywhere: its panel said "Edit cell
   (0, 6)" for the cell the grid called "column 1, row 7", and unnamed racks were
   listed as "(0,0)".
+- A store's floor reopens on the layout you were viewing (remembered in this
+  browser), or else the store's active layout; a reload always went back to the
+  first layout, while the marketing studio opened the active one.
 - Fill empty shelves counts its racks as "Racks shown: 1" instead of "1 racks
   shown" (and likewise in Spanish and French).
 - A shopper's thought on the store floor wraps into a small card of at most
