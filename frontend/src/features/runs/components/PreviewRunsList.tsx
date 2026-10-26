@@ -8,6 +8,8 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 
+import { focusPlayWhenShown } from "@/features/playback/focusPlay";
+
 import { runLabel } from "../labels";
 
 export function PreviewRunsList({ projectId, setupId }: { projectId: string; setupId: string }) {
@@ -36,7 +38,8 @@ export function PreviewRunsList({ projectId, setupId }: { projectId: string; set
                   </div>
                 )}
               </div>
-              <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 px-2 text-xs" onClick={() => setViewRunId(r.run_id)}>
+              <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 px-2 text-xs" aria-label={t("previousRunViewName", { run: runLabel(r, locale) })}
+                onClick={() => { setViewRunId(r.run_id); focusPlayWhenShown(); }}>
                 <Eye className="size-3" /> {t("previousRunView")}
               </Button>
             </li>

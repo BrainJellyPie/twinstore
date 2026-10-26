@@ -16,6 +16,7 @@ import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanst
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { isPreparing, useModelSetup } from "@/features/settings/useModelSetup";
+import { focusPlayWhenShown } from "@/features/playback/focusPlay";
 import { Button } from "@/shared/components/ui/button";
 import { RequestError } from "@/shared/components/RequestError";
 import {
@@ -71,13 +72,7 @@ export function RunLauncherDialog(props: RunLauncherDialogProps) {
     if (!started.current) return;
     started.current = false;
     event.preventDefault();
-    let tries = 0;
-    const look = () => {
-      const play = document.querySelector<HTMLElement>("[data-playback-play]");
-      if (play) play.focus();
-      else if (tries++ < 50) setTimeout(look, 100);
-    };
-    look();
+    focusPlayWhenShown();
   };
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
