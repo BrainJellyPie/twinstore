@@ -12,6 +12,8 @@
 - A store's floor reopens on the layout you were viewing (remembered in this
   browser), or else the store's active layout; a reload always went back to the
   first layout, while the marketing studio opened the active one.
+- In **Find a layout**, Enter opens the first match and ↓ moves into the
+  results; typing a name and pressing Enter did nothing.
 - Fill empty shelves counts its racks as "Racks shown: 1" instead of "1 racks
   shown" (and likewise in Spanish and French).
 - A shopper's thought on the store floor wraps into a small card of at most

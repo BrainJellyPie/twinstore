@@ -54,7 +54,20 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
         <div className="min-w-0 space-y-1">
           <label htmlFor={`${fieldId}-search`} className="text-xs">{t("searchLayouts")}</label>
           <div className="relative min-w-0">
-            <Input ref={input} id={`${fieldId}-search`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("layoutSearchPlaceholder")} className="pr-10" />
+            <Input ref={input} id={`${fieldId}-search`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("layoutSearchPlaceholder")} className="pr-10"
+              onKeyDown={(event) => {
+                // Enter opens the first match, ↓ moves into the results; not while an IME is composing.
+                if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                const first = filtered[0];
+                if (event.key === "Enter" && first && !disabled) {
+                  event.preventDefault();
+                  if (first.id !== selectedId) onSelect(first.id);
+                  setOpen(false);
+                } else if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  event.currentTarget.closest("[role=dialog]")?.querySelector<HTMLButtonElement>("[data-layout-finder-result]")?.focus();
+                }
+              }} />
             {search && <button type="button" aria-label={t("clearLayoutSearch")} title={t("clearLayoutSearch")} onClick={clearSearch}
               className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary">
               <X className="size-4" aria-hidden />

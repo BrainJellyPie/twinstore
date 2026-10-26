@@ -114,3 +114,16 @@ it("respects a navigation lock applied while the dialog is already open", () => 
   rerender(<LayoutFinder {...props} disabled />); const result = screen.getByTestId("layout-search-result-pharmacy") as HTMLButtonElement;
   expect(result.disabled).toBe(true); fireEvent.click(result); expect(onSelect).not.toHaveBeenCalled();
 });
+
+it("opens the first match with Enter and moves into the results with the down arrow", () => {
+  const onSelect = vi.fn();
+  render(<LayoutFinder layouts={[pharmacy, cafe]} selectedId={pharmacy.id} onSelect={onSelect} />);
+  fireEvent.click(screen.getByRole("button", { name: "Find layout" }));
+  const search = screen.getByLabelText("Search layouts");
+  fireEvent.change(search, { target: { value: "quiet" } });
+  fireEvent.keyDown(search, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(screen.getByTestId("layout-search-result-cafe"));
+  fireEvent.keyDown(search, { key: "Enter" });
+  expect(onSelect).toHaveBeenCalledWith(cafe.id);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
