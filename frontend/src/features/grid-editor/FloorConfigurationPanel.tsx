@@ -87,7 +87,7 @@ export function FloorConfigurationPanel({
           <button
             type="button"
             data-testid="floor-config-edit-link"
-            className="text-indigo-600 hover:underline"
+            className="text-indigo-600 hover:underline dark:text-indigo-400"
             onClick={itemCount > 0 ? onEditWithItems : openEditor}
           >
             {t("editFloor")}

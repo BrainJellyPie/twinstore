@@ -102,7 +102,7 @@ function CompassLabels({ width, depth, lift = COMPASS_LIFT }: { width: number; d
           zIndexRange={[0, 0]}
           style={{ pointerEvents: "none" }}
         >
-          <div className={labelClass} style={{ color: "var(--muted-foreground)", opacity: 0.45 }}>
+          <div className={labelClass} style={{ color: "var(--muted-foreground)" }}>
             {l.text}
           </div>
         </Html>

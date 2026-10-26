@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The store view's North, South, East and West labels are drawn in full
+  secondary-text colour instead of at 45 % opacity, so they are readable
+  (about 5:1 instead of 2:1), and the floor setup's **Edit** link uses a
+  lighter blue in dark mode (it was 3:1 on the dark card).
 - In Windows high-contrast (forced colors) mode, buttons, fields and cards show
   where focus is, outlined in the system's highlight colour; their focus rings
   are drawn as shadows, which that mode removes, so focus was invisible.
