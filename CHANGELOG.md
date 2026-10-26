@@ -76,6 +76,9 @@
 - Shelf capture's **Restore saved queue** with nothing saved says no queue is
   saved in this browser yet, instead of "the browser copy is no longer
   available. It may have been cleared or evicted."
+- A shelf photo's product rows name their fields for screen readers ("Category
+  of Cola 2L", "Price of Cola 2L"); the category list had no name and the
+  price field only a "price" placeholder.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

@@ -238,6 +238,8 @@ export const studioMessages = {
   capInvalidPriceKeep: ["Enter a valid nonnegative price, or leave it blank to keep the existing price.", "0 이상의 올바른 가격을 입력하세요. 비워 두면 기존 가격이 유지됩니다.", "请输入有效的非负价格，或留空以保留原价。", "0以上の正しい価格を入力してください。空欄のままにすると既存の価格を維持します。", "Introduce un precio válido no negativo o déjalo en blanco para mantener el precio actual.", "Saisissez un prix valide et positif ou nul, ou laissez vide pour conserver le prix actuel."],
   capProductName: ["Product name", "상품명", "商品名称", "商品名", "Nombre del producto", "Nom du produit"],
   capRemoveProduct: ["Remove product", "상품 삭제", "删除商品", "商品を削除", "Quitar producto", "Retirer le produit"],
+  capCategoryOf: ["Category of {name}", "{name}의 카테고리", "{name} 的类别", "{name} のカテゴリー", "Categoría de {name}", "Catégorie de {name}"],
+  capPriceOf: ["Price of {name}", "{name}의 가격", "{name} 的价格", "{name} の価格", "Precio de {name}", "Prix de {name}"],
   capPricePlaceholder: ["price", "가격", "价格", "価格", "precio", "prix"],
   capEstimatedPriceTitle: ["Tag unreadable — typical price for the category", "가격표를 읽지 못해 카테고리 평균 가격으로 표시", "价签无法识别 — 采用该品类的常见价格", "値札が読めないため、カテゴリーの標準価格", "Etiqueta ilegible: precio típico de la categoría", "Étiquette illisible — prix habituel de la catégorie"],
   capFewerFacings: ["Fewer facings", "페이싱 줄이기", "减少排面", "フェイスを減らす", "Menos frentes", "Moins de facings"],
