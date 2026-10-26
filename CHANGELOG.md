@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The online design chat no longer sends a half-typed Korean, Japanese or
+  Chinese request when Enter ends the input method's composition in browsers
+  that mark that key only with the legacy composition code (Safari).
+
 - The store page says "Loading…" while it opens, while a layout not yet seen
   loads and while a previous run opens, instead of going blank (header and
   banner only) until the data arrives.

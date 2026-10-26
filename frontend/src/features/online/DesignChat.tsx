@@ -176,7 +176,7 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
         <NeedsModel purpose="assist" />
         <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(text); }}>
           <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, 1200))} rows={2}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(text); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); send(text); } }}
             placeholder={t("onAiPlaceholder")} aria-label={t("onAiPlaceholder")}
             className="min-h-[2.75rem] flex-1 resize-none rounded-xl border bg-card px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50" />
           <Button type="submit" size="icon" className="size-11 rounded-xl" disabled={!text.trim() || ask.isPending} aria-label={t("onAiSend")} title={t("onAiSend")}>

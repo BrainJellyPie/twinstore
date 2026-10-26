@@ -470,3 +470,18 @@ it("reads a design draft against the saved store on rule shoppers", async () => 
   expect(online.scanSite).toHaveBeenCalledWith("p1", "s1", { candidates: [{ id: "draft", options: { ...source.options, quick_add: true } }] },
     expect.anything());
 });
+
+it.each([{ isComposing: true }, { keyCode: 229 }])("does not send a design request on the Enter that ends an IME composition %j", async (flags) => {
+  vi.mocked(online.designChat).mockResolvedValue({ reply: "Done.", model: "fake", options: source.options, changed: [], unapplied: [] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <SiteDesigner projectId="p1" siteId="s1" onCopied={vi.fn()} onDeleted={vi.fn()} onTest={vi.fn()} />
+  </QueryClientProvider>);
+  const box = await screen.findByRole("textbox", { name: "Describe a change… (Enter to send)" });
+  fireEvent.change(box, { target: { value: "따뜻한 느낌" } });
+  fireEvent.keyDown(box, { key: "Enter", ...flags });
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+  expect(online.designChat).not.toHaveBeenCalled();
+  fireEvent.keyDown(box, { key: "Enter" });
+  await waitFor(() => expect(online.designChat).toHaveBeenCalledOnce());
+});
