@@ -54,7 +54,7 @@ class ShelfItemLabel(BaseModel):
     brand: str = Field(default="", max_length=40)
     size: str = Field(default="", max_length=20, description="package size if printed on the package, else empty")
     category: str = Field(default="", max_length=40, description="e.g. soft drink, chips, instant noodles")
-    price_text: str = Field(default="", max_length=24, description="the price tag text exactly as printed")
+    price_text: str = Field(default="", max_length=200, description="the price tag text exactly as printed")
     price: float | None = Field(default=None, description="price on the shelf tag, as a number; null if unreadable")
     confidence: int = Field(default=5, ge=0, le=10)
 

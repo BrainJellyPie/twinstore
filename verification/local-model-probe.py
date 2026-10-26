@@ -10,6 +10,7 @@ The trace contains built-in sample prompts, not headers or keys.
 
 import argparse
 import asyncio
+import base64
 import json
 import re
 import shutil
@@ -100,7 +101,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price",
+    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -109,6 +110,8 @@ parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
+parser.add_argument("--separate-price-tag", action=argparse.BooleanOptionalAction, default=True,
+                    help="Read the known synthetic price-tag region separately, as local capture does; disable to compare the combined reader")
 parser.add_argument("--cache-from", type=Path, help="Copy a saved response cache for an explicit diagnostic replay")
 parser.add_argument("--persona-batch-size", type=int, choices=range(1, 13),
                     help="Customers per model request; override the case's default for a controlled comparison")
@@ -158,11 +161,21 @@ async def traced_send(self, request, *positional, **keywords):
         payload = json.loads(request.content)
         response_format = payload.get("response_format", {})
         wire_output_modes.add(str(response_format.get("type", "unspecified")))
+        image_index = 0
         for message in payload.get("messages", []):
             if isinstance(message.get("content"), list):
                 for part in message["content"]:
                     if part.get("type") == "image_url":
-                        part["image_url"] = {"url": "[input saved as image.png]"}
+                        image_index += 1
+                        url = part["image_url"]["url"]
+                        if url.startswith("data:image/") and ";base64," in url:
+                            media, encoded = url.split(";base64,", 1)
+                            extension = {"data:image/jpeg": "jpg", "data:image/png": "png", "data:image/webp": "webp"}.get(media, "bin")
+                            filename = f"request-{attempt}-image-{image_index}.{extension}"
+                            (output / filename).write_bytes(base64.b64decode(encoded, validate=True))
+                            part["image_url"] = {"url": f"[input saved as {filename}]"}
+                        else:
+                            part["image_url"] = {"url": "[non-data image input]"}
         # Persist before waiting: timeout/disconnection must not erase the
         # request that caused it. Keep image bytes in the image artifact only.
         with (output / "requests.jsonl").open("a") as trace:
@@ -553,7 +566,7 @@ try:
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("capture-"):
-        tags = {"capture-price": "$1.00", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
+        tags = {"capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00",
                 "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
@@ -574,7 +587,8 @@ try:
         drawing.text((224, 439), tags[args.case], fill="black", font=load_font(36, bold=True), anchor="mt")
         fixture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            label = asyncio.run(VLMLabeler(client, currency=currency).label(fixture))
+            label = asyncio.run(VLMLabeler(client, currency=currency, separate_price_tag=args.separate_price_tag).label(
+                fixture, price_tag=fixture.crop((0, 400, fixture.width, fixture.height)) if args.separate_price_tag else None))
         # Known fixture geometry isolates real label recognition and conversion;
         # this is not a detector benchmark or a photograph of a real shelf.
         frame = make_frame(fixture)
@@ -585,13 +599,14 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-price", "capture-free-price", "capture-pack-price", "capture-bottle-price"}:
-            expected_price = {"capture-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100}[args.case]
+        if args.case in {"capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price"}:
+            expected_price = {"capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100}[args.case]
             if item.price != expected_price or item.price_estimated:
                 issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:
-            issues.append("A savings, reference or unit-rate amount became an exact package selling price.")
+            issues.append("A non-selling or unreadable tag became an exact package selling price.")
         result.update(success=not issues, issues=issues, fixture_tag=tags[args.case], currency=currency,
+                      separate_price_tag=args.separate_price_tag,
                       label=label.model_dump(mode="json"), item=item.model_dump(mode="json"))
     elif args.case.startswith("pack-"):
         products = ["Strawberry Jam 340g", "Apricot Jam 340g", "Marmalade 340g"]

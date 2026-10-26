@@ -60,6 +60,7 @@ from store_emulator.engine.files import remove_tree
 from .async_executor import executor, submit_background
 from .currencies import project_currency
 from .errors import AppError, job_failure
+from .estimates import is_local_base
 from .providers import PRESETS, assistive_vision_model, ensure_local_ready, resolve_model
 from .setups import set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .storage import images as image_storage
@@ -340,7 +341,10 @@ def run_capture_sync(
     """Run the whole pipeline in the calling thread (CLI and background jobs)."""
     llm = LiteLLMClient(llm_config) if llm_config is not None else None
     detector = choose_detector(options, llm)
-    labeler = VLMLabeler(llm, currency=options.currency) if llm is not None else None
+    labeler = VLMLabeler(
+        llm, currency=options.currency,
+        separate_price_tag=llm_config is not None and is_local_base(llm_config.api_base),
+    ) if llm is not None else None
 
     async def go() -> CaptureResult:
         run = await capture_shelf(

@@ -16,7 +16,7 @@ from store_emulator.engine.capture.bands import Band, Line
 from store_emulator.engine.capture.detect import ClassicDetector, Detection
 from store_emulator.engine.capture.frame import make_frame
 from store_emulator.engine.capture.pipeline import capture_shelf
-from store_emulator.engine.capture.recognize import FacingGroup, VLMLabeler, describe, label_image
+from store_emulator.engine.capture.recognize import FacingGroup, VLMLabeler, describe, label_images
 
 
 def shelf_photo(angle, cut):
@@ -96,7 +96,8 @@ def test_missing_price_strip_is_white_and_keeps_the_visible_package(bottom):
     band = Band(0, Line(150, 0, 200), Line(bottom, 0, 200), 400)
     detection = Detection(100, 150, 160, 290, band=0)
     group = FacingGroup(0, [detection], describe(frame.image, detection))
-    image = label_image(photo, frame, band, group)
+    image, price_tag = label_images(photo, frame, band, group)
+    assert price_tag is None
     assert image.getpixel((image.width // 2, 30)) == (255, 0, 0)
     assert image.getpixel((image.width // 2, image.height - 1)) == (255, 255, 255)
 
@@ -109,4 +110,4 @@ def test_a_product_entirely_outside_the_photo_is_not_sent_as_an_empty_image(box)
     detection = Detection(*box, band=0)
     group = FacingGroup(0, [detection], describe(frame.image, detection))
     with pytest.raises(ValueError, match="visible product"):
-        label_image(photo, frame, band, group)
+        label_images(photo, frame, band, group)

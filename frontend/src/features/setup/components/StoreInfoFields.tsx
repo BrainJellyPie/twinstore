@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { useI18n } from "@/shared/i18n/i18n";
 import { isStoreTypeId, storeTypeLabel } from "@/shared/i18n/storeLabels";
 import { cn } from "@/shared/utils/cn";
@@ -36,6 +38,10 @@ export function StoreInfoFields({
   disabled,
 }: StoreInfoFieldsProps) {
   const { t, locale } = useI18n();
+  const [typeEdit, setTypeEdit] = useState({ value: storeType, edited: false });
+  if (typeEdit.value !== storeType) {
+    setTypeEdit({ value: storeType, edited: false });
+  }
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -98,14 +104,17 @@ export function StoreInfoFields({
         <Input
           id="setup-store-type"
           className={cn(errors?.storeType && errorBorderClass)}
-          // A category id from the defaults or a template ("convenience") reads as its label; typing replaces it.
-          value={isStoreTypeId(storeType) ? storeTypeLabel(storeType, locale) : storeType}
+          // Translate preset ids, but do not replace text while a custom name passes through an id such as "cafe".
+          value={!typeEdit.edited && isStoreTypeId(storeType) ? storeTypeLabel(storeType, locale) : storeType}
           placeholder={t("storeTypePlaceholder")}
           disabled={disabled}
           aria-required="true"
           aria-describedby={errors?.storeType ? "setup-store-type-error" : undefined}
           aria-invalid={errors?.storeType ? true : undefined}
-          onChange={(e) => onStoreTypeChange(e.target.value)}
+          onChange={(e) => {
+            setTypeEdit({ value: e.target.value, edited: true });
+            onStoreTypeChange(e.target.value);
+          }}
         />
         {errors?.storeType && <p id="setup-store-type-error" role="alert" className={errorTextClass}>{errors.storeType}</p>}
       </div>

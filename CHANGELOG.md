@@ -25,10 +25,24 @@
   of the page.
 - When uploaded packs could not be read for want of a model, the uploader
   offers the model setup under its note that they kept their file names.
+- Local shelf recognition reads the price-tag strip separately so a small
+  model can retain Korean discount and unit-rate words it omitted while
+  reading the product. Missing or failed tag reading leaves the price
+  estimated while preserving the recognized product. One extra bounded
+  reading is made for each visible tag; cloud recognition stays unchanged.
+
+- Recognize explicit container quantities such as `6 BOTTLES`, `6 CANS`
+  and `6병` when interpreting a photographed unit price. A price per bottle
+  must not overwrite the selling price of the whole observed multipack.
+  Package reading also keeps those counts when filtering catalog matches,
+  so a visible multipack cannot be linked to a single-container product.
+
 - **New store** shows the store type it starts with, or the one a template
   sets, by its name in the selected language ("편의점", "Convenience store")
   instead of the internal id "convenience"; the id is still what is saved
-  until the field is edited.
+  until the field is edited. Keep typed text literal even when a partial
+  word equals an id, so typing `cafeteria` cannot change `cafe` into a
+  translated category halfway through.
 - On a phone or narrow window the marketing studio scrolls as one page: a
   test's results and the file reviews were each a small scroll box under the
   header and tabs (about 200 px tall on a phone), and the tests list keeps a
@@ -41,12 +55,6 @@
 - **Field pilots** offers **Open Staff scripts** next to its note that pilots
   are prepared from a completed script test; the note named the place but
   gave no way there.
-- Recognize explicit container quantities such as `6 BOTTLES`, `6 CANS`
-  and `6병` when interpreting a photographed unit price. A price per bottle
-  must not overwrite the selling price of the whole observed multipack.
-  Package reading also keeps those counts when filtering catalog matches,
-  so a visible multipack cannot be linked to a single-container product.
-
 - When a shelf test, concept test, conjoint study, staff-script test or a
   vision-shopper A/B test cannot start for want of a model, the studio offers
   the model setup (start or download the local model, or open Model settings)
