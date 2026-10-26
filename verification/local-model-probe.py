@@ -6,6 +6,8 @@ From the repository root:
 Start the local server separately, on CPU for a CPU probe. No responses are mocked.
 Every run gets a fresh cache unless --cache-from explicitly copies a saved cache.
 The trace contains built-in sample prompts, not headers or keys.
+Use --temperature 1 to match the default customer writer; zero-temperature
+customer probes retain their original deterministic stress configuration.
 """
 
 import argparse
@@ -125,6 +127,7 @@ parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setu
     "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
+parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
 parser.add_argument("--separate-price-tag", action=argparse.BooleanOptionalAction, default=True,
@@ -133,6 +136,8 @@ parser.add_argument("--cache-from", type=Path, help="Copy a saved response cache
 parser.add_argument("--persona-batch-size", type=int, choices=range(1, 13),
                     help="Customers per model request; override the case's default for a controlled comparison")
 args = parser.parse_args()
+if args.temperature is not None and not 0 <= args.temperature <= 2:
+    parser.error("Temperature must be a finite number between 0 and 2.")
 endpoint = urlsplit(args.endpoint)
 if endpoint.hostname not in {"localhost", "127.0.0.1", "::1"} or endpoint.scheme != "http":
     parser.error("Use an HTTP loopback endpoint for the local model.")
@@ -156,8 +161,10 @@ elif args.case == "hypermarket":
         products_per_category=1, excluded_categories=["beer_alcohol"],
         requirements="Choose a coherent supermarket assortment, with one product per category. No alcoholic products. Keep cold products in fridges and respect department signs.")
     description = "동네 주민과 가족들이 식료품과 생활필수품을 구입하는 대형 슈퍼마켓"
+temperature = (args.temperature if args.temperature is not None else
+    .5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0)
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
-    temperature=.5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
+    temperature=temperature, seed=0,
     max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith(("pack-", "capture-")) else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith(("persona-", "traffic-")) else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
@@ -211,7 +218,7 @@ async def traced_send(self, request, *positional, **keywords):
 
 started = time.perf_counter()
 result = {"case": args.case, "model": args.model, "endpoint": args.endpoint, "structured_output": args.structured_output,
-          "cache_replay_from": str(args.cache_from) if args.cache_from else None}
+          "temperature": temperature, "cache_replay_from": str(args.cache_from) if args.cache_from else None}
 try:
     if args.case in design_requests:
         site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history", "design-threshold-krw"} else "USD")
