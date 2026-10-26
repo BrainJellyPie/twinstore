@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Report section links also move focus into optional advertising, competitor
+  and survey results; those sections previously scrolled while focus stayed
+  on the navigation link.
+
+- Give automatic A/B drafts an operation-specific response schema: require
+  product targets for product edits, category targets for category edits,
+  and the appropriate price, discount, sign, shelf or package value. This
+  prevents the observed local-model drafts that omitted every product and
+  repeated the same unusable response on retry.
+
+- Compact large response schemas in loopback JSON requests so small local
+  models can complete combined edits without excessive schema text. Preserve
+  every constraint and leave small schemas and native JSON-schema requests
+  unchanged; do not reuse cached answers from the previous prompt format.
+
+- Keep waiting for playback to accept focus when its Play button appears
+  before it becomes usable, within the existing five-second limit.
 - Percentages and decimals follow the chosen language across the reports,
   studio, area, capture and settings pages: French and Spanish read "32,5 %",
   "+0,4 pts" and "2,54" instead of "32.5%", "+0.4 pts" and "2.54". A value
@@ -51,6 +68,7 @@
   including zero and fractional thresholds. Give JSON-mode models a concrete
   result-format reminder to avoid copying the response schema. Report explicit
   threshold claims as unapplied when the model only set the delivery fee.
+
 - The store view's North, South, East and West labels are drawn in full
   secondary-text colour instead of at 45 % opacity, so they are readable
   (about 5:1 instead of 2:1), and the floor setup's **Edit** link uses a

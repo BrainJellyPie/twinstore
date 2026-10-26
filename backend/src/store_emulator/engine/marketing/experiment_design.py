@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
 from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator, model_validator
 
 from store_emulator.domain.marketing import ExperimentEngine, Variant, VariantChange
 from store_emulator.domain.store import Store
@@ -50,7 +50,46 @@ class _ChangeTextDefaults(BaseModel):
         return "" if value is None and used is not None and info.field_name not in used else value
 
 
+def _change_schema(schema: dict[str, JsonValue]) -> None:
+    """Require each operation's actual target/value in the model's grammar."""
+    fields = schema["properties"]
+    assert isinstance(fields, dict)
+    variants: list[JsonValue] = []
+    used = {"price": ["product", "price"], "discount": ["product", "percent"],
+            "promo": ["product", "promo"], "move": ["product", "shelf", "level"],
+            "package": ["product", "package"], "category_price": ["category", "percent"]}
+    for kind, names in used.items():
+        properties: dict[str, JsonValue] = {"kind": {"type": "string", "const": kind}}
+        for name in names:
+            source = fields[name]
+            assert isinstance(source, dict)
+            definition = dict(source)
+            definition.pop("default", None)
+            choices = definition.pop("anyOf", None)
+            if isinstance(choices, list):
+                value = next(choice for choice in choices if isinstance(choice, dict) and choice.get("type") != "null")
+                assert isinstance(value, dict)
+                definition.update(value)
+            if name in {"product", "promo", "shelf", "package", "category"}:
+                definition["minLength"] = 1
+            if name == "price":
+                definition["minimum"] = 0
+            if kind == "discount" and name == "percent":
+                definition.pop("maximum", None)
+                definition["exclusiveMaximum"] = 0
+            properties[name] = definition
+        required: list[JsonValue] = ["kind", *names]
+        if kind == "move":
+            required.remove("level")  # Omitted level retains the editor's eye-level default.
+        variants.append({"type": "object", "properties": properties, "required": required,
+                         "additionalProperties": False})
+    schema.clear()
+    schema.update(title="Operation", anyOf=variants)
+
+
 class _Change(_ChangeTextDefaults):
+    model_config = ConfigDict(json_schema_extra=_change_schema)
+
     kind: Literal["price", "discount", "promo", "move", "package", "category_price"]
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")

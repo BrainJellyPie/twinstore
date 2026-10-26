@@ -4,8 +4,9 @@ export function focusPlayWhenShown() {
   let tries = 0;
   const look = () => {
     const play = document.querySelector<HTMLElement>("[data-playback-play]");
-    if (play) play.focus();
-    else if (tries++ < 50) setTimeout(look, 100);
+    play?.focus();
+    if (play && document.activeElement === play) return;
+    if (tries++ < 50) setTimeout(look, 100);
   };
   look();
 }

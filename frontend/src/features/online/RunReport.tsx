@@ -315,11 +315,11 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
         </Section>
       )}
 
-      <div id="online-ads" className="scroll-mt-16 empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
+      <div id="online-ads" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
       <div id="online-recovery" className="scroll-mt-16 empty:hidden"><Recovery variants={v} money={money} pct={pct} /></div>
-      <div id="online-rival" className="scroll-mt-16 empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
+      <div id="online-rival" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
       <div id="online-frictions" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Frictions variants={v} money={money} pct={pct} /></div>
-      <div id="online-surveys" className="scroll-mt-16 empty:hidden"><Surveys variants={v} pct={pct} /></div>
+      <div id="online-surveys" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Surveys variants={v} pct={pct} /></div>
       <div id="online-segments" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
 
       <div id="online-products" tabIndex={-1} className="grid grid-cols-1 scroll-mt-16 gap-3 outline-none xl:grid-cols-2">

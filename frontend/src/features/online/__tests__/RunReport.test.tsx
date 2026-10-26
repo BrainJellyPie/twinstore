@@ -12,7 +12,7 @@ const clients: QueryClient[] = [];
 beforeEach(() => useLocale.getState().setLocale("en"));
 afterEach(() => { cleanup(); clients.splice(0).forEach((c) => c.clear()); vi.resetAllMocks(); });
 
-function mount(n: number, diff = 0.04, low: number | null = 0, high: number | null = 0.08) {
+function mount(n: number, diff = 0.04, low: number | null = 0, high: number | null = 0.08, optionalSections = false) {
   const summary: online.VariantSummary = {
     site_id: "s1", site_name: "Control", sessions: n, purchases: 0, conversion: 0, revenue: 0, aov: 0,
     revenue_per_session: 0, bounce_rate: 0, cart_abandonment: 0, add_to_cart_rate: 0, avg_steps: 0, avg_seconds: 0,
@@ -34,6 +34,13 @@ function mount(n: number, diff = 0.04, low: number | null = 0, high: number | nu
         changed: 0, deltas: [{ metric: "conversion", control: 0, variant: diff, diff, ci_low: low, ci_high: high, n }] }],
     },
   };
+  if (optionalSections) {
+    summary.ads = [{ ad_id: "ad", name: "Tea ad", placement: "hero_banner", product_id: "tea", product_name: "Tea",
+      impressions: 10, reach: 5, clicks: 1, ctr: .1, click_conversions: 0, view_conversions: 0,
+      attributed_revenue: 0, units_sold: 0, cost: 10, roas: 0 }];
+    summary.survey = { responses: 1, satisfaction: 4, ease: 4, nps: 0, would_return: 1, frustrations: [], improvements: [] };
+    view.result!.rival_name = "Other shop";
+  }
   vi.mocked(online.getRun).mockResolvedValue(view);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
@@ -93,4 +100,15 @@ it("continues keyboard focus in the section a report link jumps to", async () =>
   fireEvent.click(screen.getByRole("link", { name: "Funnel" }));
   expect(document.activeElement).toBe(document.getElementById("online-funnel"));
   expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+});
+
+it.each(["online-ads", "online-rival", "online-surveys"])("focuses the optional %s section after its link is activated", async (id) => {
+  Element.prototype.scrollIntoView = vi.fn();
+  mount(100, .04, 0, .08, true);
+  await screen.findByText("Study");
+  const link = screen.getAllByRole("link").find((element) => element.getAttribute("href") === `#${id}`)!;
+  expect(link).toBeTruthy();
+  link.focus();
+  fireEvent.click(link);
+  expect(document.activeElement).toBe(document.getElementById(id));
 });
