@@ -1,7 +1,7 @@
 // A/B test result: per-arm KPIs, paired lifts with 95 % CIs (same shoppers in every arm), the tracked products and
 // what each variant changed. Everything can be downloaded as CSV for a deck or a client report.
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download, FileText, Info, Loader2, Sparkles, Trophy, TriangleAlert } from "lucide-react";
 
@@ -105,7 +105,8 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
       <ReportBar projectId={projectId} experimentId={r.experiment_id} />
       <FactorialReview key={`${projectId}:${r.experiment_id}`} projectId={projectId} experimentId={r.experiment_id} />
 
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${arms.length <= 5 ? arms.length : Math.ceil(arms.length / 2)}, minmax(0, 1fr))` }}>
+      <div className="grid gap-2 sm:[grid-template-columns:var(--arm-columns)]"
+        style={{ "--arm-columns": `repeat(${arms.length <= 5 ? arms.length : Math.ceil(arms.length / 2)}, minmax(0, 1fr))` } as CSSProperties}>
         {arms.map((a, i) => {
           const spend = metric(a, "spend");
           const bought = metric(a, "bought");
@@ -188,7 +189,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
 
       <SegmentTable report={r} />
 
-      <section className="grid gap-3 lg:grid-cols-2">
+      <section className={cn("grid gap-3", r.variants.length > 1 && "lg:grid-cols-2")}>
         {r.variants.map((v) => (
           <div key={v.name} className="rounded-2xl border bg-card p-4 text-sm">
             <div className="mb-1.5 font-semibold">{t("mkChanged", { name: v.name })}</div>
@@ -197,10 +198,10 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
             {(() => {
               const asked = variants?.find((x) => x.name === v.name);
               return asked && (
-                <>
+                <div className={cn("mt-3 grid items-start gap-3 [&>*]:mt-0", r.variants.length === 1 && "lg:grid-cols-2")}>
                   <KeepAsLayout projectId={projectId} setupId={r.setup_id} variant={asked} />
                   <TestOnline projectId={projectId} testName={r.name} variant={asked} currency={r.currency} />
-                </>
+                </div>
               );
             })()}
           </div>

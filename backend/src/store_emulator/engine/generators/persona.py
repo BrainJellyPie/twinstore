@@ -3,21 +3,23 @@ import logging
 import math
 import os
 import random
+import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Annotated, Self, cast
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, Field, JsonValue, StringConstraints, ValidationInfo, create_model, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, ValidationInfo, create_model, field_validator, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.generators.traffic_profile import TrafficProfile, reshape_hourly_counts
 from store_emulator.engine.llm_client import is_context_overflow
-from store_emulator.engine.prompting import budget_example, canonical_identifier
+from store_emulator.engine.prompting import budget_example, canonical_identifier, minor_unit_scale
 
 logger = logging.getLogger(__name__)
 
@@ -241,34 +243,15 @@ type Decide = Callable[[WritePlan], Awaitable[int]]
 type WriteProgress = Callable[[int, int], None]
 
 
-PROFILE_PROMPT = """당신은 상권 분석 전문가입니다.
-주어진 매장 위치와 상권 정보를 바탕으로, 일주일 전체를 아우르는 고객 유형과 방문 목적을 분석하세요.
-반드시 매장이 위치한 국가/도시의 실제 고객 특성을 반영하세요.
-
-규칙:
-- 모든 라벨은 앞뒤 공백 없이 작성하세요. 빈 문자열이나 공백뿐인 항목은 넣지 마세요.
-- keywords: 이 지역을 특징짓는 단어 5~10개
-  - 각 항목은 120자 이하의 짧은 단어나 구. 긴 설명이나 같은 구절을 반복하지 마세요.
-
-- identities: 이 매장에 **일주일 전체를 통틀어** 방문할 수 있는 고객 유형. 짧은 라벨로 작성.
-  - 평일에만 오는 유형 (예: "출근길 직장인", "점심시간 회사원")
-  - 주말에만 오는 유형 (예: "주말 가족", "데이트 커플")
-  - 매일 오는 유형 (예: "동네 주민", "배달 기사")
-  - 특정 요일에 두드러지는 유형 (예: "금요일 회식 후 직장인", "월요일 아침 러너")
-  - 최소 15종, 최대 30종. 너무 적으면 요일별 차이가 안 나고, 30종을 넘으면 안 됩니다.
-  - 같은 의미의 중복 금지 ("직장인"과 "회사원"은 하나로 통합)
-
-- purposes: 이 매장에서의 **일주일 전체를 통틀어** 가능한 방문 목적. 짧은 라벨로 작성.
-  - 평일 특화 목적 (예: "출근 전 커피", "점심 도시락")
-  - 주말 특화 목적 (예: "브런치 장보기", "소풍 준비")
-  - 시간대별 특화 목적 (예: "야식", "아침식사", "숙취 해소")
-  - 매일 공통 목적 (예: "음료 구매", "간식")
-  - 최소 15종, 최대 30종. 같은 의미의 중복 금지.
-
+PROFILE_PROMPT = """Analyze the supplied neighborhood and shop description across the whole week.
+Return three arrays of distinct, short English labels (at most 120 characters each):
+- keywords: 5–10 characteristics of the area and shop.
+- identities: 15–30 kinds of individual PEOPLE who might visit. A shop, product, or reason to visit is not a person type.
+- purposes: 15–30 things customers want to DO at this shop. Use short action phrases starting with a verb; a person type is not a purpose.
+Reflect the supplied country and city. Include plausible weekday, weekend and time-of-day differences. Do not repeat labels or synonyms to fill a list.
+Return field values, not JSON schema definitions.
 ## 언어
-- 자유 서술 필드(`keywords`, `identities`, `purposes` 각 항목의 값)는 **영어로** 작성하세요.
-- 구조적 필드(enum, id, 좌표, 숫자)는 한국어 prompt 에서 정의된 그대로 유지합니다.
-- 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요(예: 짧고 명확한 라벨 형태)."""
+Write keywords, identities and purposes in English."""
 
 DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
 아래 제공된 identity 풀(고객 유형 목록)을 참고하여, **{day_label}**의 시간대별 방문 트래픽을 예측하세요.
@@ -290,32 +273,19 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
 ## 언어
 Use the exact supplied identity labels. Do not translate or expand them."""
 
-PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 조합으로 현실적인 고객 페르소나를 만드세요.
-매장이 위치한 국가/도시의 문화, 언어, 소비 패턴을 반영하세요.
-
-규칙:
-- 각 페르소나는 반드시 독립적인 개인 1명입니다. 커플, 연인, 친구 쌍 등 관계로 묶인 페르소나를 만들지 마세요. 동행자가 있는 경우에도 "~와 함께 온 사람" 한 명으로만 표현하세요.
-- personas에는 요청 목록의 각 줄당 1명씩, 요청한 인원만 순서대로 작성하세요. 인원을 추가하거나 같은 사람을 반복하지 마세요.
-- id, day, arrival_hour는 출력하지 마세요. 시스템이 요청 순서에 따라 자동으로 부여합니다.
-- identity: 반드시 아래 제공된 identity 목록 중 하나를 그대로 사용 (통계 집계용 라벨)
-- age_group: 반드시 다음 중 하나: {age_groups}
-- gender: 반드시 다음 중 하나: {genders}
-- description: 이 사람의 상황, 성격 1~2문장. 해당 국가의 실제 생활상을 반영. 특정 브랜드명이나 구체적 상품명(예: 바나나맛 우유, 컨디션)을 사용하지 말고, 니즈/카테고리 수준으로 표현 (예: "a sweet dairy beverage", "a hangover-relief drink")
-- intent: 매장에서 하고 싶은 것 1문장 (자유 서술). 구체적 상품명 대신 카테고리나 니즈로 표현. 예: "조깅 후 수분 보충할 이온음료를 사고 싶다", "간단한 간식과 음료를 고르고 싶다"
-- description과 intent는 반드시 내용이 있는 문장으로 작성하세요. 빈 문자열이나 공백만 쓰지 마세요. 구매할 의도가 없으면 구경 등 실제 방문 의도를 적으세요.
-- purpose: 반드시 아래 제공된 purpose 목록 중 하나를 그대로 사용 (통계 집계용 짧은 라벨)
-- preferred_categories: {category_rule}
-  - 선호 카테고리가 없으면 []를 사용하세요. null을 사용하지 마세요.
-- budget_min, budget_max: {budget_rule}
-  - 0 이상 9007199254740991 이하의 정수. 한 번의 방문에 현실적인 금액을 사용하고 숫자를 반복하지 마세요. 예산을 정할 수 없으면 0을 사용하세요.
-  - budget_max가 0이면 상한 미지정입니다. 그 외에는 budget_min <= budget_max를 지키세요.
-- behavior_tendency: 이동속도/탐색성향/충동구매 한 줄
-  - 별도 성향이 없으면 빈 문자열을 사용하세요. null을 사용하지 마세요.
-
+PERSONA_PROMPT_TEMPLATE = """Create realistic individual customers from the supplied requests, location, customer profile and evidence.
+Return a personas array with one individual for each request row, in its exact order. Do not add people or repeat them. People in the same batch must have distinct descriptions and plausible differences in their needs or behavior, even when they share a customer type. Each row is one individual, even if accompanied by others. Do not output id, day or arrival_hour; the application assigns these.
+Fields:
+- identity and purpose: copy one exact label from the respective supplied list.
+- age_group: one of {age_groups}. gender: one of {genders}.
+- description: 1–2 sentences about this person's circumstances and character, consistent with their age_group and location.
+- intent: one sentence about what this individual wants to do in this shop. Browsing is a valid intent. Both description and intent must contain meaningful text, not blanks.
+- preferred_categories: {category_rule}. Use [] if there are none, never null.
+- budget_min_major and budget_max_major: {budget_rule}. Keep any budget range supplied in the customer profile. Use nonnegative amounts; do not repeat digits. Use "0" if a budget is unspecified. budget_max_major="0" means no specified upper limit; otherwise the minimum must not exceed the maximum. Do not output budget_min or budget_max; the application fills those stored-unit fields.
+- behavior_tendency: a short description of walking pace, browsing or impulse-buying behavior. An age or money amount is not a behavior. Use an empty string if no tendency is given, never null.
+Use needs and product categories in descriptions, not brands or specific products. Reflect the country's culture and consumption habits.
 ## 언어
-- 자유 서술 필드(`description`, `intent`, `behavior_tendency`)의 값은 **영어로** 작성하세요.
-- 구조적 필드(`age_group`, `gender`, `identity`, `purpose`, `budget_min`, `budget_max`)는 프롬프트에서 제공된 라벨/값을 그대로 사용합니다.
-- 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요(예: 페르소나 설명은 1-2문장의 짧은 인물 묘사)."""
+Write description, intent and behavior_tendency in natural English, even when the input uses another language. Preserve the exact supplied labels for identity, purpose, age_group and gender."""
 
 
 def persona_prompt(currency: str = "USD", *, listed_categories: bool = False) -> str:
@@ -442,11 +412,51 @@ async def generate_personas_for_day(
     purpose_list = "\n".join(f"  - {p}" for p in purposes)
     identity_choices: dict[str, JsonValue] = {"enum": [*identities]}
     purpose_choices: dict[str, JsonValue] = {"enum": [*purposes]}
+    scale = minor_unit_scale(currency)
+
+    def budget_schema(schema: dict[str, JsonValue]) -> None:
+        # The model copies major amounts; the parsed/cache model keeps minor
+        # integers. Explicit new names prevent legacy cache values being scaled twice.
+        properties = cast(dict[str, JsonValue], schema["properties"])
+        required = cast(list[JsonValue], schema.get("required", []))
+        for field in ("budget_min", "budget_max"):
+            properties.pop(field)
+            properties[field + "_major"] = {
+                "type": "string", "maxLength": 19,
+                "pattern": r"^[0-9]{1,16}$" if scale == 1 else r"^[0-9]{1,16}(\.[0-9]{1,2})?$",
+                "description": f"Amount in {currency.upper()}, before conversion to stored money units.",
+            }
+        schema["required"] = [*required, "preferred_categories", "budget_min_major", "budget_max_major"]
 
     class LabelledPersona(GeneratedPersona):
+        model_config = ConfigDict(json_schema_extra=budget_schema)
         # Keep enums inline: llama.cpp resolves a $ref before its sibling constraints.
         identity: str = Field(max_length=120, json_schema_extra=identity_choices)
         purpose: str = Field(max_length=120, json_schema_extra=purpose_choices)
+
+        @model_validator(mode="before")
+        @classmethod
+        def major_budgets(cls, value: object) -> object:
+            if not isinstance(value, dict):
+                return value
+            row = cast(dict[str, object], value)
+            major = ("budget_min_major", "budget_max_major")
+            if not any(field in row for field in major):
+                return row  # Existing providers and canonical cached models use minor integers.
+            if not all(field in row for field in major) or any(field in row for field in ("budget_min", "budget_max")):
+                raise ValueError("Return both budget_min_major and budget_max_major; do not mix major and stored-unit fields.")
+            converted = row.copy()
+            for field in major:
+                amount = converted.pop(field)
+                if isinstance(amount, int) and not isinstance(amount, bool):
+                    amount = str(amount)  # Plain JSON providers may omit quotes around whole amounts.
+                if not isinstance(amount, str) or not re.fullmatch(r"[0-9]{1,16}(\.[0-9]{1,2})?", amount.strip()):
+                    raise ValueError(f"{field} must be a nonnegative decimal string, without symbols or exponents.")
+                minor = Decimal(amount.strip()) * scale
+                if minor != minor.to_integral_value():
+                    raise ValueError(f"{field} has a fraction that cannot be stored in {currency.upper()}.")
+                converted[field.removesuffix("_major")] = int(minor)
+            return converted
 
         @field_validator("identity", "purpose")
         @classmethod

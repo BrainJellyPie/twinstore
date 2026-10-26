@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Grid2x2 } from "lucide-react";
 
 import { factorialExport, factorialPreview } from "@/services/mutations/factorial";
 import { factorialSourceQuery } from "@/services/queries/factorial";
@@ -33,9 +34,13 @@ export function FactorialReview({ projectId, experimentId }: { projectId: string
     } });
   };
   return <section aria-label={t("mkFactAria")} className="space-y-3 rounded-2xl border bg-card p-4 text-sm">
-    <Button variant="outline" onClick={() => setOpen(!open)}>{open ? t("mkFactHide") : t("mkFactOpen")}</Button>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <Grid2x2 className="size-4 shrink-0 text-primary" aria-hidden />
+      {open ? <h3 className="min-w-0 flex-1 basis-60 font-semibold">{t("mkFactTitle")}</h3>
+        : <p className="min-w-0 flex-1 basis-60 text-muted-foreground">{t("mkFactQuestion")}</p>}
+      <Button variant="outline" size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? t("mkFactHide") : t("mkFactOpen")}</Button>
+    </div>
     {open && <>
-      <h3 className="font-semibold">{t("mkFactTitle")}</h3>
       <p>{t("mkFactIntro")}</p>
       <p className="text-xs text-muted-foreground">{t("mkFactRules")}</p>
       <Button size="sm" variant="outline" disabled={busy} onClick={() => { clear(); void source.refetch(); }}>{t("mkFactReload")}</Button>

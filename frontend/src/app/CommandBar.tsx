@@ -165,17 +165,19 @@ export function CommandBar() {
     enabled: !!pid,
   });
 
-  const sub = pathname.startsWith("/town/") ? t("neighborhood") : pathname.startsWith("/capture/") ? t("shelfCapture") : pathname.startsWith("/marketing/") ? t("marketingStudio") : pathname.startsWith("/online/") ? t("onlineStores") : null;
+  // A store page is exactly /<page>/<store id>; a longer address under it is no page, and no tab is current there.
+  const on = (page: string) => new RegExp(`^/${page}/[^/]+/?$`).test(pathname);
+  const sub = on("town") ? t("neighborhood") : on("capture") ? t("shelfCapture") : on("marketing") ? t("marketingStudio") : on("online") ? t("onlineStores") : null;
   const pageKey = PAGE_TITLES[pathname];
   const pageTitle = pageKey ? t(pageKey) : undefined;
 
   const items: NavItem[] = [
     { to: "/", label: t("stores"), icon: LayoutGrid, active: pathname === "/" || pathname === "/projects/new" },
-    { to: "/projects/$pid", params: { pid: storeId ?? "" }, label: t("floor"), icon: Store, active: pathname.startsWith("/projects/") && !!pid, disabled: !storeId },
-    { to: "/town/$pid", params: { pid: storeId ?? "" }, label: t("area"), icon: Map, active: pathname.startsWith("/town/"), disabled: !storeId },
-    { to: "/capture/$pid", params: { pid: storeId ?? "" }, label: t("capture"), icon: Camera, active: pathname.startsWith("/capture/"), disabled: !storeId },
-    { to: "/marketing/$pid", params: { pid: storeId ?? "" }, label: t("market"), icon: Megaphone, active: pathname.startsWith("/marketing/"), disabled: !storeId },
-    { to: "/online/$pid", params: { pid: storeId ?? "" }, label: t("online"), icon: Globe2, active: pathname.startsWith("/online/"), disabled: !storeId },
+    { to: "/projects/$pid", params: { pid: storeId ?? "" }, label: t("floor"), icon: Store, active: on("projects") && !!pid, disabled: !storeId },
+    { to: "/town/$pid", params: { pid: storeId ?? "" }, label: t("area"), icon: Map, active: on("town"), disabled: !storeId },
+    { to: "/capture/$pid", params: { pid: storeId ?? "" }, label: t("capture"), icon: Camera, active: on("capture"), disabled: !storeId },
+    { to: "/marketing/$pid", params: { pid: storeId ?? "" }, label: t("market"), icon: Megaphone, active: on("marketing"), disabled: !storeId },
+    { to: "/online/$pid", params: { pid: storeId ?? "" }, label: t("online"), icon: Globe2, active: on("online"), disabled: !storeId },
     { to: "/settings", label: t("models"), icon: KeyRound, active: pathname === "/settings" },
   ];
 

@@ -46,3 +46,11 @@ it("opens the only store, and stays disabled with several stores and none rememb
   show("/settings", ["proj_a", "proj_b"]);
   expect(screen.getByRole("link", { name: "Area" }).getAttribute("aria-disabled")).toBe("true");
 });
+
+it("marks a store tab current on its page only, not on an unknown address under it", () => {
+  show("/online/proj_a", ["proj_a"]);
+  expect(screen.getByRole("link", { name: "Online" }).getAttribute("aria-current")).toBe("page");
+  cleanup();
+  show("/projects/proj_a/oops", ["proj_a"]);
+  expect(screen.queryByRole("link", { current: "page" })).toBeNull();
+});

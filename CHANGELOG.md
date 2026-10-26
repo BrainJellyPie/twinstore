@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Convert generated customer budgets from explicit currency amounts into stored
+  units in code, so small models do not have to calculate cents. Existing saved
+  integer budgets keep their units. Customer prompts distinguish people, visit
+  goals and behavior, and CPU probes flag observed field mix-ups and duplicates.
 - Read local-model setup values wrapped in `properties` and exact quoted integer
   hours without silently losing the draft. Layout-choice prompts request a selected
   value explicitly, avoiding long copied schema enums. Schema definitions are not
@@ -14,13 +18,24 @@
   reply also described a coupon, removing the popup, a chat widget, a delivery
   fee, guest checkout and page speed. Such replies now carry **Mentioned but
   not changed** chips naming each of those options (`unapplied` in the
-  design-chat reply); questions are left as they are.
+  design-chat reply), also when the reply quotes option names such as
+  `shipping_fee`; questions are left as they are.
 - Waiting on a model is easier to read: the store designer shows your request
   in the conversation at once, and every model wait (designer, both analysts,
   shopper interviews) adds after 15 seconds that a small local model can take
   a few minutes, with the seconds so far. A real CPU run of the 450M model
   took over three minutes to redesign a store, with nothing but "Redesigning…"
   on screen.
+- The marketing A/B report uses its width: a test with one variant shows that
+  variant's changes full width with **Keep it in the store** and **Test it
+  online** side by side, and the price × sign analysis is one line saying what
+  it answers until it is opened, instead of a lone button in a wide card.
+- Lift charts in the marketing studio (A/B, shelf, concept and the other paired
+  tests) read on a phone: the interval used to shrink to a dot with its axis
+  labels printed over each other at 390 px; the label and value now share a
+  line with the interval full width below, and an A/B test's arm cards stack.
+- The top bar no longer marks **Floor** (or another store tab) as the current
+  page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
   visible colour dot in dark mode: the dots' outline is stronger there.
 - Keep valid automatic-product selections when another category needs repair,
