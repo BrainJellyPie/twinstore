@@ -210,7 +210,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         </div>
       </aside>
 
-      <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto">
+      <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
         {runId ? (
           <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
             wide={wide} onWide={() => setWide((w) => !w)}
