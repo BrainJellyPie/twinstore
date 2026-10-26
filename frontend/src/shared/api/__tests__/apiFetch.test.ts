@@ -25,3 +25,20 @@ it("leaves a cancelled request and a server reply alone", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => reply));
   expect(await apiFetch("/api/projects")).toBe(reply);
 });
+
+it("preserves a custom cancellation reason carried by a Request", async () => {
+  const abort = new AbortController();
+  const reason = new Error("The user changed stores");
+  const request = new Request("http://localhost/api/projects", { signal: abort.signal });
+  abort.abort(reason);
+  vi.stubGlobal("fetch", vi.fn(async () => { throw reason; }));
+  await expect(apiFetch(request)).rejects.toBe(reason);
+});
+
+it.each([null, new AbortController().signal])("honors an overriding init signal instead of a cancelled Request", async signal => {
+  const abort = new AbortController();
+  abort.abort(new Error("Old request was cancelled"));
+  const request = new Request("http://localhost/api/projects", { signal: abort.signal });
+  vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+  await expect(apiFetch(request, { signal })).rejects.toBeInstanceOf(UserMessageError);
+});

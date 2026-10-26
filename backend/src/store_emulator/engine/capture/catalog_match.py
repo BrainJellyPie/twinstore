@@ -195,12 +195,16 @@ _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
 _NON_SELLING_PREFIX_RE = re.compile(
-    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?|was|msrp|rrp)"
-    r"|할인액|절약|値引き)\s*(?:(?:up\s+to|at\s+least|as\s+much\s+as)\s*)?:?\s*$",
+    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?"
+    r"|earn(?:ed)?|rewards?|store\s+credit|points?|pts?\.?|was|msrp|rrp)"
+    r"|할인액|절약|적립(?:금|액)?|포인트|ポイント|积分|積分|値引き)\s*(?:(?:up\s+to|at\s+least|as\s+much\s+as)\s*)?:?\s*$",
     re.IGNORECASE,
 )
 _SAVINGS_SUFFIX_RE = re.compile(
     r"^(?:off\b|savings?\b|rebate\b|cash[\s-]*back\b|coupons?(?:\s+value)?[.!]?$"
+    r"|(?:in\s+)?rewards?[.!]?$|(?:in\s+)?store\s+credit[.!]?$"
+    r"|적립(?:금|액)?[.!]?$"
+    r"|(?:points?|pts?\.?|포인트|ポイント|积分|積分)(?:\s+earned)?[.!]?$"
     r"|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
 )
 _DEPOSIT_PREFIX_RE = re.compile(r"\bdeposit\s*:?\s*$", re.IGNORECASE)

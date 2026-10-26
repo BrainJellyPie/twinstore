@@ -6,6 +6,8 @@ From the repository root:
 Start the local server separately, on CPU for a CPU probe. No responses are mocked.
 Every run gets a fresh cache unless --cache-from explicitly copies a saved cache.
 The trace contains built-in sample prompts, not headers or keys.
+Use --temperature 1 to match the default customer writer; zero-temperature
+customer probes retain their original deterministic stress configuration.
 """
 
 import argparse
@@ -104,6 +106,10 @@ design_requests = {
     "design-threshold-krw": "무료 배송 기준을 30,000원으로 바꿔주세요. 기존 배송비와 다른 설정은 그대로 두세요.",
 }
 layout_requests = {
+    "layout-missing-product": "Set only Dragonfruit Juice to $3.00. If that product is absent, do not change or substitute any existing product. Keep all other products unchanged.",
+    "layout-missing-product-ko": "Dragonfruit Juice 상품이 목록에 있을 때만 가격을 3달러로 바꿔주세요. 목록에 없으면 아무것도 바꾸지 마세요. 다른 상품으로 대체하지 마세요.",
+    "layout-unsupported-edit": "Paint the shop walls red. Do not change any product prices, signs or shelf placements.",
+    "layout-no-changes": "Keep every product price, sign and shelf placement exactly as it is. Do not make any changes.",
     "layout-price-krw": "Green Tea 가격만 3,000원으로 바꿔 주세요. 다른 상품이나 설정은 그대로 유지해 주세요.",
     "layout-discount-promo": "Discount Green Tea by 10 percent and put a SALE sign on Potato Chips. Change nothing else.",
     "layout-category": "Reduce all prices on the Drinks shelf by 10 percent. Change nothing else.",
@@ -118,13 +124,14 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+    "capture-price", "capture-price-krw", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
     "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
+parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
 parser.add_argument("--separate-price-tag", action=argparse.BooleanOptionalAction, default=True,
@@ -133,6 +140,8 @@ parser.add_argument("--cache-from", type=Path, help="Copy a saved response cache
 parser.add_argument("--persona-batch-size", type=int, choices=range(1, 13),
                     help="Customers per model request; override the case's default for a controlled comparison")
 args = parser.parse_args()
+if args.temperature is not None and not 0 <= args.temperature <= 2:
+    parser.error("Temperature must be a finite number between 0 and 2.")
 endpoint = urlsplit(args.endpoint)
 if endpoint.hostname not in {"localhost", "127.0.0.1", "::1"} or endpoint.scheme != "http":
     parser.error("Use an HTTP loopback endpoint for the local model.")
@@ -156,8 +165,10 @@ elif args.case == "hypermarket":
         products_per_category=1, excluded_categories=["beer_alcohol"],
         requirements="Choose a coherent supermarket assortment, with one product per category. No alcoholic products. Keep cold products in fridges and respect department signs.")
     description = "동네 주민과 가족들이 식료품과 생활필수품을 구입하는 대형 슈퍼마켓"
+temperature = (args.temperature if args.temperature is not None else
+    .5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0)
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
-    temperature=.5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
+    temperature=temperature, seed=0,
     max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith(("pack-", "capture-")) else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith(("persona-", "traffic-")) else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
@@ -211,7 +222,7 @@ async def traced_send(self, request, *positional, **keywords):
 
 started = time.perf_counter()
 result = {"case": args.case, "model": args.model, "endpoint": args.endpoint, "structured_output": args.structured_output,
-          "cache_replay_from": str(args.cache_from) if args.cache_from else None}
+          "temperature": temperature, "cache_replay_from": str(args.cache_from) if args.cache_from else None}
 try:
     if args.case in design_requests:
         site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history", "design-threshold-krw"} else "USD")
@@ -313,7 +324,7 @@ try:
         elif args.case == "layout-sequence":
             expected["tea"].update(price=360, regular_price=400)
             expected["water"]["promo"] = "SALE"
-        else:
+        elif args.case == "layout-move":
             expected["tea"]["level"] = 3
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reply = asyncio.run(draft_layout_edit(client, layout_requests[args.case], store, currency))
@@ -339,6 +350,15 @@ try:
         issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
         if set(after) != set(expected):
             issues.append("Product identities changed")
+        if args.case in {"layout-missing-product", "layout-missing-product-ko", "layout-unsupported-edit", "layout-no-changes"}:
+            if reply.changes or applied or not reply.summary.strip():
+                issues.append("Expected an explicit no-change explanation with no operations.")
+        if args.case.startswith("layout-missing-product") and any(phrase in reply.summary.casefold() for phrase in (
+            "no edits requested", "not present in the instructions", "no english instruction",
+        )):
+            issues.append("The explanation mistakes an absent product for an absent or unsupported-language instruction.")
+        if args.case == "layout-no-changes" and "product is not listed" in reply.summary.casefold():
+            issues.append("A request to leave everything unchanged was incorrectly explained as an absent product.")
         result.update(success=not issues and not warnings, request=layout_requests[args.case],
             reply=reply.model_dump(mode="json"), applied=applied, warnings=warnings, issues=issues)
         (output / "before.json").write_text(store.model_dump_json(indent=2))
@@ -593,6 +613,8 @@ try:
         tags = {"capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00", "capture-coupon-value": "$1.00 COUPON",
+                "capture-earn-reward": "EARN $1.00", "capture-reward-value": "$1.00 REWARD", "capture-rewards-price": "REWARDS PRICE $1.00", "capture-reward-krw": "1,000원 적립",
+                "capture-points": "100 POINTS", "capture-points-krw": "100포인트", "capture-points-price": "$1.00 WITH POINTS",
                 "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
                 "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
                 "capture-container-count-price": "$1.00 / BOTTLE", "capture-deposit-price": "DEPOSIT $0.10",
@@ -609,7 +631,7 @@ try:
         for text, y, size in [("ACME", 150, 26), ("COLA", 188, 42), (package_size, 246, 24)]:
             drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
         drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
-        tag_font = 28 if args.case == "capture-deposit-included-price" else 36
+        tag_font = 28 if args.case in {"capture-deposit-included-price", "capture-rewards-price", "capture-points-price"} else 36
         drawing.text((224, 439), tags[args.case], fill="black", font=load_font(tag_font, bold=True), anchor="mt")
         fixture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
@@ -625,8 +647,8 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price"}:
-            expected_price = {"capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100}[args.case]
+        if args.case in {"capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price"}:
+            expected_price = {"capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100}[args.case]
             if item.price != expected_price or item.price_estimated:
                 issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:

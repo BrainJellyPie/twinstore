@@ -56,6 +56,26 @@ def test_each_placement_and_online_offer_uses_the_selected_basis(currency, basis
         assert applied and not skipped and site.model_dump_json() == original
 
 
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+@pytest.mark.parametrize("price,regular,basis,percent,expected", [
+    (81, 101, "regular", -50, 50), (81, 101, "current", -50, 40),
+    (83, 103, "regular", -50, 52), (83, 103, "current", -50, 42),
+    (81, 101, "current", -37.5, 51), (81, 101, "regular", -100, 0),
+    (0, 101, "current", -50, 0), (1, 0, "regular", -50, 0),
+])
+def test_discount_minor_unit_rounding_agrees_in_physical_and_online_stores(currency, price, regular, basis, percent, expected):
+    store = fixture(currency, (price,), regular)
+    change = VariantChange(kind="discount", sku="tea", percent=percent, discount_basis=basis)
+    physical, _, warnings = apply_changes(store, [change])
+    assert not warnings
+    assert physical.racks[0].slots[0].items[0].price == expected
+    site = site_from_store(store, site_id="web", name="Web", currency=currency)
+    products, _, skipped = apply_store_changes(site, [change], minor_per_major=100 if currency == "USD" else 1)
+    assert not skipped
+    assert next(product for product in products if product.sku == "tea").price == expected
+    assert store.racks[0].slots[0].items[0].price == price
+
+
 def test_current_basis_without_a_reference_starts_one_and_keeps_it_across_sequential_cuts():
     store = fixture(prices=(400,), regular=0)
     change = VariantChange(kind="discount", sku="tea", percent=-10, discount_basis="current")

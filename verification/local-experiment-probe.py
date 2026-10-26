@@ -30,6 +30,7 @@ QUESTIONS = {
     "fixed-price-krw": "Tea만 비교하는 두 가지 안을 만들어 주세요: 판매가 1,500원으로 변경하는 안과 20% 할인하는 안. 기존 정가 1,990원과 다른 상품은 그대로 두세요.",
     "free-discount": "Compare exactly two Tea variants: a 100% discount making it free, and a 20% discount. Show the original $1.99 price in both. Change no other products or signs.",
     "extra-discount": "Tea is currently $4.00, with an original regular price of $5.00. Compare exactly two Tea variants: an EXTRA 10% reduction of the CURRENT $4.00 selling price, and setting a 10% discount against the REGULAR $5.00 price. Keep the original $5.00 reference price and all other products unchanged.",
+    "rounding-discount": "Tea is currently $0.81, with an original regular price of $1.01. Compare exactly two Tea variants: a 50% discount against the REGULAR $1.01 price, and an EXTRA 50% reduction of the CURRENT $0.81 selling price. Keep the original $1.01 reference price and all other products unchanged.",
     "move": "Create exactly one variant moving only Tea to level 3 on Endcap. Keep all prices, signs, packages and other products unchanged.",
     "package": "Create exactly one variant changing only Tea's package to the listed Tea package B. Keep all prices, signs, placements and other products unchanged.",
     "category": "Create exactly one variant reducing all prices on the Drinks shelf by 10 percent. Keep other shelves, signs, packages and placements unchanged.",
@@ -59,9 +60,10 @@ store = Store(id="probe", name="Corner store", type="convenience", currency=curr
     Rack(id="drinks", rack_name="Drinks", type="shelf", shape=[[1]], position=(3, 3), slots=[
         Slot(block=0, face="N", level=1, items=[SlotItem(sku="tea", name="Tea", price=price)]),
         Slot(block=0, face="N", level=2, items=[SlotItem(sku="water", name="Water", price=990 if krw else 99)])])])
-if args.case == "extra-discount":
-    store.racks[0].slots[0].items[0].price = 400
-    store.racks[0].slots[0].items[0].regular_price = 500
+if args.case in {"extra-discount", "rounding-discount"}:
+    current, regular = (400, 500) if args.case == "extra-discount" else (81, 101)
+    store.racks[0].slots[0].items[0].price = current
+    store.racks[0].slots[0].items[0].regular_price = regular
 if args.case in {"move", "package", "category"}:
     store.racks.append(Rack(id="endcap", rack_name="Endcap", type="shelf", shape=[[1]], position=(5, 3), slots=[
         Slot(block=0, face="N", level=1, items=[SlotItem(sku="chips", name="Chips", price=299)])]))
@@ -83,6 +85,7 @@ updates = {
     "fixed-price-krw": [{"price": 1500, "regular_price": 1990}, {"price": 1592, "regular_price": 1990}],
     "free-discount": [{"price": 0, "regular_price": 199}, {"price": 159, "regular_price": 199}],
     "extra-discount": [{"price": 360, "regular_price": 500}, {"price": 450, "regular_price": 500}],
+    "rounding-discount": [{"price": 50, "regular_price": 101}, {"price": 40, "regular_price": 101}],
     "move": [{"rack": "endcap", "level": 3}],
     "package": [{"image_url": "probe://package-b"}],
     "category": [{"price": 179, "regular_price": 199}],

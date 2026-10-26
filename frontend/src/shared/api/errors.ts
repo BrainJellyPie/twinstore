@@ -50,7 +50,8 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   try {
     return await fetch(input, init);
   } catch (error) {
-    if (init?.signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
+    const signal = init?.signal === undefined && input instanceof Request ? input.signal : init?.signal;
+    if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
     const unreachable = new UserMessageError("serverUnreachable");
     unreachable.message = translate(useLocale.getState().locale, "serverUnreachable");
     throw unreachable;

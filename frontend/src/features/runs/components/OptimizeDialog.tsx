@@ -2,7 +2,7 @@
 // the search, then judge the result by its validation on fresh customers — the search score is
 // optimistic (it was tuned on the same shoppers), the validated number is the one to trust.
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, Loader2, Sparkles, Square, TriangleAlert, Wand2, Zap } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -57,14 +57,14 @@ export function OptimizeDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[720px]">
-        <OptimizeBody key={JSON.stringify([projectId, setupId])} projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
+        <OptimizeBody key={JSON.stringify([projectId, setupId])} active={open} projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
-  projectId: string; setupId: string; goalPrefill?: { id: number; text: string }; onClose: () => void;
+function OptimizeBody({ active, projectId, setupId, goalPrefill, onClose }: {
+  active: boolean; projectId: string; setupId: string; goalPrefill?: { id: number; text: string }; onClose: () => void;
 }) {
   const { t } = useI18n();
   const [spec, setSpec] = useState<OptimizeSpec>(DEFAULT_SPEC);
@@ -293,25 +293,33 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
         <p role="alert" className="text-destructive">{job.error instanceof Error ? job.error.message : t("optStatusFailed")}</p>
         <Button variant="outline" disabled={job.isFetching} onClick={() => void job.refetch()}>{t("optRetryStatus")}</Button>
       </div>}
-      {jobId && job.data && <JobView projectId={projectId} view={job.data} onClose={onClose} onRestart={() => setJobId(null)} />}
+      {jobId && job.data && <JobView active={active} projectId={projectId} view={job.data} onClose={onClose} onRestart={() => setJobId(null)} />}
     </div>
   );
 }
 
-function JobView({ projectId, view, onClose, onRestart }: { projectId: string; view: OptimizationView; onClose: () => void; onRestart: () => void }) {
+function JobView({ active, projectId, view, onClose, onRestart }: { active: boolean; projectId: string; view: OptimizationView; onClose: () => void; onRestart: () => void }) {
   const { locale, t } = useI18n();
   const qc = useQueryClient();
   const setSelectedSetupId = useSimulationStore((s) => s.setSelectedSetupId);
   const viewedCurrency = useSimulationStore((s) => s.currency);
+  const activeView = useRef(false);
+  useLayoutEffect(() => {
+    activeView.current = active;
+    return () => { activeView.current = false; };
+  }, [active]);
   const { status, result } = view;
   // Revenue scores are in the currency's minor unit; the optimized runs carry it, the viewed run is the fallback.
   const code = currencyCode(result?.baseline_summary?.currency ?? result?.best_summary?.currency ?? viewedCurrency);
   const objective = status.spec.objective;
   const score = (value: number) => scoreText(objective, value, code);
   const apply = useMutation({
+    onMutate: () => ({ selectedId: useSimulationStore.getState().selectedSetupId }),
     mutationFn: () => api.applyOptimization(projectId, status.job_id),
-    onSuccess: async (setup) => {
+    onSuccess: async (setup, _variables, context) => {
       await qc.invalidateQueries({ queryKey: queryKeys.setups(projectId) });
+      // A completed save still refreshes its list, but must not navigate after the user leaves.
+      if (!activeView.current || !context || useSimulationStore.getState().selectedSetupId !== context.selectedId) return;
       setSelectedSetupId(setup.id);
       onClose();
     },

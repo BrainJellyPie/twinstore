@@ -32,6 +32,17 @@ SAVINGS = [
     ("$1.00 COUPON", "USD"), ("1.00 USD coupon", "USD"), ("100¢ coupon", "USD"),
     ("1,000원 COUPON", "KRW"), ("0,00 € coupon value", "EUR"),
     ("＄１．００ ＣＯＵＰＯＮ", "USD"), ("$1.00 coupon.", "USD"),
+    ("EARN $1.00", "USD"), ("Earn up to: USD 1.00", "USD"),
+    ("Earned £1.00", "GBP"), ("Reward €1,00", "EUR"),
+    ("Rewards: 1,000원", "KRW"), ("Store credit: 100円", "JPY"),
+    ("$1.00 REWARD", "USD"), ("1.00 USD in rewards", "USD"),
+    ("100¢ reward", "USD"), ("$1.00 STORE CREDIT", "USD"),
+    ("$0.00 reward", "USD"), ("ＥＡＲＮ ＄１．００", "USD"),
+    ("적립금 1,000원", "KRW"), ("적립: 1,000원", "KRW"), ("1,000원 적립", "KRW"),
+    ("100 POINTS", "USD"), ("100 point", "USD"), ("100 pts", "USD"), ("100 pt.", "USD"),
+    ("Points: 100", "USD"), ("100 points earned", "USD"), ("１００ ＰＯＩＮＴＳ", "USD"),
+    ("100포인트", "KRW"), ("포인트: 100", "KRW"), ("100ポイント", "JPY"),
+    ("100积分", "CNY"), ("積分100", "TWD"), ("0 points", "USD"),
 ]
 
 
@@ -53,13 +64,19 @@ def test_savings_text_cannot_be_overridden_by_a_numeric_model_guess(tag, currenc
     ("$1.00 COUPON PRICE", "USD", 100), ("$1.00 after coupon", "USD", 100),
     ("$1.00 coupon applied", "USD", 100), ("$1.00 including coupon", "USD", 100),
     ("$1.00 with coupon discount", "USD", 100),
+    ("Rewards price $1.00", "USD", 100), ("$1.00 REWARDS PRICE", "USD", 100),
+    ("$1.00 with rewards", "USD", 100), ("$1.00 after store credit", "USD", 100),
+    ("적립금 적용가 1,000원", "KRW", 1000), ("1,000원 적립금 적용가", "KRW", 1000),
+    ("Points price $1.00", "USD", 100), ("$1.00 WITH POINTS", "USD", 100),
+    ("$1.00 after points", "USD", 100), ("1,000원 포인트 적용가", "KRW", 1000),
+    ("ポイント価格100円", "JPY", 100),
 ])
 def test_explicit_sale_prices_and_ordinary_prices_keep_their_amount(tag, currency, amount):
     assert price_minor_units(ShelfItemLabel(price_text=tag), currency, 999) == amount
 
 
 @pytest.mark.parametrize("guess", [None, 1.0])
-@pytest.mark.parametrize("tag", ["SAVE $1.00", "SAVE UP TO $1.00", "$1.00 CASH BACK", "$1.00 COUPON"])
+@pytest.mark.parametrize("tag", ["SAVE $1.00", "SAVE UP TO $1.00", "$1.00 CASH BACK", "$1.00 COUPON", "EARN $1.00", "$1.00 REWARD", "100 POINTS"])
 def test_capture_preserves_product_and_tag_but_marks_savings_fallback_estimated(guess, tag):
     with Image.new("RGB", (100, 80), "white") as photo:
         frame = make_frame(photo)
@@ -78,7 +95,8 @@ def test_capture_preserves_product_and_tag_but_marks_savings_fallback_estimated(
 
 
 @pytest.mark.parametrize("known", [False, True])
-def test_coupon_face_value_cannot_replace_an_existing_product_price(known):
+@pytest.mark.parametrize("tag", ["$1.00 COUPON", "EARN $1.00", "$1.00 REWARD", "100 POINTS"])
+def test_non_selling_value_cannot_replace_an_existing_product_price(known, tag):
     store = target_store()
     store.racks[0].slots[0].items[0].price = 799
     if not known:
@@ -86,7 +104,7 @@ def test_coupon_face_value_cannot_replace_an_existing_product_price(known):
     original = store.model_dump_json()
     with Image.new("RGB", (100, 80), "white") as photo:
         detection = Detection(x1=0, y1=0, x2=40, y2=60, band=0)
-        label = ShelfItemLabel(name="Cola 500ml", category="soft drink", price_text="$1.00 COUPON", price=1)
+        label = ShelfItemLabel(name="Cola 500ml", category="soft drink", price_text=tag, price=1)
         group = FacingGroup(band=0, facings=[detection], descriptor=describe(photo, detection), label=label)
         items, _ = build_items(make_frame(photo), [group], [3], currency="USD", rack_type="shelf")
         assert items[0].price_estimated

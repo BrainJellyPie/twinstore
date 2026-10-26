@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Do not turn loyalty point counts into cash selling prices during shelf
+  capture. Preserve point labels and mark fallback prices as estimated;
+  explicit cash prices such as "$1.00 WITH POINTS" still apply.
+
+- Finishing an optimization save after closing its dialog, leaving the
+  screen or selecting another layout no longer replaces the current layout
+  selection. The saved result still refreshes its original store's list.
+
+- Keep earned rewards and store-credit amounts out of captured selling
+  prices, including Korean "1,000원 적립" tags. Preserve the tag and mark the
+  fallback as estimated; explicit rewards prices still retain their amount.
+
+- Match discount previews to the physical and online stores' rounding,
+  including half-cent and half-won boundaries. Block out-of-range discount
+  and category percentages with localized correction guidance while keeping
+  fractional discounts and valid boundary values available.
 - The online design chat no longer sends a half-typed Korean, Japanese or
   Chinese request when Enter ends the input method's composition in browsers
   that mark that key only with the legacy composition code (Safari).
@@ -39,7 +55,8 @@
   dropped), pages say so in the chosen language ("Can't reach TwinStore.
   Check that it is still running, then try again.") instead of the browser's
   English "Failed to fetch". An online run's report that could not be read
-  offers **Try again**.
+  offers **Try again**. Request objects retain custom cancellation reasons
+  rather than reporting a cancelled operation as an unreachable server.
 
 - With reduced motion turned on in the system, the report's section links,
   **See the results**, **Your stores**, the analyst and other jumps move
