@@ -167,3 +167,10 @@ it("keeps the job controls visible after a polling failure and clears the error 
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   expect(api.startOptimization).toHaveBeenCalledOnce();
 });
+
+it.each(["rule", "vlm"] as const)("moves focus to the %s verdict that replaces the controls", async (kind) => {
+  await show(kind, 100);
+  const focused = document.activeElement!;
+  expect(focused.getAttribute("role")).not.toBe("dialog");
+  expect(focused.textContent).toMatch(kind === "vlm" ? /Vision shoppers prefer/ : /Validated on fresh shoppers/);
+});

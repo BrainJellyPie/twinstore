@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { ApiError, apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage, apiFetch } from "./errors";
 export interface PhotoAsset { asset_id: string; name: string; sku: string; version: string; image_url: string }
 export interface PhotoProduct { sku: string; names: string[]; image_urls: string[]; placements: number }
 export interface PhotoOptions { source_sha256: string; assets: PhotoAsset[]; products: PhotoProduct[] }
@@ -11,7 +11,7 @@ export interface PhotoPreview { changes: PhotoChange[]; changed_placements: numb
 export interface PhotoSaved { setup_id: string; changed_placements: number }
 const url = (pid: string, sid: string) => `${BASE}/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/library-photos`;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await apiFetch(path, init);
   if (!response.ok) throw new ApiError(apiErrorMessage(await response.text(), `Request failed (${response.status})`), response.status);
   return response.json() as Promise<T>;
 }

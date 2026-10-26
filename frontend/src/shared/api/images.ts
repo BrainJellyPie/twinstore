@@ -1,6 +1,7 @@
 // Backend takes one file per SKU — multi-SKU upload fans out into N requests.
 
 import { BASE } from "./client";
+import { apiFetch } from "./errors";
 
 export interface UploadedSkuImage {
   sku: string;
@@ -25,7 +26,7 @@ async function uploadOne(
   const form = new FormData();
   form.append("file", blob, `${sku}.${extension}`);
 
-  const res = await fetch(
+  const res = await apiFetch(
     `${BASE}/api/projects/${encodeURIComponent(projectId)}/sku-images?sku=${encodeURIComponent(sku)}`,
     { method: "POST", body: form },
   );

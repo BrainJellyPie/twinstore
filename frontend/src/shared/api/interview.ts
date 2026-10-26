@@ -4,10 +4,10 @@
 import type { Persona } from "@/shared/types/domain";
 
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
+  const res = await apiFetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));

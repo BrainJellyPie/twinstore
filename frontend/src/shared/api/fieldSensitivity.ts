@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export type SensitivityScope = "staff" | "shift" | "block";
 export interface PilotSensitivityReport {
@@ -16,7 +16,7 @@ export interface PilotSensitivityReport {
 export const sensitivityKey = (pid: string, id: string, revision: number) => ["projects", pid, "staff-pilots", id, "sensitivity", revision] as const;
 export const sensitivityCsvUrl = (pid: string, id: string, revision: number) => `${BASE}/api/projects/${pid}/staff-pilots/${id}/sensitivity.csv?revision=${revision}`;
 export async function getPilotSensitivity(pid: string, id: string, revision: number, signal?: AbortSignal): Promise<PilotSensitivityReport> {
-  const response = await fetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/sensitivity?revision=${revision}`, { signal });
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/sensitivity?revision=${revision}`, { signal });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Sensitivity checks could not be loaded"));
   return response.json() as Promise<PilotSensitivityReport>;
 }

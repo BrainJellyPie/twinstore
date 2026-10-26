@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { ApiError, apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage, apiFetch } from "./errors";
 export interface StarterProduct { sku: string; name: string; price: number; promo: string; regular_price: number; image_url: string | null }
 export interface StarterCategory { key: string; label: string; products: StarterProduct[] }
 export interface StarterRack { id: string; name: string; type: string; available_slots: number; suggested_category: string | null; reason: string | null; reason_code?: string | null }
@@ -11,7 +11,7 @@ export interface StarterPreview { placements_added: number; new_skus: number; re
 export interface StarterSaved { setup_id: string; placements_added: number }
 const url = (pid: string, sid: string) => `${BASE}/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/starter-fill`;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await apiFetch(path, init);
   if (!response.ok) throw new ApiError(apiErrorMessage(await response.text(), `Request failed (${response.status})`), response.status);
   return response.json() as Promise<T>;
 }

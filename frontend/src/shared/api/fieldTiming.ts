@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export interface TimingArm { arm: "A" | "B"; planned: number; timed: number; mean_seconds: number | null; max_seconds: number | null }
 export interface PilotTimingReport {
@@ -12,13 +12,13 @@ export interface PilotTimingReport {
 export interface TimingUpload { file: File; revision: number }
 
 export async function timingTemplate(pid: string, id: string, revision: number): Promise<Blob> {
-  const response = await fetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/timing/template.csv?revision=${revision}`);
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/timing/template.csv?revision=${revision}`);
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Staff time template failed"));
   return response.blob();
 }
 async function requestTiming(pid: string, id: string, request: TimingUpload, csv: boolean): Promise<Response> {
   const body = new FormData(); body.append("file", request.file); body.append("revision", String(request.revision));
-  const response = await fetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/timing/${csv ? "export.csv" : "preview"}`, { method: "POST", body });
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/timing/${csv ? "export.csv" : "preview"}`, { method: "POST", body });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Staff time review failed"));
   return response;
 }

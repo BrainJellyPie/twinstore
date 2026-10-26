@@ -92,7 +92,7 @@ it("locks all scope inputs while pending and surfaces network failures", async (
   await waitFor(() => expect((screen.getByLabelText("Inventory CSV") as HTMLInputElement).disabled).toBe(true));
   for (const label of ["Period start (inclusive)", "Period end (inclusive)", "Currency code"]) expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(true);
   reject(new Error("Connection lost"));
-  expect((await screen.findByRole("alert")).textContent).toContain("Connection lost");
+  expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
   expect(screen.queryByRole("button", { name: "Export inventory audit CSV" })).toBeNull();
   expect((screen.getByLabelText("Inventory CSV") as HTMLInputElement).disabled).toBe(false);
 });

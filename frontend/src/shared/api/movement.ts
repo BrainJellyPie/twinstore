@@ -1,4 +1,5 @@
 import { BASE } from "./client";
+import { apiFetch } from "./errors";
 
 export interface MovementSummary {
   tracks: number;
@@ -25,7 +26,7 @@ export interface MovementReport {
 }
 
 export async function getMovementReport(projectId: string, runId: string): Promise<MovementReport | null> {
-  const response = await fetch(`${BASE}/api/projects/${projectId}/runs/${runId}/movement`);
+  const response = await apiFetch(`${BASE}/api/projects/${projectId}/runs/${runId}/movement`);
   if (!response.ok) throw new Error("Could not load movement comparison.");
   return response.json() as Promise<MovementReport | null>;
 }
@@ -34,7 +35,7 @@ export async function uploadMovement(projectId: string, runId: string, file: Fil
   const form = new FormData();
   form.append("file", file);
   form.append("max_gap_seconds", String(maxGap));
-  const response = await fetch(`${BASE}/api/projects/${projectId}/runs/${runId}/movement`, { method: "POST", body: form });
+  const response = await apiFetch(`${BASE}/api/projects/${projectId}/runs/${runId}/movement`, { method: "POST", body: form });
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null);
     const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;

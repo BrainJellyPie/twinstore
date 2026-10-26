@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export interface RestockOrderItem {
   sku: string; required_units: number; stockroom_units: number; pack_size: number;
@@ -18,7 +18,7 @@ export interface RestockOrderPlan {
   notes: string[];
 }
 async function requestOrder(pid: string, cid: string, jid: string, request: RestockOrderRequest, csv: boolean): Promise<Response> {
-  const response = await fetch(`${BASE}/api/projects/${pid}/captures/${cid}/lab/jobs/${jid}/restock-order${csv ? ".csv" : ""}`, {
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/captures/${cid}/lab/jobs/${jid}/restock-order${csv ? ".csv" : ""}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request),
   });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Restocking plan request failed"));

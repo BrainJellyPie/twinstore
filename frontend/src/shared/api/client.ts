@@ -1,6 +1,6 @@
 // Response types mirror backend schemas.py 1:1 — keep in sync.
 
-import { ApiError, apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage, apiFetch } from "./errors";
 
 import type {
   Face,
@@ -28,7 +28,7 @@ export type { BlockedFaceDetail, GenerationChoice, GenerationConfirm, Issue, Wri
 export const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await apiFetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -155,7 +155,7 @@ export async function createStore(
   if (supplemental) fd.append("supplemental", supplemental);
 
   // Direct base URL — Vite has no /api proxy, so a relative path would hit the dev server.
-  const res = await fetch(`${BASE}/api/projects/create-store`, { method: "POST", body: fd });
+  const res = await apiFetch(`${BASE}/api/projects/create-store`, { method: "POST", body: fd });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(apiErrorMessage(body, `Failed to create store (HTTP ${res.status})`));
@@ -1032,7 +1032,7 @@ export async function uploadFidelity(
   const form = new FormData();
   form.append("file", file);
   // No JSON Content-Type here: the browser sets the multipart boundary itself.
-  const res = await fetch(`${BASE}/api/projects/${projectId}/runs/${runId}/fidelity`, {
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/runs/${runId}/fidelity`, {
     method: "POST",
     body: form,
     signal,
@@ -1453,7 +1453,7 @@ const json = (body: unknown) => ({
 });
 
 export async function getTown(projectId: string, signal?: AbortSignal): Promise<Town | null> {
-  const res = await fetch(`${BASE}/api/projects/${projectId}/town`, { signal });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/town`, { signal });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text().catch(() => "")}`);
   return res.json() as Promise<Town>;
@@ -2016,7 +2016,7 @@ export async function createCapture(
   form.append("rack_type", opts.rack_type);
   if (opts.label) form.append("label", opts.label);
   if (opts.request_id) form.append("request_id", opts.request_id);
-  const res = await fetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form, signal });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form, signal });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(apiErrorMessage(body, `Upload failed (HTTP ${res.status})`));
@@ -2048,7 +2048,7 @@ export function applyCapture(
 }
 
 export async function deleteCapture(projectId: string, captureId: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}`, { method: "DELETE" });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/captures/${captureId}`, { method: "DELETE" });
   if (!res.ok) throw new ApiError(apiErrorMessage(await res.text().catch(() => ""), `Delete failed (HTTP ${res.status})`), res.status);
 }
 
@@ -2217,7 +2217,7 @@ export function updatePackage(projectId: string, assetId: string, update: { name
 }
 
 export async function deletePackage(projectId: string, assetId: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/projects/${projectId}/lab/packages/${assetId}`, { method: "DELETE" });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/lab/packages/${assetId}`, { method: "DELETE" });
   if (!res.ok) throw new ApiError(apiErrorMessage(await res.text().catch(() => ""), `Delete failed (HTTP ${res.status})`), res.status);
 }
 
@@ -2238,7 +2238,7 @@ export function editFileUrl(projectId: string, captureId: string, editId: string
 }
 
 export async function deleteEdit(projectId: string, captureId: string, editId: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}/edits/${editId}`, { method: "DELETE" });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/captures/${captureId}/edits/${editId}`, { method: "DELETE" });
   if (!res.ok) throw new ApiError(apiErrorMessage(await res.text().catch(() => ""), `Delete failed (HTTP ${res.status})`), res.status);
 }
 
@@ -2295,7 +2295,7 @@ export async function previewFloorPlan(
   form.append("plan", file);
   form.append("page_number", String(opts.pageNumber));
   form.append("rotation", String(opts.rotation));
-  const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan/preview`, { method: "POST", body: form, signal: opts.signal });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/floorplan/preview`, { method: "POST", body: form, signal: opts.signal });
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
     const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;
@@ -2314,7 +2314,7 @@ export async function importFloorPlan(
   form.append("name", opts.name ?? "");
   form.append("page_number", String(opts.pageNumber ?? 1));
   form.append("rotation", String(opts.rotation ?? 0));
-  const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
+  const res = await apiFetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(apiErrorMessage(body, `Import failed (HTTP ${res.status})`));
@@ -2351,7 +2351,7 @@ export function reviewReceipts(projectId: string, runId: string, receipts: Recei
 }
 
 async function postForm<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
+  const res = await apiFetch(`${BASE}${path}`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(apiErrorMessage(body, `HTTP ${res.status}`));

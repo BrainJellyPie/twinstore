@@ -86,7 +86,13 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
       </div>
     );
   }
-  if (run.isError) return <div role="alert" className="panel rounded-[1.6rem] p-4 text-sm text-destructive">{run.error.message}</div>;
+  if (run.isError) return (
+    <div className="panel flex flex-wrap items-center gap-3 rounded-[1.6rem] p-4 text-sm">
+      <span role="alert" className="min-w-0 flex-[1_1_14rem] text-destructive">{run.error.message}</span>
+      <button type="button" onClick={() => void run.refetch()} disabled={run.isFetching}
+        className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-60">{t("tryAgain")}</button>
+    </div>
+  );
   const { status, result } = run.data;
   const running = status.status === "pending" || status.status === "running";
   // The shopper who says most about the run: one whose visit ended differently between the stores, else a buyer.

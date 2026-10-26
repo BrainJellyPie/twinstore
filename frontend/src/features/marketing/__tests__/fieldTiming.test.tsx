@@ -88,7 +88,7 @@ it("locks file changes during requests and recovers from server and network fail
   expect((screen.getByLabelText("Staff time CSV") as HTMLInputElement).disabled).toBe(false);
   choose(); fetchMock.mockRejectedValueOnce(new Error("Connection lost"));
   fireEvent.click(screen.getByRole("button", { name: "Review staff time" }));
-  expect((await screen.findByRole("alert")).textContent).toContain("Connection lost");
+  expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
 });
 
 it("does not show a late response after switching source or revision", async () => {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/api/errors";
 import * as online from "@/shared/api/online";
@@ -90,6 +90,9 @@ it("offers the way back to the list for a deleted run, and shows other failures 
   vi.mocked(online.getRun).mockRejectedValue(new ApiError("disk unreadable", 500));
   render(<QueryClientProvider client={client}><RunReport projectId="p1" runId="r1" onDeleted={onDeleted} /></QueryClientProvider>);
   expect((await screen.findByRole("alert")).textContent).toBe("disk unreadable");
+  vi.mocked(online.getRun).mockRejectedValue(new ApiError("disk readable again", 500));
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("disk readable again"));
 });
 
 it("continues keyboard focus in the section a report link jumps to", async () => {

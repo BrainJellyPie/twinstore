@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export interface PriceCheckScope { store_ref: string; audit_date: string }
 export interface CheckUpload extends PriceCheckScope { labels: File; checkouts: File }
@@ -10,7 +10,7 @@ export interface PriceCheck { check_id: string; label: PriceObservation | null; 
 export interface PriceCheckTotals { currency: string; comparable: number; higher: number; lower: number; equal: number; positive_difference_minor: number; negative_difference_minor: number; net_difference_minor: number }
 export interface PriceCheckReport { method: "observed-price-checks-v1"; scope: PriceCheckScope; source_sha256: string; label_count: number; checkout_count: number; excluded_count: number; rows: PriceCheck[]; totals: PriceCheckTotals[]; notes: string[] }
 export async function priceCheckTemplate(pid: string): Promise<Blob> {
-  const response = await fetch(`${BASE}/api/projects/${pid}/price-checks/template.csv`);
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/price-checks/template.csv`);
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Price-check template failed"));
   return response.blob();
 }
@@ -19,7 +19,7 @@ async function requestChecks(pid: string, req: CheckUpload | CheckExport): Promi
   body.append("store_ref", req.store_ref); body.append("audit_date", req.audit_date);
   const csv = "source_sha256" in req;
   if (csv) body.append("source_sha256", req.source_sha256);
-  const response = await fetch(`${BASE}/api/projects/${pid}/price-checks/${csv ? "export.csv" : "preview"}`, { method: "POST", body });
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/price-checks/${csv ? "export.csv" : "preview"}`, { method: "POST", body });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Price-check review failed"));
   return response;
 }

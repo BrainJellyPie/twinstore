@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { apiErrorMessage, apiFetch } from "./errors";
 
 export interface PilotEconomicsRequest {
   revision: number; currency: string; contribution_per_conversion_minor: number; labor_per_hour_minor: number;
@@ -14,7 +14,7 @@ export interface PilotEconomicsReport {
 }
 
 async function requestEconomics(pid: string, id: string, request: PilotEconomicsRequest, csv: boolean): Promise<Response> {
-  const response = await fetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/economics${csv ? ".csv" : ""}`, {
+  const response = await apiFetch(`${BASE}/api/projects/${pid}/staff-pilots/${id}/economics${csv ? ".csv" : ""}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request),
   });
   if (!response.ok) throw new Error(apiErrorMessage(await response.text(), "Cost scenario request failed"));

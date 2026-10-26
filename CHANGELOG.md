@@ -7,6 +7,11 @@
   and category percentages with localized correction guidance while keeping
   fractional discounts and valid boundary values available.
 
+- When a layout optimization finishes, keyboard focus moves to its verdict
+  ("Validated on fresh shoppers …"), which replaces the Start button and the
+  progress, instead of falling back to the dialog. A short search's chart
+  numbers every candidate on its axis; it showed only "1" until the tenth.
+
 - Keep a coupon's face value, such as "$1.00 COUPON", from becoming an exact
   product price during shelf capture. Preserve the printed text, mark the
   fallback price as estimated and retain existing product prices when placing
@@ -21,6 +26,12 @@
   A/B drafts can now retain the original reference while reducing an already
   discounted price; the experiment editor exposes the same choice, and
   physical and online stores apply it consistently.
+- When TwinStore's server cannot be reached (it was stopped, or the connection
+  dropped), pages say so in the chosen language ("Can't reach TwinStore.
+  Check that it is still running, then try again.") instead of the browser's
+  English "Failed to fetch". An online run's report that could not be read
+  offers **Try again**. Request objects retain custom cancellation reasons
+  rather than reporting a cancelled operation as an unreachable server.
 
 - With reduced motion turned on in the system, the report's section links,
   **See the results**, **Your stores**, the analyst and other jumps move

@@ -128,7 +128,7 @@ it("locks inputs during a save and retains the same creation ID for an uncertain
   fireEvent.click(screen.getByRole("button", { name: "Record original plan" }));
   await waitFor(() => expect(screen.getByLabelText("Protocol title").closest("fieldset")?.disabled).toBe(true));
   const first = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")![1]!.body;
-  reject(new Error("Connection lost")); expect((await screen.findByRole("alert")).textContent).toContain("Connection lost");
+  reject(new Error("Connection lost")); expect((await screen.findByRole("alert")).textContent).toContain("Can't reach TwinStore");
   fetchMock.mockImplementation(normalFetch); fireEvent.click(screen.getByRole("button", { name: "Record original plan" }));
   await screen.findByRole("button", { name: "Record amendment" });
   const bodies = fetchMock.mock.calls.filter(([, init]) => init?.method === "POST").map(([, init]) => init!.body);
