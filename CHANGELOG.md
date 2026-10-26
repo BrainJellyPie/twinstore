@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep calorie, energy and marked nutrition quantities from becoming exact
+  captured selling prices when no currency is printed. Preserve the label,
+  estimated-price review and existing product prices.
+
 - Keep bare product identifiers, batch numbers and marked expiry/manufacture
   dates from becoming exact captured selling prices. Preserve their printed
   text and existing product prices; explicit currency prices stay usable.
