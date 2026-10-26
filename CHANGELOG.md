@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Find layout** shows each layout's store format by its name in the selected
+  language ("University campus store"), not by its internal id ("campus cvs"),
+  and finds layouts by that name in any of the six languages.
+
 - The numbered spots on a shopper's journey map list their steps in the
   selected language ("2. Looks at", "3. Takes Cola"), instead of the internal
   action names "browse" and "buy". Unnamed racks on the map, and in the floor

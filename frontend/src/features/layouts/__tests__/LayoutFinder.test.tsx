@@ -127,3 +127,15 @@ it("opens the first match with Enter and moves into the results with the down ar
   expect(onSelect).toHaveBeenCalledWith(cafe.id);
   expect(screen.queryByRole("dialog")).toBeNull();
 });
+
+it("shows each layout's store format by name in the selected language, and finds it by that name", () => {
+  useLocale.getState().setLocale("ko");
+  render(<LayoutFinder layouts={[pharmacy, cafe]} selectedId={cafe.id} onSelect={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: translate("ko", "findLayout") }));
+  const cafeName = translate("ko", "tpl_book_cafe");
+  expect(screen.getByTestId("layout-search-result-cafe").textContent).toContain(cafeName);
+  expect(screen.getByTestId("layout-search-result-cafe").textContent).not.toContain("book cafe");
+  fireEvent.change(screen.getByLabelText(translate("ko", "searchLayouts")), { target: { value: translate("en", "tpl_community_pharmacy") } });
+  expect(screen.queryByTestId("layout-search-result-cafe")).toBeNull();
+  expect(screen.getByTestId("layout-search-result-pharmacy")).toBeTruthy();
+});

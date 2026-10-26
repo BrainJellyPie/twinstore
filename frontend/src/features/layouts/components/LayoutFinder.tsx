@@ -4,8 +4,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
-import { useI18n } from "@/shared/i18n/i18n";
+import { translate, useI18n } from "@/shared/i18n/i18n";
+import { LOCALES, messages, type Locale, type MessageKey } from "@/shared/i18n/messages";
 import type { Layout } from "../hooks/useLayouts";
+
+// A layout's store format by name, as the template gallery shows it; a format this version does not know, by its id.
+function formatName(templateId: string, locale: Locale): string {
+  const key = `tpl_${templateId}`;
+  return Object.prototype.hasOwnProperty.call(messages, key) ? translate(locale, key as MessageKey) : templateId.replace(/_/g, " ");
+}
 
 export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
   layouts: Layout[];
@@ -13,7 +20,7 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
   onSelect: (id: string) => void;
   disabled?: boolean;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState("all");
@@ -25,6 +32,7 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
     if (group === "building" && !layout.building) return false;
     const text = searchText([layout.id, layout.name, layout.building?.name, layout.building?.label,
       layout.building ? `${layout.building.level}F` : "", layout.generation?.template_id,
+      ...(layout.generation ? LOCALES.map(({ code }) => formatName(layout.generation!.template_id, code)) : []),
       layout.generation?.requirements, layout.generation?.currency,
       ...(layout.generation?.reserved_areas ?? []).map((area) => area.label)].filter(Boolean).join(" "));
     return terms.every((term) => text.includes(term));
@@ -94,7 +102,7 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
           </div>
           {layout.building && <p className="mt-1 text-xs text-muted-foreground">{layout.building.name} · {t("buildingFloorPosition", { level: layout.building.level, count: layout.building.floor_count })} · {layout.building.label}</p>}
           <p className="mt-1 text-xs text-muted-foreground">
-            {[layout.generation?.template_id.replace(/_/g, " "), layout.generation?.currency,
+            {[layout.generation && formatName(layout.generation.template_id, locale), layout.generation?.currency,
               t(layout.status === "locked" ? "layoutSimulationSaved" : layout.status === "running" ? "layoutRunning" : "layoutDraft")].filter(Boolean).join(" · ")}
           </p>
           {layout.generation?.requirements && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{layout.generation.requirements}</p>}
