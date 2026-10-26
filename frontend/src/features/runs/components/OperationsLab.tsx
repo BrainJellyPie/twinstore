@@ -160,7 +160,8 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
     </div>
   );
   const costField = (key: keyof CostText, label: MessageKey) => (
-    <div className="space-y-1">
+    // Labels wrap to different heights side by side: the fields line up along the bottom.
+    <div className="flex flex-col justify-end gap-1">
       <label className="block font-medium" htmlFor={`${id}-${key}`}>{t(label)}</label>
       <Input id={`${id}-${key}`} inputMode="decimal" className="h-7" value={costs[key]} placeholder="0"
         onChange={(e) => setCosts({ ...costs, [key]: e.target.value })} aria-invalid={money(costs[key]) === null} />

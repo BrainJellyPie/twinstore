@@ -102,6 +102,8 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- The store-operations costs (a till hour, a refill round, a unit a day) line up
+  along one row even when their labels wrap to different lengths.
 - Layout problems the floor editor reports on save name racks as the editor
   shows them ("cannot reach rack 'Snacks 1' from the entrance", "'Drink 1'
   overlaps with 'Snacks 2'") instead of by internal id.
