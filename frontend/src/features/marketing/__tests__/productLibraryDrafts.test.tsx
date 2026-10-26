@@ -96,3 +96,11 @@ it("keeps a failed save visible and allows the same draft to be retried", async 
   await waitFor(() => expect(api.updatePackage).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
 });
+
+it("puts the saved name back when the name is emptied, since a pack needs one", async () => {
+  mount(); const input = screen.getByLabelText("Name") as HTMLInputElement;
+  fireEvent.change(input, { target: { value: "   " } });
+  fireEvent.blur(input);
+  expect(input.value).toBe("Original name");
+  expect(api.updatePackage).not.toHaveBeenCalled();
+});
