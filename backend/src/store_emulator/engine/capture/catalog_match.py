@@ -195,12 +195,12 @@ _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
 _NON_SELLING_PREFIX_RE = re.compile(
-    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cashback|coupon(?:\s+value)?|was|msrp|rrp)"
-    r"|할인액|절약|値引き)\s*:?\s*$",
+    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?|was|msrp|rrp)"
+    r"|할인액|절약|値引き)\s*(?:(?:up\s+to|at\s+least|as\s+much\s+as)\s*)?:?\s*$",
     re.IGNORECASE,
 )
 _SAVINGS_SUFFIX_RE = re.compile(
-    r"^(?:off\b|savings?\b|rebate\b|cashback\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
+    r"^(?:off\b|savings?\b|rebate\b|cash[\s-]*back\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
 )
 _MEASURE_UNIT = (
     r"(?:fl\.?\s*oz|(?:kilo|milli)?grams?|(?:milli|centi|deci)?lit(?:er|re)s?"

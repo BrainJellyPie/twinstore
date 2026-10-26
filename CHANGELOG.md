@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve qualified savings and cash-back tags without turning their amounts
+  into exact selling prices: `SAVE UP TO $1.00`, `SAVE AT LEAST £1.00` and
+  `$1.00 CASH BACK` remain estimated. Keep ordinary and explicitly stated
+  sale prices usable.
+
 - A layout that has no floor yet can be deleted from its Store & layout tab;
   one added by mistake could not be removed until a floor was built for it.
 - In the online stores' **Find a store or run**, Enter opens the first match and
