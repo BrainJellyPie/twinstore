@@ -32,12 +32,15 @@ def test_generated_population_uses_actual_labels_and_keeps_cache_separate(monkey
             schema = body["response_format"]["json_schema"]["schema"]
         else:
             system = next(m["content"] for m in reversed(body["messages"]) if m["role"] == "system")
-            schema = json.JSONDecoder().raw_decode(system[system.index('{'):])[0]
+            # The traffic prompt also contains a JSON shape example. Read the
+            # schema appended by Instructor, not the first JSON in the prompt.
+            schema = json.JSONDecoder().raw_decode(system.rsplit('matching this schema:', 1)[-1].lstrip())[0]
         fields = schema["properties"]
         if "identities" in fields:
             payload = dict(keywords=[], identities=identities, purposes=purposes)
         elif "hourly_profiles" in fields:
-            payload = {"hourly_profiles": [dict(hour=9, visitor_count=4, person_types=identities[:1] or ["shopper"])]}
+            assert set(fields["hourly_profiles"]["properties"]) == {"0"}
+            payload = {"hourly_profiles": {"0": dict(visitor_count=4, person_types=identities[:1] or ["shopper"])}}
         else:
             person_schema = fields["personas"]["items"]
             if "$ref" in person_schema:
