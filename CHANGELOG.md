@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep advertised price limits ("FROM $1.00", "UNDER $1.00", "1,000원부터")
+  from becoming exact captured selling prices. Preserve the printed label,
+  mark the fallback as estimated and retain existing matched-product prices.
+
 - Count complete Unicode characters in the online design chat's 1,200-character
   limit, matching the API and command palette. Pasting a long request no longer
   splits an emoji or cuts emoji-only input to half the allowed length.

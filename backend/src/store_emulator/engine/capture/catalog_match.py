@@ -207,6 +207,17 @@ _SAVINGS_SUFFIX_RE = re.compile(
     r"|(?:points?|pts?\.?|포인트|ポイント|积分|積分)(?:\s+earned)?[.!]?$"
     r"|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
 )
+_PRICE_LIMIT_PREFIX_RE = re.compile(
+    r"(?:\b(?:from|starting\s+(?:at|from|price)|as\s+low\s+as|at\s+(?:least|most)"
+    r"|up\s+to|under|over|below|above|(?:less|more)\s+than)"
+    r"|최저(?:가)?|최소|최대|最低(?:価格)?|最高(?:価格)?|[<>≤≥≦≧]=?)\s*:?\s*$",
+    re.IGNORECASE,
+)
+_PRICE_LIMIT_SUFFIX_RE = re.compile(
+    r"^(?:(?:and\s+(?:up|over|above)|or\s+(?:more|less))\b"
+    r"|(?:부터|이상|이하|미만|초과|から|以上|以下|未満|起)(?!\w)"
+    r"|[<>≤≥≦≧]=?\s*$|\+\s*$)", re.IGNORECASE,
+)
 _DEPOSIT_PREFIX_RE = re.compile(r"\bdeposit\s*:?\s*$", re.IGNORECASE)
 _DEPOSIT_INCLUDED_PREFIX_RE = re.compile(
     r"\b(?:incl(?:udes?|uded|uding)?\.?|with)\s+(?:(?:bottle|container)\s+)?deposit\s*:?\s*$",
@@ -280,6 +291,10 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
     price_context = [re.sub(r"[$€£¥₩¢원円]", "", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
                      for part in (before, after)]
     if _NON_SELLING_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
+        return None
+    if _PRICE_LIMIT_PREFIX_RE.search(price_context[0]) or _PRICE_LIMIT_SUFFIX_RE.search(price_context[1]):
+        # A minimum/maximum advertised price does not establish this product's
+        # exact selling price. Preserve the tag and use an estimated fallback.
         return None
     if (_DEPOSIT_PREFIX_RE.search(price_context[0]) and not _DEPOSIT_INCLUDED_PREFIX_RE.search(price_context[0])
             or _DEPOSIT_SUFFIX_RE.search(price_context[1])):
