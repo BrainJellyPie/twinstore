@@ -32,7 +32,7 @@ from store_emulator.domain.persona import AGE_GROUPS, GENDERS, Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Weekday
-from store_emulator.engine.generators.persona import Pace, generate_batched
+from store_emulator.engine.generators.persona import Pace, TradeAreaProfile, analyze_daily_traffic, generate_batched
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.generators.store_setup_writer import draft_store_setup
@@ -96,8 +96,9 @@ layout_requests = {
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-large-catalog", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
+    "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
@@ -131,28 +132,38 @@ elif args.case == "hypermarket":
     description = "동네 주민과 가족들이 식료품과 생활필수품을 구입하는 대형 슈퍼마켓"
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
     temperature=.5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
-    max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
+    max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith(("persona-", "traffic-")) else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
 send = httpx.AsyncClient.send
 calls = 0
+attempts = 0
 
 
 async def traced_send(self, request, *positional, **keywords):
-    global calls
+    global calls, attempts
     started = time.perf_counter()
-    response = await send(self, request, *positional, **keywords)
-    if request.url.host == endpoint.hostname:
-        await response.aread()
-        calls += 1
-        record = {"call": calls, "status": response.status_code, "seconds": round(time.perf_counter() - started, 3),
-            "request": json.loads(request.content), "response": response.json()}
-        for message in record["request"].get("messages", []):
+    local = request.url.host == endpoint.hostname
+    if local:
+        attempts += 1
+        attempt = attempts
+        payload = json.loads(request.content)
+        for message in payload.get("messages", []):
             if isinstance(message.get("content"), list):
                 for part in message["content"]:
                     if part.get("type") == "image_url":
                         part["image_url"] = {"url": "[input saved as image.png]"}
+        # Persist before waiting: timeout/disconnection must not erase the
+        # request that caused it. Keep image bytes in the image artifact only.
+        with (output / "requests.jsonl").open("a") as trace:
+            trace.write(json.dumps({"attempt": attempt, "request": payload}, ensure_ascii=False) + "\n")
+    response = await send(self, request, *positional, **keywords)
+    if local:
+        await response.aread()
+        calls += 1
+        record = {"call": calls, "attempt": attempt, "status": response.status_code,
+            "seconds": round(time.perf_counter() - started, 3), "request": payload, "response": response.json()}
         with (output / "http.jsonl").open("a") as trace:
             trace.write(json.dumps(record, ensure_ascii=False) + "\n")
         print(f"Call {calls}: HTTP {response.status_code}, {record['seconds']}s", flush=True)
@@ -396,6 +407,8 @@ try:
             issues.append(f"Expected hours {expected_hours}, received {(draft.open_hour, draft.close_hour)}")
         if args.case == "setup-night" and not draft.warnings:
             issues.append("Unsupported overnight hours must be shown for user correction")
+        if args.case != "setup-night" and draft.warnings:
+            issues.append("The supported or unspecified schedule acquired an unexpected warning")
         if draft.open_days != expected_days:
             issues.append("Opening days differ from the owner's description")
         if draft.currency != expected_currency:
@@ -406,6 +419,8 @@ try:
             issues.append("Supplied location was not retained")
         if not place_parts and any(word in (draft.name + draft.description).casefold() for word in ["campus", "캠퍼스"]):
             issues.append("Invented a campus location in the name or description")
+        if locale == "ko" and draft.description and not re.search(r"[가-힣]", draft.description):
+            issues.append("The requested Korean store description was written in another language")
         result.update(success=not issues, format_ok=not format_issues, facts_ok=len(issues) == len(format_issues), description=descriptions[args.case], draft=draft.model_dump(mode="json"), issues=issues)
     elif args.case.startswith("profile-draft-"):
         inputs = {
@@ -428,6 +443,34 @@ try:
         result.update(success=False if issues else None, structure_ok=True, automated_checks_ok=not issues,
             inputs=inputs, profile=profile, issues=issues,
             semantic_review="Inspect hours, products and unsupported claims manually; language-presence checks are not semantic validation.")
+    elif args.case.startswith("traffic-"):
+        # A supplied profile is the input to this stage; this is a real traffic
+        # request, not a claim to have run the upstream area or persona writers.
+        opening, closing = (0, 24) if args.case.startswith("traffic-24h") else (23, 24)
+        identities = ["local resident", "night shift worker", "commuter", "student"]
+        area = TradeAreaProfile(keywords=["neighborhood"], identities=identities, purposes=["buy snacks"])
+        source = "Neighborhood residents buy snacks and drinks at this small convenience store."
+        evidence = "Observed visitors: exactly one visitor in each open hour. Preserve these supplied hourly counts."
+        observed = {hour: 1 for hour in range(opening, closing)}
+        if args.case == "traffic-24h-varied":
+            observed = {hour: [0, 2, 5, 1][hour // 6] for hour in range(24)}
+        elif args.case == "traffic-last-hour-zero":
+            observed = {23: 0}
+        if args.case in {"traffic-24h-varied", "traffic-last-hour-zero"}:
+            evidence = "Observed visitors by opening-hour slot; preserve these supplied counts:\n" + "\n".join(
+                f"{hour:02d}:00–{hour + 1:02d}:00: {count} visitors" for hour, count in observed.items())
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            traffic = asyncio.run(analyze_daily_traffic(client, "Mapo-gu, Seoul, South Korea", source, area,
+                Weekday.MON, opening, closing, supplemental_summary=evidence))
+        issues = []
+        if [row.hour for row in traffic] != list(range(opening, closing)):
+            issues.append("Opening-hour slots are missing, duplicated, outside hours or reordered")
+        if any(row.visitor_count != observed.get(row.hour) for row in traffic):
+            issues.append("Observed hourly visitor counts were changed")
+        if any(row.visitor_count > 0 and (not row.person_types or any(label not in identities for label in row.person_types)) for row in traffic):
+            issues.append("Positive traffic lost its supplied customer types")
+        result.update(success=not issues, opening=opening, closing=closing, evidence=evidence, observed_counts=observed,
+            traffic=[row.model_dump(mode="json") for row in traffic], issues=issues)
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."
@@ -452,19 +495,26 @@ try:
             expected_hour, customer_count = 23, 12
             categories = ["drinks", "snacks"]
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
-        schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=expected_hour, close_hour=expected_hour + 1) for day in Weekday]
+        opening, closing, evidence = expected_hour, expected_hour + 1, ""
+        if args.case == "persona-24h":
+            opening, closing, budget = 0, 24, (0, 0)
+            profile = "동네 주민이 간식과 음료를 사는 24시간 편의점입니다."
+            evidence = "Observed visitors: exactly one visitor in each open hour. Preserve these supplied hourly counts."
+        schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=opening, close_hour=closing) for day in Weekday]
         estimates = {}
         persona_batch_size = args.persona_batch_size or customer_count
         with patch.object(httpx.AsyncClient, "send", traced_send):
             people = asyncio.run(generate_batched(client, address, profile, schedules, seed=4,
-                batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency,
+                batch_size=persona_batch_size, max_concurrent=1, categories=categories, currency=currency, supplemental_summary=evidence,
                 pace=lambda usual: Pace(daily_cap=customer_count, batch_size=persona_batch_size, sample_cap=customer_count), estimates=estimates))
         written = [person for person in people if not person.twin_of]
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if any(person.day != Weekday.MON or person.arrival_hour != expected_hour for person in people):
-            issues.append("Arrival outside the open hour")
+        if any(person.day != Weekday.MON or not opening <= person.arrival_hour < closing for person in people):
+            issues.append("Arrival outside the open hours")
+        if args.case == "persona-24h" and Counter(person.arrival_hour for person in people) != {hour: 1 for hour in range(24)}:
+            issues.append("The full population did not preserve one observed visitor in each of the 24 hours")
         if categories and any(category not in categories for person in people for category in person.preferred_categories):
             issues.append("Preference outside the supplied category list")
         if categories and any(not person.preferred_categories for person in people):
@@ -531,7 +581,8 @@ try:
         (output / "store.json").write_text(stocked.model_dump_json(indent=2))
 except Exception as error:
     result.update(success=False, error=repr(error))
-result.update(seconds=round(time.perf_counter() - started, 2), calls=calls, usage=client.get_usage().model_dump(mode="json"))
+result.update(seconds=round(time.perf_counter() - started, 2), calls=calls, attempted_calls=attempts,
+              usage=client.get_usage().model_dump(mode="json"))
 (output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
-print(json.dumps({"output": str(output), **{key: result[key] for key in ("success", "seconds", "calls", "usage")}}, indent=2))
+print(json.dumps({"output": str(output), **{key: result[key] for key in ("success", "seconds", "calls", "attempted_calls", "usage")}}, indent=2))
 raise SystemExit(0 if result["success"] else 1)

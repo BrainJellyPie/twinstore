@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Bound generated hourly traffic to the opening slots, using numbered entries
+  instead of a repeating array. Preserve explicit clock mapping in caches and
+  identify missing/extra slot keys for correction. CPU probes now retain all
+  24 observed hourly counts in structured-output mode; plain JSON can still
+  misread visitor counts, and generated customer budgets still need review.
+
+- A shopper's thought on the store floor wraps into a small card of at most
+  three lines; a model's long thought ran as one line across the store and
+  under the playback panel. Purchases still read on one line. Shoppers' group
+  labels sit on small solid pills and bubbles are opaque, so where shoppers
+  stand close the nearer one covers the farther instead of their text printing
+  over each other ("MCorporate executivesrs").
+- A shopper's facts (came for, budget, spent) wrap to two lines instead of
+  cutting off at one ("Spent: $35.73 · 7 i…").
+
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
   its worker runs; repeated starts and stopping during preparation remain safe.

@@ -262,7 +262,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-lg bg-foreground/[0.035] px-1.5 py-1">
       <div className="text-[0.68rem] text-muted-foreground">{label}</div>
-      <div className="num truncate text-[0.72rem] font-medium" title={value}>{value}</div>
+      <div className="num line-clamp-2 text-[0.72rem] leading-snug font-medium break-words" title={value}>{value}</div>
     </div>
   );
 }

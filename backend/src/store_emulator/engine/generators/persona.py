@@ -12,7 +12,8 @@ from typing import Annotated, Self, cast
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, ValidationInfo, create_model, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, JsonValue, StringConstraints, ValidationInfo, create_model, field_validator, model_validator
+from pydantic_core import CoreSchema
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
@@ -101,29 +102,46 @@ class DailyTrafficResult(BaseModel):
 def traffic_response_model(open_hour: int, close_hour: int, *, identities: list[str] | None = None) -> type[DailyTrafficResult]:
     """Let the harness assign clock values to the model's ordered open-slot estimates."""
     hours = list(range(open_hour, close_hour))
-    row_schema = HourlyProfile.model_json_schema()
-    row_properties = row_schema["properties"]
-    row_properties.pop("hour")
-    # A separately generated schema's alias reference does not belong to the
-    # enclosing model's definition registry. Keep its label constraint inline.
-    label = row_properties["person_types"]["items"]
-    if "$ref" in label:
-        row_properties["person_types"]["items"] = row_schema["$defs"][label["$ref"].rsplit("/", 1)[1]]
+    keys = [str(i) for i in range(len(hours))]
     choices = list(dict.fromkeys(identities or ["shopper"])) if identities is not None else []
-    if choices:
-        row_properties["person_types"]["items"]["enum"] = choices
-    constraints: dict[str, JsonValue] = {
-        "minItems": len(hours), "maxItems": len(hours),
-        "items": {"type": "object", "properties": row_properties,
-                  "required": ["visitor_count", "person_types"], "additionalProperties": False},
-    }
 
     class SlotTrafficResult(DailyTrafficResult):
-        hourly_profiles: list[HourlyProfile] = Field(max_length=24, json_schema_extra=constraints)
+        @classmethod
+        def __get_pydantic_json_schema__(cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler) -> dict[str, JsonValue]:
+            schema = handler(core_schema)
+            properties = cast(dict[str, JsonValue], schema["properties"])
+            rows = cast(dict[str, JsonValue], properties["hourly_profiles"])
+            ref = cast(dict[str, JsonValue], rows["items"])
+            # Resolve the registered row, rather than inlining its identity
+            # vocabulary 24 times in a plain-JSON provider's prompt.
+            row = handler.resolve_ref_schema(ref)
+            row_properties = cast(dict[str, JsonValue], row["properties"])
+            row_properties.pop("hour")
+            row["required"] = ["visitor_count", "person_types"]
+            row["additionalProperties"] = False
+            if choices:
+                types = cast(dict[str, JsonValue], row_properties["person_types"])
+                handler.resolve_ref_schema(cast(dict[str, JsonValue], types["items"]))["enum"] = choices
+            properties["hourly_profiles"] = {
+                "type": "object", "properties": {key: ref for key in keys},
+                "required": [key for key in keys], "additionalProperties": False,
+            }
+            return schema
 
         @field_validator("hourly_profiles", mode="before")
         @classmethod
         def _assign_hours(cls, value: object) -> object:
+            if isinstance(value, dict):
+                entries = cast(dict[str, object], value)
+                if set(entries) != set(keys):
+                    missing = [key for key in keys if key not in entries]
+                    unknown = [str(key) for key in entries if key not in keys]
+                    raise ValueError(f"Return only these numbered opening slot keys: {keys}. "
+                                     f"Missing keys: {missing}; unknown keys: {unknown}. "
+                                     "Remove unknown entries. The closing boundary is not another opening slot.")
+                value = [entries[key] for key in keys]
+                if any(isinstance(row, dict) and "hour" in row for row in value):
+                    raise ValueError("Do not combine numbered opening slots with explicit hour fields.")
             if not isinstance(value, list):
                 return value
             rows = cast(list[object], value)
@@ -284,10 +302,15 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
 아래 제공된 identity 풀(고객 유형 목록)을 참고하여, **{day_label}**의 시간대별 방문 트래픽을 예측하세요.
 
 규칙:
-- hourly_profiles: 영업 슬롯 **H ∈ [{open_hour}, {close_hour})**를 시간순으로 한 번씩 작성.
+- hourly_profiles: an object with the supplied numbered slot keys ("0", "1", ...), not an array.
+  영업 슬롯 **H ∈ [{open_hour}, {close_hour})**를 시간순으로 한 번씩 작성.
   각 행은 visitor_count와 person_types만 포함. hour는 출력하지 마세요. 시스템이 순서대로 시간을 부여합니다.
   아래 제공된 슬롯 목록의 각 줄마다 반드시 한 행씩 반환하세요. 방문객이 없는 슬롯도 visitor_count=0, person_types=[]로 포함하세요 (null이 아닌 빈 목록).
   각 H는 H:00–(H+1):00 슬롯입니다. 예: 영업 17~18시면 한 행만 반환하며 이 행은 H=17입니다.
+  Return values, not schema definitions. Shape example only:
+  {{"hourly_profiles":{{"0":{{"visitor_count":2,"person_types":[]}}}}}}
+  Use the actual supplied slots and evidence; the example is not traffic data.
+  Do not output properties, $defs, required or type definitions.
 - visitor_count: 해당 시간대의 예상 방문객 수 (0 이상 정수).
   하루 총 방문객 수는 매장 입지/규모/상권 특성과 요일에 맞게 합리적으로 추론하여 결정.
   특정 시간대에 몰리는 자연스러운 형상(피크/오프피크/식사시간 등)을 반드시 반영하세요.
@@ -376,7 +399,7 @@ async def analyze_daily_traffic(
         f"Address: {address}\nCustomer profile: {customer_profile}\n"
         f"요일: {day_label}\n영업: {open_hour}~{close_hour}시\n\n"
         f"## identity 목록\n{identity_list}\n\n"
-        f"## 영업 슬롯 (이 순서로 정확히 {close_hour - open_hour}행)\n"
+        f"## 영업 슬롯 (각 번호가 hourly_profiles의 키; 정확히 {close_hour - open_hour}개)\n"
         + "\n".join(f"[{i}] {hour:02d}:00–{hour + 1:02d}:00" for i, hour in enumerate(range(open_hour, close_hour)))
     )
     # Labels alone cannot carry quantities, weekday mixes or peak hours from the

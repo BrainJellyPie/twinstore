@@ -43,7 +43,8 @@ function SpeechBubble({ event }: SpeechBubbleProps) {
       : isPay
         ? `💳 ${event.description || t("bubblePay")}`
         : event.description;
-  const bg = isBuy ? "rgba(255, 240, 200, 0.95)" : isPay ? "rgba(220, 240, 255, 0.95)" : "rgba(255,255,255,0.92)";
+  // Opaque: where shoppers stand close, the nearer bubble covers the farther one instead of mixing their text.
+  const bg = isBuy ? "#fff0c8" : isPay ? "#dcf0ff" : "#ffffff";
   const border = isBuy ? "#d4a42a" : isPay ? "#3b82c4" : "#ccc";
   return (
     <Html position={[0, CHARACTER_TARGET_HEIGHT + 0.55, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
@@ -56,7 +57,12 @@ function SpeechBubble({ event }: SpeechBubbleProps) {
           fontSize: 11,
           color: "#333",
           boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
-          whiteSpace: "nowrap",
+          // A purchase reads on one line; a thought (a model can write a long one) wraps and stops at three lines
+          // instead of running across the store and under the panels.
+          ...(isBuy || isPay ? { whiteSpace: "nowrap" } : {
+            width: "max-content", maxWidth: 220, whiteSpace: "normal", lineHeight: 1.3,
+            display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+          }),
         }}
       >
         {text}
@@ -310,7 +316,11 @@ export function AssetPersona({
             fontWeight: 700,
             color,
             whiteSpace: "nowrap",
-            textShadow: "0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff",
+            // A solid pill, so two shoppers' labels at the same spot stack instead of printing over each other.
+            background: "#ffffff",
+            padding: "0 4px",
+            borderRadius: 4,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
             opacity: dimmed ? 0.4 : 1,
           }}
         >
