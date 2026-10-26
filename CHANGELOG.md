@@ -100,6 +100,8 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- A number field's hint ("Leave empty to keep", "비워 두면 유지") is set in the
+  text font; in the number font Korean and Japanese hints were spaced apart.
 - A shopper row's trip line wraps only between its parts, so "5 stops" (in
   Korean "5곳 들름") or "2.7 min" is never split across two lines.
 
