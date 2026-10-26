@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Do not turn loyalty point counts into cash selling prices during shelf
+  capture. Preserve point labels and mark fallback prices as estimated;
+  explicit cash prices such as "$1.00 WITH POINTS" still apply.
+
 - Finishing an optimization save after closing its dialog, leaving the
   screen or selecting another layout no longer replaces the current layout
   selection. The saved result still refreshes its original store's list.
