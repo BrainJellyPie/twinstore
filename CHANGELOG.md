@@ -8,6 +8,24 @@
   Package reading also keeps those counts when filtering catalog matches,
   so a visible multipack cannot be linked to a single-container product.
 
+- **New store** shows the store type it starts with, or the one a template
+  sets, by its name in the selected language ("편의점", "Convenience store")
+  instead of the internal id "convenience"; the id is still what is saved
+  until the field is edited. Keep typed text literal even when a partial
+  word equals an id, so typing `cafeteria` cannot change `cafe` into a
+  translated category halfway through.
+- On a phone or narrow window the marketing studio scrolls as one page: a
+  test's results and the file reviews were each a small scroll box under the
+  header and tabs (about 200 px tall on a phone), and the tests list keeps a
+  short scrolling list of its own. Side by side on a wide screen nothing
+  changes.
+- **Protocols** moves focus to the form's heading when **New protocol**
+  opens it and to the saved protocol after **Record original plan** or an
+  amendment; the button pressed was replaced and focus fell back to the top
+  of the page.
+- **Field pilots** offers **Open Staff scripts** next to its note that pilots
+  are prepared from a completed script test; the note named the place but
+  gave no way there.
 - When a shelf test, concept test, conjoint study, staff-script test or a
   vision-shopper A/B test cannot start for want of a model, the studio offers
   the model setup (start or download the local model, or open Model settings)

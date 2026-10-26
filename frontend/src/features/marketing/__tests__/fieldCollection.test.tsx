@@ -102,3 +102,12 @@ it("shows load failures rather than an empty successful checklist", async () => 
   expect((await screen.findByRole("alert")).textContent).toContain("Field pilot not found");
   expect(screen.queryByText(/No follow-up checks match/)).toBeNull();
 });
+
+it("points to Staff scripts while there is no script test to prepare a pilot from", async () => {
+  vi.mocked(listPilots).mockResolvedValue([]);
+  const openScripts = vi.fn();
+  render(<FieldPilots projectId="p" onOpenScripts={openScripts} />, { wrapper });
+  expect(await screen.findByText("No field pilots yet.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Open Staff scripts" }));
+  expect(openScripts).toHaveBeenCalledTimes(1);
+});

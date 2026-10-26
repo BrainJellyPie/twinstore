@@ -8,6 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 
 type Translate = ReturnType<typeof useI18n>["t"];
 const STAGES: [DataStage, MessageKey][] = [["not_collected", "mkStageNotCollected"], ["collected_unseen", "mkStageCollectedUnseen"], ["results_seen", "mkStageResultsSeen"]];
@@ -81,7 +82,8 @@ function ProtocolEditor({ projectId, view, requestId = "", onCreated, onAmended 
   const valid = stage !== "" && plan.title.trim() && TEXT_FIELDS.every(([key]) => plan[key].trim()) && /^\d+$/.test(sample) && Number(sample) >= 1 && Number(sample) <= 1_000_000 && (!view || reason.trim());
   const error = create.error?.message || amend.error?.message || audit.error?.message;
   return <div className="space-y-4 rounded-2xl border bg-card p-4 text-sm">
-    <h3 className="font-semibold">{view ? t("mkAmendTitle", { revision: String(latest!.revision) }) : t("mkRecordTitle")}</h3>
+    {/* Opens in place of the button pressed (New protocol, Record, a saved protocol): focus moves here. */}
+    <h3 ref={focusOnMount} tabIndex={-1} className="rounded-md font-semibold outline-offset-4">{view ? t("mkAmendTitle", { revision: String(latest!.revision) }) : t("mkRecordTitle")}</h3>
     <p className="text-xs text-muted-foreground">{t("mkProtocolIntro")}</p>
     <fieldset disabled={busy} className="space-y-3">
       <label className="block">{t("mkProtocolTitle")}<Input maxLength={120} value={plan.title} onChange={(e) => setPlan({ ...plan, title: e.target.value })} /></label>

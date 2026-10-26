@@ -1121,6 +1121,7 @@ export const studioMessages = {
   mkPilotClosed: ["Closed", "종료", "已关闭", "終了", "Cerrado", "Clôturé"],
   mkPilotCollecting: ["Collecting", "수집 중", "收集中", "収集中", "Recogiendo", "Collecte en cours"],
   mkLoadingPilots: ["Loading pilots…", "파일럿 불러오는 중…", "正在加载试点…", "パイロットを読み込み中…", "Cargando pilotos…", "Chargement des pilotes…"],
+  mkOpenStaffScripts: ["Open Staff scripts", "직원 응대 멘트 열기", "打开店员话术", "接客トークを開く", "Abrir guiones del personal", "Ouvrir les scripts du personnel"],
   mkNoPilots: ["No field pilots yet.", "아직 현장 파일럿이 없습니다.", "还没有实地试点。", "まだ現場パイロットはありません。", "Aún no hay pilotos de campo.", "Aucun pilote terrain pour l’instant."],
   mkCollectionChecks: ["Collection checks", "수집 점검", "收集检查", "収集チェック", "Comprobaciones de recogida", "Contrôles de collecte"],
   mkObservationsResults: ["Observations and results", "관찰과 결과", "观察与结果", "観察と結果", "Observaciones y resultados", "Observations et résultats"],
