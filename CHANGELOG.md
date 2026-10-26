@@ -103,6 +103,10 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- A layout without a floor yet opens on its setup steps (Step 1: Floor
+  configuration), and the empty floor and the Store & layout tab both offer
+  **Go to Step 1**. Coming from another layout's store tab, a new empty layout
+  showed only "Add a floor first to see store info." with no way forward.
 - **Rack details** marks a product without a picture with a small icon (named
   "no image" for screen readers) instead of "no img" broken over two lines.
 - Every Tab stop on the store screen shows where focus is: a results or

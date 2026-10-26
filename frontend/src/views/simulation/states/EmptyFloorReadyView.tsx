@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useSimulationStore } from "@/stores/simulationStore";
 import type { SetupDetail } from "@/shared/api/client";
@@ -24,6 +24,9 @@ export function EmptyFloorReadyView({
 }: { pid: string; setupId: string; setup: SetupDetail; personas: Persona[]; location: string } & LayoutTabProps) {
   const activeTab = useSimulationStore((s) => s.activeTab);
   const setActiveTab = useSimulationStore((s) => s.setActiveTab);
+
+  // A layout without a floor has only its setup steps to show: open on them, not on an empty store tab.
+  useEffect(() => { if (useSimulationStore.getState().activeTab === "settings") setActiveTab("dashboard"); }, [setup.id, setActiveTab]);
 
   const [busy, setBusy] = useState(false);
   const onBusyChange = useCallback((b: boolean) => setBusy(b), []);

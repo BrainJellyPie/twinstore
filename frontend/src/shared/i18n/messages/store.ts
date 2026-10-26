@@ -5,6 +5,7 @@ export const storeMessages = {
   spResults: ["Results", "결과", "结果", "結果", "Resultados", "Résultats"],
   spShoppers: ["Shoppers", "고객", "顾客", "買い物客", "Compradores", "Clients"],
   spStoreLayout: ["Store & layout", "매장 및 배치", "门店与布局", "店舗とレイアウト", "Tienda y plano", "Magasin et plan"],
+  emptyFloorStart: ["Go to Step 1: Floor configuration", "1단계: 매장 배치 구성으로 이동", "前往第 1 步：布局配置", "ステップ1：フロア構成へ", "Ir al paso 1: configuración del plano", "Aller à l’étape 1 : configuration du plan"],
   emptyFloor: ["Your floor is empty.", "매장 배치가 비어 있습니다.", "布局还是空的。", "フロアはまだ空です。", "Tu plano está vacío.", "Votre plan est vide."],
 
   // Compass and shelf sides
