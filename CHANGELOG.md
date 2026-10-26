@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A captured product's facings stay between 1 and 24, the most the server
+  saves. The plus button used to go past 24, and saving then failed. At either
+  limit the button shows as unavailable but keeps keyboard focus, and screen
+  readers announce the new count.
+
 - Online variants now show shoppers the original store's name. A version
   named "Glow Room – no ads" used to put that label on the page itself (logo,
   tab title, search box and web address), so the shoppers of one arm saw a

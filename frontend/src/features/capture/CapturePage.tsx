@@ -297,6 +297,7 @@ function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPi
 
 // ── Product list ──────────────────────────────────────────────────────────
 
+const MAX_FACINGS = 24;  // the most the server saves for one product
 interface Draft { id: string; name: string; brand: string; size: string; category: string; price: string; facings: number; level: number; estimated: boolean; confidence: number }
 
 const toDraft = (it: CaptureItem, currency: string): Draft => ({
@@ -369,9 +370,10 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
                         title={d.estimated ? t("capEstimatedPriceTitle") : undefined} />
                     </div>
                     <div className="flex items-center justify-end gap-1">
-                      <button type="button" aria-label={t("capFewerFacings", { name: d.name || t("capProductName") })} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: Math.max(1, d.facings - 1) })}><Minus className="size-3" /></button>
-                      <span className="w-12 text-center tabular-nums">{d.facings}×</span>
-                      <button type="button" aria-label={t("capMoreFacings", { name: d.name || t("capProductName") })} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: d.facings + 1 })}><Plus className="size-3" /></button>
+                      {/* At a limit the button stays focusable, so pressing it repeatedly does not drop keyboard focus. */}
+                      <button type="button" aria-label={t("capFewerFacings", { name: d.name || t("capProductName") })} aria-disabled={d.facings <= 1} className="rounded-md border p-0.5 hover:bg-muted aria-disabled:opacity-40 aria-disabled:hover:bg-transparent" onClick={() => patch(d.id, { facings: Math.max(1, d.facings - 1) })}><Minus className="size-3" /></button>
+                      <span className="w-12 text-center tabular-nums" aria-live="polite">{d.facings}×</span>
+                      <button type="button" aria-label={t("capMoreFacings", { name: d.name || t("capProductName") })} aria-disabled={d.facings >= MAX_FACINGS} className="rounded-md border p-0.5 hover:bg-muted aria-disabled:opacity-40 aria-disabled:hover:bg-transparent" onClick={() => patch(d.id, { facings: Math.min(MAX_FACINGS, d.facings + 1) })}><Plus className="size-3" /></button>
                     </div>
                   </div>
                   {(d.brand || d.size || d.confidence > 0) && (
