@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep bare product identifiers, batch numbers and marked expiry/manufacture
+  dates from becoming exact captured selling prices. Preserve their printed
+  text and existing product prices; explicit currency prices stay usable.
+
 - Keep generated customer preferences within the supplied department list in
   both the model grammar and response/cache validation. Repair unknown labels
   before accepting a customer; preserve browsing and inference when no list is supplied.

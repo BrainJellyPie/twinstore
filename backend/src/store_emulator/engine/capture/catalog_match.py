@@ -218,6 +218,14 @@ _PRICE_LIMIT_SUFFIX_RE = re.compile(
     r"|(?:부터|이상|이하|미만|초과|から|以上|以下|未満|起)(?!\w)"
     r"|[<>≤≥≦≧]=?\s*$|\+\s*$)", re.IGNORECASE,
 )
+_REFERENCE_NUMBER_PREFIX_RE = re.compile(
+    r"(?:\b(?:sku|upc|ean|gtin|(?:lot|batch|serial|model)(?:\s+(?:no\.?|number|code))?"
+    r"|(?:item|article|product)\s+(?:no\.?|number|code)"
+    r"|exp(?:iry|ires?|iration)?(?:\s+date)?|best\s+(?:before|by)|use\s+by|sell\s+by"
+    r"|mfg(?:\s+date)?|manufactur(?:ed|ing)(?:\s+(?:date|on))?)"
+    r"|상품(?:번호|코드)|제품(?:번호|코드)|제조(?:일자|일|번호)|유통기한|소비기한"
+    r"|賞味期限|消費期限|製造(?:年月日|日)|商品(?:番号|コード))\s*[:#]?\s*$", re.IGNORECASE,
+)
 _DEPOSIT_PREFIX_RE = re.compile(r"\bdeposit\s*:?\s*$", re.IGNORECASE)
 _DEPOSIT_INCLUDED_PREFIX_RE = re.compile(
     r"\b(?:incl(?:udes?|uded|uding)?\.?|with)\s+(?:(?:bottle|container)\s+)?deposit\s*:?\s*$",
@@ -307,6 +315,9 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
     cash_unit = (any(symbol in normalized for symbol in "$€£¥₩¢원円")
                  or _PRICE_CURRENCY_CODE_RE.search(normalized) is not None
                  or re.search(r"\bcents?\b", normalized, re.IGNORECASE) is not None)
+    if not cash_unit and _REFERENCE_NUMBER_PREFIX_RE.search(before):
+        # Identifiers and expiry/manufacture dates do not establish a selling price.
+        return None
     if not cash_unit and (_MEASURE_QUANTITY_RE.match(price_context[1]) or _PACK_COUNT_RE.search(normalized)):
         # A bare size/count (500 ml, 6 PACK) supplies no price or currency.
         # Explicit cash amounts such as "$6 PACK" still describe selling prices.
