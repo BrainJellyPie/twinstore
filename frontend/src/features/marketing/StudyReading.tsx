@@ -20,6 +20,7 @@ import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 import { formatPercent } from "@/shared/utils/money";
 
@@ -71,7 +72,7 @@ function StudyReadingContent({ projectId, study, jobId, answers }: StudyReadingP
     <select value={model} onChange={(e) => setModel(e.target.value)} disabled={busy}
       className="h-8 max-w-[11rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("mkReadingModel")}>
       <option value="">{t("studioAppTextModel")}</option>
-      {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+      {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
     </select>
   );
 

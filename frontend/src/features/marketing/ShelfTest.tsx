@@ -27,6 +27,7 @@ import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, majorUnitText, minorUnitDivisor, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 import { LiftChart } from "./charts";
@@ -237,7 +238,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         </div>
         <select value={model} onChange={(e) => setModel(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2.5 text-sm" aria-label={t("studioVisionModel")}>
           <option value="">{t("studioAppVisionModel")}</option>
-          {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+          {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
         </select>
       </section>
 

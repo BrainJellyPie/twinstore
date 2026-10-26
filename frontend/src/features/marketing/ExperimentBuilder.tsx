@@ -15,6 +15,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 
@@ -322,7 +323,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
           {engine === "vlm" && (
             <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-sm" value={model} onChange={(e) => setModel(e.target.value)} aria-label={t("studioVisionModel")}>
               <option value="">{t("studioAppVisionModel")}</option>
-              {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+              {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
             </select>
           )}
         </div>

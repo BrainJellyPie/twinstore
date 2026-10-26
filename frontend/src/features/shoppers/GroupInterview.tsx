@@ -13,6 +13,7 @@ import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { NeedsModel } from "@/features/settings/NeedsModel";
@@ -115,7 +116,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
         <div className="flex items-center gap-2">
           <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("model")}>
             <option value="">{t("interviewAppModel")}</option>
-            {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+            {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
           </select>
           <Button size="sm" disabled={!question.trim() || ask.isPending} onClick={() => ask.mutate()}>
             {ask.isPending ? <Loader2 className="size-4 animate-spin" /> : <UsersRound className="size-4" />} {t("groupAsk", { count: askedSize })}

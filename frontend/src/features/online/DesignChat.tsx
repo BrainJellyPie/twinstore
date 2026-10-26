@@ -17,6 +17,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { useI18n } from "@/shared/i18n/i18n";
+import { modelLabel } from "@/shared/i18n/providerLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 
@@ -186,7 +187,7 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <select value={model} onChange={(e) => setModel(e.target.value)} className="h-7 min-w-0 rounded-lg border bg-card/60 px-1.5" aria-label={t("model")}>
             <option value="">{t("interviewAppModel")}</option>
-            {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+            {models.map((m) => <option key={m.ref} value={m.ref}>{modelLabel(m.ref, m.label, t)}</option>)}
           </select>
           {turns.length > 0 && (
             <button type="button" onClick={() => onTurns(() => [])} className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">

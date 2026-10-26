@@ -14,6 +14,11 @@
   captured selling prices. Preserve the printed tag, estimated-price review
   and existing product prices; limited-offer cash prices remain usable.
 
+- Model pickers and **Settings → Model providers** show the local model and
+  the self-hosted servers in the selected language ("llama.cpp 서버 ·
+  llama-server에 불러온 모델" in Korean), instead of always in English. Brand
+  names and names you gave a server stay as they are.
+
 - The Area map key's note on rings and lines no longer starts with a stray
   "·" when it wraps onto its own line.
 
