@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { TableProperties } from "lucide-react";
 import type { Store, Persona } from "@/shared/types/domain";
 import type { RunSummary } from "@/shared/api/client";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/shared/components/ui/sheet";
+import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { RackDetailView } from "./RackDetailView";
@@ -19,21 +21,6 @@ const CUSTOMER_TABS: { value: CustomerTab; label: MessageKey }[] = [
   { value: "purpose", label: "kpiPurpose" },
   { value: "age", label: "storeTabAgeGroup" },
   { value: "gender", label: "kpiGender" },
-];
-
-// Category-marker dots — 10 well-separated hues from Tailwind's default 500 palette,
-// theme-independent for stable visual differentiation.
-const DOT_COLORS = [
-  "#3b82f6", // blue-500
-  "#10b981", // emerald-500
-  "#f59e0b", // amber-500
-  "#f43f5e", // rose-500
-  "#8b5cf6", // violet-500
-  "#06b6d4", // cyan-500
-  "#f97316", // orange-500
-  "#d946ef", // fuchsia-500
-  "#84cc16", // lime-500
-  "#6366f1", // indigo-500
 ];
 
 interface Props {
@@ -157,19 +144,25 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
             <p className="py-3 text-center text-xs text-muted-foreground">{t("dashNoData")}</p>
           ) : (
             <>
-              <ul className="flex flex-col gap-1.5">
-                {sortedEntries.map(([label, count], i) => (
-                  <li key={label} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span
-                        className="inline-block size-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: DOT_COLORS[i % DOT_COLORS.length] }}
-                      />
-                      <span className="truncate">{tab === "age" || tab === "gender" ? personaLabel(label, t) : label}</span>
-                    </span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">{count}</span>
-                  </li>
-                ))}
+              {/* One hue: the bar is each group's size against the largest, the figure its share of everyone. */}
+              <ul className="flex flex-col gap-2">
+                {sortedEntries.map(([label, count]) => {
+                  const name = tab === "age" || tab === "gender" ? personaLabel(label, t) : label;
+                  return (
+                    <li key={label} className="text-xs">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="truncate" title={name}>{name}</span>
+                        <span className="shrink-0 tabular-nums">
+                          {count.toLocaleString(locale)}
+                          <span className="ml-1.5 inline-block w-8 text-right text-muted-foreground">{count / total < 0.005 ? "<1" : Math.round((count / total) * 100)}%</span>
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-foreground/[0.06]" aria-hidden>
+                        <div className="h-full rounded-full" style={{ width: `${(count / sortedEntries[0]![1]) * 100}%`, background: "var(--viz-1)" }} />
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
               <div className="mt-2 flex items-center justify-between border-t pt-2 text-xs font-medium">
                 <span>{days > 1 ? t("storeTabTotalDays", { days }) : t("storeTabTotal")}</span>
@@ -203,12 +196,9 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
             />
           )}
           <SheetTrigger asChild>
-            <button
-              type="button"
-              className="mt-2 text-xs text-primary hover:underline"
-            >
-              {t("storeTabViewDetail")}
-            </button>
+            <Button type="button" variant="outline" size="sm" className="mt-2 h-8 gap-1.5 text-xs">
+              <TableProperties className="size-3.5" aria-hidden /> {t("storeTabViewDetail")}
+            </Button>
           </SheetTrigger>
           {projectId && setupId && <LayoutEditInWords key={setupId} projectId={projectId} setupId={setupId} />}
         </section>
