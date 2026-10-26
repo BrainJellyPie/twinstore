@@ -72,7 +72,7 @@ def test_only_changed_thinking_policy_separates_old_cached_answers(tmp_path, mod
         cache_dir=str(tmp_path), structured_output=structured))
     messages = [{"role": "user", "content": "Hello"}]
     old_key = hashlib.sha256(json.dumps({"ollama_finish_reason": "native-v1", "ollama_context": "preserve-context-v2",
-        "structured_parser": "final-think-v2", "structured_output": structured,
+        "structured_parser": "unique-json-v3", "structured_output": structured,
         "model": client.model, "api_base": client.api_base,
         "temperature": client.temperature, "max_tokens": client.max_tokens, "seed": client._effective_seed(None),
         "schema": Reply.model_json_schema(), "messages": messages}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
