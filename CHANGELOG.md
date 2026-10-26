@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Field pilots** offers **Open Staff scripts** next to its note that pilots
+  are prepared from a completed script test; the note named the place but
+  gave no way there.
 - When a shelf test, concept test, conjoint study, staff-script test or a
   vision-shopper A/B test cannot start for want of a model, the studio offers
   the model setup (start or download the local model, or open Model settings)

@@ -219,7 +219,10 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
         </div>
       </header>
 
-      {tab === "priceChecks" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><PriceChecks key={projectId} projectId={projectId} /></div> : tab === "protocols" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
+      {tab === "priceChecks" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><PriceChecks key={projectId} projectId={projectId} /></div> : tab === "protocols" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} onOpenScripts={() => {
+        setTab("pitch");  // focus follows to the tab it opened, as when the tab is chosen with the keyboard
+        tabRow.current?.querySelectorAll<HTMLElement>('[role="tab"]')[MARKETING_TOOLS.findIndex((item) => item.id === "pitch")]?.focus();
+      }} /></div> : tab === "products" ? (
         <div className="min-h-64 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} setupId={activeSetup} /></div>
       ) : (
         <div className="grid grid-cols-1 min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">

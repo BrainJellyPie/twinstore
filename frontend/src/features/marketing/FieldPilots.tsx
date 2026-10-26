@@ -21,7 +21,8 @@ type Translate = ReturnType<typeof useI18n>["t"];
 const percent = (n: number | null, t: Translate) => n == null ? t("studioUnknown") : `${(n * 100).toFixed(1)}%`;
 const points = (n: number | null, t: Translate) => n == null ? t("mkNotAvailable") : t("studioPp", { value: `${n > 0 ? "+" : ""}${(n * 100).toFixed(1)}` });
 
-export function FieldPilots({ projectId, source }: { projectId: string; source?: PitchReport }) {
+/** `onOpenScripts`: where pilots come from, offered while there is no script test to prepare one from. */
+export function FieldPilots({ projectId, source, onOpenScripts }: { projectId: string; source?: PitchReport; onOpenScripts?: () => void }) {
   const { t } = useI18n();
   const [selected, setSelected] = useState("");
   const [mode, setMode] = useState<"collection" | "results">("collection");
@@ -34,7 +35,10 @@ export function FieldPilots({ projectId, source }: { projectId: string; source?:
     <p className="text-sm text-muted-foreground">{t("mkPilotsIntro")}</p>
     {source ? <details><summary className="cursor-pointer text-sm font-medium">{t("mkPreparePilot")}</summary>
       <PilotBuilder projectId={projectId} source={source} onCreated={selectPilot} />
-    </details> : <p className="text-sm text-muted-foreground">{t("mkPilotsHowTo")}</p>}
+    </details> : <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <p className="min-w-0 flex-1 basis-80 text-sm text-muted-foreground">{t("mkPilotsHowTo")}</p>
+      {onOpenScripts && <Button variant="outline" size="sm" onClick={onOpenScripts}>{t("mkOpenStaffScripts")}</Button>}
+    </div>}
     {list.error && <p role="alert" className="text-sm text-destructive">{list.error.message}</p>}
     <div className="flex flex-wrap gap-2">{pilots.map((p) => <Button key={p.pilot_id} variant={selected === p.pilot_id ? "default" : "outline"} onClick={() => selectPilot(p.pilot_id)}>
       {p.name} · {p.enrolled}/{p.planned} · {p.finalized_at ? t("mkPilotClosed") : t("mkPilotCollecting")}
