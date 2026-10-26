@@ -157,7 +157,7 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
       <table className="w-full min-w-[640px] text-xs">
         <thead className="text-muted-foreground">
           <tr className="border-b">
-            <th className="sticky left-0 z-10 bg-popover py-1.5 pr-2 text-left font-medium">{t("cmpMetric")}</th>
+            <th className="sticky left-0 z-10 bg-popover py-1.5 md:bg-transparent pr-2 text-left font-medium">{t("cmpMetric")}</th>
             <th className="text-right font-medium">A</th>
             <th className="text-right font-medium">B</th>
             <th className="w-[230px] text-center font-medium">{t("cmpBvsA", { confidence: Math.round(report.confidence * 100) })}</th>
@@ -169,7 +169,7 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
         <tbody>
           {report.metrics.map((m) => (
             <tr key={m.metric} className="border-b last:border-0">
-              <td className="sticky left-0 z-10 bg-popover py-1.5 pr-2">{metricLabel(m.metric, locale)}</td>
+              <td className="sticky left-0 z-10 bg-popover py-1.5 md:bg-transparent pr-2">{metricLabel(m.metric, locale)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_a, code)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_b, code)}</td>
               <td className="px-2"><ForestBar m={m} code={code} locale={locale} /></td>

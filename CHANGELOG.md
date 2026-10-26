@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Compare runs table no longer shows its metric column as a white block on
+  the dialog's tinted glass; it stays opaque only on narrow screens, where the
+  table scrolls sideways under it.
 - The Results tab's timeline draws its bars as soon as the run is loaded,
   instead of staying empty for several seconds while the 3D store was still
   being built (the chart waited to measure the panel).
