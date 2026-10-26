@@ -83,6 +83,8 @@
   a word: leaving the page, reloading, or opening another photo first asks
   **Leave without saving the product corrections?**, and a look at the
   **Shelf Lab** tab keeps them.
+- A shopper row's trip line wraps only between its parts, so "5 stops" (in
+  Korean "5곳 들름") or "2.7 min" is never split across two lines.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
