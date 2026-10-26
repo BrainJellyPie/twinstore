@@ -79,23 +79,26 @@ export function TownPage({ projectId }: { projectId: string }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row">
       <h1 className="sr-only">{t("neighborhood")}</h1>
-      <div className="relative m-3 h-[28rem] min-w-0 shrink-0 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)] lg:mr-0 lg:h-auto lg:min-h-64 lg:flex-1">
+      <div className="relative m-3 min-w-0 shrink-0 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)] lg:mr-0 lg:min-h-64 lg:flex-1">
         {town ? (
           <>
-            <TownMap
-              town={town}
-              demand={demandQ.data}
-              mode={mode}
-              onPlace={(x, y) => place.mutate({ x, y })}
-              onRemove={(v) => remove.mutate(v.id)}
-            />
-            <MapToolbar mode={mode} setMode={setMode} category={placeCategory} setCategory={setPlaceCategory} busy={place.isPending || remove.isPending} />
+            {/* On a narrow screen the legend sits below the map instead of covering half of it. */}
+            <div className="relative h-[28rem] lg:absolute lg:inset-0 lg:h-auto">
+              <TownMap
+                town={town}
+                demand={demandQ.data}
+                mode={mode}
+                onPlace={(x, y) => place.mutate({ x, y })}
+                onRemove={(v) => remove.mutate(v.id)}
+              />
+              <MapToolbar mode={mode} setMode={setMode} category={placeCategory} setCategory={setPlaceCategory} busy={place.isPending || remove.isPending} />
+            </div>
             <Legend />
           </>
         ) : loadError ? (
-          <div className="flex h-full items-center justify-center p-4">{loadError}</div>
+          <div className="flex h-[28rem] items-center justify-center p-4 lg:h-full">{loadError}</div>
         ) : (
-          <div className="dot-grid relative flex h-full flex-col items-center justify-center gap-5 text-center">
+          <div className="dot-grid relative flex h-[28rem] flex-col items-center justify-center gap-5 text-center lg:h-full">
             <svg viewBox="0 0 220 140" className="w-72 opacity-90" aria-hidden>
               <defs>
                 <linearGradient id="town-aurora" x1="0" y1="0" x2="1" y2="1">
@@ -207,7 +210,7 @@ function Legend() {
   const { t } = useI18n();
   const venues: VenueCategory[] = ["convenience", "cafe", "bakery", "pharmacy", "gym", "academy", "restaurant", "supermarket"];
   return (
-    <div className="absolute bottom-3 left-3 right-3 max-w-[560px] rounded-xl border bg-card/95 p-2.5 text-xs shadow-float backdrop-blur-md lg:bottom-6 lg:left-6 lg:right-6">
+    <div className="m-3 mt-0 max-w-[560px] rounded-xl border bg-card/95 p-2.5 text-xs lg:absolute lg:bottom-6 lg:left-6 lg:right-6 lg:m-0 lg:shadow-float lg:backdrop-blur-md">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> {t("areaOurStore")}</span>
         {venues.map((c) => (
