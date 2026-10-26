@@ -1003,6 +1003,8 @@ export const storeMessages = {
   rackEditPreview: ["Preview", "미리보기", "预览", "プレビュー", "Vista previa", "Aperçu"],
   gridMoveOutside: ["The entire fixture must stay inside the floor.", "진열대 전체가 매장 안에 있어야 합니다.", "整个货架必须位于布局范围内。", "什器全体がフロア内に収まる必要があります。", "Todo el mueble debe quedar dentro del plano.", "Le meuble doit rester entièrement dans le plan."],
   gridMoveOverlap: ["That position overlaps another fixture. Choose a clear space.", "그 위치는 다른 진열대와 겹칩니다. 빈 자리를 고르세요.", "该位置与其他货架重叠。请选择空位。", "その位置は別の什器と重なります。空いている場所を選んでください。", "Esa posición se solapa con otro mueble. Elige un espacio libre.", "Cette position chevauche un autre meuble. Choisissez un espace libre."],
+  canvasLost: ["The 3D view stopped: the graphics driver reset it (heavy work such as Photo mode can do this).", "3D 화면이 멈췄습니다. 그래픽 드라이버가 화면을 초기화했습니다(사진 모드 같은 무거운 작업에서 생길 수 있습니다).", "3D 视图已停止：图形驱动程序重置了它（照片模式等繁重任务可能导致这种情况）。", "3D表示が止まりました。グラフィックドライバーがリセットしました（写真モードのような重い処理で起こることがあります）。", "La vista 3D se detuvo: el controlador gráfico la reinició (un trabajo pesado como el modo Foto puede causarlo).", "La vue 3D s’est arrêtée : le pilote graphique l’a réinitialisée (un travail lourd comme le mode Photo peut le provoquer)."],
+  canvasRestart: ["Restart the 3D view", "3D 화면 다시 시작", "重新启动 3D 视图", "3D表示を再開", "Reiniciar la vista 3D", "Relancer la vue 3D"],
   canvasError: ["3D rendering error", "3D 화면을 표시하지 못했습니다", "3D 渲染出错", "3D表示でエラーが発生しました", "Error al mostrar el 3D", "Erreur d’affichage 3D"],
   loadingView: ["Loading…", "불러오는 중…", "加载中…", "読み込み中…", "Cargando…", "Chargement…"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

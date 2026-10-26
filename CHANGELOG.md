@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- When the graphics driver resets the 3D store view (heavy work such as Photo
+  mode's path tracing can cause it), the view says so and offers **Restart the
+  3D view**, which brings the store back; Photo mode ends. Before, the store
+  went blank until the page was reloaded. Detach the old canvas's listeners
+  when replacing or leaving it so delayed disposal cannot report another
+  failure or stop a new Photo session.
+- In the Shoppers tab, Enter opens the first shopper matching the search,
+  and the down arrow moves focus into the list. The search has a screen-reader
+  name.
+
 - Preserve qualified savings and cash-back tags without turning their amounts
   into exact selling prices: `SAVE UP TO $1.00`, `SAVE AT LEAST £1.00` and
   `$1.00 CASH BACK` remain estimated. Keep ordinary and explicitly stated

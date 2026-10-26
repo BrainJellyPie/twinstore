@@ -32,6 +32,8 @@ import { PhotoMode } from "@/features/store-viewer/realistic/PhotoMode";
 import { useSceneColors } from "@/features/store-viewer/realistic/useSceneColors";
 import { EYE_HEIGHT, FLOOR_SLAB, type GraphicsQuality } from "@/features/store-viewer/realistic/constants";
 import { useI18n } from "@/shared/i18n/i18n";
+import { usePhotoMode } from "@/features/store-viewer/realistic/photoModeStore";
+import { Button } from "@/shared/components/ui/button";
 
 function LoadingOverlay() {
   const { t } = useI18n();
@@ -168,7 +170,25 @@ function StoreScene({
 export type SimulationCanvasProps = StoreSceneProps;
 
 export function SimulationCanvas(props: SimulationCanvasProps) {
+  const { t } = useI18n();
   const [fitRequest, setFitRequest] = useState(0);
+  // A lost WebGL context (a driver reset, often under Photo mode's path tracing) leaves the canvas blank for good:
+  // say so and offer a fresh canvas, which gets a new context.
+  const [canvasKey, setCanvasKey] = useState(0);
+  const [lost, setLost] = useState(false);
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (!canvas) return;
+    const onLost = () => { usePhotoMode.getState().stop(); setLost(true); };
+    const onRestored = () => setLost(false);
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
+    // R3F forces context loss while disposing an old renderer after unmount.
+    return () => {
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+    };
+  }, [canvas]);
   const graphicsMode = useSimulationStore((s) => s.graphicsMode);
   const shopperViewOn = useSimulationStore((s) => s.shopperView);
   const quality = useRealisticSettings((s) => s.quality);
@@ -184,6 +204,7 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
   return (
     <>
       <Canvas
+        key={canvasKey}
         shadows="percentage"
         orthographic
         camera={{ zoom: 100, position: [17, 13, 22], near: -100, far: 200 }}
@@ -192,6 +213,7 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
         // thread while (software) GL compiles the realistic scene's programs.
         onCreated={({ gl }) => {
           gl.debug.checkShaderErrors = import.meta.env.DEV;
+          setCanvas(gl.domElement);
         }}
       >
         {/* The post stack ("high") tone-maps its input, so there the canvas stays
@@ -238,6 +260,14 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
         <StoreCameraControls disabled={shopperView} maxZoom={realistic ? 420 : 140} width={props.width} depth={props.depth} fitRequest={fitRequest} />
       </Canvas>
       {realistic && <div className="realistic-lens" data-shopper={shopperView || undefined} aria-hidden />}
+      {lost && (
+        <div role="alert" className="absolute inset-0 z-20 grid place-items-center p-4">
+          <div className="panel max-w-sm space-y-3 rounded-2xl p-4 text-center text-sm">
+            <p>{t("canvasLost")}</p>
+            <Button size="sm" onClick={() => { setCanvas(null); setLost(false); setCanvasKey((k) => k + 1); }}>{t("canvasRestart")}</Button>
+          </div>
+        </div>
+      )}
       <RealisticHud personaNames={props.personaNames} showModeSwitch={props.customers === null} shopperViewActive={shopperView} onFitStore={() => setFitRequest((n) => n + 1)} />
     </>
   );
