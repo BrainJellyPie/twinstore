@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Answer a request whose text ends in half an emoji with a readable validation
+  error instead of a server error. The echoed input shows a replacement mark
+  where the broken character was.
+
 - Keep advertised price limits ("FROM $1.00", "UNDER $1.00", "1,000원부터")
   from becoming exact captured selling prices. Preserve the printed label,
   mark the fallback as estimated and retain existing matched-product prices.
