@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from PIL import Image
-from pydantic import JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue, field_validator, model_validator
 
 from store_emulator.domain.capture import ShelfItemLabel
 
@@ -111,8 +111,9 @@ def group_facings(frame: WorkFrame, facings: list[Detection], gaps: list[Detecti
     return groups
 
 
-def label_image(photo: Image.Image, frame: WorkFrame, band: Band, group: FacingGroup, *, max_side: int = 512) -> Image.Image:
-    """Package crop (full resolution) above the price-tag strip under it, as one image."""
+def label_images(photo: Image.Image, frame: WorkFrame, band: Band, group: FacingGroup,
+                 *, max_side: int = 512) -> tuple[Image.Image, Image.Image | None]:
+    """Combined package/price view and its separate visible price strip."""
     rep = group.representative
     pad = 0.04 * rep.width
     pkg = frame.to_image_box(rep.x1 - pad, rep.y1 - pad, rep.x2 + pad, rep.y2)
@@ -135,16 +136,18 @@ def label_image(photo: Image.Image, frame: WorkFrame, band: Band, group: FacingG
     if strip.width and strip.height:
         strip_h = max(1, round(strip.height * width / strip.width))
         strip = strip.resize((width, min(strip_h, 160)), Image.Resampling.LANCZOS)
+        price_tag = strip
     else:
         # A visible package may have its price tag beyond the photo's edge.
         strip = Image.new("RGB", (width, 1), (255, 255, 255))
+        price_tag = None
     canvas = Image.new("RGB", (width, product.height + 8 + strip.height), (255, 255, 255))
     canvas.paste(product, ((width - product.width) // 2, 0))
     canvas.paste(strip, (0, product.height + 8))
     s = min(1.0, max_side / max(canvas.size))
     if s < 1.0:
         canvas = canvas.resize((round(canvas.width * s), round(canvas.height * s)), Image.Resampling.LANCZOS)
-    return canvas
+    return canvas, price_tag
 
 
 # No concrete size examples in the prompt: sub-1B models copied them ("500ml") into a third of the
@@ -174,6 +177,10 @@ _CURRENCY_HINT = {"USD": "US dollars ($)", "KRW": "Korean won (원)", "JPY": "Ja
 
 
 class _ShelfLabelResponse(ShelfItemLabel):
+    # Keep the established combined-reading schema; the separate transcription
+    # can retain a longer tag without cutting off its rate or discount qualifier.
+    price_text: str = Field(default="", max_length=24, description="the price tag text exactly as printed")
+
     @model_validator(mode="before")
     @classmethod
     def read_wrapped_values(cls, value: JsonValue) -> JsonValue:
@@ -188,24 +195,59 @@ class _ShelfLabelResponse(ShelfItemLabel):
         return value
 
 
-class VLMLabeler:
-    """One structured VLM call per product group; failures leave the group unlabeled."""
+class _PriceTagResponse(BaseModel):
+    literal_text: str = Field(max_length=200, description="All visibly printed price-tag text, including words before or after the number")
 
-    def __init__(self, llm: ImageLLM, *, currency: str, concurrency: int = 2, max_side: int = 512) -> None:
+    @field_validator("literal_text", mode="before")
+    @classmethod
+    def unknown_text(cls, value: object) -> object:
+        return "" if value is None else value
+
+
+PRICE_TAG_PROMPT = (
+    "Copy every visible word and number on this price tag exactly into literal_text. "
+    "Do not translate, simplify or omit any words. If no text is readable, return an empty string.\n"
+    "## 언어\nKeep literal_text in its printed language. Do not add narrative output."
+)
+
+
+class VLMLabeler:
+    """Read each product; optionally transcribe its price strip in a separate bounded task."""
+
+    def __init__(self, llm: ImageLLM, *, currency: str, concurrency: int = 2, max_side: int = 512,
+                 separate_price_tag: bool = False) -> None:
         self.llm = llm
         self.currency = currency.upper()
         self.semaphore = asyncio.Semaphore(concurrency)
         self.max_side = max_side
+        self.separate_price_tag = separate_price_tag
         self.calls = 0
 
-    async def label(self, image: Image.Image) -> ShelfItemLabel:
+    async def label(self, image: Image.Image, *, price_tag: Image.Image | None = None) -> ShelfItemLabel:
         url, _ = image_data_url(image, max_side=self.max_side)
         prompt = LABEL_PROMPT.format(currency=_CURRENCY_HINT.get(self.currency, self.currency))
         async with self.semaphore:
             self.calls += 1
-            return await self.llm.generate_structured_with_image_async(
+            label: ShelfItemLabel = await self.llm.generate_structured_with_image_async(
                 _ShelfLabelResponse, LABEL_SYSTEM_PROMPT, prompt, url, max_retries=1, seed=0,
             )
+            if not self.separate_price_tag:
+                return label
+            # Small models drop rate/discount words when reading the whole product.
+            # Never retain that unverified amount if a separate tag is absent or fails.
+            label = ShelfItemLabel.model_validate(label.model_dump(exclude={"price_text", "price"}))
+            if price_tag is not None and price_tag.width and price_tag.height:
+                try:
+                    tag_url, _ = image_data_url(price_tag, max_side=self.max_side)
+                    self.calls += 1
+                    tag = await self.llm.generate_structured_with_image_async(
+                        _PriceTagResponse, "Transcribe visible text. Return JSON only.", PRICE_TAG_PROMPT,
+                        tag_url, max_retries=1, seed=0,
+                    )
+                    label.price_text = tag.literal_text
+                except Exception as exc:  # noqa: BLE001 — retain product identity with an unknown price
+                    logger.warning("[capture] price-tag reading failed: %s", type(exc).__name__)
+            return label
 
     async def label_groups(
         self, photo: Image.Image, frame: WorkFrame, bands: list[Band], groups: list[FacingGroup],
@@ -216,7 +258,8 @@ class VLMLabeler:
         async def one(group: FacingGroup) -> None:
             nonlocal done
             try:
-                group.label = await self.label(label_image(photo, frame, bands[group.band], group))
+                image, price_tag = label_images(photo, frame, bands[group.band], group)
+                group.label = await self.label(image, price_tag=price_tag)
             except Exception as e:  # noqa: BLE001 — one unreadable product must not fail the capture
                 group.error = f"{type(e).__name__}: {e}"[:200]
                 logger.warning(f"[capture] labeling failed: {group.error}")

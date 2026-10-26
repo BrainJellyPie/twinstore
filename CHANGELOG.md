@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Local shelf recognition reads the price-tag strip separately so a small
+  model can retain Korean discount and unit-rate words it omitted while
+  reading the product. Missing or failed tag reading leaves the price
+  estimated while preserving the recognized product. One extra bounded
+  reading is made for each visible tag; cloud recognition stays unchanged.
+
 - Recognize explicit container quantities such as `6 BOTTLES`, `6 CANS`
   and `6병` when interpreting a photographed unit price. A price per bottle
   must not overwrite the selling price of the whole observed multipack.
