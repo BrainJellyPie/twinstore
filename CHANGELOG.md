@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- From an online variant to an in-store test: the online report's **Keep it in
+  the store** block has **Test it in the store**, which opens the marketing
+  studio's A/B builder with the variant's price changes on the chosen layout,
+  ready to run on the same store shoppers. A variant with more changes than an
+  A/B test holds (20) says so and points to keeping it as a layout instead.
 - The Compare runs table no longer shows its metric column as a white block on
   the dialog's tinted glass; it stays opaque only on narrow screens, where the
   table scrolls sideways under it.

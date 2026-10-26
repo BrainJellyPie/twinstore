@@ -33,6 +33,7 @@ import {
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useAssistStore } from "@/stores/assistStore";
+import { useExperimentDraft } from "@/stores/experimentDraftStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -98,6 +99,19 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
+  const [abDraft, setAbDraft] = useState<{ key: number; req: ExperimentRequest } | null>(null);
+  // An A/B test drafted elsewhere (an online variant's prices) opens in the builder, like "Duplicate and edit".
+  const pendingDraft = useExperimentDraft((s) => s.pending);
+  const takeDraft = useExperimentDraft((s) => s.take);
+  useEffect(() => {
+    if (!pendingDraft) return;
+    const req = takeDraft(projectId);
+    if (!req) return;
+    setTab("ab");
+    setSetupId(req.setup_id);  // checked against the store's layouts where it is used
+    setAbDraft({ key: Date.now(), req });
+    setSelected((s) => ({ ...s, ab: "" }));
+  }, [pendingDraft, projectId, takeDraft]);
   const activeSetup = [setupId, project.data?.state.activeSetupId]
     .find((id) => setups.some((candidate) => candidate.id === id)) ?? setups[0]?.id ?? "";
   const setup = useQuery({
@@ -143,7 +157,6 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const current = (tab === "products" || tab === "pilot" || tab === "inventory" || tab === "prices" || tab === "protocols" || tab === "priceChecks") ? null : selected[tab];
   const select = (id: string | null) => tab !== "products" && tab !== "pilot" && tab !== "inventory" && tab !== "prices" && tab !== "protocols" && tab !== "priceChecks" && setSelected((s) => ({ ...s, [tab]: id }));
   // "Duplicate and edit": the builder opens pre-filled with a finished test's request.
-  const [abDraft, setAbDraft] = useState<{ key: number; req: ExperimentRequest } | null>(null);
   const [surveyDraft, setSurveyDraft] = useState<{ key: number; req: SurveyRequest } | null>(null);
   const duplicateExperiment = (req: ExperimentRequest) => {
     if (setups.some((s) => s.id === req.setup_id)) setSetupId(req.setup_id);

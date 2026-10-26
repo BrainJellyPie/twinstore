@@ -6,7 +6,11 @@ import * as api from "@/shared/api/client";
 import * as marketing from "@/shared/api/marketing";
 import * as online from "@/shared/api/online";
 import { useLocale } from "@/shared/i18n/i18n";
+import { useExperimentDraft } from "@/stores/experimentDraftStore";
 import { PricesToStore } from "../PricesToStore";
+
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof api>(), getSetups: vi.fn(), getProject: vi.fn() }));
 vi.mock("@/shared/api/marketing", async (original) => ({ ...await original<typeof marketing>(), checkLayoutEdit: vi.fn() }));
@@ -62,4 +66,23 @@ it("shows a failed transfer request and lets the owner retry", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   expect(await screen.findByRole("combobox", { name: "Store layout" })).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("opens the variant's prices as an A/B test on the chosen layout", async () => {
+  vi.mocked(online.getRunStoreChanges).mockResolvedValue({ ...changes, name: "Threadline – all prices 10 % lower than the rival" });
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Test it in the store" }));
+  expect(useExperimentDraft.getState().take("p1")).toEqual({
+    setup_id: "setup_b", engine: "rule", panel: 300, focus_skus: [],
+    variants: [{ name: "Threadline – all prices 10 % lower than", changes: changes.changes }],
+  });
+  expect(navigate).toHaveBeenCalledWith({ to: "/marketing/$pid", params: { pid: "p1" } });
+});
+
+it("explains why a variant with more changes than an A/B test holds is not offered as one", async () => {
+  const many = Array.from({ length: 21 }, (_, i) => ({ kind: "price", sku: `SKU-${i}`, price: 100 + i }) as marketing.VariantChange);
+  vi.mocked(online.getRunStoreChanges).mockResolvedValue({ ...changes, changes: many });
+  mount();
+  expect(await screen.findByText(/takes up to 20 changes and this variant has 21/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Test it in the store" })).toBeNull();
 });
