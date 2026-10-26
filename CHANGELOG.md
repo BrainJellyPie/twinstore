@@ -4,7 +4,10 @@
 
 - A shopper's thought on the store floor wraps into a small card of at most
   three lines; a model's long thought ran as one line across the store and
-  under the playback panel. Purchases still read on one line.
+  under the playback panel. Purchases still read on one line. Shoppers' group
+  labels sit on small solid pills and bubbles are opaque, so where shoppers
+  stand close the nearer one covers the farther instead of their text printing
+  over each other ("MCorporate executivesrs").
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
