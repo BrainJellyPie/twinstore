@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Distinguish an additional discount on the current selling price from a
+  discount against the original regular price. Automatic layout edits and
+  A/B drafts can now retain the original reference while reducing an already
+  discounted price; the experiment editor exposes the same choice, and
+  physical and online stores apply it consistently.
+
 - Report section links also move focus into optional advertising, competitor
   and survey results; those sections previously scrolled while focus stayed
   on the navigation link.

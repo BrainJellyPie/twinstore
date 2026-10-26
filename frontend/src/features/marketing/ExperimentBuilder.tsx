@@ -44,7 +44,9 @@ function describeChange(c: VariantChange, products: Map<string, Product>, fixtur
   const name = products.get(c.sku ?? "")?.name ?? c.sku ?? "";
   switch (c.kind) {
     case "price": return t("mkDescPrice", { name, price: c.price != null ? formatMoney(c.price, currency) : "…" });
-    case "discount": return t("mkDescDiscount", { name, percent: c.percent != null ? String(c.percent) : "…" });
+    case "discount": return c.discount_basis === "current"
+      ? t("mkDescExtraDiscount", { name, percent: c.percent != null ? String(Math.abs(c.percent)) : "…" })
+      : t("mkDescDiscount", { name, percent: c.percent != null ? String(c.percent) : "…" });
     case "promo": return t("mkDescPromo", { name, promo: c.promo || "SALE" });
     case "move": return t("mkDescMove", { name, fixture: fixtures.get(c.rack_id ?? "")?.name ?? "…", level: levelText(c.level ?? 3, t) });
     case "package": return t("mkDescPackage", { name });
@@ -444,6 +446,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
   const meta = KINDS.find((k) => k.kind === c.kind)!;
   const Icon = meta.icon;
   const product = products.find((p) => p.sku === c.sku);
+  const discountBase = product ? c.discount_basis === "current" ? product.price : product.regularPrice || product.price : 0;
   return (
     <div className={cn("rounded-xl border p-2.5", ready(c) ? "bg-foreground/[0.02]" : "border-warn/50 bg-warn/[0.04]")}>
       <div className="mb-2 flex items-center gap-2 text-xs">
@@ -478,9 +481,17 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
               className="num h-7 w-20 px-2 text-xs md:text-xs" aria-label={t("mkPercent")} />
           </div>
         )}
+        {c.kind === "discount" && (
+          <select value={c.discount_basis ?? "regular"} aria-label={t("mkDiscountBasis")}
+            onChange={(event) => onPatch({ discount_basis: event.target.value === "current" ? "current" : "regular" })}
+            className="h-8 rounded-lg border bg-card/60 px-1.5 text-xs">
+            <option value="regular">{t("mkDiscountRegular")}</option>
+            <option value="current">{t("mkDiscountCurrent")}</option>
+          </select>
+        )}
         {c.kind === "discount" && product && c.percent != null && c.percent < 0 && (
           <span className="num text-xs text-muted-foreground">
-            {formatMoney(product.regularPrice || product.price, currency)} → <b className="text-foreground">{formatMoney(Math.round((product.regularPrice || product.price) * (1 + c.percent / 100)), currency)}</b>
+            {formatMoney(discountBase, currency)} → <b className="text-foreground">{formatMoney(Math.round(discountBase * (1 + c.percent / 100)), currency)}</b>
           </span>
         )}
         {c.kind === "promo" && (

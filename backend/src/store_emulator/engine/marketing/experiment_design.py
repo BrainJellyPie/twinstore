@@ -55,7 +55,7 @@ def _change_schema(schema: dict[str, JsonValue]) -> None:
     fields = schema["properties"]
     assert isinstance(fields, dict)
     variants: list[JsonValue] = []
-    used = {"price": ["product", "price"], "discount": ["product", "percent"],
+    used = {"price": ["product", "price"], "discount": ["product", "discount_basis", "percent"],
             "promo": ["product", "promo"], "move": ["product", "shelf", "level"],
             "package": ["product", "package"], "category_price": ["category", "percent"]}
     for kind, names in used.items():
@@ -94,6 +94,8 @@ class _Change(_ChangeTextDefaults):
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
     percent: float | None = Field(default=None, ge=-100, le=300, description="discount (negative) or category_price change")
+    discount_basis: Literal["regular", "current"] = Field(default="regular",
+        description="regular: set a discount from the original regular price; current: take an additional discount from the current selling price")
     promo: str = Field(default="", max_length=24, description="promo: the sign text, e.g. '1+1', 'SALE', '-30%'")
     shelf: str = Field(default="", max_length=80, description="move: the listed shelf, exactly as listed")
     level: int | None = Field(default=None, ge=1, le=4, description="move: shelf level, 3 = eye level, 1 = bottom")
@@ -138,6 +140,11 @@ class ExperimentDesign(BaseModel):
     warnings: list[str] = []
 
 
+DISCOUNT_BASIS_PROMPT = """For each discount, set discount_basis="current" for an extra/additional reduction of the current selling price; use "regular" to set a discount against the original regular price.
+Example: currently 4 with regular price 5, extra 10% off => kind=discount, percent=-10, discount_basis="current". Set 20% off the regular price => kind=discount, percent=-20, discount_basis="regular".
+"""
+
+
 DESIGN_PROMPT = """You design A/B tests for a store's digital twin. From the manager's question, draft up to four
 variants against the unchanged layout (the control). Each variant is a short name and one or more changes:
 - price: a new everyday shelf price (major units of {currency});
@@ -159,7 +166,7 @@ Use the exact lowercase operation kinds above, including the underscore in categ
 Use "" for an absent rationale and [] for unspecified focus_products, not null.
 If a listed product, shelf or image name exceeds its field's character limit, copy its prefix up to that limit.
 The prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
-Write in English."""
+Write in English.""" + "\n" + DISCOUNT_BASIS_PROMPT
 
 
 def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str = "",
@@ -243,7 +250,8 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                     if c.percent is None or c.percent >= 0:
                         warnings.append(f"{v.name}: a discount needs a negative percent; left out.")
                         continue
-                    changes.append(VariantChange(kind="discount", sku=sku, percent=c.percent))
+                    changes.append(VariantChange(kind="discount", sku=sku, percent=c.percent,
+                                                 discount_basis=c.discount_basis))
                 case "promo":
                     if not c.promo.strip():
                         raise ValueError("A promo operation needs explicit, nonblank sign text; do not invent a default promotion.")

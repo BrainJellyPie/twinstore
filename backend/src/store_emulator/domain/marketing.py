@@ -21,7 +21,7 @@ class VariantChange(BaseModel):
     """One change a variant makes to the control layout.
 
     price           set the SKU's shelf price (`price`), as a new everyday price (or against the current one, `keep_reference`)
-    discount        cut the SKU's price by `percent` and keep the old one as the "was" price on the tag
+    discount        cut its regular or current price by `percent`, retaining the original "was" price
     promo           hang a promotion sign (`promo`, e.g. "1+1", "SALE", "-30%") on the SKU
     move            move the SKU to `rack_id` / `face` / `level` (level 3 = eye level on a 4-level rack)
     package         show the SKU in a new package (`asset_id`, a product image) — vision shoppers only
@@ -31,6 +31,7 @@ class VariantChange(BaseModel):
     sku: str = ""
     price: int | None = Field(default=None, ge=0)
     percent: float | None = Field(default=None, ge=-100, le=300, description="-20 = 20 % cheaper")
+    discount_basis: Literal["regular", "current"] = "regular"
     promo: str = Field(default="", max_length=24)
     rack_id: str = ""
     face: Literal["N", "S", "E", "W"] | None = None

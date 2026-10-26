@@ -16,7 +16,7 @@ from tests.engine.test_layout_applied_changes import fixture
 
 CHANGES = [
     {"kind": "price", "product": "Tea", "price": 0},
-    {"kind": "discount", "product": "Tea", "percent": -100},
+    {"kind": "discount", "product": "Tea", "percent": -100, "discount_basis": "regular"},
     {"kind": "promo", "product": "Tea", "promo": "1+1"},
     {"kind": "move", "product": "Tea", "shelf": "Destination"},
     {"kind": "package", "product": "Tea", "package": "New pack"},
@@ -87,6 +87,8 @@ def test_real_draft_adapter_sends_operation_specific_constraints_and_reuses_cach
         assert not accepts({**change, "price": -0.01})
         assert not accepts({**change, "price": "1.99"})
     elif change["kind"] == "discount":
+        assert accepts({**change, "discount_basis": "current"})
+        assert not accepts({**change, "discount_basis": "unknown"})
         assert accepts({**change, "percent": -0.5})
         for invalid in [-101, 0, 20, "-20"]:
             assert not accepts({**change, "percent": invalid})

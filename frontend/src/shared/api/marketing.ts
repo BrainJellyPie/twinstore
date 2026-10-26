@@ -22,6 +22,7 @@ export interface VariantChange {
   sku?: string;
   price?: number | null;
   percent?: number | null;
+  discount_basis?: "regular" | "current";
   promo?: string;
   rack_id?: string;
   face?: "N" | "S" | "E" | "W" | null;

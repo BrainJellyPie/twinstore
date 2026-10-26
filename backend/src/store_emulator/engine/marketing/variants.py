@@ -207,9 +207,12 @@ def apply_changes(
                     continue
                 for item in items:
                     regular = item.regular_price or item.price
-                    item.price = max(0, round(regular * (1 + change.percent / 100)))
+                    basis = item.price if change.discount_basis == "current" else regular
+                    item.price = max(0, round(basis * (1 + change.percent / 100)))
                     item.regular_price = regular
-                applied.append(f"{name}: {change.percent:g} % off, tag shows the was-price")
+                applied.append(f"{name}: {change.percent:g} % off the current price, tag keeps the original was-price"
+                               if change.discount_basis == "current" else
+                               f"{name}: {change.percent:g} % off, tag shows the was-price")
             case "promo":
                 text = change.promo.strip() or "SALE"
                 for item in items:
