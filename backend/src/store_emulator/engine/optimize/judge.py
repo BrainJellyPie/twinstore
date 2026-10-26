@@ -48,6 +48,7 @@ from store_emulator.engine.analysis.compare import compare_runs
 from store_emulator.engine.analysis.fidelity import spearman
 from store_emulator.engine.simulation.aggregator import aggregate
 from store_emulator.engine.simulation.factory import build_engine
+from store_emulator.engine.simulation.quality import unanswered_vision_phase
 from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
 
 from .evaluate import COMPARISON_METRICS, LayoutEvaluator, objective_value
@@ -276,8 +277,10 @@ async def judge_layout_search(
         failed_calls, total_calls = counts[0] + counts[1], counts[2] + counts[3]
         # Match the marketing/venue-study threshold: fallback journeys are not
         # successful model answers, even when every customer finishes walking.
-        if total_calls and failed_calls * 2 > total_calls:
+        missing = unanswered_vision_phase(metadata)
+        if missing or (total_calls and failed_calls * 2 > total_calls):
             raise ValueError(f"The vision model failed on {failed_calls} of {total_calls} calls for {label}; "
+                             f"{f'no {missing} succeeded. ' if missing else ''}"
                              "layout judging was stopped because failed calls use fallback plans or skip shelf glances. "
                              "Check the model provider or choose another model before retrying.")
         if failed_calls:

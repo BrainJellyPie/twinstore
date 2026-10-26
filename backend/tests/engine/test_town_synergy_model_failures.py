@@ -73,7 +73,8 @@ def test_valid_decisions_to_buy_nothing_remain_valid_vision_evidence(town):
 
 @pytest.mark.parametrize("plans,plan_errors,glances,errors,rejected", [
     (0, 0, 0, 0, False), (0, 0, 2, 1, False), (0, 0, 3, 2, True),
-    (4, 0, 6, 6, True), (4, 0, 4, 4, False), (3, 2, 3, 2, True),
+    (4, 0, 6, 6, True), (4, 0, 4, 4, True), (3, 2, 3, 2, True),
+    (100, 0, 1, 1, True), (1, 1, 100, 0, True),
     (3, 1, 3, 1, False), (1, 0, 1, 0, False),
 ])
 def test_call_quality_counts_planning_and_shelf_glances_together(town, monkeypatch, plans, plan_errors, glances, errors, rejected):

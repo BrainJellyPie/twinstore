@@ -2,10 +2,16 @@
 
 ## Unreleased
 
+- Stop vision A/B tests, layout judging and venue comparisons when every response
+  in an attempted entry or shelf phase fails. Successful calls in the other phase
+  no longer hide the missing measurements. Partial failures with usable responses
+  and phases with no attempted calls keep their existing behavior.
+
+## 0.8.0 — Readable on every screen, and runs that say when they are done
+
 - Recover actual shelf judgments that small JSON-mode models wrap in `properties`.
   Compact shelf schemas retain their constraints while removing copied metadata;
   missing scores and schema definitions remain errors, and saved answers stay flat.
-
 - Convert generated customer budgets from explicit currency amounts into stored
   units in code, so small models do not have to calculate cents. Existing saved
   integer budgets keep their units. Customer prompts distinguish people, visit

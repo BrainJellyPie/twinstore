@@ -46,6 +46,7 @@ from store_emulator.engine.scenario import (
     priors_for,
 )
 from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
+from store_emulator.engine.simulation.quality import unanswered_vision_phase
 from store_emulator.engine.town.arrivals import (
     counterfactual_arrival,
     plan_arrivals,
@@ -191,8 +192,10 @@ async def vlm_basket_synergy(
         failed_calls, total_calls = counts[0] + counts[1], counts[2] + counts[3]
         # Use the same quality threshold as marketing experiments: a completed
         # fallback visit is not evidence that the vision model answered.
-        if total_calls and failed_calls * 2 > total_calls:
+        missing = unanswered_vision_phase(meta)
+        if missing or (total_calls and failed_calls * 2 > total_calls):
             raise ValueError(f"The vision model failed on {failed_calls} of {total_calls} calls {arm} the venue, "
+                             f"{f'with no successful {missing}, ' if missing else ''}"
                              "so the study was stopped: failed calls use fallback plans or skip shelf glances. "
                              "Check the model provider or choose another model before retrying.")
         if failed_calls:

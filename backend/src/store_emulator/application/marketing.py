@@ -80,6 +80,7 @@ from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_pers
 from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
+from store_emulator.engine.simulation.quality import unanswered_vision_phase
 from store_emulator.application.product_images import project_image_loader, snapshot_project_images
 from store_emulator.application.setups import run_operations, setup_lock_path, setup_tree_transaction
 from store_emulator.engine.files import remove_tree
@@ -319,13 +320,16 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             calls: list[tuple[str, int, int]] = []   # per arm: (name, failed model calls, model calls)
 
             def check_calls(arm: str) -> None:
-                # A vision shopper whose call fails decides by the rule-based fallback: with most calls failing the
-                # test would finish as if vision shoppers had shopped.
-                failed, total, first = _model_calls(evaluator.engine_metadata())
-                if total and failed * 2 > total:
+                # Successful plans must not hide an entirely unanswered shelf phase,
+                # nor successful glances an entirely failed planning phase.
+                metadata = evaluator.engine_metadata()
+                failed, total, first = _model_calls(metadata)
+                missing = unanswered_vision_phase(metadata)
+                if missing or (total and failed * 2 > total):
                     raise ValueError(
                         f"The vision model failed on {failed} of {total} calls in {arm}{f' ({first[:200]})' if first else ''}, "
-                        "so the test was stopped: shoppers whose calls fail fall back to rule-based decisions. Check the "
+                        f"so the test was stopped. {f'No {missing} succeeded. ' if missing else ''}"
+                        "Failed entrance plans use rule-based fallback and failed shelf glances are skipped. Check the "
                         "model and its key in Settings → Model providers, or pick another model, and run the test again.")
                 calls.append((arm, failed, total))
 
@@ -355,8 +359,8 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 notes.append("Fewer than 100 shoppers per variant: differences under ~5 % are hard to tell from noise.")
             if any(failed for _, failed, _ in calls):
                 notes.append("Some vision-model calls failed (" + ", ".join(f"{arm}: {failed} of {total}" for arm, failed, total in calls)
-                             + "). Those shoppers' entrance plans or shelf glances fell back to rule-based decisions, so where "
-                             "the failures differ between arms, their paired differences mix vision and rule decisions.")
+                             + "). Failed entrance plans used rule-based fallback and failed shelf glances were skipped, so where "
+                             "the failures differ between arms, their paired differences include model failures.")
             if req.engine == "rule" and any(c.kind == "price" and not c.keep_reference for v in req.variants for c in v.changes):
                 notes.append("Rule shoppers react to a price relative to the usual one (and to their budget); a new everyday price "
                              "resets that reference. Keep the current price as the reference, or use vision shoppers, to measure price response.")

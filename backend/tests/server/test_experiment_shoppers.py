@@ -153,3 +153,31 @@ def test_vision_test_reports_failed_calls_per_arm(app_client, monkeypatch, varia
     assert view["status"] == "completed", view["error"]
     note = next(n for n in view["report"]["notes"] if "vision-model calls failed" in n)
     assert "Control: 7 of 80" in note and "Sign: 3 of 80" in note and "paired differences" in note
+
+
+@pytest.mark.parametrize('fail_arm', [0, 1])
+@pytest.mark.parametrize('failed_phase', ['shelf glances', 'entrance plans'])
+def test_a_complete_phase_failure_cannot_be_hidden_by_successes_elsewhere(app_client, monkeypatch, fail_arm, failed_phase):
+    checked = []
+    healthy = {'glances': 20, 'errors': 0, 'planning': {'plans': 20, 'plan_errors': 0}}
+    broken = ({'glances': 1, 'errors': 1, 'planning': {'plans': 100, 'plan_errors': 0}}
+              if failed_phase == 'shelf glances' else
+              {'glances': 100, 'errors': 0, 'planning': {'plans': 1, 'plan_errors': 1}})
+
+    async def evaluate(self, store, personas, **kwargs):
+        return _results(personas)
+
+    def metadata(self):
+        index = len(checked)
+        checked.append(index)
+        return broken if index == fail_arm else healthy
+
+    monkeypatch.setattr(LayoutEvaluator, 'evaluate_customers', evaluate)
+    monkeypatch.setattr(LayoutEvaluator, 'engine_metadata', metadata)
+    monkeypatch.setattr(marketing, 'ensure_resolvable', lambda config: None)
+    monkeypatch.setattr(marketing, 'build_client', lambda *args, **kwargs: _Failing())
+    view = _run(app_client, {'setup_id': 'setup_eaf5', 'engine': 'vlm', 'model': 'openai/gpt-4o-mini', 'panel': 20, 'seed': 3,
+        'focus_skus': ['A0001'], 'variants': [{'name': 'Sign', 'changes': [{'kind': 'promo', 'sku': 'A0001', 'promo': 'SALE'}]}]})
+    assert view['status'] == 'failed' and view['report'] is None
+    assert '1 of 101 calls' in view['error'] and failed_phase in view['error']
+    assert checked == list(range(fail_arm + 1))

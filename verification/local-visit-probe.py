@@ -30,7 +30,7 @@ from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunn
 from store_emulator.engine.validation import validate
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--case', choices=['stock-one', 'same-sku', 'free', 'browse', 'unavailable', 'plan-disabled'], default='stock-one')
+parser.add_argument('--case', choices=['stock-one', 'same-sku', 'free', 'free-same-sku', 'browse', 'unavailable', 'plan-disabled'], default='stock-one')
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
 parser.add_argument('--structured-output', choices=['json_schema', 'json'], default='json_schema')
 parser.add_argument('--cache-from', type=Path, help='Explicitly replay cached model replies for diagnostic repairs')
@@ -38,10 +38,10 @@ parser.add_argument('--seed', type=int, default=4)
 args = parser.parse_args()
 root = args.output.resolve() / f'visit-{args.case}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
-currency, price, budget = ('KRW', 0, 1) if args.case == 'free' else ('USD', 100, 100)
+currency, price, budget = ('KRW', 0, 1) if args.case in {'free', 'free-same-sku'} else ('USD', 100, 100)
 count = 2 if args.case == 'stock-one' else 1
 slots = [Slot(block=0, face=Face.N, level=3, items=[SlotItem(sku='water', name='Mineral Water 500ml', price=price)])]
-if args.case == 'same-sku':
+if args.case in {'same-sku', 'free-same-sku'}:
     slots.append(Slot(block=1, face=Face.N, level=3, items=[SlotItem(sku='water', name='Mineral Water 500ml', price=5000)]))
 store = Store(id='cpu-visit', name='Water shop', type='convenience', currency=currency, grid_size=(8, 8),
     weekly_schedule=[DaySchedule(day=Weekday.MON, open_hour=9, close_hour=12)], racks=[
@@ -49,8 +49,8 @@ store = Store(id='cpu-visit', name='Water shop', type='convenience', currency=cu
         Rack(id='exit', type='exit', position=(7, 0), shape=[[1]]),
         Rack(id='counter', type='counter', position=(6, 2), shape=[[1]]),
         Rack(id='water', type='shelf', rack_name='Water', position=(2, 2),
-             shape=[[1, 1]] if args.case == 'same-sku' else [[1]], slots=slots)])
-intent = ('Take one free bottle of Mineral Water 500ml. Do not buy any paid item.' if args.case == 'free'
+             shape=[[1, 1]] if args.case in {'same-sku', 'free-same-sku'} else [[1]], slots=slots)])
+intent = ('Take one free bottle of Mineral Water 500ml. Do not buy any paid item.' if args.case in {'free', 'free-same-sku'}
           else 'Buy exactly one bottle of Mineral Water 500ml for $1.00. Do not pay more than $1.00.')
 if args.case == 'browse':
     intent = 'Only look around. Not thirsty, no shopping list, no planned purchases today.'

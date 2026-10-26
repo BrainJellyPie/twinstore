@@ -165,7 +165,7 @@ function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
             <button key={item.label} type="button" onClick={() => setTheme(theme === i ? null : i)}
               className={cn("grid w-full grid-cols-[1fr_4.5rem] items-center gap-2 rounded-lg px-1 py-0.5 text-left", theme === i && "bg-primary/[0.07]")}>
               <span className="min-w-0">
-                <span className="block truncate text-[0.76rem]">{item.label}</span>
+                <span className="block truncate text-[0.76rem]" title={item.label}>{item.label}</span>
                 <span className="mt-0.5 block h-2 rounded-r-[4px] bg-foreground/[0.05]">
                   <span className="block h-full rounded-r-[4px]" style={{ width: `${Math.max(3, item.share * 100)}%`, background: "var(--viz-1)" }} />
                 </span>
