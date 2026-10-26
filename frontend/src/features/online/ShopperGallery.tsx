@@ -100,7 +100,7 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
                       <Swatch index={i} />
                       <span className="min-w-0 flex-1 truncate">{store}</span>
                       {v?.[i] && <Outcome brief={v[i]} rival={result.rival_name ?? ""} money={money} />}
-                      <button type="button" onClick={() => onWatch(i, sh.id)} aria-label={t("onCardsWatchStore", { store })}
+                      <button type="button" onClick={() => onWatch(i, sh.id)} aria-label={t("onCardsWatchStore", { store, shopper: sh.identity })}
                         className="grid size-6 shrink-0 place-items-center rounded-full border bg-card transition-colors hover:border-primary hover:text-primary">
                         <Play className="size-3" aria-hidden />
                       </button>
@@ -112,11 +112,12 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
                     <Play aria-hidden /> {t("onCardsWatchShort")}
                   </Button>
                   {stores.length > 1 && (
-                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onCompare(differs > 0 ? differs : 1, sh.id)}>
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onCompare(differs > 0 ? differs : 1, sh.id)}
+                      aria-label={t("onSideBySideOf", { shopper: sh.identity })}>
                       <Columns2 aria-hidden /> {t("onSideBySide")}
                     </Button>
                   )}
-                  <Button size="icon-sm" variant="ghost" className="ml-auto" onClick={() => onSteps(0, sh.id)} aria-label={t("onPlaySteps")} title={t("onPlaySteps")}>
+                  <Button size="icon-sm" variant="ghost" className="ml-auto" onClick={() => onSteps(0, sh.id)} aria-label={t("onPlayStepsOf", { shopper: sh.identity })} title={t("onPlaySteps")}>
                     <ListOrdered aria-hidden />
                   </Button>
                 </div>

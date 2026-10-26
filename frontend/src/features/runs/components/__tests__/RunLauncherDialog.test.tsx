@@ -316,3 +316,18 @@ it("refuses to start on a default model without a key when nothing else has one"
   await submit();
   expect(api.startRun).not.toHaveBeenCalled();
 });
+
+it("hands focus to Play once the started run shows", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const props = { projectId: "p", setupId: "s", personaCount: 1000, defaultEngine: "rule_based" as const };
+  const view = render(<QueryClientProvider client={client}><RunLauncherDialog open onOpenChange={() => {}} {...props} /></QueryClientProvider>);
+  await submit();
+  await waitFor(() => expect(api.startRun).toHaveBeenCalled());
+  // The dialog closes; the run's playback appears a moment later.
+  view.rerender(<QueryClientProvider client={client}><RunLauncherDialog open={false} onOpenChange={() => {}} {...props} /></QueryClientProvider>);
+  const play = document.createElement("button");
+  play.setAttribute("data-playback-play", "");
+  setTimeout(() => document.body.append(play), 150);
+  await waitFor(() => expect(document.activeElement).toBe(play), { timeout: 2000 });
+  play.remove();
+});

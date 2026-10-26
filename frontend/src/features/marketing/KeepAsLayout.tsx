@@ -11,10 +11,12 @@ import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 import { focusOnMount } from "@/shared/utils/focusOnMount";
 
-export function KeepAsLayout({ projectId, setupId, variant, currency, hint }: {
+export function KeepAsLayout({ projectId, setupId, variant, currency, hint, label }: {
   projectId: string; setupId: string; variant: Variant;
   /** The currency of the variant's prices, checked against the layout's (changes made in another store). */
   currency?: string; hint?: string;
+  /** The variant's name, for screen readers where several variants each offer this. */
+  label?: string;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -54,7 +56,8 @@ export function KeepAsLayout({ projectId, setupId, variant, currency, hint }: {
       ) : (
         <>
           <p className="text-muted-foreground">{hint ?? t("mkKeepHint")}</p>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => check.mutate()} disabled={check.isPending}>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => check.mutate()} disabled={check.isPending}
+            aria-label={label ? t("mkKeepReviewOf", { name: label }) : undefined}>
             {check.isPending && <Loader2 className="animate-spin" aria-hidden />} {t("mkKeepReview")}
           </Button>
         </>

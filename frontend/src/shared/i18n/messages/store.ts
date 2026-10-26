@@ -198,6 +198,7 @@ export const storeMessages = {
   previousRuns: ["Previous runs of this layout", "이 배치의 이전 실행", "此布局之前的运行", "このレイアウトの過去の実行", "Simulaciones anteriores de este plano", "Simulations précédentes de ce plan"],
   previousRunLine: ["{conversion} conv · {perVisitor}/visitor", "전환율 {conversion} · 방문객당 {perVisitor}", "转化率 {conversion} · 每位访客 {perVisitor}", "購入率 {conversion}・1人あたり {perVisitor}", "{conversion} conv. · {perVisitor}/visitante", "{conversion} conv. · {perVisitor}/visiteur"],
   previousRunView: ["View", "보기", "查看", "表示", "Ver", "Voir"],
+  previousRunViewName: ["View {run}", "{run} 보기", "查看 {run}", "{run} を表示", "Ver {run}", "Voir {run}"],
   durationSeconds: ["{seconds}s", "{seconds}초", "{seconds} 秒", "{seconds}秒", "{seconds} s", "{seconds} s"],
   durationMinutesSeconds: ["{minutes}m {seconds}s", "{minutes}분 {seconds}초", "{minutes} 分 {seconds} 秒", "{minutes}分{seconds}秒", "{minutes} min {seconds} s", "{minutes} min {seconds} s"],
   durationHoursMinutes: ["{hours}h {minutes}m", "{hours}시간 {minutes}분", "{hours} 小时 {minutes} 分", "{hours}時間{minutes}分", "{hours} h {minutes} min", "{hours} h {minutes} min"],

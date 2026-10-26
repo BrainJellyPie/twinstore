@@ -324,6 +324,11 @@ body {
 }
 
 /* Recharts makes a chart focusable (arrow keys move its tooltip): show where focus is. */
+/* In forced colors (Windows high contrast) box-shadow focus rings are dropped, and `outline-none` leaves nothing:
+   every focused control then draws an outline in the system's highlight colour. */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight !important; outline-offset: 2px; }
+}
 .recharts-surface:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -483,9 +488,12 @@ body {
 /* Page flow: particles of visits running along each ribbon. */
 @keyframes flow-run { to { stroke-dashoffset: -64; } }
 .flow-particles { animation: flow-run 1.6s linear infinite; }
-/* Report sections rise into place as they scroll into view, where the browser can tie it to scrolling. */
+/* Report sections rise into place as they scroll into view, where the browser can tie it to scrolling. A scroll
+   timeline ignores the reduced-motion duration override above, so it is left out for those who ask for less motion. */
 @supports (animation-timeline: view()) {
-  .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  }
 }
 
 /* App backdrop: aurora light, dot grid and film grain behind every page. */

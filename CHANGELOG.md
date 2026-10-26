@@ -2,11 +2,38 @@
 
 ## Unreleased
 
+- Keep waiting for playback to accept focus when its Play button appears
+  before it becomes usable, within the existing five-second limit.
+
 - Distinguish delivery fees from free-delivery thresholds in AI design edits,
   including zero and fractional thresholds. Give JSON-mode models a concrete
   result-format reminder to avoid copying the response schema. Report explicit
   threshold claims as unapplied when the model only set the delivery fee.
 
+- In Windows high-contrast (forced colors) mode, buttons, fields and cards show
+  where focus is, outlined in the system's highlight colour; their focus rings
+  are drawn as shadows, which that mode removes, so focus was invisible.
+- With reduced motion turned on in the system, report sections no longer fade,
+  blur and slide in as they scroll into view; the scroll-linked effect ignored
+  the app's reduced-motion setting, and a section half in view stayed blurred.
+- In an A/B test's results, each variant's **Review on the layout** and **Make
+  an online variant** buttons name the variant for screen readers ("Review
+  -20 % on the layout"), so a test with several variants no longer repeats
+  the same names.
+- In an online run's report, each shopper's buttons name the shopper for
+  screen readers ("Side by side for Retired teacher", "Watch Retired
+  teacher's visit to No fee", "Replay Retired teacher in Control store");
+  every card's buttons read the same.
+- Sliders are heard by screen readers as they are shown: the playback scrubber
+  as the store clock ("10:00 am") instead of seconds since midnight
+  ("36000"), the online run's shopper missions and traffic sources as each
+  one's share, the area's density as a percentage and a page's load time in
+  seconds.
+- Starting a run from **Run simulation…**, or opening one from **Previous runs
+  of this layout**, moves focus to **Play** once the run shows, ready for
+  Space; what was pressed was replaced by the run and focus fell back to the
+  top of the page. Each previous run's **View** button names its run for
+  screen readers ("View Rule-based · seed 0 · preview · 03:12 PM").
 - Keep the actual model-selection reason visible for a manual model override
   or a GPU-to-CPU fallback, instead of replacing it with the automatic
   recommendation. A disabled local model's setup guidance directs users to

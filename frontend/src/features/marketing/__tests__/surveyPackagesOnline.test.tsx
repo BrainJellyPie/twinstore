@@ -33,7 +33,7 @@ it("puts a tested package that shows a store product onto that product in an onl
   </QueryClientProvider>);
   await screen.findByRole("option", { name: "Tea shop" });
   expect(screen.queryByRole("combobox", { name: "Package to put online" })).toBeNull();  // only one package is linked
-  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Make an online variant/ }));
   expect(await screen.findByText("Green tea: new package picture")).toBeTruthy();
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", {
     name: "Tea shop – Green box package", note: "Tea packs: Green box package", currency: "USD",

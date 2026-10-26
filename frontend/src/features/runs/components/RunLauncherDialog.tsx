@@ -16,6 +16,7 @@ import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanst
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { isPreparing, useModelSetup } from "@/features/settings/useModelSetup";
+import { focusPlayWhenShown } from "@/features/playback/focusPlay";
 import { Button } from "@/shared/components/ui/button";
 import { RequestError } from "@/shared/components/RequestError";
 import {
@@ -65,11 +66,19 @@ export interface RunLauncherDialogProps {
 }
 
 export function RunLauncherDialog(props: RunLauncherDialogProps) {
+  // A started run replaces what opened the dialog on an empty layout; focus goes to Play, the next step, once it shows.
+  const started = useRef(false);
+  const focusPlay = (event: Event) => {
+    if (!started.current) return;
+    started.current = false;
+    event.preventDefault();
+    focusPlayWhenShown();
+  };
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[520px]">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[520px]" onCloseAutoFocus={focusPlay}>
         {/* Content unmounts when closed, so the form state resets on every open. */}
-        <LauncherForm {...props} />
+        <LauncherForm {...props} onStarted={() => { started.current = true; }} />
       </DialogContent>
     </Dialog>
   );
@@ -90,7 +99,8 @@ function LauncherForm({
   personaCount,
   locked = false,
   defaultEngine,
-}: RunLauncherDialogProps) {
+  onStarted,
+}: RunLauncherDialogProps & { onStarted: () => void }) {
   const { locale, t } = useI18n();
   const qc = useQueryClient();
   const simulate = useSimulate();
@@ -263,7 +273,7 @@ function LauncherForm({
       if (controller.signal.aborted) return;
       setPhotos(null);
     }
-    simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
+    simulate.mutate({ projectId, setupId, options }, { onSuccess: () => { onStarted(); onOpenChange(false); } });
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {

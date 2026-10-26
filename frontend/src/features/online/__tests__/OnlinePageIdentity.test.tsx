@@ -93,7 +93,7 @@ it.each([false, true])("resets cached report shopper and variant selection on a 
   fireEvent.change(screen.getByLabelText("Find a shopper"), { target: { value: "old_2" } });
   const card = screen.getByText("old_2", { selector: "div" }).closest("li")!;
   if (open) {
-    fireEvent.click(within(card).getByRole("button", { name: "Watch the visit to Shop B" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Watch old_2's visit to Shop B" }));
     expect(screen.getByRole("dialog").textContent).toBe("Old study:1:old_2");
   }
   fireEvent.click(screen.getByRole("button", { name: /New study/ }));

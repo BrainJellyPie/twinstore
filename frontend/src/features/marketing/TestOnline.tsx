@@ -79,7 +79,8 @@ export function TestOnline({ projectId, testName, variant, currency }: {
             aria-label={t("mkOnlinePick")} className="h-8 min-w-0 max-w-full flex-1 rounded-lg border bg-card px-2 text-xs">
             {usable.map((s) => <option key={s.id} value={s.id} disabled={!sells(s)}>{sells(s) ? s.name : t("mkOnlineNotSold", { name: s.name })}</option>)}
           </select>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => make.mutate()} disabled={!siteId || make.isPending}>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => make.mutate()} disabled={!siteId || make.isPending}
+            aria-label={t("mkOnlineMakeOf", { name: variant.name })}>
             {make.isPending && <Loader2 className="animate-spin" aria-hidden />} {t("mkOnlineMake")}
           </Button>
         </div>
