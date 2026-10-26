@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **All shoppers** (back from a shopper's journey) gives focus back to that
+  shopper's row in the list; focus fell to the top of the page.
 - A shopper's journey in English reads "Heads to Snacks 1", "Takes from
   Snacks 1", "Pays at Counter 1", "Walks in by", "Wanders near" and "Leaves
   by"; the steps lacked their prepositions ("Heads over Snacks 1", "Takes

@@ -49,6 +49,14 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
   const [sort, setSort] = useState<ShopperSort>("spent");
   const [query, setQuery] = useState("");
   const shopperList = useRef<HTMLUListElement>(null);
+  // Back from a shopper, focus returns to their row in the list (the Back button went with the detail).
+  const backTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (selected || !backTo.current) return;
+    const id = backTo.current;
+    backTo.current = null;
+    [...shopperList.current?.querySelectorAll<HTMLElement>("[data-shopper]") ?? []].find((row) => row.dataset.shopper === id)?.focus();
+  }, [selected]);
   const [limit, setLimit] = useState(40);
   const rows = useMemo(() => shopperRows(customers, personas), [customers, personas]);
   // Shoppers found from a sentence: the model writes the filter, the run's records decide who fits.
@@ -95,7 +103,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
 
   if (selected) {
     return <ShopperDetail projectId={projectId} runId={runId} store={store} sid={selected} customers={customers}
-      backLabel={group ? t("groupInterview") : t("allShoppers")} onBack={() => { setSelected(null); setHighlight(null); }} />;
+      backLabel={group ? t("groupInterview") : t("allShoppers")} onBack={() => { backTo.current = selected; setSelected(null); setHighlight(null); }} />;
   }
   if (group) {
     return <GroupInterviewPanel projectId={projectId} runId={runId} currency={currency}
@@ -172,7 +180,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       <ul ref={shopperList} className="space-y-1">
         {list.slice(0, limit).map((r) => (
           <li key={r.id} className="flex items-stretch gap-1">
-            <button type="button" onClick={() => { setSelected(r.id); setHighlight(r.id); }}
+            <button type="button" data-shopper={r.id} onClick={() => { setSelected(r.id); setHighlight(r.id); }}
               onPointerEnter={() => setHighlight(r.id)} onPointerLeave={() => setHighlight(null)}
               className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border bg-card/60 px-2.5 py-2 text-left transition-colors hover:border-primary/50">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age ? ageBadge(r.age, t) : "–"}</span>
