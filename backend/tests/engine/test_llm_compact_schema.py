@@ -116,12 +116,14 @@ def test_localhost_and_ipv6_use_the_compact_schema(tmp_path, monkeypatch, base):
     ("json", "http://model.example.invalid/v1", False),
     ("json_schema", "http://127.0.0.1:8081/v1", False),
 ])
-def test_only_changed_prompts_invalidate_legacy_cache(tmp_path, monkeypatch, mode, base, refresh):
+@pytest.mark.parametrize("parser_version", ["final-think-v2", "unique-json-v3"])
+def test_prompt_or_parser_changes_invalidate_legacy_cache(tmp_path, monkeypatch, mode, base, refresh, parser_version):
+    refresh = refresh or parser_version != "unique-json-v3"
     seen = responses(monkeypatch)
     client = LiteLLMClient(config(tmp_path, mode, base))
     system, user = "Answer", "Hello"
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-    legacy = {"structured_parser": "final-think-v2", "structured_output": mode,
+    legacy = {"structured_parser": parser_version, "structured_output": mode,
         "model": client.model, "api_base": base, "temperature": client.temperature, "max_tokens": 160,
         "seed": None, "schema": Answer.model_json_schema(), "messages": messages}
     digest = hashlib.sha256(json.dumps(legacy, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -142,7 +144,7 @@ def test_small_local_schema_keeps_original_prompt_and_cache(tmp_path, monkeypatc
     schema = SmallAnswer.model_json_schema()
     assert json.dumps(schema, indent=2, ensure_ascii=False) in seen[0]["messages"][0]["content"]
     messages = [{"role": "system", "content": "Answer"}, {"role": "user", "content": "Second"}]
-    legacy = {"structured_parser": "final-think-v2", "structured_output": "json",
+    legacy = {"structured_parser": "unique-json-v3", "structured_output": "json",
         "model": client.model, "api_base": client.api_base, "temperature": client.temperature,
         "max_tokens": 160, "seed": None, "schema": schema, "messages": messages}
     digest = hashlib.sha256(json.dumps(legacy, sort_keys=True, ensure_ascii=False).encode()).hexdigest()

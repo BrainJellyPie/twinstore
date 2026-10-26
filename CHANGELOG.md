@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Retry structured model replies with duplicate JSON object keys instead of
+  silently replacing earlier values, such as customer descriptions. Keep
+  retries bounded and preserve usage accounting; older parsed-response caches
+  are bypassed because their overwritten source values cannot be checked.
+
 - Layouts can be renamed on the Store & layout tab, so layouts made the same
   way (for example several optimized copies) can be told apart. Finalized
   layouts keep their names, as the server keeps the rest of them unchanged.

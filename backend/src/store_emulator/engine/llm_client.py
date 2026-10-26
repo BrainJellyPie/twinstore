@@ -9,8 +9,9 @@ import threading
 import weakref
 from collections.abc import Callable
 from contextlib import nullcontext
+from functools import lru_cache
 from pathlib import Path
-from typing import cast
+from typing import Literal, Self, cast
 from urllib.parse import urlsplit
 
 import instructor
@@ -18,7 +19,7 @@ import litellm
 from instructor.core.exceptions import IncompleteOutputException, InstructorError
 from instructor.core.hooks import Hooks
 from litellm.exceptions import APIConnectionError, AuthenticationError, BadRequestError, ContextWindowExceededError
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, create_model
 
 from store_emulator.domain.config import LLMConfig
 from store_emulator.domain.types import TokenUsage
@@ -238,6 +239,35 @@ def _final_structured_content(response: object) -> None:
         content = getattr(message, "content", None)
         if isinstance(content, str):
             setattr(message, "content", final_answer_text(content))
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise json.JSONDecodeError(f"Duplicate JSON object key {key!r}; return each key exactly once", "", 0)
+        result[key] = value
+    return result
+
+
+class _UniqueJSONResponse(BaseModel):
+    @classmethod
+    def model_validate_json(
+        cls, json_data: str | bytes | bytearray, *, strict: bool | None = None,
+        extra: Literal["allow", "ignore", "forbid"] | None = None, context: object = None,
+        by_alias: bool | None = None, by_name: bool | None = None,
+    ) -> Self:
+        # Pydantic otherwise keeps the last repeated member, losing earlier data
+        # before field validators can see the ambiguity. Let Instructor reask it.
+        json.loads(json_data, object_pairs_hook=_unique_json_object)
+        return super().model_validate_json(json_data, strict=strict, extra=extra,
+                                           context=context, by_alias=by_alias, by_name=by_name)
+
+
+@lru_cache(maxsize=128)
+def _unique_response_model(response_model: type[BaseModel]) -> type[BaseModel]:
+    return create_model(response_model.__name__, __base__=(_UniqueJSONResponse, response_model),
+                        __doc__=response_model.__doc__, __module__=response_model.__module__)
 
 
 def _compact_json_schema_prompt(pretty: str, compact: str, messages: object) -> None:
@@ -519,7 +549,7 @@ class LiteLLMClient:
         key_src = json.dumps(
             {
                 **extra,
-                "structured_parser": "final-think-v2",
+                "structured_parser": "unique-json-v3",
                 "structured_output": self._structured_output,
                 "model": self.model,
                 # Two local servers often share a placeholder model id; the endpoint tells them apart.
@@ -539,7 +569,7 @@ class LiteLLMClient:
         if path is None:
             return None
         try:
-            data: object = json.loads(path.read_text(encoding="utf-8"))
+            data: object = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_json_object)
             if not isinstance(data, dict):
                 raise ValueError("expected a cache entry object")
             # Match Instructor's strict JSON validation, including JSON arrays
@@ -595,9 +625,10 @@ class LiteLLMClient:
             hooks.on("completion:response", _final_structured_content)
             try:
                 result = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-                    response_model=response_model,
+                    response_model=_unique_response_model(response_model),
                     messages=msgs,  # type: ignore[reportArgumentType]
                     max_retries=max_retries,
+                    strict=True,
                     hooks=hooks,
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
@@ -647,9 +678,10 @@ class LiteLLMClient:
                 hooks.on("completion:response", _final_structured_content)
                 try:
                     result = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-                        response_model=response_model,
+                        response_model=_unique_response_model(response_model),
                         messages=msgs,  # type: ignore[reportArgumentType]
                         max_retries=max_retries,
+                        strict=True,
                         hooks=hooks,
                         **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                     )
