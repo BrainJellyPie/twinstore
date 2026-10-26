@@ -99,6 +99,10 @@
   a word: leaving the page, reloading, or opening another photo first asks
   **Leave without saving the product corrections?**, and a look at the
   **Shelf Lab** tab keeps them.
+- The command palette finds each marketing studio tool by name in any of the six
+  languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
+  before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`
+  links to a tool.
 - The marketing studio's tools (A/B tests … Products) and an online store's
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
