@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.domain.layout_options import BuildingFloorInfo, TemplateLayoutRequest
@@ -184,7 +184,8 @@ class SetupUpdatePayload(BaseModel):
     """Inner body of SaveSetupRequest. Partial update — only the supplied fields among name/store/memo are applied."""
     model_config = ConfigDict(extra="ignore")
 
-    name: str | None = None
+    # A layout's label in the tabs and pickers: never blank, and no longer than the add-layout form allows.
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)] | None = None
     store: dict[str, object] | None = None
     memo: str | None = None
 
