@@ -44,3 +44,13 @@ it("chooses the products of a swap from lists as well as on the photo, and clear
   fireEvent.click(clear);
   expect((screen.getByRole("combobox", { name: "With" }) as HTMLSelectElement).value).toBe("");
 });
+
+it("marks a price tag that cannot be read as the field in error", async () => {
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Panel /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: /Price tag/ }));
+  const field = screen.getByPlaceholderText("New price (USD)");
+  expect(field.getAttribute("aria-invalid")).toBe("false");
+  fireEvent.change(field, { target: { value: "abc" } });
+  expect(field.getAttribute("aria-invalid")).toBe("true");
+  expect(field.getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
+});

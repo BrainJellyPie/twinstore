@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- In a shelf photo's product list, a price that cannot be read is outlined in
+  red and tied to its error message, so it can be found in a long list; Shelf
+  Lab's price fields do the same. Typing into an estimated price and then
+  erasing it no longer leaves the page "unsaved" and asking before you leave.
+
 - Model pickers and **Settings → Model providers** show the local model and
   the self-hosted servers in the selected language ("llama.cpp 서버 ·
   llama-server에 불러온 모델" in Korean), instead of always in English. Brand

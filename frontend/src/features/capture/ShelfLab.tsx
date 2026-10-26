@@ -4,7 +4,7 @@
 // - Sim2real: the same shoppers on the photo and on the simulator's render of the same planogram.
 // - Audit: the photo against the layout's reference face, differences priced per day by paired simulation.
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftRight,
@@ -176,6 +176,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
   const [assetId, setAssetId] = useState("");
   const parsedPrice = toMinor(price, minorUnitDivisor(result.currency));
   const invalidPrice = (draft.kind === "replace" || draft.kind === "price") && price.trim() !== "" && parsedPrice === null;
+  const priceErrorId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const packages = useQuery({ queryKey: ["projects", projectId, "lab-packages"], queryFn: ({ signal }) => api.listPackages(projectId, signal) });
   const upload = useMutation({
@@ -255,7 +256,8 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
         <div className="space-y-2 rounded-xl border bg-foreground/[0.02] p-3">
           <div className="grid grid-cols-[1fr_6.5rem] gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("capLabNewProductName")} />
-            <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("capLabPrice")} inputMode="decimal" className="num" />
+            <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("capLabPrice")} inputMode="decimal" className="num"
+              aria-invalid={invalidPrice} aria-describedby={invalidPrice ? priceErrorId : undefined} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -292,7 +294,8 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
         </div>
       )}
       {draft.kind === "price" && (
-        <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("capLabNewPrice", { currency: result.currency })} inputMode="decimal" className="num" />
+        <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("capLabNewPrice", { currency: result.currency })} inputMode="decimal" className="num"
+          aria-invalid={invalidPrice} aria-describedby={invalidPrice ? priceErrorId : undefined} />
       )}
       {draft.kind === "promo" && (
         <div className="flex flex-wrap gap-1.5">
@@ -320,7 +323,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
         </ol>
       )}
       {render.error && <p className="text-xs text-destructive">{render.error instanceof Error ? render.error.message : String(render.error)}</p>}
-      {invalidPrice && <p role="alert" className="text-xs text-destructive">{t("capLabInvalidPrice")}</p>}
+      {invalidPrice && <p id={priceErrorId} role="alert" className="text-xs text-destructive">{t("capLabInvalidPrice")}</p>}
       <div className="flex gap-2">
         <Button variant="outline" className="gap-1.5" disabled={!current} onClick={() => { if (current) { setQueue([...queue, current]); setDraft({ ...EMPTY_DRAFT, kind: draft.kind }); } }}>
           <Plus className="size-4" /> {t("capLabAddStep")}

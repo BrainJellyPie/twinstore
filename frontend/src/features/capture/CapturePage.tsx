@@ -1,7 +1,7 @@
 // Shelf capture: photograph a shelf, let detection + a VLM read it into a planogram, correct what
 // it got wrong, and put it into a layout to simulate.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker, useNavigate, useRouter } from "@tanstack/react-router";
 import { Camera, Check, Eye, EyeOff, FlaskConical, ListChecks, Loader2, Minus, Plus, Save, Trash2, Wand2 } from "lucide-react";
@@ -318,7 +318,9 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
   const dirty = JSON.stringify(drafts) !== JSON.stringify(initial);
   useEffect(() => { onUnsaved(dirty); }, [dirty, onUnsaved]);
   useEffect(() => () => onUnsaved(false), [onUnsaved]);
-  const invalidPrice = drafts.some((d) => d.price.trim() !== "" && toMinor(d.price, minorUnitDivisor(result.currency)) === null);
+  const badPrice = (d: Draft) => d.price.trim() !== "" && toMinor(d.price, minorUnitDivisor(result.currency)) === null;
+  const invalidPrice = drafts.some(badPrice);
+  const priceErrorId = useId();
   const save = useMutation({
     mutationFn: () => api.updateCapture(projectId, captureId, drafts.map((d): CaptureEdit => ({
       id: d.id, name: d.name, brand: d.brand, size: d.size, category: d.category, facings: d.facings, level: d.level,
@@ -340,7 +342,7 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
           {dirty ? t("capSaveChanges") : t("studioSaved")}
         </Button>
       </div>
-      {invalidPrice && <p role="alert" className="mb-2 text-sm text-destructive">{t("capInvalidPriceKeep")}</p>}
+      {invalidPrice && <p id={priceErrorId} role="alert" className="mb-2 text-sm text-destructive">{t("capInvalidPriceKeep")}</p>}
       {save.error && <p role="alert" className="mb-2 text-sm text-destructive">{save.error instanceof Error ? save.error.message : String(save.error)}</p>}
       <div className="space-y-3">
         {levels.map((lv) => (
@@ -365,7 +367,12 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
                       {CAPTURE_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{t(c.label)}</option>)}
                     </select>
                     <div className="relative">
-                      <Input value={d.price} inputMode="decimal" aria-label={t("capPriceOf", { name: d.name || t("capProductName") })} onChange={(e) => patch(d.id, { price: e.target.value, estimated: false })}
+                      <Input value={d.price} inputMode="decimal" aria-label={t("capPriceOf", { name: d.name || t("capProductName") })}
+                        aria-invalid={badPrice(d)} aria-describedby={badPrice(d) ? priceErrorId : undefined} onChange={(e) => {
+                          // Typing confirms an estimated price; putting the original text back leaves it estimated.
+                          const start = initial.find((x) => x.id === d.id);
+                          patch(d.id, { price: e.target.value, estimated: start?.estimated === true && start.price === e.target.value });
+                        }}
                         className={cn("h-7 pr-1 text-xs tabular-nums", d.estimated && "border-dashed text-muted-foreground")} placeholder={t("capPricePlaceholder")}
                         title={d.estimated ? t("capEstimatedPriceTitle") : undefined} />
                     </div>
