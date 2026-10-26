@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require a resolvable shelf before accepting a generated shelf-purchase
+  condition. Missing or unknown shelf targets now request correction before
+  caching instead of silently dropping that part of a shopper search.
+
 - Compare package net quantities across metric units before linking a catalog
   product. A 0.5 L package cannot become its printed 100 ml nutrition reference;
   equivalent quantities remain usable when the catalog name has printed evidence.
