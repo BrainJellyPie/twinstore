@@ -61,6 +61,7 @@ export function CapturePage({ projectId }: { projectId: string }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:min-h-0">
+        <h1 className="sr-only">{t("shelfCapture")}</h1>
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
         {selected && hasSavedQueue && <Button variant="outline" onClick={() => select(null)}>{t("capContinueQueue")}</Button>}
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
@@ -351,7 +352,7 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 shrink-0 rounded-full" style={{ background: categoryColor(d.category) }} />
                     <Input value={d.name} placeholder={t("capProductName")} aria-label={t("capProductName")} onChange={(e) => patch(d.id, { name: e.target.value })} className="h-8 flex-1 text-sm" />
-                    <button type="button" aria-label={t("capRemoveProduct")} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    <button type="button" aria-label={t("capRemoveProduct", { name: d.name || t("capProductName") })} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                       onClick={() => setDrafts((ds) => ds.filter((x) => x.id !== d.id))}>
                       <Trash2 className="size-3.5" />
                     </button>
@@ -368,9 +369,9 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
                         title={d.estimated ? t("capEstimatedPriceTitle") : undefined} />
                     </div>
                     <div className="flex items-center justify-end gap-1">
-                      <button type="button" aria-label={t("capFewerFacings")} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: Math.max(1, d.facings - 1) })}><Minus className="size-3" /></button>
+                      <button type="button" aria-label={t("capFewerFacings", { name: d.name || t("capProductName") })} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: Math.max(1, d.facings - 1) })}><Minus className="size-3" /></button>
                       <span className="w-12 text-center tabular-nums">{d.facings}×</span>
-                      <button type="button" aria-label={t("capMoreFacings")} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: d.facings + 1 })}><Plus className="size-3" /></button>
+                      <button type="button" aria-label={t("capMoreFacings", { name: d.name || t("capProductName") })} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: d.facings + 1 })}><Plus className="size-3" /></button>
                     </div>
                   </div>
                   {(d.brand || d.size || d.confidence > 0) && (

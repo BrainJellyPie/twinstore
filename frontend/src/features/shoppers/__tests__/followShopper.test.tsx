@@ -50,3 +50,14 @@ it("opens the first shopper a search finds with Enter and moves into the list wi
   expect(screen.getByRole("button", { name: "All shoppers" })).toBeTruthy();
   expect(useSimulationStore.getState().highlightId).toBe("p2");
 });
+
+it("gives focus back to the shopper's row when going back to the list", () => {
+  vi.mocked(getJourney).mockImplementation(() => new Promise(() => {}));
+  render(<QueryClientProvider client={new QueryClient()}>
+    <ShopperPanel projectId="p" runId="r" customers={customers} personas={personas} store={{ racks: [] } as unknown as Store} />
+  </QueryClientProvider>);
+  const row = () => screen.getByRole("button", { name: /^(?!Follow).*Nurse/ });
+  fireEvent.click(row());
+  fireEvent.click(screen.getByRole("button", { name: "All shoppers" }));
+  expect(document.activeElement).toBe(row());
+});

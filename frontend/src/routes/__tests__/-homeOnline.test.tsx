@@ -37,8 +37,9 @@ afterEach(() => { cleanup(); navigate.mockReset(); localStorage.clear(); });
 
 async function mount() {
   const client = new QueryClient();
-  // The page suspends while its translations load.
+  // The page suspends while its translations load; the first load can take seconds on a busy machine.
   await act(async () => { render(<QueryClientProvider client={client}><Home /></QueryClientProvider>); });
+  await screen.findByRole("heading", { level: 1 }, { timeout: 10_000 });
 }
 
 const store = (id: string, name: string, updated: string) => ({

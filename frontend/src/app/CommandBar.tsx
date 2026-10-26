@@ -170,6 +170,10 @@ export function CommandBar() {
   const sub = on("town") ? t("neighborhood") : on("capture") ? t("shelfCapture") : on("marketing") ? t("marketingStudio") : on("online") ? t("onlineStores") : null;
   const pageKey = PAGE_TITLES[pathname];
   const pageTitle = pageKey ? t(pageKey) : undefined;
+  // The tab title names the page and the store, so tabs, history and screen readers tell pages apart.
+  const page = pid ? sub ?? (on("projects") ? t("floor") : null) : pageTitle;
+  const documentTitle = [page, pid ? project?.metadata.name : null, "TwinStore"].filter(Boolean).join(" · ");
+  useEffect(() => { document.title = documentTitle; }, [documentTitle]);
 
   const items: NavItem[] = [
     { to: "/", label: t("stores"), icon: LayoutGrid, active: pathname === "/" || pathname === "/projects/new" },

@@ -191,7 +191,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
         <div className="space-y-3 rounded-2xl border bg-card p-4">
           <h3 className="text-sm font-semibold">{t("mkBrief")}</h3>
           <Textarea value={context} onChange={(e) => setContext(Array.from(e.target.value).slice(0, 300).join(""))} rows={3}
-            placeholder={t("mkBriefPlaceholder")} />
+            placeholder={t("mkBriefPlaceholder")} aria-label={t("mkBriefLabel")} />
           <div className="flex items-end gap-2">
             <label className="flex flex-1 flex-col gap-1">
               <span className="text-xs text-muted-foreground">{t("mkShelfPriceA")}</span>
@@ -221,7 +221,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} aria-label={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
         {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
         <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || invalidPrice || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}

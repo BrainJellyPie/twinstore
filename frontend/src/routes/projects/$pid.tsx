@@ -104,6 +104,8 @@ function SimulationPageInner({ pid }: { pid: string }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+      {/* The 3D floor has no visible heading; screen readers still get the page's name, as the other pages show one. */}
+      <h1 className="sr-only">{t("floor")}</h1>
       {layoutError}
       {/*
         Local Suspense — on layout switch, if useSetup(useSuspenseQuery)'s cache miss

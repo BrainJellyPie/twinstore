@@ -1,8 +1,7 @@
 // One shopper's trip: a mini floor map with the walked path and numbered stops, and the steps with the
 // thought recorded at each one. Steps cited by an interview answer are highlighted.
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { DoorClosed, DoorOpen, Footprints, Eye, ShoppingBasket, CreditCard, Shuffle, X } from "lucide-react";
 
 import { shelfFaceUrl, type Journey, type JourneyAction, type JourneyStep } from "@/shared/api/interview";
@@ -12,6 +11,7 @@ import { rackBounds } from "@/shared/utils/grid";
 import { formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 
 const ICON: Record<JourneyAction, typeof Eye> = {
   enter: DoorOpen, move: Footprints, browse: Eye, buy: ShoppingBasket, pay: CreditCard, wander: Shuffle, exit: DoorClosed,
@@ -98,23 +98,18 @@ export function JourneySteps({ projectId, journey, active, onHover }: {
 
 function Lightbox({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
   const { t } = useI18n();
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [onClose]);
-  // Portal: the side panel's backdrop filter would otherwise contain the fixed overlay.
-  return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6 backdrop-blur-sm" onClick={onClose} role="dialog" aria-label={title}>
-      <figure className="max-w-4xl overflow-hidden rounded-2xl bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <img src={url} alt={title} className="max-h-[75vh] w-full object-contain" />
-        <figcaption className="flex items-center gap-2 px-4 py-2.5 text-sm">
-          <span className="flex-1 text-muted-foreground">{title}</span>
-          <button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-foreground/[0.06]" aria-label={t("close")}><X className="size-4" /></button>
-        </figcaption>
-      </figure>
-    </div>,
-    document.body,
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent showCloseButton={false} aria-modal="true" aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl bg-card p-0 sm:max-w-4xl">
+        <figure>
+          <img src={url} alt={title} className="max-h-[75vh] w-full object-contain" />
+          <figcaption className="flex items-center gap-2 px-4 py-2.5 text-sm">
+            <DialogTitle asChild><span className="flex-1 font-sans text-sm font-normal tracking-normal text-muted-foreground">{title}</span></DialogTitle>
+            <DialogClose asChild><button type="button" className="rounded-md p-1 hover:bg-foreground/[0.06]" aria-label={t("close")}><X className="size-4" /></button></DialogClose>
+          </figcaption>
+        </figure>
+      </DialogContent>
+    </Dialog>
   );
 }
 

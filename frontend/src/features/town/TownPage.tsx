@@ -75,6 +75,7 @@ export function TownPage({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row">
+      <h1 className="sr-only">{t("neighborhood")}</h1>
       <div className="relative m-3 h-[28rem] min-w-0 shrink-0 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)] lg:mr-0 lg:h-auto lg:min-h-64 lg:flex-1">
         {town ? (
           <>
@@ -329,9 +330,9 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRivals")}</span>
-          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 w-20 text-xs" />
+          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} aria-label={t("areaRivals")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 w-20 text-xs" />
           <span className="w-14 text-muted-foreground">{t("areaSeed")}</span>
-          <Input type="number" value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Number(e.target.value) || 0 })} className="h-7 w-20 text-xs" />
+          <Input type="number" aria-label={t("areaSeed")} value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Number(e.target.value) || 0 })} className="h-7 w-20 text-xs" />
         </label>
         <div>
           <div className="mb-1 text-muted-foreground">{t("areaNextToUs")}</div>
@@ -383,7 +384,7 @@ function ImportPanel({ projectId, onDone, onError, hasTown }: { projectId: strin
     <details className="rounded-lg border p-3">
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Globe2 className="size-4" /> {t("areaRealMap")}</summary>
       <div className="mt-3 space-y-2 text-xs">
-        <Input placeholder={t("areaAddressPlaceholder")} value={address} onChange={(e) => setAddress(e.target.value)} className="h-8 text-xs" />
+        <Input placeholder={t("areaAddressPlaceholder")} aria-label={t("address")} value={address} onChange={(e) => setAddress(e.target.value)} className="h-8 text-xs" />
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRadius")}</span>
           <input type="range" min={200} max={1500} step={50} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="flex-1 accent-primary" />

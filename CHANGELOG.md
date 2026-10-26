@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- The browser tab names the page and the store ("Marketing studio · Corner
+  Mart · TwinStore"), so tabs, history and screen readers tell pages apart; it
+  always read "TwinStore". The floor, area and capture pages also give screen
+  readers a page heading, as the other pages do, and side panels say "Close"
+  in the selected language.
+- Fields that had only a placeholder or a shared label now have their own
+  names for screen readers: the shelf test's new price, the test and study
+  names, the concept test's brief, and the area page's address, rivals and
+  seed. The seed field had no name at all, and rivals read "Rivals Seed".
+- **Model providers** names each card's fields and buttons after its provider
+  for screen readers ("Save OpenAI key", "Test Anthropic (Claude)", "Ollama
+  endpoint"); every card's buttons read the same, and the endpoint and model
+  fields took their Save and Default buttons' words into their names
+  ("Endpoint Save", "Model Default").
+- A shelf capture's facing and remove buttons name their product for screen
+  readers ("More facings of Coffee", "Remove Coffee"), as the row's category
+  and price fields do; every row's buttons were read the same.
+- **All shoppers** (back from a shopper's journey) gives focus back to that
+  shopper's row in the list; focus fell to the top of the page.
+- A shopper's journey in English reads "Heads to Snacks 1", "Takes from
+  Snacks 1", "Pays at Counter 1", "Walks in by", "Wanders near" and "Leaves
+  by"; the steps lacked their prepositions ("Heads over Snacks 1", "Takes
+  Snacks 1", "Pays Counter 1").
+- The enlarged shelf picture in a shopper's journey opens with focus on
+  **Close**, keeps keyboard focus inside the modal, and gives focus back to
+  the picture when it closes; focus could move onto the page behind it.
 - Saving or removing an API key in **Model providers** updates the "Explore
   without an API key" banner, the local model's role and the "needs a model"
   prompts at once; they stayed as before until the page was reloaded. After
