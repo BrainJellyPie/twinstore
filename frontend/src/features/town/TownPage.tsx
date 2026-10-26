@@ -237,7 +237,7 @@ function TownSummary({ town }: { town: Town }) {
         <div>
           <div className="font-medium">{town.name}</div>
           <div className="text-xs text-muted-foreground">
-            {labelOf(ARCHETYPE_LABELS, town.archetype, t)} · {Math.round(town.size_m)} m · {town.source === "osm" ? "OpenStreetMap" : t("areaGenerated")}
+            {labelOf(ARCHETYPE_LABELS, town.archetype, t)} · {t("areaSizeAcross", { meters: Math.round(town.size_m) })} · {town.source === "osm" ? "OpenStreetMap" : t("areaGenerated")}
           </div>
         </div>
         <Users className="size-4 text-muted-foreground" />

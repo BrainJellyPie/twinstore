@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The neighborhood card says its size is the side of the area ("1,200 m
+  across"), so a map imported with a 600 m radius no longer looks like it
+  used a 1,200 m one; the number is written in the selected language.
+
 - In Spanish, the online stores list counts its runs with the same word as
   its Runs section ("Ejecuciones"), instead of a second word for them.
 

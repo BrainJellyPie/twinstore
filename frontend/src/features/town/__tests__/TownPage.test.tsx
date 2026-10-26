@@ -268,3 +268,10 @@ it("says what a slow map import is doing, with the time it has taken", async () 
     vi.useRealTimers();
   }
 });
+
+it("says the area's size is its side length, not a radius", async () => {
+  vi.mocked(api.getTown).mockResolvedValue({ ...town, size_m: 1200, source: "osm" });
+  await mount();
+  await screen.findByRole("img", { name: "Saved neighborhood" });
+  expect(document.body.textContent).toContain("1,200 m across · OpenStreetMap");
+});

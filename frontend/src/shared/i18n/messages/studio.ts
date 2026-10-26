@@ -85,6 +85,7 @@ export const studioMessages = {
   areaCheckSettings: ["Check the settings, then generate.", "설정을 확인한 뒤 생성하세요.", "请检查设置，然后生成。", "設定を確認してから生成してください。", "Revisa los ajustes y luego genera.", "Vérifiez les paramètres, puis générez."],
   areaArchetype: ["Archetype", "지역 유형", "区域类型", "エリアの種類", "Tipo de zona", "Type de quartier"],
   areaSize: ["Size", "크기", "大小", "広さ", "Tamaño", "Taille"],
+  areaSizeAcross: ["{meters} m across", "한 변 {meters} m", "边长 {meters} 米", "一辺 {meters} m", "{meters} m de lado", "{meters} m de côté"],
   areaDensity: ["Density", "밀도", "密度", "密度", "Densidad", "Densité"],
   areaRivals: ["Rivals", "경쟁 매장", "竞争店", "競合店", "Rivales", "Concurrents"],
   areaSeed: ["Seed", "시드", "种子", "シード", "Semilla", "Graine"],
