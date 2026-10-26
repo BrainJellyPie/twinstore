@@ -7,6 +7,10 @@
   catalog vocabulary, reducing unrelated assortment substitutions by small
   local models. Extend CPU probes to check shelf purposes as well as valid IDs.
 
+- Answer a request whose text ends in half an emoji with a readable validation
+  error instead of a server error. The echoed input shows a replacement mark
+  where the broken character was.
+
 - Keep advertised price limits ("FROM $1.00", "UNDER $1.00", "1,000원부터")
   from becoming exact captured selling prices. Preserve the printed label,
   mark the fallback as estimated and retain existing matched-product prices.
@@ -18,6 +22,13 @@
 - Keep bare package sizes and counts, such as "500 ml" and "6 PACK", from
   becoming exact captured prices. Explicit cash amounts such as "$6 PACK"
   and ordinary numeric price tags retain their existing interpretation.
+- Layouts the app names itself get a number when the name is taken, so they
+  can be told apart in the layout tabs and pickers: a second starter, shelf-copy,
+  library-photo, product-edit or combined-shelf draft, a second optimized or
+  edited copy with the same result, become "Starter products 2" and so on.
+  Names typed by hand stay as typed. Edited names keep their number within
+  the length limit, and simultaneously prepared photo drafts choose names
+  while holding the save lock.
 
 - Do not turn loyalty point counts into cash selling prices during shelf
   capture. Preserve point labels and mark fallback prices as estimated;

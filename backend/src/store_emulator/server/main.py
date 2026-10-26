@@ -124,10 +124,12 @@ app = FastAPI(
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_response(_request: Request, exc: RequestValidationError) -> JSONResponse:
-    # Python's JSON parser accepts nonfinite numbers; echoed validation inputs must still be valid JSON.
+    # Python's JSON parser accepts nonfinite numbers and unpaired surrogates (half an emoji); echoed validation inputs
+    # must still be valid JSON that encodes as UTF-8.
     detail = jsonable_encoder(exc.errors(), custom_encoder={
         float: lambda value: value if math.isfinite(value) else str(value),
         bytes: lambda value: value.decode("utf-8", errors="replace"),
+        str: lambda value: value.encode("utf-8", errors="replace").decode("utf-8"),
     })
     return JSONResponse(status_code=422, content={"detail": detail})
 

@@ -24,7 +24,7 @@ from .providers import assistive_client
 from .product_sources import check_product_layout, read_product_source
 from .setups import set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .storage.io import write_json
-from .storage.setups import new_setup_data, read_setup, setup_path
+from .storage.setups import new_setup_data, read_setup, setup_path, unique_setup_name
 from .study_design import _last_run_units  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ def apply_edit(pid: str, sid: str, req: LayoutEditApply) -> dict[str, object]:
             with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
                 source = read_setup(pid, sid)
                 source_name = str(source.get("name") or "layout")
-                name = req.name or f"{source_name} (edited)"
+                name = req.name or unique_setup_name(pid, f"{source_name} (edited)", max_length=80)
                 new_setup = new_setup_data(name[:80], sid, edited.model_dump(mode="json"), "; ".join(applied[:12])[:1000])
                 if source.get("operations") is not None:
                     new_setup["operations"] = source["operations"]

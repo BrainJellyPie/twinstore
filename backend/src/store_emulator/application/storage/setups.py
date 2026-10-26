@@ -128,6 +128,20 @@ def write_state(project_id: str, data: dict[str, Any]) -> None:
     write_json(state_path(project_id), data)
 
 
+def unique_setup_name(project_id: str, name: str, *, max_length: int | None = None) -> str:
+    """`name`, or `name` with the lowest " 2", " 3" … that no other layout of the store carries. For names the app
+    makes up (a copy, an optimized or starter layout), so two made the same way can be told apart in the tabs."""
+    taken = {str(setup.get("name") or "") for setup in list_setups(project_id)}
+    base = name[:max_length] if max_length is not None else name
+    candidate, number = base, 1
+    while candidate in taken:
+        number += 1
+        suffix = f" {number}"
+        stem = base[:max_length - len(suffix)] if max_length is not None else base
+        candidate = stem + suffix
+    return candidate
+
+
 def new_setup_data(
     name: str,
     parent_id: str | None,

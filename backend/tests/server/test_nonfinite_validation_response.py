@@ -81,3 +81,14 @@ def test_wrong_content_type_returns_readable_validation_error(project, body):
     error = response.json()["detail"][0]
     assert error["loc"] == ["body"]
     assert error["input"] == body.decode("utf-8", errors="replace")
+
+
+def test_half_an_emoji_returns_a_validation_error_instead_of_failing(project):
+    client, _, _ = project
+    # A name cut through an emoji's surrogate pair: JSON allows the escape, the response must still encode.
+    response = client.post("/api/projects/proj_test/online/sites/site_x/copy", content='{"name": "Shop \\ud83d", "note": ""}',
+                           headers={"Content-Type": "application/json"})
+    assert response.status_code == 422, response.text
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["body", "name"]
+    assert error["input"] == "Shop ?"

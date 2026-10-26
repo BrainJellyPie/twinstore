@@ -12,7 +12,7 @@ from store_emulator.application.product_sources import check_product_layout, rea
 from store_emulator.application.shelf_lab import PackageAsset, package_asset, package_directory, package_edit
 from store_emulator.application.storage.io import DATA_DIR, write_json
 from store_emulator.application.storage.images import layout_image_url, load_manifest
-from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
+from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path, unique_setup_name
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.library_photos import PhotoAsset, PhotoOptions, PhotoPreview, PhotoRecord, PhotoRequest, PhotoSave, PhotoSaved
 from store_emulator.domain.product_edits import ProductEditsReceipt
@@ -131,7 +131,7 @@ def save(pid: str, sid: str, req: PhotoSave) -> PhotoSaved:
                 raise AppError("This draft was removed or its write was interrupted. Check Layouts, then start a new preview", 409)
             store, report = _prepare(pid, sid, req)
             result = PhotoSaved(setup_id=path.stem, changed_placements=report.changed_placements)
-            draft = new_setup_data("Library product photos", sid, store.model_dump(mode="json"),
+            draft = new_setup_data(unique_setup_name(pid, "Library product photos"), sid, store.model_dump(mode="json"),
                                    "Reviewed existing photos applied to products. Original preserved; no model calls or stock/price inference.")
             draft.update(id=path.stem, library_photos_request=req.model_dump(mode="json"), library_photos_result=result.model_dump(mode="json"))
             with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):

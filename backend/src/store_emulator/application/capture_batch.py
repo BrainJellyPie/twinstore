@@ -16,6 +16,7 @@ from store_emulator.application.storage.setups import (
     new_setup_data,
     read_setup,
     setup_path,
+    unique_setup_name,
 )
 from store_emulator.domain.capture import CaptureResult
 from store_emulator.domain.layout_options import BuildingFloorInfo
@@ -198,7 +199,7 @@ def save(
                 notes=checked.notes,
             )
             draft = new_setup_data(
-                f"Combined shelves ({len(results)} photos)",
+                unique_setup_name(pid, f"Combined shelves ({len(results)} photos)"),
                 req.setup_id,
                 checked.store.model_dump(mode="json"),
                 "Combined reviewed shelf photos; source layouts unchanged.",
