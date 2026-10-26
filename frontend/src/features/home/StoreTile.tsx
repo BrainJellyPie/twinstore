@@ -175,8 +175,8 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
       <nav className="flex border-t border-glass-border" aria-label={t("openStoreIn", { name: project.name || t("store") })}>
         {QUICK_LINKS.map(({ to, label, icon: Icon }) => (
           <Link key={label} to={to} params={{ pid: project.project_id }}
-            className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[0.75rem] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground">
-            <Icon className="size-3.5" aria-hidden /> {t(label)}
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[0.72rem] leading-tight text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground">
+            <Icon className="size-4" aria-hidden /> <span className="max-w-full truncate">{t(label)}</span>
           </Link>
         ))}
       </nav>

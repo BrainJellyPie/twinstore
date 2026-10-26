@@ -242,10 +242,10 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
           {attrs.map((a, i) => {
             const levels = splitLevels(a.levels);
             return (
-              <div key={i} className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
                 <Input value={a.name} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, name: Array.from(e.target.value).slice(0, 40).join("") } : x)))}
                   placeholder={t("mkAttributeN", { n: i + 1 })} aria-label={t("mkAttributeNName", { n: i + 1 })} className="h-9 font-medium" />
-                <div className="relative">
+                <div className="relative order-last col-span-2 sm:order-none sm:col-span-1">
                   <Input value={a.levels} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, levels: e.target.value } : x)))}
                     placeholder={t("mkLevelsPlaceholder")} aria-label={t("mkLevelsOf", { name: a.name || t("mkAttributeLower", { n: i + 1 }) })} className="h-9 pr-14" />
                   <span className={cn("num absolute top-1/2 right-3 -translate-y-1/2 text-[0.7rem]", levels.length >= 2 && levels.length <= 6 ? "text-muted-foreground" : "text-destructive")}>
@@ -262,7 +262,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
           <div className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
             <span className="px-3 text-sm font-medium">{t("mkPrice")} <span className="text-xs font-normal text-muted-foreground">({currency})</span></span>
             <Input value={priceText} onChange={(e) => setPriceText(e.target.value)} placeholder={t("mkPricesPlaceholder")} inputMode="decimal" aria-label={t("mkPriceLevels")} className="num h-9" />
-            <span className="w-7" />
+            <span className="hidden w-7 sm:block" />
           </div>
           {attrs.length < 6 && (
             <button type="button" onClick={() => setAttrs((xs) => [...xs, { name: "", levels: "" }])}

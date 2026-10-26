@@ -149,13 +149,13 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
 
   return (
     <div className="space-y-4">
-      <section className="glass grid gap-3 rounded-2xl p-4 md:grid-cols-2">
+      <section className="glass grid grid-cols-1 gap-3 rounded-2xl p-4 md:grid-cols-2">
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2 md:col-span-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(question); } }}
             placeholder={t("mkShelfQuestionPlaceholder")}
-            aria-label={t("mkShelfQuestionLabel")} className="h-9 min-w-[14rem] flex-1 bg-card" />
+            aria-label={t("mkShelfQuestionLabel")} className="h-9 min-w-0 grow basis-56 bg-card" />
           <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkDraftTest")}
           </Button>

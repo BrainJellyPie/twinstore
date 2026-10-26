@@ -23,6 +23,14 @@
   tests) read on a phone: the interval used to shrink to a dot with its axis
   labels printed over each other at 390 px; the label and value now share a
   line with the interval full width below, and an A/B test's arm cards stack.
+- Nothing scrolls sideways or is cut off on a 360 px phone any more, now
+  checked for content clipped inside cards and panes as well as at the screen
+  edge, in all six languages: the shelf test form (its question box and
+  selects ran 62 px past the card), the conjoint attribute rows (the remove
+  button sat on a line of its own), the A/B variant card, the store card's
+  quick links (icons ran into the labels and "En ligne" was cut off in French;
+  they now sit icon over label), the store side panel's tabs in Spanish and
+  the POS upload buttons in French.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
