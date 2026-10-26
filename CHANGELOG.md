@@ -6,7 +6,8 @@
   under the floating **Watch a shopper** bar at the bottom, or (on a phone,
   going back with Shift+Tab) under the sticky section bar at the top. The
   online and studio pages also stop announcing a second "main" region inside
-  the app's own.
+  the app's own. On the store page, what Tab reaches in the side panel no
+  longer scrolls in under its sticky Results / Shoppers / Store tabs.
 
 - On phones and tablets, the delete buttons of studies, library products and
   saved interview groups are shown; they appeared only when a mouse hovered
