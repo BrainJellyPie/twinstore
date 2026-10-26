@@ -285,7 +285,7 @@ def _demand_svg(pr: PriceResponse, currency: str) -> str:
     def py(u: float) -> float:
         return 10 + (1 - u * 100 / top) * (h - bottom - 10)
 
-    parts = [f'<svg viewBox="0 0 {w} {h}" width="100%" xmlns="http://www.w3.org/2000/svg">']
+    parts = [f'<div class="chart"><svg viewBox="0 0 {w} {h}" width="100%" xmlns="http://www.w3.org/2000/svg">']
     for t in (0, 0.5, 1):
         y = 10 + (1 - t) * (h - bottom - 10)
         parts.append(f'<line x1="{left}" x2="{w - 10}" y1="{y:.1f}" y2="{y:.1f}" stroke="#e5e7eb"/>'
@@ -297,7 +297,7 @@ def _demand_svg(pr: PriceResponse, currency: str) -> str:
         parts.append(f'<line x1="{x:.1f}" x2="{x:.1f}" y1="{py(p.units_high):.1f}" y2="{py(p.units_low):.1f}" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>'
                      f'<circle cx="{x:.1f}" cy="{py(p.units):.1f}" r="5" fill="{"#eb6834" if p.price == pr.best_price else "#2a78d6"}" stroke="#fff" stroke-width="2"/>'
                      f'<text x="{x:.1f}" y="{h - 10}" font-size="10" text-anchor="middle" fill="#5f6368">{escape(money(p.price, currency))}</text>')
-    parts.append("</svg>")
+    parts.append("</svg></div>")
     return "".join(parts)
 
 
@@ -367,7 +367,7 @@ def _forest(rows: list[tuple[str, str, float, float, float]], fmt: str, currency
     def label(v: float) -> str:
         return escape(money(v, currency, signed=True) if fmt == "money" else f"{v:+.1f}")
 
-    parts = [f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">',
+    parts = [f'<div class="chart"><svg viewBox="0 0 {w} {h}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">',
              f'<line x1="{x(0):.1f}" y1="6" x2="{x(0):.1f}" y2="{h - 26}" stroke="#9aa0a6" stroke-width="1"/>']
     for i, (name, sub, d, lo, hi) in enumerate(rows):
         y = 8 + i * row_h + row_h / 2
@@ -384,7 +384,7 @@ def _forest(rows: list[tuple[str, str, float, float, float]], fmt: str, currency
         f'<text x="{left}" y="{h - 8}" font-size="11" fill="#5f6368">{label(-span)}</text>',
         f'<text x="{x(0):.1f}" y="{h - 8}" font-size="11" text-anchor="middle" fill="#5f6368">0 = control</text>',
         f'<text x="{left + plot}" y="{h - 8}" font-size="11" text-anchor="end" fill="#5f6368">{label(span)}</text>',
-        "</svg>",
+        "</svg></div>",
     ]
     return "".join(parts)
 
@@ -402,7 +402,9 @@ th{color:var(--muted);font-weight:600}td.n{text-align:right;font-variant-numeric
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.kpi{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .kpi b{display:block;font-size:20px}.kpi span{color:var(--muted);font-size:12px}.note{color:var(--muted);font-size:12px}
 .ai{background:#f5f3ff;border-radius:10px;padding:12px 14px}.ai small{color:var(--muted)}
-footer{margin-top:30px;color:var(--muted);font-size:11.5px}
+footer{margin-top:30px;color:var(--muted);font-size:11.5px}.chart{overflow-x:auto}
+@media (max-width:640px){main{margin:0;border-radius:0;padding:28px 16px}h1{font-size:24px}.kpis{grid-template-columns:repeat(2,1fr)}
+table{font-size:11.5px}th,td{padding:6px 4px}.chart svg{min-width:600px}}
 @media print{body{background:#fff}main{box-shadow:none;margin:0;max-width:none;padding:0 6mm}h2{break-after:avoid}table,svg{break-inside:avoid}}
 @page{size:A4;margin:14mm}
 """
@@ -506,7 +508,7 @@ def _price_svg(price: PriceRange, currency: str) -> str:
 
     colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
     names = ["Too cheap", "A bargain", "Getting expensive", "Too expensive"]
-    parts = [f'<svg viewBox="0 0 {w} {h + 22}" width="100%" xmlns="http://www.w3.org/2000/svg">']
+    parts = [f'<div class="chart"><svg viewBox="0 0 {w} {h + 22}" width="100%" xmlns="http://www.w3.org/2000/svg">']
     if price.point_of_marginal_cheapness is not None and price.point_of_marginal_expensiveness is not None:
         a, b = px(price.point_of_marginal_cheapness), px(price.point_of_marginal_expensiveness)
         parts.append(f'<rect x="{a:.1f}" y="8" width="{max(0.0, b - a):.1f}" height="{h - bottom - 8}" fill="#2a78d6" opacity="0.07"/>')
@@ -525,7 +527,7 @@ def _price_svg(price: PriceRange, currency: str) -> str:
     for k in range(4):
         parts.append(f'<rect x="{left + k * 150}" y="{h + 6}" width="14" height="3" fill="{colors[k]}"/>'
                      f'<text x="{left + k * 150 + 20}" y="{h + 11}" font-size="11" fill="#111">{names[k]}</text>')
-    parts.append("</svg>")
+    parts.append("</svg></div>")
     return "".join(parts)
 
 

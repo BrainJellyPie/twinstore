@@ -44,6 +44,12 @@
   to "-1"), the store-operations number fields fit their digits, and the
   builder's product pickers for a variant change and a tracked product have
   accessible names.
+- Reports read on a phone: the A/B, concept, shelf and conjoint reports kept
+  desktop margins that left 263 px for content, so the page ran sideways and
+  the lift chart's text shrank to about 5 px. They now use the phone's width,
+  set their totals two to a row and let wide charts scroll. A wide table in an
+  online run report (such as Ads) scrolls on its own instead of widening the
+  page.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
