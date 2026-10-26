@@ -100,6 +100,10 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- File fields in the marketing studio (price checks, unit prices, inventory,
+  pilot timing, reviews and till records) read "Choose file" and "No file
+  chosen" in the app's language, then the chosen file's name. The browser's
+  own button spoke the browser's language ("Choose File" in a Korean screen).
 - A number field's hint ("Leave empty to keep", "비워 두면 유지") is set in the
   text font; in the number font Korean and Japanese hints were spaced apart.
 - A shopper row's trip line wraps only between its parts, so "5 stops" (in

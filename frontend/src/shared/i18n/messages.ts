@@ -546,6 +546,8 @@ export const messages = {
   genConfirmFailed: ["Could not send your choice. Try again.", "선택을 전달하지 못했습니다. 다시 시도하세요.", "无法提交你的选择，请重试。", "選択を送信できませんでした。もう一度お試しください。", "No se pudo enviar tu elección. Inténtalo de nuevo.", "Impossible d’envoyer votre choix. Réessayez."],
   discardFloorChangesTitle: ["Discard unsaved changes?", "저장하지 않은 변경 사항을 버릴까요?", "放弃未保存的更改？", "保存していない変更を破棄しますか？", "¿Descartar los cambios sin guardar?", "Abandonner les modifications non enregistrées ?"],
   discardFloorChangesDescription: ["Your changes to this floor have not been saved. If you close the editor now, they will be lost.", "이 매장 배치의 변경 사항이 아직 저장되지 않았습니다. 지금 편집기를 닫으면 변경 사항이 사라집니다.", "此布局的更改尚未保存。现在关闭编辑器将丢失这些更改。", "このフロアの変更はまだ保存されていません。今エディターを閉じると変更は失われます。", "Los cambios en este plano no se han guardado. Si cierras el editor ahora, se perderán.", "Les modifications de ce plan ne sont pas enregistrées. Si vous fermez l’éditeur maintenant, elles seront perdues."],
+  fileChoose: ["Choose file", "파일 선택", "选择文件", "ファイルを選択", "Elegir archivo", "Choisir un fichier"],
+  fileNone: ["No file chosen", "선택한 파일 없음", "未选择文件", "ファイルが選択されていません", "Ningún archivo seleccionado", "Aucun fichier choisi"],
   keepEditing: ["Keep editing", "계속 편집", "继续编辑", "編集を続ける", "Seguir editando", "Continuer la modification"],
   discardChanges: ["Discard changes", "변경 사항 버리기", "放弃更改", "変更を破棄", "Descartar cambios", "Abandonner les modifications"],
   floorConfigurationStep: ["Step 1: Floor configuration", "1단계: 매장 배치 구성", "第 1 步：布局配置", "ステップ1：フロア構成", "Paso 1: Configuración del plano", "Étape 1 : configuration du plan"],

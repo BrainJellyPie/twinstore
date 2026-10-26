@@ -8,6 +8,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useI18n } from "@/shared/i18n/i18n";
+import { Input } from "@/shared/components/ui/input";
 import { PilotPosReconciliation } from "./PilotPosReconciliation";
 
 export function PilotObservationReview({ projectId, pilot, disabled, onActive, onSaved }: {
@@ -39,7 +40,7 @@ export function PilotObservationReview({ projectId, pilot, disabled, onActive, o
   return <section className="space-y-3 rounded-xl border p-3">
     <PilotPosReconciliation projectId={projectId} pilot={pilot} disabled={disabled || preview.isPending || apply.isPending || !!review}
       onActive={(active) => { setPosActive(active); onActive(active); }} onReview={startReview} />
-    <label className="block text-sm font-medium">{t("mkReviewSheet")}<input aria-label={t("mkReviewSheet")} type="file" accept=".csv,text/csv" disabled={busy} className="ml-2 max-w-64 text-xs" onChange={(e) => {
+    <label className="block text-sm font-medium">{t("mkReviewSheet")}<Input aria-label={t("mkReviewSheet")} type="file" accept=".csv,text/csv" disabled={busy} className="mt-1 max-w-80 font-normal" onChange={(e) => {
       const file = e.target.files?.[0]; e.target.value = "";
       if (!file) return;
       startReview(file);
