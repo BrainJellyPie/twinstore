@@ -16,6 +16,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 import { AGE_GROUPS as AGES, GENDERS, personaLabel } from "@/shared/i18n/personaLabels";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 const LETTERS = "ABCD";
 
@@ -227,6 +228,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
             </p>
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+          {draft.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.4fr]">
           <label className="flex flex-col gap-1">

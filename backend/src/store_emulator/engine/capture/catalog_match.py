@@ -194,8 +194,9 @@ _PRICE_CURRENCY_SYMBOLS = {
 _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
-_SAVINGS_PREFIX_RE = re.compile(
-    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cashback|coupon(?:\s+value)?)|할인액|절약|値引き)\s*$",
+_NON_SELLING_PREFIX_RE = re.compile(
+    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cashback|coupon(?:\s+value)?|was|msrp|rrp)"
+    r"|할인액|절약|値引き)\s*:?\s*$",
     re.IGNORECASE,
 )
 _SAVINGS_SUFFIX_RE = re.compile(
@@ -225,11 +226,11 @@ def _parse_number(text: str) -> tuple[float, bool] | None:
         return None
     match = matches[0]
     before, after = normalized[:match.start()].strip(), normalized[match.end():].strip()
-    # A savings/coupon value is not a selling price, even when the model left
+    # A savings/coupon/reference value is not a selling price, even when the model left
     # its numeric price unknown. Strip currency marks only for this label test.
     price_context = [re.sub(r"[$€£¥₩¢원円]", "", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
                      for part in (before, after)]
-    if _SAVINGS_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
+    if _NON_SELLING_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
         return None
     if (re.search(r"[-−–—]\s*(?:[$€£¥₩]|[A-Z]{3})?\s*$", before, re.IGNORECASE)
             or after.startswith(("-", "−")) or before.endswith((".", ","))
@@ -291,13 +292,17 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     if parsed is None:
         return None
     value, has_decimals = parsed
-    if not math.isfinite(value) or value <= 0:
+    if not math.isfinite(value) or value < 0:
         return None
     cents = "¢" in printed or re.search(r"\bcents?\b", printed, re.IGNORECASE) is not None
     major_symbol = any(symbol in printed for symbol in "$€£¥₩원円")
     major_unit = major_symbol or re.search(rf"(?<![A-Za-z]){re.escape(code)}(?![A-Za-z])", printed, re.IGNORECASE) is not None
     if cents and (zero_decimal or major_symbol):
         return None
+    if value == 0:
+        # Only an explicit printed price is free; a missing/unqualified zero
+        # or a positive amount rounded down to zero still needs review.
+        return 0 if major_unit or cents else None
     scaled = value if zero_decimal or cents else value * 100
     if not math.isfinite(scaled) or scaled > MAX_PRICE:
         return None

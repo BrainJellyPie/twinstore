@@ -323,6 +323,13 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Recharts makes a chart focusable (arrow keys move its tooltip): show where focus is. */
+.recharts-surface:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* A number field's hint ("Leave empty to keep", "비워 두면 유지") is words: keep it in the text face. */
 .num::placeholder {
   font-family: var(--font-sans);

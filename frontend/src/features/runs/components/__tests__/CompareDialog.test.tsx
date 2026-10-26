@@ -60,6 +60,12 @@ it("keeps relative changes for a nonzero baseline", () => {
   show({ mean_a: 1000, mean_b: 1500, rel_diff: 0.5 });
   expect(screen.getByText("Spend per visitor: +50.0%")).toBeTruthy();
   expect(screen.getByText("+20.0% … +80.0%")).toBeTruthy();
+  expect(screen.getByText("100 paired customers · 2,000 bootstrap draws.")).toBeTruthy();
+});
+
+it("explains zero baselines in the footnote only when a row has one", () => {
+  show();
+  expect(screen.getByRole("dialog").textContent).toMatch(/With a zero baseline, intervals show absolute changes/);
 });
 
 it.each(["KRW", "JPY", "USD"].flatMap(currency =>
@@ -158,7 +164,9 @@ it("says the server's notes in the user's language, and keeps unknown ones as se
       <CompareDialog open onOpenChange={() => {}} projectId="p" layouts={[]} defaultRunId="run_b" />
     </QueryClientProvider>);
     const text = screen.getByRole("dialog").textContent ?? "";
-    expect(text).toContain("run_a에서는 고객마다 매장을 혼자 썼습니다");
+    // The run is named as in the run pickers, not by its id.
+    expect(text).toContain("s1 — LLM · 최종 · 10월 21일에서는 고객마다 매장을 혼자 썼습니다");
+    expect(text).not.toContain("run_a");
     expect(text).toContain("A note this version does not know");
     expect(text).not.toContain("each shopper had the store alone");
   } finally {

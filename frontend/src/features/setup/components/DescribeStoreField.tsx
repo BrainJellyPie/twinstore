@@ -6,6 +6,7 @@ import { Loader2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 export function DescribeStoreField({ disabled, formKey, onFilled }: {
   disabled?: boolean;
@@ -62,6 +63,7 @@ export function DescribeStoreField({ disabled, formKey, onFilled }: {
         {shown && <span className="text-xs text-muted-foreground">{t("filledFromDescription")}</span>}
         {error && <span role="alert" className="text-xs text-destructive">{error}</span>}
       </div>
+      {error && <NeedsModel purpose="assist" />}
       {shown && shown.warnings.length > 0 && (
         <ul className="space-y-0.5 text-xs text-muted-foreground">{shown.warnings.map((w) => <li key={w}>· {w}</li>)}</ul>
       )}

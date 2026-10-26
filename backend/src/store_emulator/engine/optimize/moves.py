@@ -349,7 +349,7 @@ def _swap_contents(store: Store, move: SwapContents, rules: MoveRules) -> str | 
         return None
     if _contents_key(rack_a) == _contents_key(rack_b):
         return None
-    description = f"Swap contents of {_label(rack_a)} {rack_a.position} <-> {_label(rack_b)} {rack_b.position}"
+    description = f"Swap contents of {_label(rack_a)} {_at(rack_a.position)} <-> {_label(rack_b)} {_at(rack_b.position)}"
     wall_a, wall_b = _wall_backed(rack_a, store.grid_size), _wall_backed(rack_b, store.grid_size)
     rack_a.slots, rack_b.slots = rack_b.slots, rack_a.slots
     rack_a.rack_name, rack_b.rack_name = rack_b.rack_name, rack_a.rack_name
@@ -366,7 +366,7 @@ def _swap_racks(store: Store, move: SwapRacks, rules: MoveRules) -> str | None:
         return None
     if not (_movable(rack_a, rules) and _movable(rack_b, rules)) or rack_a.position == rack_b.position:
         return None
-    description = f"Swap rack positions {_label(rack_a)} {rack_a.position} <-> {_label(rack_b)} {rack_b.position}"
+    description = f"Swap rack positions {_label(rack_a)} {_at(rack_a.position)} <-> {_label(rack_b)} {_at(rack_b.position)}"
     wall_a, wall_b = _wall_backed(rack_a, store.grid_size), _wall_backed(rack_b, store.grid_size)
     rack_a.position, rack_b.position = rack_b.position, rack_a.position
     if not (_fridge_ok(rack_a, store, rules) and _fridge_ok(rack_b, store, rules)):
@@ -384,7 +384,7 @@ def _relocate(store: Store, move: RelocateRack, rules: MoveRules) -> str | None:
     tx, ty = move.target
     if not (0 <= tx < w and 0 <= ty < h) or store.rack_at(tx, ty) is not None:
         return None
-    description = f"Move rack {_label(rack)} from {rack.position} to {move.target}"
+    description = f"Move rack {_label(rack)} from {_at(rack.position)} to {_at(move.target)}"
     wall = _wall_backed(rack, store.grid_size)
     rack.position = move.target
     if not _fridge_ok(rack, store, rules) or not _orient(store, rack, wall):
@@ -598,6 +598,11 @@ def _movable(rack: Rack, rules: MoveRules) -> bool:
 
 def _fridge_ok(rack: Rack, store: Store, rules: MoveRules) -> bool:
     return not (rules.fridges_on_walls and rack.type == RackType.FRIDGE and not on_border(rack.position, store.grid_size))
+
+
+def _at(position: tuple[int, int]) -> str:
+    """A grid cell as the floor editor names it: counted from 1."""
+    return f"(column {position[0] + 1}, row {position[1] + 1})"
 
 
 def _label(rack: Rack) -> str:

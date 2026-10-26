@@ -99,8 +99,8 @@ layout_requests = {
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank",
-    "capture-price", "capture-saving", "capture-off", "capture-saving-krw",
+parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted",
+    "capture-price", "capture-saving", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -541,7 +541,7 @@ try:
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("capture-"):
         tags = {"capture-price": "$1.00", "capture-saving": "SAVE $1.00", "capture-off": "$1.00 OFF",
-                "capture-saving-krw": "1,000원 할인"}
+                "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00"}
         currency = "KRW" if args.case == "capture-saving-krw" else "USD"
         fixture = Image.new("RGB", (448, 512), "#f5f1e9")
         drawing = ImageDraw.Draw(fixture)
@@ -565,11 +565,12 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case == "capture-price":
-            if item.price != 100 or item.price_estimated:
-                issues.append("The printed $1.00 selling price was not retained as 100 cents.")
+        if args.case in {"capture-price", "capture-free-price"}:
+            expected_price = 0 if args.case == "capture-free-price" else 100
+            if item.price != expected_price or item.price_estimated:
+                issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:
-            issues.append("A savings/discount amount became an exact selling price.")
+            issues.append("A savings, discount or reference amount became an exact selling price.")
         result.update(success=not issues, issues=issues, fixture_tag=tags[args.case], currency=currency,
                       label=label.model_dump(mode="json"), item=item.model_dump(mode="json"))
     elif args.case.startswith("pack-"):
@@ -578,7 +579,7 @@ try:
         if args.case == "pack-jam":
             picture = bundled_product_image("/api/catalog-images/starter-01/15.webp")
             assert picture is not None
-        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant"}:
+        elif args.case in {"pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted"}:
             # A deterministic positive-control label, not a photograph or model-generated picture.
             drawing = ImageDraw.Draw(picture)
             drawing.rounded_rectangle((100, 110, 500, 740), radius=70, fill="#dbeed0", outline="#245737", width=6)
@@ -587,6 +588,10 @@ try:
             labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "500 ml", 48)]
             if args.case == "pack-mixed-quantities":
                 labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "NET 500 g", 38), (560, "SERVING 100 ml", 30)]
+            if args.case.startswith("pack-multipack"):
+                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (520, "6 x 500 ml", 42)]
+            if args.case.startswith("pack-multipack-count"):
+                labels = [(320, "LEAFY", 55), (420, "GREEN TEA", 44), (500, "500 ml", 42), (560, "6 PACK", 38)]
             for y, label, size in labels:
                 drawing.text((300, y), label, font=load_font(size, True), fill="#153d24", anchor="mt")
             products = ["Leafy Green Tea 1 L", "Leafy Black Tea 500 ml"]
@@ -598,11 +603,19 @@ try:
                 products = ["Green Tea 500 ml — Leafy", "Leafy Green Tea 100 g"]
             if args.case == "pack-large-catalog":
                 products = [f"Unrelated product {i:03d}" for i in range(180)] + products
+            if args.case.startswith("pack-multipack"):
+                products = ["Leafy Green Tea 500 ml"]
+                if args.case == "pack-multipack":
+                    products.append("Leafy Green Tea 6 x 500 ml")
+                if args.case == "pack-multipack-count":
+                    products.append("Leafy Green Tea 500 ml 6 pack")
         picture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reading = asyncio.run(read_pack(client, picture, products))
         issues = []
-        expected_match = ("Green Tea 500 ml — Leafy" if args.case == "pack-brand-suffix" else
+        expected_match = ("Leafy Green Tea 6 x 500 ml" if args.case == "pack-multipack" else
+            "Leafy Green Tea 500 ml 6 pack" if args.case == "pack-multipack-count" else
+            "Green Tea 500 ml — Leafy" if args.case == "pack-brand-suffix" else
             "Leafy Green Tea 500 ml" if args.case in {"pack-label", "pack-large-catalog"} else "")
         if reading.shelf_product != expected_match:
             issues.append(f"Expected product match {expected_match!r}, received {reading.shelf_product!r}")

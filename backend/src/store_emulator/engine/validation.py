@@ -29,6 +29,11 @@ def validate(store: Store) -> list[Issue]:
     return issues
 
 
+def _name(rack: Rack) -> str:
+    """A rack as the floor editor shows it: its name, or its id when it has none."""
+    return rack.rack_name or rack.id
+
+
 def _check_bounds(store: Store) -> list[Issue]:
     w, h = store.grid_size
     issues: list[Issue] = []
@@ -38,7 +43,7 @@ def _check_bounds(store: Store) -> list[Issue]:
             issues.append(Issue(
                 severity="error",
                 code="out_of_bounds",
-                message=f"rack '{f.id}' exceeds the grid",
+                message=f"rack '{_name(f)}' exceeds the grid",
             ))
     return issues
 
@@ -52,14 +57,13 @@ def _check_overlap(store: Store) -> list[Issue]:
             continue
         for pos in f.occupied_positions:
             if pos in cell_owners:
-                other_id = cell_owners[pos]
                 issues.append(Issue(
                     severity="error",
                     code="overlap",
-                    message=f"rack '{f.id}' overlaps with '{other_id}'",
+                    message=f"rack '{_name(f)}' overlaps with '{cell_owners[pos]}'",
                 ))
             else:
-                cell_owners[pos] = f.id
+                cell_owners[pos] = _name(f)
     return issues
 
 
@@ -89,7 +93,7 @@ def _check_route(store: Store) -> list[Issue]:
             issues.append(Issue(
                 severity="error",
                 code="no_route",
-                message=f"cannot reach counter '{counter.id}' from the entrance",
+                message=f"cannot reach counter '{_name(counter)}' from the entrance",
             ))
 
     exit_tiles = _rack_walkable_positions(store.exits)
@@ -122,7 +126,7 @@ def _check_accessibility(store: Store) -> list[Issue]:
             issues.append(Issue(
                 severity="error",
                 code="unreachable_rack",
-                message=f"cannot reach rack '{f.id}' from the entrance",
+                message=f"cannot reach rack '{_name(f)}' from the entrance",
             ))
             continue
 

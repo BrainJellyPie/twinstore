@@ -18,6 +18,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 
 import { usePackages } from "./hooks";
 import { AGE_GROUPS as AGES, GENDERS, personaLabel } from "@/shared/i18n/personaLabels";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { ProductDrop } from "./ProductLibrary";
 import { toMinor } from "./products";
 import { QUESTIONS } from "./questions";
@@ -135,6 +136,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
             </div>
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+          {draft.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
         </div>
         <div className="flex items-baseline justify-between">
           <h3 className="text-sm font-semibold">{t("mkWhatTheySee")} <span className="font-normal text-muted-foreground">{t("mkWhatTheySeeHint")}</span></h3>

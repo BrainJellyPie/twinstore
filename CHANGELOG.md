@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- Keep visible multipack quantities when linking package photos to catalog
+  products, so `6 x 500 ml` and `500 ml / 6 PACK` cannot silently select a
+  single bottle. Support printed multiplication signs and recognized pack-count
+  wording while retaining exact matching products and unrelated label details.
+
+- Preserve explicitly printed zero prices such as `FREE $0.00` through shelf
+  capture and replacement of an existing paid offer. Missing prices, ambiguous
+  zeros and positive amounts rounded below the smallest currency unit still
+  require an estimate or review.
+
+- Treat recognized previous/list prices (`WAS`, `MSRP`, `RRP`) as reference
+  amounts rather than exact current shelf prices. Preserve the observed tag
+  and mark the catalog fallback as estimated, including colon-separated tags.
+
+- Offer model setup after failed optimizer goals, studio question drafts and
+  new-store descriptions when no model is configured.
+
+- **Rack details** marks a product without a picture with a small icon (named
+  "no image" for screen readers) instead of "no img" broken over two lines.
+- Every Tab stop on the store screen shows where focus is: a results or
+  shoppers tab panel and the hourly timeline chart took focus without a mark.
+- The store-operations costs (a till hour, a refill round, a unit a day) line up
+  along one row even when their labels wrap to different lengths.
+- Layout problems the floor editor reports on save name racks as the editor
+  shows them ("cannot reach rack 'Snacks 1' from the entrance", "'Drink 1'
+  overlaps with 'Snacks 2'") instead of by internal id.
+- The optimizer's changes name rack cells as the floor editor does, counted from
+  1 ("Swap contents of 'Ice cream 1' (column 5, row 5) <-> 'Ice cream 2'
+  (column 6, row 5)"; it read "(4, 4)"). Its progress chart has a legend, ticks
+  at 1, 10, 20 … instead of every other candidate, and joins candidates with
+  straight lines rather than a smoothed curve.
+- **Compare runs** names a run in its notes as the run pickers do ("In layout 2
+  — LLM · final · May 18 each shopper had the store alone") instead of by its
+  id ("run_efd57c"), and explains zero baselines only when a row has one.
+- File fields in the marketing studio (price checks, unit prices, inventory,
+  pilot timing, reviews and till records) read "Choose file" and "No file
+  chosen" in the app's language, then the chosen file's name. The browser's
+  own button spoke the browser's language ("Choose File" in a Korean screen).
+
 ## 0.8.2 — More reliable local-model setup and shelf capture
 
 - Keep recognized savings/coupon amounts out of exact shelf prices, preserving

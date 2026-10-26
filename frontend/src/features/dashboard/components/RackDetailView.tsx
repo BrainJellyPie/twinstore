@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { ImageOff } from "lucide-react";
+
 import type { Rack, Slot, Face, Store } from "@/shared/types/domain";
 import { resolveImageUrl } from "@/shared/api/images";
 import { formatMoney } from "@/shared/utils/money";
@@ -216,8 +218,9 @@ export function RackDetailView({ store }: Props) {
                               className="size-8 shrink-0 rounded border bg-muted object-contain"
                             />
                           ) : (
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded border bg-muted text-[0.68rem] text-muted-foreground">
-                              {t("rackNoImg")}
+                            <div role="img" aria-label={t("rackNoImg")} title={t("rackNoImg")}
+                              className="flex size-8 shrink-0 items-center justify-center rounded border bg-muted text-muted-foreground">
+                              <ImageOff className="size-3.5" aria-hidden />
                             </div>
                           )}
                           <span className="truncate">{item.name}</span>

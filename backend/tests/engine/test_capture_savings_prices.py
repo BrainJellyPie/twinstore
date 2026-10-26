@@ -18,6 +18,8 @@ SAVINGS = [
     ("Discount $1.00", "USD"), ("1,000원 할인", "KRW"), ("할인액 1,000원", "KRW"),
     ("1,000원 절약", "KRW"), ("100円引き", "JPY"), ("100円割引", "JPY"),
     ("値引き100円", "JPY"), ("SAVE €1,00", "EUR"), ("SAVE £1.00", "GBP"),
+    ("WAS $1.00", "USD"), ("was: USD 1.00", "USD"), ("MSRP $1.00", "USD"),
+    ("RRP £1.00", "GBP"), ("ＷＡＳ： ＄１．００", "USD"), ("SAVE: $1.00", "USD"),
 ]
 
 
@@ -33,6 +35,7 @@ def test_savings_text_cannot_be_overridden_by_a_numeric_model_guess(tag, currenc
     ("$1.00 with coupon", "USD", 100), ("$1.00 EACH", "USD", 100),
     ("할인가 1,000원", "KRW", 1000), ("할인 가격 1,000원", "KRW", 1000),
     ("割引価格100円", "JPY", 100), ("$2.49", "USD", 249), ("249¢", "USD", 249),
+    ("NOW $1.00", "USD", 100), ("Our price: $1.00", "USD", 100), ("Wasabi $1.00", "USD", 100),
 ])
 def test_explicit_sale_prices_and_ordinary_prices_keep_their_amount(tag, currency, amount):
     assert price_minor_units(ShelfItemLabel(price_text=tag), currency, 999) == amount

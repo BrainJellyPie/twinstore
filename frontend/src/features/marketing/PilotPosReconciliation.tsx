@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
+import { Input } from "@/shared/components/ui/input";
 
 const labels: Record<PosMatchStatus, MessageKey> = {
   proposed_purchase: "mkPosProposed", already_recorded: "mkPosAlready", conflicting_purchase: "mkPosConflict",
@@ -30,7 +31,7 @@ export function PilotPosReconciliation({ projectId, pilot, disabled, onActive, o
       <p className="my-2 break-all font-mono">pilot_id,assignment_id,transaction_id,sku,net_quantity</p>
       <p>{t("mkPosFormatHint", { id: pilot.pilot_id })}</p>
     </details>
-    <label className="block text-sm">{t("mkPosPreview")}<input aria-label={t("mkPosPreview")} type="file" accept=".csv,text/csv" disabled={busy} className="ml-2 max-w-64 text-xs" onChange={(e) => {
+    <label className="block text-sm">{t("mkPosPreview")}<Input aria-label={t("mkPosPreview")} type="file" accept=".csv,text/csv" disabled={busy} className="mt-1 max-w-80" onChange={(e) => {
       const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
       preview.reset(); setError("");
       if (file.size > 2 * 1024 * 1024) { setError(t("mkPosTooLarge")); onActive(false); return; }

@@ -79,7 +79,8 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 text-sm outline-none", className)}
+      // The panel takes a Tab stop (Radix), so it shows where focus is like the tabs do.
+      className={cn("flex-1 rounded-lg text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50", className)}
       {...props}
     />
   )
