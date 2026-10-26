@@ -351,7 +351,7 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover, onUnsaved }
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 shrink-0 rounded-full" style={{ background: categoryColor(d.category) }} />
                     <Input value={d.name} placeholder={t("capProductName")} aria-label={t("capProductName")} onChange={(e) => patch(d.id, { name: e.target.value })} className="h-8 flex-1 text-sm" />
-                    <button type="button" aria-label={t("capRemoveProduct")} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    <button type="button" aria-label={t("capRemoveProduct", { name: d.name || t("capProductName") })} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                       onClick={() => setDrafts((ds) => ds.filter((x) => x.id !== d.id))}>
                       <Trash2 className="size-3.5" />
                     </button>

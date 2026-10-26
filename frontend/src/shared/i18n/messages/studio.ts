@@ -239,7 +239,7 @@ export const studioMessages = {
   capSaveChanges: ["Save changes", "변경 사항 저장", "保存更改", "変更を保存", "Guardar cambios", "Enregistrer les modifications"],
   capInvalidPriceKeep: ["Enter a valid nonnegative price, or leave it blank to keep the existing price.", "0 이상의 올바른 가격을 입력하세요. 비워 두면 기존 가격이 유지됩니다.", "请输入有效的非负价格，或留空以保留原价。", "0以上の正しい価格を入力してください。空欄のままにすると既存の価格を維持します。", "Introduce un precio válido no negativo o déjalo en blanco para mantener el precio actual.", "Saisissez un prix valide et positif ou nul, ou laissez vide pour conserver le prix actuel."],
   capProductName: ["Product name", "상품명", "商品名称", "商品名", "Nombre del producto", "Nom du produit"],
-  capRemoveProduct: ["Remove product", "상품 삭제", "删除商品", "商品を削除", "Quitar producto", "Retirer le produit"],
+  capRemoveProduct: ["Remove {name}", "{name} 삭제", "删除 {name}", "{name} を削除", "Quitar {name}", "Retirer {name}"],
   capCategoryOf: ["Category of {name}", "{name}의 카테고리", "{name} 的类别", "{name} のカテゴリー", "Categoría de {name}", "Catégorie de {name}"],
   capPriceOf: ["Price of {name}", "{name}의 가격", "{name} 的价格", "{name} の価格", "Precio de {name}", "Prix de {name}"],
   capLeaveEditsTitle: ["Leave without saving the product corrections?", "상품 수정 내용을 저장하지 않고 나갈까요?", "不保存商品修改就离开吗？", "商品の修正を保存せずに移動しますか？", "¿Salir sin guardar las correcciones de productos?", "Quitter sans enregistrer les corrections des produits ?"],

@@ -73,6 +73,7 @@ it("keeps untouched estimated prices estimated when saving another correction", 
   expect(screen.getByRole("textbox", { name: "Price of Coffee" })).toBe(coffee);
   expect(screen.getByRole("combobox", { name: "Category of Tea" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "More facings of Coffee" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Remove Tea" })).toBeTruthy();
   fireEvent.change(screen.getAllByPlaceholderText("Product name")[0]!, { target: { value: "Green tea" } });
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(api.updateCapture).toHaveBeenCalledWith("project", "cap_test", [
