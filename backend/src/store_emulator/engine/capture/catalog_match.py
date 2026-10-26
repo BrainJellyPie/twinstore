@@ -212,12 +212,14 @@ _SAVINGS_SUFFIX_RE = re.compile(
 )
 _PRICE_LIMIT_PREFIX_RE = re.compile(
     r"(?:\b(?:from|starting\s+(?:at|from|price)|as\s+low\s+as|at\s+(?:least|most)"
-    r"|up\s+to|under|over|below|above|(?:less|more)\s+than)"
+    r"|up\s+to|under|over|below|above|(?:less|more)\s+than"
+    r"|(?:min(?:imum)?|max(?:imum)?)\.?|limit(?:\s+of)?)"
     r"|최저(?:가)?|최소|최대|最低(?:価格)?|最高(?:価格)?|[<>≤≥≦≧]=?)\s*:?\s*$",
     re.IGNORECASE,
 )
 _PRICE_LIMIT_SUFFIX_RE = re.compile(
     r"^(?:(?:and\s+(?:up|over|above)|or\s+(?:more|less))\b"
+    r"|(?:min(?:imum)?|max(?:imum)?)\.?(?:\s|$)"
     r"|(?:부터|이상|이하|미만|초과|から|以上|以下|未満|起)(?!\w)"
     r"|[<>≤≥≦≧]=?\s*$|\+\s*$)", re.IGNORECASE,
 )

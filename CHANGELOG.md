@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep purchase limits and minimum/maximum quantities from becoming exact
+  captured selling prices. Preserve the printed tag, estimated-price review
+  and existing product prices; limited-offer cash prices remain usable.
+
 - Keep local JSON correction prompts focused on the current validation error
   instead of repeating SDK response dumps and transport metadata. Preserve
   the conversation, full failure diagnostics, retry limits and usage counts.

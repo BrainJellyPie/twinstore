@@ -124,7 +124,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -654,6 +654,7 @@ try:
                 "capture-calorie-quantity": "100 kcal", "capture-calorie-prefix": "CALORIES 100", "capture-energy-quantity": "ENERGY 100 kJ",
                 "capture-sku-code": "SKU 1234", "capture-lot-code": "LOT 1234", "capture-expiry-year": "EXP 2026",
                 "capture-volume-only": "500 ml", "capture-count-only": "6 PACK", "capture-count-cash-price": "$6 PACK",
+                "capture-customer-limit": "LIMIT 2 PER CUSTOMER", "capture-minimum-count": "MIN 2 PER ORDER", "capture-maximum-count": "MAX 2 PER PERSON", "capture-limited-price": "LIMITED OFFER $1.00",
                 "capture-starting-price": "FROM $1.00", "capture-upper-price": "UNDER $1.00", "capture-starting-price-krw": "1,000원부터",
                 "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원",
                 "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
@@ -671,7 +672,7 @@ try:
         for text, y, size in [("ACME", 150, 26), ("COLA", 188, 42), (package_size, 246, 24)]:
             drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
         drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
-        tag_font = 28 if args.case in {"capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"} else 36
+        tag_font = 28 if args.case in {"capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price", "capture-customer-limit", "capture-limited-price"} else 36
         drawing.text((224, 439), tags[args.case], fill="black", font=load_font(tag_font, bold=True), anchor="mt")
         fixture.save(output / "image.png")
         with patch.object(httpx.AsyncClient, "send", traced_send):
@@ -687,8 +688,8 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
-            expected_price = {"capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
+        if args.case in {"capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
+            expected_price = {"capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
             if item.price != expected_price or item.price_estimated:
                 issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:
