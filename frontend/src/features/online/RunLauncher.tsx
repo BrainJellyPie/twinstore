@@ -161,7 +161,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
             return s && (
               <li key={id} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-2.5 py-1 text-xs">
                 <span className="size-2.5 shrink-0 rounded-full ring-1 ring-foreground/25 dark:ring-foreground/55" style={{ background: s.theme_color }} aria-hidden />
-                <span className="truncate font-medium">{s.name}</span>
+                <span className="truncate font-medium" title={s.name}>{s.name}</span>
                 <span className="shrink-0 text-muted-foreground">{i === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + i) })}</span>
               </li>
             );
@@ -185,7 +185,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
                   <input type="checkbox" checked={index >= 0} onChange={() => toggleSite(s.id)}
                     disabled={start.isPending || (index < 0 && chosen.length >= MAX_VARIANTS)} />
                   <span className="size-3 shrink-0 rounded-full ring-1 ring-foreground/25 dark:ring-foreground/55" style={{ background: s.theme_color }} aria-hidden />
-                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                  <span className="min-w-0 flex-1 truncate" title={s.name}>{s.name}</span>
                   {index >= 0 && (
                     <span className="rounded bg-muted px-1.5 text-[0.7rem]">
                       {index === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + index) })}

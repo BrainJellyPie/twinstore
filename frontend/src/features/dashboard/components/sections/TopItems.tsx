@@ -80,7 +80,7 @@ export function TopItems({ store }: Props) {
                       <span className="shrink-0 tabular-nums text-muted-foreground">
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <span className="truncate">{s.name}</span>
+                      <span className="truncate" title={s.name}>{s.name}</span>
                       {rackName && (
                         <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[0.72rem] text-muted-foreground">
                           {rackName}

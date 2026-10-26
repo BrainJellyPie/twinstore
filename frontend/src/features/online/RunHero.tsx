@@ -199,7 +199,7 @@ function StoreRing({ index, name, conversion, revenue, orders, visits, currency,
       <div className="relative min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: color }} aria-hidden />
-          <span className="truncate text-sm font-semibold">{name}</span>
+          <span className="truncate text-sm font-semibold" title={name}>{name}</span>
           {winner && <Trophy className="size-3.5 shrink-0 text-amber-300" aria-label={t("onVerdictBest")} />}
         </div>
         <div className="text-xs text-white/65">{index === 0 ? t("onControl") : t("onVariantLetter", { letter: String.fromCharCode(65 + index) })}</div>

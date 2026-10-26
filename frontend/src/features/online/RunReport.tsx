@@ -352,7 +352,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
                 {top.map((p) => (
                   <div key={p.product_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs" title={`${p.name}: ${t("onColViews")} ${p.views} · ${t("onColAdds")} ${p.adds} · ${t("onColUnits")} ${p.units}`}>
                     <div className="min-w-0">
-                      <div className="truncate">{p.name}</div>
+                      <div className="truncate" title={p.name}>{p.name}</div>
                       <div className="mt-0.5 h-1.5 rounded-r-[4px] bg-[var(--viz-grid)]"><div className="h-full rounded-r-[4px]" style={{ width: `${Math.max(1, (p.revenue / best) * 100)}%`, background: storeColor(si) }} /></div>
                     </div>
                     <span className="tabular-nums">{money(p.revenue)} <span className="text-muted-foreground">· {p.units}</span></span>

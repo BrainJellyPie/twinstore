@@ -155,7 +155,7 @@ function Simulator({ report: r }: { report: Report }) {
               </div>
               {r.attributes.map((a, k) => (
                 <label key={a.name} className="grid grid-cols-[4.5rem_1fr] items-center gap-2 text-xs">
-                  <span className="truncate text-muted-foreground">{a.name}</span>
+                  <span className="truncate text-muted-foreground" title={a.name}>{a.name}</span>
                   <select value={p.levels[k] ?? 0} onChange={(e) => update(i, { levels: p.levels.map((l, m) => (m === k ? Number(e.target.value) : l)) })}
                     className="h-7 rounded-md border bg-card/60 px-1.5 text-xs text-foreground">
                     {a.levels.map((l, m) => <option key={l} value={m}>{l}</option>)}

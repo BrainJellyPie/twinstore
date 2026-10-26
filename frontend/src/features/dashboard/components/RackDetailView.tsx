@@ -223,7 +223,7 @@ export function RackDetailView({ store }: Props) {
                               <ImageOff className="size-3.5" aria-hidden />
                             </div>
                           )}
-                          <span className="truncate">{item.name}</span>
+                          <span className="truncate" title={item.name}>{item.name}</span>
                         </div>
                       </td>
                       <td className="px-2 py-1 tabular-nums">{item.blocks.map((b) => b + 1).join(",")}</td>

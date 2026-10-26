@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Names cut short with "…" show in full on hover: studio tests, online stores
+  and runs, products in rack details, top items and rack rankings, real-map
+  shops, conjoint attributes and the home page's last store.
 - An A/B test's results offer the **price × sign** 2×2 analysis only when the
   test has a price arm, a promotion-sign arm and an arm with both; a discount
   ladder offered it and then could only report that it did not apply.
