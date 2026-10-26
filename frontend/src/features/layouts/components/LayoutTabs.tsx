@@ -30,8 +30,15 @@ export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled =
   const entryId = layouts.some(layout => layout.id === focusedId) ? focusedId
     : layouts.some(layout => layout.id === selectedId) ? selectedId : layouts[0]?.id;
   useEffect(() => { setFocusedId(selectedId); }, [selectedId]);
+  // Scroll the strip itself: scrollIntoView would also move where the next Tab starts from (in Chromium), so after
+  // the list refreshes a first Tab would skip the header and land past the layouts.
   useEffect(() => {
-    selectedTab.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const tab = selectedTab.current?.getBoundingClientRect();
+    const strip = tablist.current;
+    if (!tab || !strip) return;
+    const view = strip.getBoundingClientRect();
+    if (tab.left < view.left) strip.scrollLeft -= view.left - tab.left;
+    else if (tab.right > view.right) strip.scrollLeft += tab.right - view.right;
   }, [selectedId, layouts]);
   useEffect(() => {
     if (focusWithin.current && document.activeElement === document.body) {

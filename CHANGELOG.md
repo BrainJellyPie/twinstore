@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- On a store's floor page, the first Tab after the page loads reaches **Skip
+  to content** and the header again. Keeping the selected layout in view
+  scrolled it with a call that, in Chrome and Edge, also moved where Tab
+  starts from, so a few seconds after loading the first Tab skipped the
+  header and the selected layout and landed on **Find layout**.
 - A **Skip to content** link is the first thing Tab reaches on every page,
   jumping past the header and banner to the page itself. After the command
   palette (or anything else) opens another page, keyboard focus continues in
