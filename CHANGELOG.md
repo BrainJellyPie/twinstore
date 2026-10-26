@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **New online store** puts focus in the template search, so typing filters the
+  ready-made shops at once; focus stayed on the button behind the gallery.
 - A real-map import says what it is doing while it runs ("Downloading
   buildings, shops and roads…"), and after 15 seconds that busy map servers can
   take a few minutes, with the time so far. When every server was slow, the
