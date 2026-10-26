@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 — Shelf prices read right, and the whole app works from the keyboard
+
 - Recognize country-qualified dollar prices such as CA$, HK$ and US$ before
   interpreting a captured tag. Foreign amounts remain estimated for review;
   matching currencies keep their literal prices and existing discount/limit rules.
