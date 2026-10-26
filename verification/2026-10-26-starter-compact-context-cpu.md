@@ -11,7 +11,7 @@ client requested up to 5,000 output tokens, the remaining context allowed
 only 147: the model stopped midway through the section assignments with
 `finish_reason=length`. Its retry stopped at the same point. The system
 then decomposed the task. Several smaller replies had missing positions
-or unknown categories such as `baking_ingredients`, so recovery required
+or unknown categories such as `bake_ingredients`, so recovery required
 further attempts and smaller batches. The broad run was deliberately
 stopped after reproducing the issue and recording 11 completed HTTP calls
 (278.994 s of recorded request time). It did not finish product selection;
@@ -57,3 +57,13 @@ rendering code changed. Six existing LiteLLM logging-worker coroutine
 warnings appeared; no test failed. Strict Pyright reported zero errors and
 warnings, and the backend import smoke passed. No frontend files changed
 and the full repository suite was not run.
+
+A subsequent complete compact-convenience-store run on the published fix
+used the same actual 2B CPU model in JSON mode: two HTTP calls, no application
+cache hits, 97.90 s total. It kept all ten suggested section categories and
+filled all twelve physical racks with valid catalog products; final geometry
+validation reported no issues. Artifact:
+`/workspace/scratch/cpu-vlm-probe-2b/compact-json-1792992360172482068`.
+This complete small-store check is separate from the category-only large-store
+experiment. The invalid ID in the earlier large-store retry was
+`bake_ingredients`; `baking_ingredients` is a valid catalog ID.
