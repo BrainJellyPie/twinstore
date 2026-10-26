@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A shopper's thought on the store floor wraps into a small card of at most
+  three lines; a model's long thought ran as one line across the store and
+  under the playback panel. Purchases still read on one line.
+
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
   its worker runs; repeated starts and stopping during preparation remain safe.

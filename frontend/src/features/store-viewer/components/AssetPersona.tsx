@@ -56,7 +56,12 @@ function SpeechBubble({ event }: SpeechBubbleProps) {
           fontSize: 11,
           color: "#333",
           boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
-          whiteSpace: "nowrap",
+          // A purchase reads on one line; a thought (a model can write a long one) wraps and stops at three lines
+          // instead of running across the store and under the panels.
+          ...(isBuy || isPay ? { whiteSpace: "nowrap" } : {
+            width: "max-content", maxWidth: 220, whiteSpace: "normal", lineHeight: 1.3,
+            display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+          }),
         }}
       >
         {text}
