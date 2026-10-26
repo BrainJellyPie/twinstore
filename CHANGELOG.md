@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A photographed bottle-deposit amount such as `DEPOSIT $0.10` or
+  `$0.10 DEPOSIT` no longer becomes the product's exact selling price.
+  Keep its recognized identity and original tag, estimate the missing
+  selling price, and preserve an existing product price on placement.
+  Explicit deposit-inclusive selling prices remain usable.
+
 - The browser tab names the page and the store ("Marketing studio · Corner
   Mart · TwinStore"), so tabs, history and screen readers tell pages apart; it
   always read "TwinStore". The floor, area and capture pages also give screen

@@ -202,6 +202,14 @@ _NON_SELLING_PREFIX_RE = re.compile(
 _SAVINGS_SUFFIX_RE = re.compile(
     r"^(?:off\b|savings?\b|rebate\b|cash[\s-]*back\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
 )
+_DEPOSIT_PREFIX_RE = re.compile(r"\bdeposit\s*:?\s*$", re.IGNORECASE)
+_DEPOSIT_INCLUDED_PREFIX_RE = re.compile(
+    r"\b(?:incl(?:udes?|uded|uding)?\.?|with)\s+(?:(?:bottle|container)\s+)?deposit\s*:?\s*$",
+    re.IGNORECASE,
+)
+_DEPOSIT_SUFFIX_RE = re.compile(
+    r"^deposit\b(?!\s+(?:included\b|incl\.?(?:\s|$))|[-\s]+free\b)", re.IGNORECASE,
+)
 _MEASURE_UNIT = (
     r"(?:fl\.?\s*oz|(?:kilo|milli)?grams?|(?:milli|centi|deci)?lit(?:er|re)s?"
     r"|pounds?|ounces?|kg|mg|g|lbs?|oz|ml|cl|dl|l|리터|밀리리터|킬로그램|그램)"
@@ -266,6 +274,11 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
     price_context = [re.sub(r"[$€£¥₩¢원円]", "", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
                      for part in (before, after)]
     if _NON_SELLING_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
+        return None
+    if (_DEPOSIT_PREFIX_RE.search(price_context[0]) and not _DEPOSIT_INCLUDED_PREFIX_RE.search(price_context[0])
+            or _DEPOSIT_SUFFIX_RE.search(price_context[1])):
+        # A refundable container charge is not the product price. An explicitly
+        # deposit-inclusive selling price still provides a usable amount.
         return None
     if any(_MEASURE_RATE_RE.search(part) for part in price_context):
         # The photographed package can contain a different volume/weight.
