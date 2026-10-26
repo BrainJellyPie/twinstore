@@ -133,6 +133,12 @@ it("clears the previous demand failure when changing the day type", async () => 
   expect(await screen.findByText("137", { exact: true })).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(api.getTownDemand).toHaveBeenLastCalledWith("alpha", "weekend", null, expect.any(AbortSignal));
+  // The chosen day and map tool are announced, not shown by color alone.
+  expect(screen.getByRole("button", { name: "weekend", pressed: true })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "weekday", pressed: false })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Explore", pressed: true })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Open venue" }));
+  expect(screen.getByRole("button", { name: "Explore", pressed: false })).toBeTruthy();
 });
 
 it("keeps cached estimates visible after a refresh failure and prevents duplicate retries", async () => {
@@ -174,7 +180,7 @@ it("sets up the generator from a description and generates only on request", asy
   expect(api.describeTown).toHaveBeenCalledWith("alpha", { text: "A busy campus street with two rival stores", seed: 1 });
   expect(api.generateTown).not.toHaveBeenCalled();
   expect((screen.getByLabelText("Archetype") as HTMLSelectElement).value).toBe("university");
-  expect(screen.getByRole("button", { name: "Bank" })).toBeTruthy();  // a neighbor outside the usual chips still shows
+  expect(screen.getByRole("button", { name: "Bank", pressed: true })).toBeTruthy();  // a neighbor outside the usual chips still shows
   fireEvent.click(screen.getByRole("button", { name: "Generate" }));
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ archetype: "university", n_competitors: 2 })));
 });

@@ -279,6 +279,7 @@ export function ScenarioEditor({
                   <button
                     key={ev.value}
                     type="button"
+                    aria-pressed={!!active}
                     onClick={() =>
                       set({
                         events: active

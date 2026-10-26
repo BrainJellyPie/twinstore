@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Screen readers now announce which day type, map tool and neighbor kinds are
+  chosen on the Area page, and which local events are on in the situation
+  editor. Before, only the button color showed it.
+
 - Keep a whole emoji when the app shortens a generated name or note to its
   limit: online variants and ads, marketing variant copies, pilots and test
   runs, building floors and alternatives, and sign text. Cutting through an

@@ -135,7 +135,7 @@ export function TownPage({ projectId }: { projectId: string }) {
               <h3 className="font-medium">{t("areaOurCustomers")}</h3>
               <div className="inline-flex rounded-md border p-0.5 text-xs">
                 {(["weekday", "weekend", "holiday"] as TownDayType[]).map((d) => (
-                  <button key={d} type="button" onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+                  <button key={d} type="button" aria-pressed={dayType === d} onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
                     {t(DAY_LABELS[d])}
                   </button>
                 ))}
@@ -182,8 +182,8 @@ function MapToolbar({
 }: { mode: MapMode; setMode: (m: MapMode) => void; category: VenueCategory; setCategory: (c: VenueCategory) => void; busy: boolean }) {
   const { t } = useI18n();
   const btn = (m: MapMode, Icon: typeof MousePointer2, label: string) => (
-    <button type="button" onClick={() => setMode(m)} className={cn("flex items-center gap-1 rounded px-2 py-1", mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
-      <Icon className="size-3.5" /> {label}
+    <button type="button" aria-pressed={mode === m} onClick={() => setMode(m)} className={cn("flex items-center gap-1 rounded px-2 py-1", mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+      <Icon className="size-3.5" aria-hidden /> {label}
     </button>
   );
   return (
@@ -342,7 +342,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
             {neighborChoices.map((c) => {
               const on = spec.neighbor_categories.includes(c);
               return (
-                <button key={c} type="button" onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
+                <button key={c} type="button" aria-pressed={on} onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
                   className={cn("rounded-full border px-2 py-0.5", on ? "border-primary bg-primary/10" : "hover:bg-muted")}>
                   {t(VENUE_LABELS[c])}
                 </button>

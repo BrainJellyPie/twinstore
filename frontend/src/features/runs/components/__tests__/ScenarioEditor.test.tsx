@@ -45,6 +45,9 @@ it("sets up a described day, opens the details and shows what did not match", as
   // Editing a field keeps the described name.
   fireEvent.change(screen.getByRole("slider", { name: "Temperature" }), { target: { value: "30" } });
   expect(changed.mock.lastCall?.[0]?.name).toBe("Rainy deal day");
+  // A local event's chip says whether it is on.
+  fireEvent.click(screen.getByRole("button", { name: "Payday", pressed: false }));
+  expect(screen.getByRole("button", { name: "Payday", pressed: true })).toBeTruthy();
 });
 
 it("shows why a day could not be set up", async () => {
