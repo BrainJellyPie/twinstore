@@ -121,7 +121,7 @@ export function RunReport({ projectId, runId, onDeleted, wide = false, onWide = 
             role="toolbar" aria-label={t("onDockLabel")}>
             {watch && (
               <button type="button" onClick={watch} className="inline-flex h-10 items-center gap-2 rounded-full bg-white pr-4 pl-1.5 text-sm font-semibold text-neutral-950 transition-transform hover:scale-[1.03]">
-                <span className="grid size-7 place-items-center rounded-full heat-gradient text-white"><Play className="size-3.5 fill-current" aria-hidden /></span>
+                <span className="grid size-7 place-items-center rounded-full heat-gradient text-white dark:text-neutral-950"><Play className="size-3.5 fill-current" aria-hidden /></span>
                 {t("onWatchShopperCta")}
               </button>
             )}
@@ -719,7 +719,7 @@ function Section({ id, icon: Icon, title, hint, children }: { id?: string; icon?
     <section id={id} className="reveal panel flex min-w-0 scroll-mt-16 flex-col gap-3 rounded-[1.6rem] p-4 text-sm sm:p-5">
       <div className="flex items-start gap-3">
         {Icon && (
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white dark:text-neutral-950 shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
             <Icon className="size-4.5" />
           </span>
         )}

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Text on the app's cyan-violet-pink gradient is readable in both themes. In
+  dark mode the gradient's bright colours carry dark text and icons (white
+  read at 1.6–2.8:1): shopper initials, **Track a shopper**, the follow and
+  send buttons and the run headline's badge. In light mode the gradient's cyan
+  and pink are a shade deeper, so white text stays above 4.5:1 across it and
+  the gradient headings read better on the pale page.
+- The percentages inside an online report's outcome bars, and the red
+  **Delete?** confirmations, use dark text in dark mode, where those colours
+  turn light (white was 1.7–3:1); the violet "ran out of time" share uses dark
+  text in both themes.
 - Distinguish delivery fees from free-delivery thresholds in AI design edits,
   including zero and fractional thresholds. Give JSON-mode models a concrete
   result-format reminder to avoid copying the response schema. Report explicit

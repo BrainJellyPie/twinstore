@@ -65,7 +65,7 @@ function HomePage() {
               <div className="mb-6 flex animate-rise flex-wrap items-center gap-2">
                 <Link to="/projects/$pid" params={{ pid: resume.project_id }}
                   className="glass group inline-flex max-w-full min-w-0 items-center gap-3 rounded-2xl py-2 pr-4 pl-2 transition-colors hover:bg-card/80">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl heat-gradient text-white shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl heat-gradient text-white dark:text-neutral-950 shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
                     <Store className="size-4.5" />
                   </span>
                   <span className="min-w-0">

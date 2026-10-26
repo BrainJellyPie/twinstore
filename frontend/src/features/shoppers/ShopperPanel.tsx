@@ -248,7 +248,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
     <div className="space-y-3 py-3">
       <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
       <button type="button" onClick={follow} title={t("shopperFollowHint")}
-        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-12px_var(--heat-2)] heat-gradient transition-transform hover:scale-[1.01] active:scale-[0.99]">
+        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3 text-sm font-semibold text-white dark:text-neutral-950 shadow-[0_12px_32px_-12px_var(--heat-2)] heat-gradient transition-transform hover:scale-[1.01] active:scale-[0.99]">
         <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_35%,rgb(255_255_255/0.25)_50%,transparent_65%)] bg-[length:250%_100%] animate-shimmer" aria-hidden />
         <Crosshair className="relative size-4.5" aria-hidden /><span className="relative">{t("shopperFollow")}</span>
       </button>

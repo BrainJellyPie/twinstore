@@ -81,7 +81,7 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
               <li key={sh.id} className="group relative flex w-[85%] shrink-0 snap-start flex-col gap-2.5 overflow-hidden rounded-2xl border bg-card/70 p-3 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg sm:w-auto">
                 <div className="pointer-events-none absolute -top-10 -right-10 size-28 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-40 heat-gradient" aria-hidden />
                 <div className="flex items-center gap-2.5">
-                  <span className="heat-gradient grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold text-white shadow-inner" aria-hidden>{initials(sh.identity)}</span>
+                  <span className="heat-gradient grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold text-white dark:text-neutral-950 shadow-inner" aria-hidden>{initials(sh.identity)}</span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold" title={sh.identity}>{sh.identity}</div>
                     <div className="truncate text-[0.7rem] text-muted-foreground">

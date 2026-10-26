@@ -183,8 +183,9 @@ export function FunnelChart({ variants }: { variants: VariantSummary[] }) {
 
 // White reads on the deep fills, near-black on the light ones (amber, slate, sky).
 const OUTCOME_INK: Record<SessionOutcome, string> = {
-  purchased: "text-white", bounced: "text-white", timed_out: "text-white", abandoned_cart: "text-neutral-950", left: "text-neutral-950",
-  step_limit: "text-neutral-950",
+  // The positive and negative colours turn light in dark mode, and white on violet stays under 4.5:1.
+  purchased: "text-white dark:text-neutral-950", bounced: "text-white dark:text-neutral-950", timed_out: "text-neutral-950",
+  abandoned_cart: "text-neutral-950", left: "text-neutral-950", step_limit: "text-neutral-950",
 };
 
 /** How visits ended, as one 100 % bar per store; a share is written inside its segment only when it fits. */

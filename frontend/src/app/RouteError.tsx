@@ -19,7 +19,7 @@ function Problem({ icon: Icon, title, hint, detail, children }: { icon: LucideIc
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4">
       <div role="alert" className="panel my-auto w-full max-w-md shrink-0 space-y-3 self-center rounded-[1.6rem] p-6 text-center [overflow-wrap:anywhere]">
-        <span className="mx-auto grid size-12 place-items-center rounded-2xl heat-gradient text-white shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
+        <span className="mx-auto grid size-12 place-items-center rounded-2xl heat-gradient text-white dark:text-neutral-950 shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>
           <Icon className="size-5" />
         </span>
         <h2 className="font-display text-xl tracking-[-0.02em]">{title}</h2>
