@@ -73,6 +73,9 @@
   store's layout is closed at weekends), the panel says so and points to the
   layout's opening hours, instead of showing 0 visitors, "half within 0 m", a
   "≈ 1 min" walk and an empty hourly chart.
+- Shelf capture's **Restore saved queue** with nothing saved says no queue is
+  saved in this browser yet, instead of "the browser copy is no longer
+  available. It may have been cleared or evicted."
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before

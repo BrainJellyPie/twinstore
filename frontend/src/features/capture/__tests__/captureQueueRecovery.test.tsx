@@ -232,3 +232,11 @@ it("discards a restored queue after leaving during revision verification", async
   view.unmount(); available.mockClear(); await act(async () => checked.resolve());
   expect(api.createCapture).not.toHaveBeenCalled(); expect(available).not.toHaveBeenCalled();
 });
+
+it("says nothing is saved yet instead of calling a never-saved copy cleared", async () => {
+  mount();
+  await waitFor(() => expect(recovery.readRecovery).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "Restore saved queue" }));
+  expect(await screen.findByText(/No queue is saved in this browser for this store yet/)).toBeTruthy();
+  expect(screen.queryByText(/no longer available/)).toBeNull();
+});

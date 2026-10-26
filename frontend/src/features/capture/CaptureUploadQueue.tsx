@@ -141,6 +141,11 @@ export function CaptureUploadQueue({
         if (alive.current) setRecoveryMessage(t("capRecoverySaved"));
       } else if (action === "restore") {
         const copy = await readRecovery(projectId);
+        // Nothing was found when the page opened either: there is no copy to call "cleared or evicted".
+        if (!copy && !saved) {
+          if (alive.current) setRecoveryMessage(t("capRecoveryNone"));
+          return;
+        }
         if (!copy) throw new Error(t("capRecoveryGone"));
         const photos = await restoreRecovery(copy);
         await checkRecoveryRevision(projectId, copy.revision);
