@@ -60,13 +60,13 @@ def test_valid_subsets_survive_and_only_bad_categories_are_requested_again(curre
     before = store.model_dump()
     model = PartialModel(fault)
     selected = asyncio.run(select(model, store))
-    repaired = KEYS[:2] if fault == "duplicate_category" else KEYS[:1]
+    repaired = KEYS[:2] if fault == "duplicate_category" else [] if fault == "over_limit" else KEYS[:1]
     assert len(model.calls) == 2 + len(repaired)
     assert [list(call["categories"]) for call in model.calls[2:]] == [[key] for key in repaired]
     assert not any("correction" in call for call in model.calls)
     assert [(row.rack_id, row.category) for row in selected] == list(zip(map(str, range(3)), KEYS))
     for row in selected:
-        product = CATALOG[row.category][0 if row.category in repaired else -1]
+        product = CATALOG[row.category][0 if row.category in repaired or fault == "over_limit" and row.category == KEYS[0] else -1]
         assert row.skus == [catalog_slot_item(product, currency).sku]
     assert store.model_dump() == before
 

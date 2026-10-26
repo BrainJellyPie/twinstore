@@ -107,6 +107,7 @@ def test_model_selection_cannot_exceed_the_available_sections(per_slot):
         if call == 2:
             data["groups"][0]["skus"] = [catalog_slot_item(p, "USD").sku for p in CATALOG["home_coffee_tea"][:per_slot + 1]]
     model = FakeModel(edit=edit)
-    with pytest.raises(ValueError):
-        asyncio.run(select_starter_products(model, store, [rack], "", products_per_slot=per_slot))
+    chosen = asyncio.run(select_starter_products(model, store, [rack], "", products_per_slot=per_slot))
+    assert len(model.calls) == 2 and len(chosen) == 1
+    assert chosen[0].skus == [catalog_slot_item(p, "USD").sku for p in CATALOG["home_coffee_tea"][:per_slot]]
     assert model.calls[1]["maximum_products_per_category"] == {"home_coffee_tea": per_slot}

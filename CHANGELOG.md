@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Avoid repeating automatic product selection when a small model lists too many
+  valid products. Check the entire list for unknown, wrong-category or duplicate
+  IDs before retaining its first requested products, within shelf capacity.
+  Invalid lists still need correction; rack and category coverage stay required.
+
 - Report unanswered exit surveys separately for each online variant, including
   runs with no usable survey answers. Missing responses remain excluded from
   ratings; survey calls no longer dilute the reported browsing fallback rate.

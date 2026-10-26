@@ -403,14 +403,25 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
         def canonical_category(cls, value: str) -> str:
             return canonical_identifier(value, keys)
 
-        @field_validator("skus")
+        @field_validator("skus", mode="before")
         @classmethod
-        def canonical_skus(cls, values: list[str], info: ValidationInfo) -> list[str]:
+        def canonical_skus(cls, values: JsonValue, info: ValidationInfo) -> JsonValue:
+            if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
+                return values
             category = info.data.get("category")
             allowed_skus = {p.sku for p in candidates.get(category, [])} if isinstance(category, str) else set[str]()
             references = product_codes.get(category, {}) if isinstance(category, str) else {}
-            return [references.get(code, code) for value in values
-                    for code in [canonical_identifier(value, allowed_skus | references.keys())]]
+            selected = [references.get(code, code) for value in values
+                        for code in [canonical_identifier(cast(str, value), allowed_skus | references.keys())]]
+            maximum = limits.get(category) if isinstance(category, str) else None
+            # Apply the same bounded-subset rule as the small product task, but
+            # inspect the full reply first so bad or repeated tail IDs stay invalid.
+            if (maximum is not None and len(selected) > maximum and set(selected) <= allowed_skus
+                    and len(set(selected)) == len(selected)):
+                logger.warning("Limited starter products for %s from %s to %s valid unique catalog IDs",
+                               category, len(selected), maximum)
+                return [sku for sku in selected[:maximum]]
+            return [sku for sku in selected]
 
     retained_products: dict[str, list[str]] = {}
 

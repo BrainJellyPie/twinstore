@@ -4,13 +4,15 @@ From the repository root:
   PYTHONPATH=backend/src backend/.venv/bin/python verification/local-model-probe.py --case compact
 
 Start the local server separately, on CPU for a CPU probe. No responses are mocked.
-Every run gets a fresh cache; the trace contains built-in sample prompts, not headers or keys.
+Every run gets a fresh cache unless --cache-from explicitly copies a saved cache.
+The trace contains built-in sample prompts, not headers or keys.
 """
 
 import argparse
 import asyncio
 import json
 import re
+import shutil
 import time
 from collections import Counter
 from pathlib import Path
@@ -100,12 +102,15 @@ parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--structured-output", choices=["json_schema", "json"], default="json_schema")
 parser.add_argument("--output", type=Path, default=Path(".data/local-model-probes"))
+parser.add_argument("--cache-from", type=Path, help="Copy a saved response cache for an explicit diagnostic replay")
 args = parser.parse_args()
 endpoint = urlsplit(args.endpoint)
 if endpoint.hostname not in {"localhost", "127.0.0.1", "::1"} or endpoint.scheme != "http":
     parser.error("Use an HTTP loopback endpoint for the local model.")
 output = args.output / f"{args.case}-{args.structured_output}-{time.time_ns()}"
 output.mkdir(parents=True)
+if args.cache_from:
+    shutil.copytree(args.cache_from.resolve(), output / "cache")
 options = TemplateLayoutRequest(template_id="compact_cvs", width=8, height=6, currency="KRW")
 description = "동네 주민이 자주 방문하는 동네 편의점"
 if args.case == "cafe":
@@ -153,7 +158,8 @@ async def traced_send(self, request, *positional, **keywords):
 
 
 started = time.perf_counter()
-result = {"case": args.case, "model": args.model, "endpoint": args.endpoint, "structured_output": args.structured_output}
+result = {"case": args.case, "model": args.model, "endpoint": args.endpoint, "structured_output": args.structured_output,
+          "cache_replay_from": str(args.cache_from) if args.cache_from else None}
 try:
     if args.case in design_requests:
         site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history"} else "USD")

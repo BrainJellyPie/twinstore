@@ -89,11 +89,13 @@ def test_one_corrected_response_recovers_and_only_valid_products_are_placed(curr
     model = RepairModel(fault if fault in CATEGORY_FAULTS else None, fault if fault in PRODUCT_FAULTS else None)
     chosen = asyncio.run(select_starter_products(model, store, rack_choices(store), "카페 🌿; no invented products",
                                                 product_limits={key: 1 for key in CATALOG}))
-    assert len(model.calls) == 3
+    assert len(model.calls) == (2 if fault == "over_limit" else 3)
     corrections = [payload for _, payload in model.calls if "correction" in payload]
     if fault in CATEGORY_FAULTS or fault == "duplicate_product_category":
         assert len(corrections) == 1 and corrections[0]["correction"]["error"]
         assert corrections[0]["correction"]["previous_response"]["groups"]
+    elif fault == "over_limit":
+        assert not corrections and not model.counts["small"]
     else:
         assert not corrections and model.counts["small"] == 1
     result, report = fill_empty_racks(store, chosen, 2)
@@ -106,7 +108,7 @@ def test_one_corrected_response_recovers_and_only_valid_products_are_placed(curr
         assert all(item == expected[item.sku] for slot in rack.slots for item in slot.items)
 
 
-@pytest.mark.parametrize("fault", CATEGORY_FAULTS + PRODUCT_FAULTS)
+@pytest.mark.parametrize("fault", [fault for fault in CATEGORY_FAULTS + PRODUCT_FAULTS if fault != "over_limit"])
 def test_persistent_invalid_choices_stop_after_bounded_small_task_recovery(fault):
     store = empty_store()
     model = RepairModel(fault if fault in CATEGORY_FAULTS else None, fault if fault in PRODUCT_FAULTS else None, True)
@@ -140,7 +142,9 @@ def test_generated_boundary_combinations_preserve_coverage_exclusions_and_limits
         assert all(row.category in allowed and len(row.skus) == 1 for row in chosen)
         primary = next(payload for stage, payload in model.calls if stage == "product")
         partial = len(primary["categories"]) > 1 and product_fault != "duplicate_product_category"
-        assert model.counts == ({"category": 2, "product": 1, "small": 1} if partial else {"category": 2, "product": 2})
+        expected = ({"category": 2, "product": 1} if product_fault == "over_limit"
+                    else {"category": 2, "product": 1, "small": 1} if partial else {"category": 2, "product": 2})
+        assert model.counts == expected
 
 
 @pytest.mark.parametrize("error", [TimeoutError("offline timeout"), ValueError("invalid provider configuration")])
