@@ -128,7 +128,7 @@ parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setu
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -579,6 +579,11 @@ try:
             categories = ["drinks", "snacks"]
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
         opening, closing, evidence = expected_hour, expected_hour + 1, ""
+        identities_by_hour = {9: "student", 13: "retiree", 21: "night shift worker"}
+        if args.case == "persona-hour-identities":
+            opening, closing, customer_count = 9, 22, 3
+            profile = "A neighborhood convenience store. The observed cohort has one student at 09:00, one retiree at 13:00, and one night shift worker at 21:00. Customers buy snacks and drinks; each has a budget of 3,000–10,000 KRW. Preserve these observed customer types and their hours."
+            categories = ["snacks", "drinks"]
         if args.case == "persona-24h":
             opening, closing, budget = 0, 24, (0, 0)
             profile = "동네 주민이 간식과 음료를 사는 24시간 편의점입니다."
@@ -587,7 +592,7 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels"}:
+            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities"}:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
@@ -596,6 +601,11 @@ try:
                     area = TradeAreaProfile(keywords=["neighborhood", "reading"],
                         identities=["local resident", "student"], purposes=["buy books", "buy stationery"])
                 hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
+                if args.case == "persona-hour-identities":
+                    area = TradeAreaProfile(keywords=["neighborhood", "convenience"],
+                        identities=list(identities_by_hour.values()), purposes=["buy snacks", "buy drinks"])
+                    hourly = [HourlyProfile(hour=hour, visitor_count=1, person_types=[identity])
+                        for hour, identity in identities_by_hour.items()]
                 people = asyncio.run(generate_personas_for_day(client, address, area, Weekday.MON, hourly,
                     seed=4, batch_size=persona_batch_size, max_concurrent=1, categories=categories,
                     currency=currency, customer_profile=profile))
@@ -608,8 +618,14 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels"} and len(written) != customer_count:
+        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities"} and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
+        if args.case == "persona-hour-identities":
+            if Counter(person.arrival_hour for person in people) != {hour: 1 for hour in identities_by_hour}:
+                issues.append("The writer changed the fixed cohort's per-hour counts")
+            if any(person.identity != identities_by_hour.get(person.arrival_hour) for person in people):
+                issues.append("The writer assigned a customer type to a different observed hour")
+            result["identities_by_hour"] = identities_by_hour
         if any(person.day != Weekday.MON or not opening <= person.arrival_hour < closing for person in people):
             issues.append("Arrival outside the open hours")
         if args.case == "persona-24h" and Counter(person.arrival_hour for person in people) != {hour: 1 for hour in range(24)}:

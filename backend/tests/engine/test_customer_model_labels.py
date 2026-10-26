@@ -101,7 +101,7 @@ def test_only_unambiguous_text_normalization_changes_a_generated_label(labels, a
     profile = gen.TradeAreaProfile(keywords=[], identities=labels, purposes=["Groceries"])
     tally = gen.BatchTally()
     result = asyncio.run(gen.generate_personas_for_day(Model(), "offline", profile, Weekday.MON,
-        [gen.HourlyProfile(hour=9, visitor_count=1, person_types=[labels[0] if labels else "shopper"])], tally=tally))
+        [gen.HourlyProfile(hour=9, visitor_count=1, person_types=labels or ["shopper"])], tally=tally))
     if expected is None:
         assert result == [] and tally.failed == 1
     else:

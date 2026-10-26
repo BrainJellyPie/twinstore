@@ -284,6 +284,26 @@ def _compact_json_schema_prompt(pretty: str, compact: str, messages: object) -> 
             message["content"] = content.replace(pretty, compact)
 
 
+def _concise_json_reask(messages: object, error: str, initial_count: int) -> None:
+    """Retain the current validation error without duplicating SDK response dumps."""
+    if not isinstance(messages, list):
+        return
+    rows = cast(list[object], messages)
+    if len(rows) <= initial_count:
+        return
+    latest = rows[-1]
+    if not isinstance(latest, dict):
+        return
+    message = cast(dict[str, object], latest)
+    content = message.get("content")
+    prefix = "Correct your JSON ONLY RESPONSE, based on the following errors:\n"
+    if message.get("role") == "user" and isinstance(content, str) and content.startswith(prefix):
+        # Earlier assistant replies and correction messages already carry the
+        # history. Instructor's full failed_attempts repr repeats them, together
+        # with transport metadata, and can exhaust a small local context window.
+        message["content"] = prefix + error
+
+
 class LiteLLMClient:
 
     def __init__(self, config: LLMConfig, *, reroute: Reroute | None = None, max_reroutes: int = _MAX_REROUTES):
@@ -613,16 +633,31 @@ class LiteLLMClient:
             kwargs = self._call_kwargs(seed, budget, structured=True)
             calls = 0
             schema_text = self._compact_schema_text(response_model)
+            concise_reasks = self._structured_output == "json" and self._is_loopback()
+            initial_message_count = 0
+            parse_error: str | None = None
+
+            def parse_failed(error: Exception) -> None:
+                nonlocal parse_error
+                parse_error = str(error)  # Before Instructor adds its failed-attempt response dumps.
 
             def request_started(*_args: object, **request_kwargs: object) -> None:
-                nonlocal calls
+                nonlocal calls, initial_message_count, parse_error
                 calls += 1
+                messages = request_kwargs.get("messages")
+                if calls == 1 and isinstance(messages, list):
+                    initial_message_count = len(cast(list[object], messages))
+                elif concise_reasks and parse_error is not None:
+                    _concise_json_reask(messages, parse_error, initial_message_count)
+                    parse_error = None
                 if schema_text is not None:
                     _compact_json_schema_prompt(*schema_text, request_kwargs.get("messages"))
 
             hooks = Hooks()
             hooks.on("completion:kwargs", request_started)
             hooks.on("completion:response", _final_structured_content)
+            if concise_reasks:
+                hooks.on("parse:error", parse_failed)
             try:
                 result = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=_unique_response_model(response_model),
@@ -666,16 +701,31 @@ class LiteLLMClient:
                 kwargs = self._call_kwargs(seed, budget, structured=True)
                 calls = 0
                 schema_text = self._compact_schema_text(response_model)
+                concise_reasks = self._structured_output == "json" and self._is_loopback()
+                initial_message_count = 0
+                parse_error: str | None = None
+
+                def parse_failed(error: Exception) -> None:
+                    nonlocal parse_error
+                    parse_error = str(error)
 
                 def request_started(*_args: object, **request_kwargs: object) -> None:
-                    nonlocal calls
+                    nonlocal calls, initial_message_count, parse_error
                     calls += 1
+                    messages = request_kwargs.get("messages")
+                    if calls == 1 and isinstance(messages, list):
+                        initial_message_count = len(cast(list[object], messages))
+                    elif concise_reasks and parse_error is not None:
+                        _concise_json_reask(messages, parse_error, initial_message_count)
+                        parse_error = None
                     if schema_text is not None:
                         _compact_json_schema_prompt(*schema_text, request_kwargs.get("messages"))
 
                 hooks = Hooks()
                 hooks.on("completion:kwargs", request_started)
                 hooks.on("completion:response", _final_structured_content)
+                if concise_reasks:
+                    hooks.on("parse:error", parse_failed)
                 try:
                     result = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                         response_model=_unique_response_model(response_model),
