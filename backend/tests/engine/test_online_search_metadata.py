@@ -66,3 +66,14 @@ def test_model_search_reaches_results_and_records_the_real_match_count(query):
                                      seed=3, max_steps=2, render=False))
     assert session.searches[0].query == query and session.searches[0].results == expected > 0
     assert session.steps[0].choice.kind == ActionKind.SEARCH and session.steps[0].source == "model"
+
+
+def test_a_single_search_result_reads_as_one_result():
+    from store_emulator.domain.online import PageKind, PageRef
+    from store_emulator.engine.online.browser import build_page, initial_state
+
+    site = _site(welcome_popup="none")
+    name = next(p.name for p in site.products if len(search_products(site, p.name)) == 1)
+    state = initial_state(site).model_copy(update={"at": PageRef(page=PageKind.SEARCH, query=name)})
+    notes = [g.note for g in build_page(site, state).grids if g.note]
+    assert notes and notes[0].startswith("1 result · page 1 of 1")

@@ -442,7 +442,7 @@ def _listing_grid(site: OnlineSite, state: BrowserState, ctl: _Builder, title: s
         controls.append(ctl(ActionKind.PREVIOUS_PAGE, f"Previous page (page {index} of {pages})"))
     if index + 1 < pages:
         controls.append(ctl(ActionKind.NEXT_PAGE, f"Next page (page {index + 2} of {pages})"))
-    note = (f"{len(products)} results · page {index + 1} of {pages} · sorted by {SORT_LABELS[current].lower()}"
+    note = (f"{len(products)} result{'' if len(products) == 1 else 's'} · page {index + 1} of {pages} · sorted by {SORT_LABELS[current].lower()}"
             if products else "")
     return Grid(title, _cards(site, state, shown, ctl, ads), tuple(controls), note)
 

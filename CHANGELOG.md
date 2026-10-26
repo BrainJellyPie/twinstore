@@ -50,6 +50,8 @@
   set their totals two to a row and let wide charts scroll. A wide table in an
   online run report (such as Ads) scrolls on its own instead of widening the
   page.
+- An online shop's search page with one match reads "1 result", not
+  "1 results", in the page shoppers and models see.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
