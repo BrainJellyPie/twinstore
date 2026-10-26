@@ -85,7 +85,7 @@ function ProtocolEditor({ projectId, view, requestId = "", onCreated, onAmended 
     <p className="text-xs text-muted-foreground">{t("mkProtocolIntro")}</p>
     <fieldset disabled={busy} className="space-y-3">
       <label className="block">{t("mkProtocolTitle")}<Input maxLength={120} value={plan.title} onChange={(e) => setPlan({ ...plan, title: e.target.value })} /></label>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label>{t("mkEvidenceSource")}<select aria-label={t("mkEvidenceSource")} className="block w-full rounded border bg-background p-2" value={plan.evidence_type} onChange={(e) => setPlan({ ...plan, evidence_type: e.target.value as ProtocolPlan["evidence_type"] })}><option value="synthetic">{t("mkEvidenceSynthetic")}</option><option value="observed">{t("mkEvidenceObserved")}</option></select></label>
         <label>{t("mkDeclaredStage")}<select aria-label={t("mkDeclaredStage")} className="block w-full rounded border bg-background p-2" value={stage} onChange={(e) => setStage(e.target.value as DataStage)}><option value="" disabled>{t("mkChooseStage")}</option>{STAGES.map(([value, label], index) => <option key={value} value={value} disabled={!!latest && index < STAGES.findIndex(([s]) => s === latest.data_stage)}>{t(label)}</option>)}</select></label>
       </div>

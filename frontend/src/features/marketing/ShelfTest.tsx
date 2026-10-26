@@ -185,7 +185,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         </p>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkNewPack")}</h3>
           <div className="flex flex-wrap gap-1.5">
@@ -240,7 +240,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
       </section>
 
       {preview.data && (
-        <section className={cn("grid gap-3 md:grid-cols-2", preview.isFetching && "opacity-70 transition-opacity")}>
+        <section className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", preview.isFetching && "opacity-70 transition-opacity")}>
           {(["control", "test"] as const).map((arm) => (
             <figure key={arm} className="overflow-hidden rounded-2xl border bg-card">
               <img src={preview.data[arm]} alt={t("mkShelfPreviewAlt", { arm: t(ARM_LABEL[arm]) })} className="w-full" />
@@ -292,7 +292,7 @@ export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
         ) : t("mkNoPairedAnswers")}</span>
         <Button asChild size="sm" variant="outline"><a href={shelfTestReportUrl(projectId, r.test_id)} target="_blank" rel="noopener"><FileText className="size-4" /> {t("studioReport")}</a></Button>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {(["control", "test"] as const).map((arm) => (
           <figure key={arm} className="overflow-hidden rounded-2xl border bg-card">
             <img src={shelfTestImageUrl(projectId, r.test_id, arm)} alt={t("mkShelfAlt", { arm: t(ARM_LABEL[arm]) })} className="w-full" />
@@ -311,7 +311,7 @@ export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
         <LiftChart format={pp} axisLabel={t("mkShareOfRespondents")}
           rows={r.comparisons.map((c) => ({ key: c.metric, label: METRIC[c.metric] ? t(METRIC[c.metric]!) : c.metric, sub: `${pctf(c.control)} → ${pctf(c.test)}`, diff: c.diff, lo: c.ci_low, hi: c.ci_high, detail: t("mkPHigherTest", { pct: Math.round(c.prob_better * 100) }) }))} />
       </section>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <section className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkWhatTheyTake")}</h3>
           <div className="space-y-1.5">

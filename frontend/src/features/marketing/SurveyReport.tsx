@@ -39,7 +39,7 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <figure className="overflow-hidden rounded-2xl border bg-[#f6f5f2]">
           <img src={surveyBoardUrl(projectId, r.survey_id)} alt={t("mkBoardAlt")} className="mx-auto max-h-72 object-contain" />
         </figure>
@@ -91,7 +91,7 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
               </tbody>
             </table>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {scales.map((q) => (
                 <div key={q} className="space-y-2">
                   <div className="flex items-baseline justify-between gap-2">
@@ -112,7 +112,7 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
         </section>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-3">
           {r.preference.length > 0 && (
             <section className="rounded-2xl border bg-card p-4">
@@ -158,7 +158,7 @@ function Verbatims({ items }: { items: string[] }) {
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-2xl border bg-card p-4">
       <h3 className="mb-2 text-sm font-semibold">{t("mkInTheirWords")} <span className="font-normal text-muted-foreground">· {items.length}</span></h3>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {shown.map((v, i) => (
           <blockquote key={i} className="rounded-xl bg-foreground/[0.035] px-3 py-2 text-sm">
             <Quote className="mb-1 size-3.5 text-muted-foreground" aria-hidden />{v}

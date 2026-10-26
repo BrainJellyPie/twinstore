@@ -54,7 +54,7 @@ export function AdsEditor({ ads, products, currency, onChange, costText, onCostT
                 <Trash2 aria-hidden />
               </Button>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex flex-col gap-1">
                 <span className="text-muted-foreground">{t("onAdProduct")}</span>
                 <select className="h-8 rounded-md border bg-background px-2" value={ad.product_id} onChange={(e) => update(ad.id, { product_id: e.target.value })}>

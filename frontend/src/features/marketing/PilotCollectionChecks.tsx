@@ -31,7 +31,7 @@ function CollectionReport({ projectId, report: r }: { projectId: string; report:
       <p className="text-sm">{r.finalized_at ? t("mkChecksClosed") : t("mkChecksOpen")}</p>
       <p className="text-sm">{t("mkOutcomeWindowValue", { value: r.outcome_window })}</p>
     </header>
-    <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
       <p className="rounded-xl bg-muted/40 p-3">{t("mkCompleteEnrolled")} <b>{r.counts.complete_enrolled} / {r.counts.enrolled}</b></p>
       <p className="rounded-xl bg-muted/40 p-3">{t("mkUnknownPurchase")} <b>{r.counts.missing_purchase}</b></p>
       <p className="rounded-xl bg-muted/40 p-3">{t("mkUnknownDelivery")} <b>{r.counts.missing_delivery}</b></p>

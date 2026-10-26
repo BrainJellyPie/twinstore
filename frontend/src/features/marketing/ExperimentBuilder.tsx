@@ -256,7 +256,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
         </div>
       </section>
 
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <div className="rounded-2xl border border-dashed p-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="grid size-6 place-items-center rounded-md bg-foreground/[0.07] text-xs font-bold">A</span>

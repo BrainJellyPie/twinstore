@@ -39,7 +39,7 @@ function Section({ title, icon: Icon, providers }: { title: string; icon: typeof
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
         <Icon className="size-4" aria-hidden /> {title}
       </h2>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {providers.map((p) => (
           <ProviderCard key={p.preset.kind} status={p} />
         ))}

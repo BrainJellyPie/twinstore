@@ -213,7 +213,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
       {tab === "priceChecks" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><PriceChecks key={projectId} projectId={projectId} /></div> : tab === "protocols" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
         <div className="min-h-64 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} setupId={activeSetup} /></div>
       ) : (
-        <div className="grid min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto">
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",

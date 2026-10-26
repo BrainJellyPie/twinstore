@@ -34,7 +34,7 @@ export function PriceChecks({ projectId }: { projectId: string }) {
   return <section aria-label={t("mkPcAria")} className="space-y-4 rounded-2xl border bg-card p-4 text-sm">
     <h2 className="text-lg font-semibold">{t("mkPcAria")}</h2>
     <p>{t("mkPcIntro")}</p>
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label>{t("mkStoreRef")}<Input disabled={busy} maxLength={120} value={store} onChange={(e) => { clear(); setStore(e.target.value); }} /></label>
       <label>{t("mkAuditDate")}<Input type="date" disabled={busy} value={date} onChange={(e) => { clear(); setDate(e.target.value); }} /></label>
     </div>

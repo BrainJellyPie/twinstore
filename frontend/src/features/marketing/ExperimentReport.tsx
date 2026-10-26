@@ -175,7 +175,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
         <section className="rounded-2xl border bg-card p-4">
           <h3 className="text-sm font-semibold">{t("mkTrackedProducts")}</h3>
           <p className="mb-3 text-xs text-muted-foreground">{t("mkTrackedHint")}</p>
-          <div className={cn("grid gap-5", focusSkus.length > 1 && "lg:grid-cols-2")}>
+          <div className={cn("grid grid-cols-1 gap-5", focusSkus.length > 1 && "lg:grid-cols-2")}>
             {focusSkus.map((sku) => (
               <div key={sku}>
                 <div className="mb-1 text-sm font-medium">{sku === "*" ? t("mkAllTracked") : focusName(sku)}</div>

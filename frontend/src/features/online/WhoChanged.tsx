@@ -99,7 +99,7 @@ export function WhoChanged({ result, money, onReplay, onCompare }: {
                 </div>
                 <ul className="space-y-1">
                   {shown.map((r) => (
-                    <li key={r.shopper_id} className="grid gap-1 rounded-lg border p-2 text-xs sm:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)]">
+                    <li key={r.shopper_id} className="grid grid-cols-1 gap-1 rounded-lg border p-2 text-xs sm:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)]">
                       <span className="flex flex-col items-start gap-0.5">
                         <span className="font-medium">{names.get(r.shopper_id) ?? r.shopper_id}</span>
                         <Button variant="outline" size="xs" onClick={() => onCompare(ci + 1, r.shopper_id)} title={t("onSideHint")}>

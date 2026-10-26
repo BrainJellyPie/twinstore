@@ -47,7 +47,7 @@ export function FactorialReview({ projectId, experimentId }: { projectId: string
       {source.isFetching && <p>{t("mkFactLoading")}</p>}
       {source.data && !source.data.available && <p>{source.data.reason}</p>}
       {source.data?.available && <>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {([
             ["mkFactPriceArm", price, setPrice, source.data.price_arms],
             ["mkFactSignArm", sign, setSign, source.data.sign_arms],

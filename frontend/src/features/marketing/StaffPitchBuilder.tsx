@@ -103,7 +103,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
       </label>
       <p className="text-xs text-muted-foreground">{t("mkPitchPricesHint")}</p>
     </section>
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {([{ arm: "A", label: aName, setLabel: setAName, value: a, setValue: setA }, { arm: "B", label: bName, setLabel: setBName, value: b, setValue: setB }]).map((v) =>
         <section key={v.arm} className="space-y-3 rounded-2xl border bg-card p-4">
           <h3 className="font-semibold">{t("mkScriptN", { arm: v.arm })}</h3>
@@ -132,7 +132,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
         </section>)}
     </div>
     {(sameScripts || sameNames) && <p role="alert" className="text-sm text-destructive">{t("mkDistinctScripts")}</p>}
-    <section className="grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2">
+    <section className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2">
       <label className="space-y-1 text-sm">{t("mkRequestedShoppers")}
         <Input type="number" min={20} max={500} step={1} value={panel} onChange={(e) => setPanel(e.target.value)} required />
       </label>

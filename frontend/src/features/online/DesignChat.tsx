@@ -110,7 +110,7 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
   const src = edited && view === "after" ? preview.data : sitePreviewUrl(projectId, site.id, device, site.updated_at);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <div className="flex min-h-[22rem] flex-col gap-2">
         <div className="flex-1 space-y-2 overflow-y-auto rounded-2xl border bg-muted/30 p-3" aria-live="polite">
           {turns.length === 0 && !ask.isPending && (

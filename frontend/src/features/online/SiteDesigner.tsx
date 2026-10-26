@@ -126,7 +126,7 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
   );
 
   return (
-    <fieldset disabled={writing} className="grid min-w-0 gap-3 xl:grid-cols-2">
+    <fieldset disabled={writing} className="grid grid-cols-1 min-w-0 gap-3 xl:grid-cols-2">
       <Card title={t("onAiTitle")} hint={t("onAiHint")} className="ring-aurora xl:col-span-2">
         <DesignChat projectId={projectId} site={site} options={options} onOptions={applyOptions} turns={turns} onTurns={onTurns}
           onWorking={setAsking} onTest={(asked) => test.mutate(asked)} testing={test.isPending} testError={test.error?.message ?? ""} />
@@ -339,7 +339,7 @@ function Card({ title, hint, className, children }: { title: string; hint?: stri
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <div className="grid gap-1 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
+    <div className="grid grid-cols-1 gap-1 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
       <div>
         <div className="text-xs font-medium">{label}</div>
         {hint && <div className="text-[0.7rem] text-muted-foreground">{hint}</div>}

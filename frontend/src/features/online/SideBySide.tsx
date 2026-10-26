@@ -43,7 +43,7 @@ export function SideBySide({ projectId, runId, shopperId, stores, names, money }
         )}
         <Button size="xs" variant="ghost" onClick={() => start(0)}><RotateCcw aria-hidden /> {t("onPlayRestart")}</Button>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {[left, right].map((view, side) => (
           <section key={`${side}:${round}`} aria-label={names[stores[side]!]} className="min-w-0 space-y-1">
             {/* One line on both sides, so the two players stay level. */}

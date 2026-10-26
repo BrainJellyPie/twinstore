@@ -31,6 +31,9 @@
   quick links (icons ran into the labels and "En ligne" was cut off in French;
   they now sit icon over label), the store side panel's tabs in Spanish and
   the POS upload buttons in French.
+  The online run form (34 px too wide in every language) and 60 other
+  responsive grids now keep one column that can shrink below their breakpoint,
+  so a long option or word wraps instead of pushing the whole page sideways.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a

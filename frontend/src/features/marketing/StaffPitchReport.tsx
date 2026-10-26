@@ -43,7 +43,7 @@ export function StaffPitchReportView({ projectId, report: r }: { projectId: stri
       <p className="text-sm">{r.product.name} · {r.product.sku} · {formatMoney(r.product.price, r.product.currency)} {r.product.promo && `· ${r.product.promo}`}</p>
       <p className="whitespace-pre-wrap text-sm">{r.request.context}</p>
       {r.request.product_facts && <p className="whitespace-pre-wrap text-sm"><b>{t("mkOperatorFacts")}</b> {r.request.product_facts}</p>}
-      <div className="grid gap-3 md:grid-cols-2">{r.request.variants.map((v, i) => <div key={i} className="rounded-xl bg-muted/40 p-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{r.request.variants.map((v, i) => <div key={i} className="rounded-xl bg-muted/40 p-3">
         <h4 className="font-semibold">{i === 0 ? "A" : "B"} · {v.name}</h4><p className="mt-2 whitespace-pre-wrap text-sm">{v.script}</p>
       </div>)}</div>
     </section>

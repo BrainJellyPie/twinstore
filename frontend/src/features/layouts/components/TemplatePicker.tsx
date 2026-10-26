@@ -167,7 +167,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
       </div>
       <details className="space-y-2 rounded border px-2 py-1.5 text-xs">
         <summary className="cursor-pointer">{t("moreFormatFilters")}</summary>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Field label={t("defaultFloorSize")}><select className={controlClass} value={size} onChange={(e) => setSize(e.target.value)}>
             <option value="all">{t("anySize")}</option><option value="compact">{t("compactSize")}</option>
             <option value="medium">{t("mediumSize")}</option><option value="large">{t("largeSize")}</option>
@@ -213,7 +213,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
       </p>}
       {selected && (search || storeType || size !== "all" || seating !== "all") && <p className="text-xs text-muted-foreground">{t("formatSelectionHint")}</p>}
       {value.templateId && <>
-        <div className="grid gap-3 sm:grid-cols-[170px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[170px_minmax(0,1fr)]">
           <div className="space-y-1.5">
             {preview.isSuccess && validTemplateChoice(value) ? <>
               <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} name={templateName(value.templateId, preview.data.name, locale)} />
@@ -492,7 +492,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             onChange={(event) => update({ products_per_category: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
           <p className="text-muted-foreground">{t("templateProductsLimitHint")}</p>
           <p className="text-muted-foreground">{t("templateProductsOverrideHint")}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {categories.map((category) => <div key={category.id} className="flex items-center gap-2">
               <label className="flex min-w-0 flex-1 items-center gap-2">
                 <input type="checkbox" checked={!excluded.has(category.id)} disabled={!excluded.has(category.id) && includedCount === 1}

@@ -46,7 +46,7 @@ export function PilotEconomics({ projectId, pilotId, revision, currency, eligibl
     {!eligible ? <p className="text-sm">{t("mkAfterClosing")}</p> : <>
       <p className="text-xs">{t("mkEconUnitsHint", { currency: currencyCode(currency) })}</p>
       <p className="text-xs">{t("mkEconTimeHint")}</p>
-      <div className="grid gap-3 sm:grid-cols-2">{fields.map(({ key, label, max }) => <label key={key} className="space-y-1 text-xs">{t(label)}<Input type="number" min={0} max={max} step={1} value={draft[key]} disabled={busy} onChange={(e) => {
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{fields.map(({ key, label, max }) => <label key={key} className="space-y-1 text-xs">{t(label)}<Input type="number" min={0} max={max} step={1} value={draft[key]} disabled={busy} onChange={(e) => {
         preview.reset(); download.reset(); setDraft({ ...draft, [key]: e.target.value });
       }} /></label>)}</div>
       <Button size="sm" variant="outline" disabled={!valid || busy} onClick={() => preview.mutate(request())}>{t("mkEconCalculate")}</Button>

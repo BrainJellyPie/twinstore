@@ -66,7 +66,7 @@ export function BrowserView({ projectId, siteId }: { projectId: string; siteId: 
   };
 
   return (
-    <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="panel flex min-w-0 flex-col gap-3 rounded-[1.6rem] p-3" aria-label={t("onBrowserLabel")}>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="inline-flex rounded-md border p-0.5" role="group" aria-label={t("onDevice")}>

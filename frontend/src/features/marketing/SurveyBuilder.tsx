@@ -155,7 +155,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
           <div className="w-64"><ProductDrop projectId={projectId} compact onUploaded={(a) => setStimuli((s) => [...s, ...a.map((x) => x.asset_id)].slice(0, 4))} /></div>
         </div>
         {stimuli.length > 0 && (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {stimuli.map((id, i) => (
               <label key={id} className="flex items-center gap-2">
                 <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">{LETTERS[i]}</span>
@@ -166,10 +166,10 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
         )}
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr]">
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkQuestions")}</h3>
-          <div className="grid gap-1.5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {QUESTIONS.map((q) => {
               const on = questions.includes(q.kind);
               const off = q.multi && stimuli.length < 2;
