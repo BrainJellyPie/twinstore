@@ -5,6 +5,11 @@
 - An A/B test's results offer the **price × sign** 2×2 analysis only when the
   test has a price arm, a promotion-sign arm and an arm with both; a discount
   ladder offered it and then could only report that it did not apply.
+- **Apply to the store** in an A/B test's results names the new layout after
+  the tested one too ("layout 2 · -20 %"; it was "-20 %" alone in the layout
+  lists). **Review on the layout** and **Save as a new layout** move focus to
+  what replaces them, here and under an online variant's prices; focus fell
+  back to the top of the page.
 - In a price test's **Price response**, the control row no longer shows an
   interval ("1.7 [1.7, 1.7]"): the arms' intervals are measured from it. The
   app, Markdown and HTML reports agree, and the app names the control in the
