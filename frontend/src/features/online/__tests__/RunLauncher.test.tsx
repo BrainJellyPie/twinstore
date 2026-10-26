@@ -131,6 +131,8 @@ it("sends where visitors come from, and needs at least one source", async () => 
   expect(screen.getByText("Give at least one traffic source a share above zero.")).toBeTruthy();
   fireEvent.change(screen.getByRole("slider", { name: "Direct" }), { target: { value: "100" } });
   fireEvent.change(screen.getByRole("slider", { name: "Search engine" }), { target: { value: "50" } });
+  // Each slider is heard as its share of all sources, as shown beside it.
+  expect(screen.getByRole("slider", { name: "Direct" }).getAttribute("aria-valuetext")).toBe("67%");
   expect(start().disabled).toBe(false);
   fireEvent.click(start());
   await waitFor(() => expect(online.startRun).toHaveBeenCalledWith("p1", expect.objectContaining({

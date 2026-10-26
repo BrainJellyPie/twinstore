@@ -176,6 +176,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
           className="w-full"
           style={{ background: "transparent" }}
           aria-label={t("pbScrub")}
+          // The value is seconds since midnight; screen readers hear the store clock instead.
+          aria-valuetext={clockTime(finished ? maxTime : Math.min(Math.max(currentMinute, minTime), maxTime), locale)}
         />
         <div className="num -mt-0.5 flex justify-between text-[0.68rem] text-muted-foreground">
           <span>{clockTime(minTime, locale)}</span>

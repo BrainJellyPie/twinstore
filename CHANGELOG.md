@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Sliders are heard by screen readers as they are shown: the playback scrubber
+  as the store clock ("10:00 am") instead of seconds since midnight
+  ("36000"), the online run's shopper missions and traffic sources as each
+  one's share, the area's density as a percentage and a page's load time in
+  seconds.
 - Starting a run from **Run simulation…**, or opening one from **Previous runs
   of this layout**, moves focus to **Play** once the run shows, ready for
   Space; what was pressed was replaced by the run and focus fell back to the

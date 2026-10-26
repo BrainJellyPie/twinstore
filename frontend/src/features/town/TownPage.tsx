@@ -325,7 +325,8 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaDensity")}</span>
-          <input type="range" min={0} max={1} step={0.01} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary" />
+          <input type="range" min={0} max={1} step={0.01} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary"
+            aria-valuetext={`${Math.round(spec.density * 100)}%`} />
           <span className="w-14 text-right tabular-nums">{Math.round(spec.density * 100)}%</span>
         </label>
         <label className="flex items-center gap-2">

@@ -31,7 +31,9 @@ it("keeps playback and seeking available in the folded phone panel", () => {
   expect(usePlaybackControlStore.getState().playing).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Pause" }));
   expect(usePlaybackControlStore.getState().playing).toBe(false);
-  fireEvent.change(screen.getByRole("slider", { name: "Scrub through the day" }), { target: { value: "36000" } });
+  const scrub = screen.getByRole("slider", { name: "Scrub through the day" });
+  expect(scrub.getAttribute("aria-valuetext")).toBe("8:00 am");  // the store clock, not seconds since midnight
+  fireEvent.change(scrub, { target: { value: "36000" } });
   expect(usePlaybackControlStore.getState().seekTarget).toBe(36000);
   fireEvent.click(screen.getByRole("button", { name: "Expand playback controls" }));
   fireEvent.click(screen.getByRole("radio", { name: "Fast" }));
