@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Deleting an online store or run moves focus to the list entry that opens in
+  its place; focus fell back to the top of the page.
 - Deleting a study from the studio's list moves focus to the list's **New
   test** button; the deleted item held focus, which then fell back to the top
   of the page.

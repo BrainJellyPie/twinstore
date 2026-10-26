@@ -112,10 +112,13 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
   // The open store or run's entry is scrolled into the list's view when it opens (a link, a reload, a new store).
   const aside = useRef<HTMLElement>(null);
+  // Set when a store or run is deleted: its Delete button held focus, which the entry now open takes.
+  const refocus = useRef(false);
   const listsReady = sites.isSuccess && runs.isSuccess;
   useEffect(() => {
     const box = aside.current;
     const entry = box?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (refocus.current && entry) { refocus.current = false; entry.focus({ preventScroll: true }); }
     if (!box || !entry || !listsReady || box.scrollHeight <= box.clientHeight) return;
     const top = entry.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
     if (top < box.scrollTop || top + entry.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTo?.({ top: top - box.clientHeight / 3 });
@@ -222,7 +225,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
 
       <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
         {runId ? (
-          <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
+          <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { refocus.current = true; setRunId(null); setWide(false); }}
             wide={wide} onWide={() => setWide((w) => !w)}
             initialJourney={runId === initialRun && initialShopper ? { ...initialShopper, play: true } : undefined}
             onTry={list.length ? (id, experiments) => {
@@ -252,7 +255,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
             {tab === "browse" && <BrowserView key={`${selected.id}:${selected.updated_at}`} projectId={projectId} siteId={selected.id} />}
             {tab === "design" && (
               <SiteDesigner key={selected.id} projectId={projectId} siteId={selected.id}
-                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)}
+                onCopied={(id) => openSite(id)} onDeleted={() => { refocus.current = true; setSiteId(null); }}
                 onTest={(id) => { setCompare(id); setTab("simulate"); }} />
             )}
             {tab === "simulate" && (
