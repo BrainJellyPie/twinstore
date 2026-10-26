@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- On a phone or narrow window the marketing studio scrolls as one page: a
+  test's results and the file reviews were each a small scroll box under the
+  header and tabs (about 200 px tall on a phone), and the tests list keeps a
+  short scrolling list of its own. Side by side on a wide screen nothing
+  changes.
 - **Protocols** moves focus to the form's heading when **New protocol**
   opens it and to the saved protocol after **Record original plan** or an
   amendment; the button pressed was replaced and focus fell back to the top

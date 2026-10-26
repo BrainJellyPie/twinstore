@@ -219,14 +219,15 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
         </div>
       </header>
 
-      {tab === "priceChecks" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><PriceChecks key={projectId} projectId={projectId} /></div> : tab === "protocols" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} onOpenScripts={() => {
+      {tab === "priceChecks" ? <div className="lg:min-h-64 lg:flex-1 lg:overflow-y-auto lg:pr-1"><PriceChecks key={projectId} projectId={projectId} /></div> : tab === "protocols" ? <div className="lg:min-h-64 lg:flex-1 lg:overflow-y-auto lg:pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="lg:min-h-64 lg:flex-1 lg:overflow-y-auto lg:pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="lg:min-h-64 lg:flex-1 lg:overflow-y-auto lg:pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="lg:min-h-64 lg:flex-1 lg:overflow-y-auto lg:pr-1"><FieldPilots projectId={projectId} onOpenScripts={() => {
         setTab("pitch");  // focus follows to the tab it opened, as when the tab is chosen with the keyboard
         tabRow.current?.querySelectorAll<HTMLElement>('[role="tab"]')[MARKETING_TOOLS.findIndex((item) => item.id === "pitch")]?.focus();
       }} /></div> : tab === "products" ? (
-        <div className="min-h-64 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} setupId={activeSetup} /></div>
+        <div className="lg:min-h-64 lg:flex-1 lg:overflow-y-auto lg:pr-1"><ProductLibrary projectId={projectId} products={products} setupId={activeSetup} /></div>
       ) : (
-        <div className="grid grid-cols-1 min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+        <div className="grid grid-cols-1 gap-3 lg:min-h-64 lg:flex-1 lg:grid-cols-[17rem_minmax(0,1fr)]">
+          {/* Below lg the page scrolls as one, with a short list; side by side, the list and the test scroll apart. */}
+          <aside className="flex max-h-56 min-h-0 flex-col gap-2 overflow-y-auto lg:max-h-none">
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
                 current === "" ? "border-primary text-foreground" : "border-foreground/15 text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
@@ -234,7 +235,7 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
             </button>
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
           </aside>
-          <main className="min-h-0 overflow-y-auto pr-1">
+          <main className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} onDuplicate={duplicateExperiment} /> : setup.data?.store ? (
               <ExperimentBuilder key={`${activeSetup}:${abDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} products={products}
                 store={setup.data.store} currency={currency} initial={abDraft?.req}
