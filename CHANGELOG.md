@@ -3,7 +3,8 @@
 ## Unreleased
 
 - In the online stores' **Find a store or run**, Enter opens the first match and
-  ↓ moves into the matches, as in **Find a layout**.
+  ↓ moves into the matches, as in **Find a layout**; Enter in the home page's
+  **Filter stores** opens the first store it shows.
 - **New online store** puts focus in the template search, so typing filters the
   ready-made shops at once; focus stayed on the button behind the gallery.
 - A real-map import says what it is doing while it runs ("Downloading

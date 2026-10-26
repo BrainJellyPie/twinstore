@@ -52,7 +52,13 @@ export function StoreGallery({ projects, isLoading, isFetching, error, onRetry, 
               type="search"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); clear(); } }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); clear(); }
+                // Enter opens the one store left (or the first), not while an IME is composing.
+                if (e.key === "Enter" && query && shown.length > 0 && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+                  e.preventDefault(); onOpen(shown[0]!.project_id);
+                }
+              }}
               placeholder={t("filterStores")}
               className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:appearance-none"
               aria-label={t("filterStores")}
