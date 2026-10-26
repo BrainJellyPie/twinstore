@@ -32,6 +32,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 import { LiftChart } from "./charts";
 import { usePackages } from "./hooks";
 import { AGE_GROUPS as AGES, personaLabel } from "@/shared/i18n/personaLabels";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { toMinor } from "./products";
 import { StudyReading } from "./StudyReading";
 import { TestOnline } from "./TestOnline";
@@ -166,6 +167,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
             </div>
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+          {draft.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
         </div>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">{t("mkShelf")}</span>

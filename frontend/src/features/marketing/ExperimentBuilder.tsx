@@ -16,6 +16,7 @@ import { cn } from "@/shared/utils/cn";
 import { formatMoney, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { usePackages } from "./hooks";
 import { storeCategories, storeFixtures, toMinor, type Fixture, type Product } from "./products";
@@ -226,6 +227,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
             </div>
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+          {draft.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-[15rem] flex-1 flex-col gap-1">

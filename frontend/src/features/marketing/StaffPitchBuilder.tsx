@@ -11,6 +11,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { productNamedIn } from "./productMatch";
 import type { Product } from "./products";
@@ -127,6 +128,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
               </div>
               {explanation && <p className="text-xs text-muted-foreground">{explanation} {t("mkSameOffer")}</p>}
               {draft.error && <p role="alert" className="text-xs text-destructive">{draft.error.message}</p>}
+              {draft.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
             </div>
           )}
         </section>)}

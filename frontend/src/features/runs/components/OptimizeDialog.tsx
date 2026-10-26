@@ -20,6 +20,7 @@ import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { Locale, MessageKey } from "@/shared/i18n/messages";
 import { translate } from "@/shared/i18n/translate";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 import { useAvailableModels } from "../hooks";
@@ -168,6 +169,7 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
               </Button>
             </div>
             {reader.error && <p role="alert" className="text-xs text-destructive">{reader.error.message}</p>}
+            {reader.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
             {goalShown && (
               <div className="space-y-0.5 text-xs text-muted-foreground">
                 <p>{goalShown.rationale} {t("optCheckSettings")}</p>

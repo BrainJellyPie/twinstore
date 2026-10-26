@@ -4,6 +4,7 @@ import { previewPilotPlan, type PilotPlanningResult } from "@/shared/api/fieldPi
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { planningAssumptions, type PlanningInputs } from "./pilotPlanning";
 
 export function PilotPlanner({ projectId, inputs, onChange, counts, onApply }: {
@@ -35,6 +36,7 @@ export function PilotPlanner({ projectId, inputs, onChange, counts, onApply }: {
       {assumptions && validCounts && <>
         {plan.isPending && <p className="text-sm">{t("mkCalcSample")}</p>}
         {plan.error && <p role="alert" className="text-sm text-destructive">{plan.error.message}</p>}
+        {plan.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
         {plan.data && <>
           <PilotPlanningSummary plan={plan.data} />
           {plan.data.suggested_block_counts && <Button type="button" size="sm" variant="outline" onClick={() => onApply(plan.data.suggested_block_counts!)}>{t("mkUseRecommended")}</Button>}
