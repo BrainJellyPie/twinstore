@@ -53,6 +53,9 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
   const signedMoney = (v: number) => `${v >= 0 ? "+" : "−"}${formatMoney(Math.abs(v), r.currency)}`;
   const arms = [r.control, ...r.variants];
   const winner = r.variants.find((v) => v.name === r.winner);
+  // The 2×2 needs a price-only arm, a sign-only arm and an arm with both (backend factorial_source).
+  const only = (kinds: string[]) => variants?.some((v) => v.changes.length === 1 && kinds.includes(v.changes[0]!.kind));
+  const factorial = !variants || (only(["price", "discount"]) && only(["promo"]) && variants.some((v) => v.changes.length === 2));
   const spendRows: LiftRow[] = r.variants.flatMap((v) => {
     const m = metric(v, "spend");
     return m ? [{
@@ -104,7 +107,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
         <Button variant="outline" size="sm" onClick={exportCsv}><Download className="size-4" /> CSV</Button>
       </div>
       <ReportBar projectId={projectId} experimentId={r.experiment_id} />
-      <FactorialReview key={`${projectId}:${r.experiment_id}`} projectId={projectId} experimentId={r.experiment_id} />
+      {factorial && <FactorialReview key={`${projectId}:${r.experiment_id}`} projectId={projectId} experimentId={r.experiment_id} />}
 
       <div className="grid gap-2 sm:[grid-template-columns:var(--arm-columns)]"
         style={{ "--arm-columns": `repeat(${arms.length <= 5 ? arms.length : Math.ceil(arms.length / 2)}, minmax(0, 1fr))` } as CSSProperties}>
@@ -150,14 +153,15 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
             {t("mkPriceResponseHint")}
             {r.price_response.elasticity != null && richText(t("mkElasticity"), { value: <b className="num text-foreground">{r.price_response.elasticity.toFixed(2)}</b> })}
           </p>
-          <DemandChart response={r.price_response} currency={r.currency} />
+          <DemandChart response={r.price_response} currency={r.currency} control={r.control.name} />
           <table className="mt-2 w-full text-xs">
             <thead className="text-left text-muted-foreground"><tr><th className="py-1">{t("mkColArm")}</th><th className="text-right">{t("mkColPrice")}</th><th className="text-right">{t("mkColUnits100")}</th><th className="text-right">{t("mkColRevenue100")}</th></tr></thead>
             <tbody className="num">
               {r.price_response.points.map((p) => (
                 <tr key={p.arm} className="border-t border-foreground/[0.06]">
-                  <td className="py-1">{p.arm}</td><td className="text-right">{money(p.price)}</td>
-                  <td className="text-right">{(p.units * 100).toFixed(1)} <span className="text-muted-foreground">[{(p.units_low * 100).toFixed(1)}, {(p.units_high * 100).toFixed(1)}]</span></td>
+                  <td className="py-1">{p.arm === r.control.name ? t("mkControl") : p.arm}</td><td className="text-right">{money(p.price)}</td>
+                  {/* The control is the reference the intervals are measured from; it has none of its own. */}
+                  <td className="text-right">{(p.units * 100).toFixed(1)}{p.arm !== r.control.name && <> <span className="text-muted-foreground">[{(p.units_low * 100).toFixed(1)}, {(p.units_high * 100).toFixed(1)}]</span></>}</td>
                   <td className="text-right">{money(p.revenue * 100)}{p.price === r.price_response!.best_price ? " ★" : ""}</td>
                 </tr>
               ))}

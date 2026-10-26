@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- An A/B test's results offer the **price × sign** 2×2 analysis only when the
+  test has a price arm, a promotion-sign arm and an arm with both; a discount
+  ladder offered it and then could only report that it did not apply.
+- In a price test's **Price response**, the control row no longer shows an
+  interval ("1.7 [1.7, 1.7]"): the arms' intervals are measured from it. The
+  app, Markdown and HTML reports agree, and the app names the control in the
+  selected language there and in the chart's tooltip.
+
 - When the graphics driver resets the 3D store view (heavy work such as Photo
   mode's path tracing can cause it), the view says so and offers **Restart the
   3D view**, which brings the store back; Photo mode ends. Before, the store

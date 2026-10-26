@@ -245,8 +245,9 @@ def report_markdown(r: ExperimentReport, layout: str = "", narrative: ReportNarr
         pr = r.price_response
         lines += ["", f"## Price response · {pr.name}", "", _md_table(
             ["Arm", "Price", "Units / 100 visitors [95 % CI]", "Product revenue / 100 visitors"],
-            [[p.arm, money(p.price, cur), f"{p.units * 100:.1f} [{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]", money(p.revenue * 100, cur)]
-             for p in pr.points])]
+            # The control is the reference the intervals are measured from; it has none of its own.
+            [[p.arm, money(p.price, cur), f"{p.units * 100:.1f}" + ("" if p.arm == r.control.name else f" [{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]"),
+              money(p.revenue * 100, cur)] for p in pr.points])]
         if pr.elasticity is not None:
             lines.append(f"\nPrice elasticity across the arms: {pr.elasticity:.2f}.")
     header, seg_rows = _segment_rows(r)
@@ -341,8 +342,9 @@ def _price_section(r: ExperimentReport) -> str:
         return ""
     cur = r.currency
     rows = "".join(
-        f"<tr><td>{escape(p.arm)}</td><td class=n>{escape(money(p.price, cur))}</td><td class=n>{p.units * 100:.1f} "
-        f"<span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span></td><td class=n>{escape(money(p.revenue * 100, cur))}"
+        f"<tr><td>{escape(p.arm)}</td><td class=n>{escape(money(p.price, cur))}</td><td class=n>{p.units * 100:.1f}"
+        + ("" if p.arm == r.control.name else f" <span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span>")
+        + f"</td><td class=n>{escape(money(p.revenue * 100, cur))}"
         f"{' ★' if p.price == pr.best_price else ''}</td></tr>" for p in pr.points)
     el = f" · elasticity across the arms ≈ {pr.elasticity:.2f}" if pr.elasticity is not None else ""
     return (f"<h2>Price response · {escape(pr.name)}</h2><p class='note'>Units per 100 visitors at each tested price (bars: 95 % intervals){el}. "
