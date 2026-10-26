@@ -139,14 +139,11 @@ export function LocalModelPanel() {
 
 function Fact({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <div className="min-w-0">
-        <dt className="text-xs text-muted-foreground">{label}</dt>
-        <dd className="truncate" title={value}>
-          {value}
-        </dd>
-      </div>
+    <div className="min-w-0">
+      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="size-3.5 shrink-0" aria-hidden />{label}</dt>
+      <dd className="truncate" title={value}>
+        {value}
+      </dd>
     </div>
   );
 }

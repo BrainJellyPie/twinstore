@@ -40,6 +40,10 @@
   least 4.7:1, with the same hues a shade deeper. Dark mode is unchanged. The
   online run hero's "Clearly better/worse" pill is white on a stronger tint, and
   the shopper filter counts are no longer dimmed.
+- Screen readers name the playback progress bar after its status ("Press play",
+  "Playing 40 %"), and the local-model hardware list is a valid definition list.
+  Every page and tab now passes axe-core's WCAG 2.1 A/AA checks in light and
+  dark mode.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
