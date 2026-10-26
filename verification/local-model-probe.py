@@ -34,6 +34,7 @@ from store_emulator.engine.generators.persona import Pace, generate_batched
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.layout_edit import apply_layout_edit, draft_layout_edit
 from store_emulator.engine.generators.store_setup_writer import draft_store_setup
+from store_emulator.engine.generators.profile_writer import draft_profile
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.online.catalog import build_site, site_from_store
 from store_emulator.engine.online.analysis import paired_deltas, segment_deltas, summarize, switches
@@ -93,6 +94,7 @@ layout_requests = {
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-wrong-variant", "pack-blank",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
+    "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
     "persona-neighborhood", "persona-cafe", "persona-bookstore", "persona-us", "persona-fractional", "persona-nightmarket", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
@@ -121,8 +123,8 @@ elif args.case == "hypermarket":
         requirements="Choose a coherent supermarket assortment, with one product per category. No alcoholic products. Keep cold products in fridges and respect department signs.")
     description = "동네 주민과 가족들이 식료품과 생활필수품을 구입하는 대형 슈퍼마켓"
 client = LiteLLMClient(LLMConfig(model=args.model, api_base=args.endpoint, api_key=SecretStr("local-probe"),
-    temperature=.2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
-    max_tokens=900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
+    temperature=.5 if args.case.startswith("profile-draft-") else .2 if args.case in design_requests or args.case.startswith("analyst-") else 0, seed=0,
+    max_tokens=700 if args.case.startswith("profile-draft-") else 900 if args.case in design_requests else 1500 if args.case in layout_requests else 400 if args.case.startswith("pack-") else 1600 if args.case.startswith("analyst-") else 4096 if args.case.startswith("persona-") else 5000,
     timeout_sec=180, max_parallel=1,
     chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0,
     cache_dir=str(output / "cache")))
@@ -397,6 +399,27 @@ try:
         if not place_parts and any(word in (draft.name + draft.description).casefold() for word in ["campus", "캠퍼스"]):
             issues.append("Invented a campus location in the name or description")
         result.update(success=not issues, format_ok=not format_issues, facts_ok=len(issues) == len(format_issues), description=descriptions[args.case], draft=draft.model_dump(mode="json"), issues=issues)
+    elif args.case.startswith("profile-draft-"):
+        inputs = {
+            "profile-draft-night": dict(name="밤약국", description="야간 근무를 마친 동네 주민이 일반의약품을 사러 옵니다. 음식과 음료는 판매하지 않습니다.",
+                address="Seoul, South Korea", store_type="pharmacy", hours="Monday-Friday 22:00-24:00. Closed Saturday and Sunday.", locale="ko"),
+            "profile-draft-bookstore": dict(name="Evening Books", description="Used books and stationery only, for nearby residents. Typical purchase: $5 to $20.",
+                address="Austin, Texas, USA", store_type="bookstore", hours="Tuesday and Thursday 18:00-21:00. Closed on all other days.", locale="en"),
+            "profile-draft-sparse": dict(name="Corner Shop", description="", address="", store_type="", hours="", locale="en"),
+        }[args.case]
+        with patch.object(httpx.AsyncClient, "send", traced_send):
+            profile = asyncio.run(draft_profile(client, **inputs))
+        issues = []
+        if inputs["locale"] == "ko" and not re.search(r"[가-힣]", profile):
+            issues.append("Korean draft contains no Korean text")
+        if inputs["locale"] == "en" and not re.search(r"[A-Za-z]{3}", profile):
+            issues.append("English draft contains no English words")
+        sentences = Counter(part.strip() for part in re.split(r"[.!?。！？]+", profile) if len(part.strip()) >= 10)
+        if any(count > 1 for count in sentences.values()):
+            issues.append("The profile repeats an entire sentence")
+        result.update(success=False if issues else None, structure_ok=True, automated_checks_ok=not issues,
+            inputs=inputs, profile=profile, issues=issues,
+            semantic_review="Inspect hours, products and unsupported claims manually; language-presence checks are not semantic validation.")
     elif args.case.startswith("persona-"):
         address, currency, categories, budget = "Mapo-gu, Seoul, South Korea", "KRW", None, (3000, 10000)
         profile = "동네 주민. 편의점에서 간단한 간식과 음료를 사러 옵니다. 1회 예산은 3,000~10,000원입니다."

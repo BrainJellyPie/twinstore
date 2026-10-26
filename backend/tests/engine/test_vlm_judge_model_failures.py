@@ -22,7 +22,8 @@ from store_emulator.engine.simulation.factory import build_engine
 @pytest.mark.parametrize("glances,glance_errors,plans,plan_errors,blocked", [
     (20, 20, 0, 0, True), (0, 0, 20, 20, True),
     (20, 12, 20, 12, True), (100, 51, 0, 0, True),
-    (20, 10, 0, 0, False), (20, 0, 20, 20, False),
+    (20, 10, 0, 0, False), (20, 0, 20, 20, True),
+    (20, 20, 20, 0, True), (1, 1, 100, 0, True),
     (20, 1, 20, 1, False), (0, 0, 0, 0, False),
 ])
 def test_judge_counts_failed_model_calls_even_when_every_shopper_completes(

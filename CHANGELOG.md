@@ -4,6 +4,10 @@
 
 ## 0.8.0 — Readable on every screen, and runs that say when they are done
 
+- Stop vision A/B tests, layout judging and venue comparisons when every response
+  in an attempted entry or shelf phase fails. Successful calls in the other phase
+  no longer hide the missing measurements. Partial failures with usable responses
+  and phases with no attempted calls keep their existing behavior.
 - The store's **Synthetic customers** list shows each group as a bar with its
   share of everyone, in one colour, instead of colour dots that repeated after
   ten groups and said nothing; **View detail** is a button rather than text
@@ -72,8 +76,8 @@
   buildings no longer show through its labels, and the area's figure tiles
   wrap their notes to two lines instead of cutting them off ("of convenience
   trips in to…").
-- Shopper cards show the whole name and age, gender and device (on a phone
-  even "Graduate student" was cut off, and in French at any width): the
+- Give shopper names, age, gender and device more room on phone cards
+  (even "Graduate student" was cut off, and in French at any width): the
   shopping mission now leads the goal line. Online report change labels such
   as "Revenu de la concurrente par visite" wrap to two lines, the store card's
   links wrap ("マーケティング"), and long run names, goals and page titles show
