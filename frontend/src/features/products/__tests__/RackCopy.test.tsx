@@ -42,7 +42,10 @@ it("chooses a stocked source, previews exact products, saves and explicitly open
   expect(api.previewRackCopy).toHaveBeenCalledWith("p", "s", { source_sha256: options.source_sha256, currency: "USD", source_rack_id: "stocked", target_rack_ids: ["empty"] });
   expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).toContain("Tea · 茶 · $2.31");
   fireEvent.click(screen.getByRole("button", { name: "Save layout with shelf copies" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Open copied layout" }));
+  const openCopy = await screen.findByRole("button", { name: "Open copied layout" });
+  // The confirmation replaces the save button, so focus moves to it.
+  expect(document.activeElement).toBe(screen.getByRole("status"));
+  fireEvent.click(openCopy);
   await waitFor(() => expect(useSimulationStore.getState().selectedSetupId).toBe("setup_copied"));
 });
 

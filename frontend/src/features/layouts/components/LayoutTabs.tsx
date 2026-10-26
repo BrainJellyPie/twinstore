@@ -20,6 +20,9 @@ export interface LayoutTabsProps {
   disabled?: boolean;
 }
 
+// The layout the strip last showed, across its remounts; unset until the first one this page load.
+let lastSelection: string | undefined;
+
 export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled = false }: LayoutTabsProps) {
   const { t } = useI18n();
   const hintId = useId();
@@ -40,6 +43,22 @@ export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled =
     if (tab.left < view.left) strip.scrollLeft -= view.left - tab.left;
     else if (tab.right > view.right) strip.scrollLeft += tab.right - view.right;
   }, [selectedId, layouts]);
+  // A layout opened from elsewhere (a dialog that saved it, the command palette) leaves focus with the opener, which is
+  // often gone with the previous layout's controls: continue from the layout's tab once focus has left it for nothing.
+  // The strip itself is remounted when the store view changes state, so the previous selection is kept outside it.
+  useEffect(() => {
+    const previous = lastSelection;
+    lastSelection = selectedId;
+    if (previous === undefined || previous === selectedId) return;
+    const stale = document.activeElement;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const now = document.activeElement;
+      if (now === document.body) selectedTab.current?.focus();
+      if ((now !== document.body && now !== stale) || ++tries >= 20) window.clearInterval(timer);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [selectedId]);
   useEffect(() => {
     if (focusWithin.current && document.activeElement === document.body) {
       const fallback = Array.from(tablist.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []).find(tab => tab.dataset.layoutId === entryId);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { LayoutTabs } from "../components/LayoutTabs";
 import type { Layout } from "../hooks/useLayouts";
 import { LOCALES } from "@/shared/i18n/messages";
@@ -76,4 +76,25 @@ it("scrolls only the strip to the selected layout, leaving where Tab starts from
   expect(screen.getByRole("tablist").scrollLeft).toBe(100);
   expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   rect.mockRestore();
+});
+it("continues from a layout opened elsewhere once the opener's focus is gone", async () => {
+  const { props, rerender } = show();
+  const opener = document.body.appendChild(Object.assign(document.createElement("button"), { textContent: "Save as new layout" }));
+  opener.focus();
+  rerender(<LayoutTabs {...props} selectedId="three" />);
+  opener.remove();  // the dialog that saved the layout closes
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("tab", { name: "three" })));
+});
+it("does not take focus for the layout shown when the page opens", async () => {
+  vi.resetModules();
+  const { LayoutTabs: Fresh } = await import("../components/LayoutTabs");
+  render(<Fresh layouts={layouts} selectedId="two" onSelect={vi.fn()} onAddNew={vi.fn()} />);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  expect(document.activeElement).toBe(document.body);
+});
+it("continues from the opened layout when the strip is remounted with it", async () => {
+  const first = show("one");
+  first.unmount();
+  show("three");
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("tab", { name: "three" })));
 });

@@ -12,6 +12,7 @@ import type { ProductCatalog, ProductEditsSave, ProductRow } from "@/shared/api/
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { draftEdits, priceText, type RowDraft } from "./productDrafts";
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 
 export function ProductBulkEditor({ pid, sid }: { pid: string; sid: string }) {
   const { t } = useI18n();
@@ -140,7 +141,7 @@ function ProductForm({ pid, sid, initial, refreshing, onReload, onClose }: {
       {prepared && !save.data && <Button disabled={busy || refreshing} onClick={() => void persist()}>{t(save.isPending ? "bulkSaving" : save.isError ? "bulkRetrySave" : "bulkSave")}</Button>}
     </section>}
     {save.isError && <RequestError error={save.error}><p>{t("bulkSaveUncertain")}</p></RequestError>}
-    {save.data && <div role="status"><p>{t("bulkSaved")}</p><Button onClick={() => { if (save.data) { useSimulationStore.getState().setSelectedSetupId(save.data.setup_id); onClose(); } }}>{t("bulkOpen")}</Button></div>}
+    {save.data && <div ref={focusOnMount} tabIndex={-1} role="status" className="outline-offset-2"><p>{t("bulkSaved")}</p><Button onClick={() => { if (save.data) { useSimulationStore.getState().setSelectedSetupId(save.data.setup_id); onClose(); } }}>{t("bulkOpen")}</Button></div>}
     <p className="text-xs">{t("bulkLimits")}</p>
   </div>;
 }
