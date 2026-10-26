@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Results tab's timeline draws its bars as soon as the run is loaded,
+  instead of staying empty for several seconds while the 3D store was still
+  being built (the chart waited to measure the panel).
 - The new-store format list shows about four rows of formats instead of two
   and a half, so browsing 82 formats takes less scrolling inside a small box.
 

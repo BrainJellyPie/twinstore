@@ -87,7 +87,8 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
     <div className="border-t px-3 py-3">
       <div className="section-title mb-1">{t("dashTimeline")}</div>
       <div ref={containerRef} onClick={handleChartClick} className="cursor-pointer">
-        <ChartContainer config={chartConfig} className="aspect-auto h-[96px] w-full">
+        {/* A starting size draws the bars at once; measuring the panel can wait seconds while the 3D store builds. */}
+        <ChartContainer config={chartConfig} className="aspect-auto h-[96px] w-full" initialDimension={{ width: 360, height: 96 }}>
           <BarChart data={data} margin={MARGIN}>
             <XAxis
               dataKey="hour"
