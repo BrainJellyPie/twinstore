@@ -103,6 +103,8 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- **Rack details** marks a product without a picture with a small icon (named
+  "no image" for screen readers) instead of "no img" broken over two lines.
 - Every Tab stop on the store screen shows where focus is: a results or
   shoppers tab panel and the hourly timeline chart took focus without a mark.
 - The store-operations costs (a till hour, a refill round, a unit a day) line up
