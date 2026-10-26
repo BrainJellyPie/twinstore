@@ -127,7 +127,7 @@ it("ignores navigation keys with no results and wraps correctly once search is c
   for (const key of ["ArrowUp", "ArrowDown", "Enter"]) fireEvent.keyDown(input, { key });
   expect(state.navigate).not.toHaveBeenCalled(); expect(state.setTheme).not.toHaveBeenCalled();
   fireEvent.change(input, { target: { value: "" } });
-  fireEvent.keyDown(input, { key: "ArrowUp" }); expect(input.getAttribute("aria-activedescendant")).toBe("cmd-theme");
+  fireEvent.keyDown(input, { key: "ArrowUp" }); expect(input.getAttribute("aria-activedescendant")).toBe("cmd-shortcuts");
   fireEvent.keyDown(input, { key: "ArrowDown" }); expect(input.getAttribute("aria-activedescendant")).toBe("cmd-home");
   fireEvent.keyDown(input, { key: "Enter" }); expect(state.navigate).toHaveBeenCalledWith({ to: "/", params: undefined });
 });

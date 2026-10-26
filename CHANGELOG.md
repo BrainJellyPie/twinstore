@@ -44,6 +44,10 @@
   "Playing 40 %"), and the local-model hardware list is a valid definition list.
   Every page and tab now passes axe-core's WCAG 2.1 A/AA checks in light and
   dark mode.
+- **Keyboard shortcuts** in one place: press **?** anywhere outside a text
+  field (or pick it in the command palette, whose footer now links it) for a
+  sheet of every key that works without the mouse. On the store floor, **←** and
+  **→** now step the day back or forward 15 minutes.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a

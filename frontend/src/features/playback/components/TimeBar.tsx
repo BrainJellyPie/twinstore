@@ -79,8 +79,17 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (e.code !== "Space" || disabled || finished || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      if (disabled || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.shiftKey) {
+        // Controls that move with the arrows themselves (sliders, tab and toggle rows) keep them.
+        if (el?.closest("input, textarea, select, button, a, [contenteditable=true], [role=slider], [role=tab], [role=radio], [role=option], [role=menuitem]")) return;
+        e.preventDefault();
+        const now = useSimulationMetricsStore.getState().currentMinute;  // seconds of the day, despite its name
+        seek(Math.min(maxTime, Math.max(minTime, now + (e.key === "ArrowLeft" ? -900 : 900))));
+        return;
+      }
+      if (e.code !== "Space" || finished) return;
       if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(el.tagName))) return;
       e.preventDefault();
       if (e.repeat) return;
@@ -88,7 +97,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [disabled, finished, togglePlay]);
+  }, [disabled, finished, togglePlay, seek, minTime, maxTime]);
 
   const progress = disabled ? 0 : finished ? 1 : Math.min(1, Math.max(0, (currentMinute - minTime) / (maxTime - minTime)));
   // Keep phones, short windows and the shopper's-eye view clear unless the controls are reopened.
