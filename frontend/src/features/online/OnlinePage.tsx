@@ -23,6 +23,7 @@ import { RunLauncher } from "./RunLauncher";
 import { RunReport } from "./RunReport";
 import { SiteDesigner } from "./SiteDesigner";
 import { TemplateGallery } from "./TemplateGallery";
+import { smoothScroll } from "@/shared/utils/motion";
 
 type Tab = "browse" | "design" | "simulate";
 const TABS: { id: Tab; label: MessageKey; icon: typeof Globe2 }[] = [
@@ -82,7 +83,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   // On a narrow screen the store list sits above the work area; bring what was opened into view.
   const main = useRef<HTMLElement>(null);
   const reveal = () => {
-    if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (window.matchMedia?.("(max-width: 1023px)").matches) main.current?.scrollIntoView?.({ behavior: smoothScroll(), block: "start" });
   };
   const [picks, setPicks] = useState<string[]>([]);
   const [listOpen, setListOpen] = useState(false);

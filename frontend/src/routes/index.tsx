@@ -13,6 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { useProjects } from "@/shared/queries/useProjects";
+import { smoothScroll } from "@/shared/utils/motion";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -77,7 +78,7 @@ function HomePage() {
                 {projects && projects.length > 1 && (
                   <button type="button" onClick={() => {
                     const heading = document.getElementById("stores-heading");
-                    heading?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    heading?.scrollIntoView({ behavior: smoothScroll(), block: "start" });
                     heading?.focus({ preventScroll: true });
                   }}
                     className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground">

@@ -33,6 +33,7 @@ import { RunHero } from "./RunHero";
 import { ShopperGallery } from "./ShopperGallery";
 import { ShopperRiver } from "./ShopperRiver";
 import { WhoChanged } from "./WhoChanged";
+import { smoothScroll } from "@/shared/utils/motion";
 
 const DIMENSIONS: { id: SegmentRow["dimension"]; label: MessageKey }[] = [
   { id: "mission", label: "onSegMission" }, { id: "device", label: "onSegDevice" },
@@ -694,7 +695,7 @@ function SectionNav({ label, sections }: { label: string; sections: { id: string
     const el = strip.current;
     const chip = el?.querySelector<HTMLElement>(`[data-section="${active}"]`);
     if (el && chip && (chip.offsetLeft < el.scrollLeft || chip.offsetLeft + chip.offsetWidth > el.scrollLeft + el.clientWidth)) {
-      el.scrollTo?.({ left: chip.offsetLeft - el.clientWidth / 3, behavior: "smooth" });
+      el.scrollTo?.({ left: chip.offsetLeft - el.clientWidth / 3, behavior: smoothScroll() });
     }
   }, [active]);
   const fade = more.left && more.right ? "[mask-image:linear-gradient(90deg,transparent,#000_2.5rem,#000_calc(100%-2.5rem),transparent)]"
@@ -717,7 +718,7 @@ function SectionNav({ label, sections }: { label: string; sections: { id: string
 // Like following an in-page link: bring the section into view and let the next Tab continue inside it.
 function jumpTo(id: string) {
   const section = document.getElementById(id);
-  section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  section?.scrollIntoView({ behavior: smoothScroll(), block: "start" });
   section?.focus({ preventScroll: true });
 }
 

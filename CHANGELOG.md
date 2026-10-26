@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- With reduced motion turned on in the system, the report's section links,
+  **See the results**, **Your stores**, the analyst and other jumps move
+  straight to their place instead of gliding there.
+
 - Tabbing through an online run's report no longer leaves the focused button
   under the floating **Watch a shopper** bar at the bottom, or (on a phone,
   going back with Shift+Tab) under the sticky section bar at the top. The

@@ -32,6 +32,7 @@ import { Summary } from "./sections/Summary";
 import { CustomerBehavior } from "./sections/CustomerBehavior";
 import { RackRanking } from "./sections/RackRanking";
 import { TopItems } from "./sections/TopItems";
+import { smoothScroll } from "@/shared/utils/motion";
 
 export type DashboardMode = "ready" | "running" | "playback";
 
@@ -91,7 +92,7 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       <PlaybackStatus minTime={minTime} maxTime={maxTime} />
       {summary && !legacyRun && idle && !playing && (
         <RunTeaser summary={summary} onOpen={() => {
-          results.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          results.current?.scrollIntoView({ behavior: smoothScroll(), block: "start" });
           results.current?.focus({ preventScroll: true });
         }} />
       )}
