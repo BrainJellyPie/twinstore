@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- In Windows high-contrast mode the language picker shows when it has
+  keyboard focus; its ring is a shadow, which that mode removes, and the
+  list itself is transparent over the **EN** chip.
 - Links and buttons that scroll to a part of the page now take keyboard
   focus there too, as an ordinary in-page link does: the online report's
   section bar and its **Shopper stream** and **Ask about this run** links,
