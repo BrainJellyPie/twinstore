@@ -204,7 +204,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         </div>
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkPrice")}</h3>
-          <Input value={priceText} onChange={(e) => setPriceText(e.target.value)} inputMode="decimal"
+          <Input value={priceText} onChange={(e) => setPriceText(e.target.value)} inputMode="decimal" aria-label={t("mkNewPrice")}
             placeholder={product ? t("mkNowKeep", { price: formatMoney(product.price, currency) }) : t("mkLeaveEmpty")} className="num h-9" />
           <p className="mt-2 text-xs text-muted-foreground">{t("mkShelfPriceHint")}</p>
         </div>
@@ -256,7 +256,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
       )}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} aria-label={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
         {!target && <span className="text-sm text-muted-foreground">{t("mkChooseUnderTest")}</span>}
         {target && changes.length === 0 && <span className="text-sm text-muted-foreground">{t("mkChangeSomething")}</span>}
         {invalidPrice && <p role="alert" className="text-sm text-destructive">{t("mkInvalidPriceCurrent")}</p>}

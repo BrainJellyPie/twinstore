@@ -871,6 +871,7 @@ export const studioMessages = {
   mkQuestions: ["Questions", "질문", "问题", "質問", "Preguntas", "Questions"],
   mkNeedsTwo: ["Needs two or more images", "이미지가 2개 이상 필요", "需要两张或以上图片", "画像が2枚以上必要", "Necesita dos o más imágenes", "Nécessite au moins deux images"],
   mkBrief: ["Brief and respondents", "안내문과 응답자", "说明与受访者", "説明と回答者", "Planteamiento y encuestados", "Consigne et répondants"],
+  mkBriefLabel: ["What respondents are told", "응답자에게 주는 안내", "告诉受访者的内容", "回答者に伝える内容", "Lo que se dice a los encuestados", "Ce qu’on dit aux répondants"],
   mkBriefPlaceholder: ["What respondents are told, e.g. “A new sparkling iced tea, 500 ml, sold next to the sodas.”", "응답자에게 주는 안내, 예: “탄산음료 옆에서 파는 새 스파클링 아이스티 500ml”", "告诉受访者的内容，例如：“一款新的气泡冰茶，500 毫升，摆在汽水旁边。”", "回答者への説明（例：「炭酸飲料の隣で売る新しいスパークリングアイスティー、500ml」）", "Lo que se dice a los encuestados, p. ej. «Un nuevo té helado con gas de 500 ml, junto a los refrescos.»", "Ce qu’on dit aux répondants, par ex. « Un nouveau thé glacé pétillant de 500 ml, vendu à côté des sodas. »"],
   mkShelfPriceA: ["Shelf price shown with A (optional)", "A와 함께 보여 줄 선반 가격 (선택)", "与 A 一起展示的货架价格（可选）", "A と一緒に表示する棚価格（任意）", "Precio de estante mostrado con A (opcional)", "Prix en rayon affiché avec A (facultatif)"],
   mkCurrency: ["Currency", "통화", "币种", "通貨", "Moneda", "Devise"],

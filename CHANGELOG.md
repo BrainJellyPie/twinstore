@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fields that had only a placeholder or a shared label now have their own
+  names for screen readers: the shelf test's new price, the test and study
+  names, the concept test's brief, and the area page's address, rivals and
+  seed. The seed field had no name at all, and rivals read "Rivals Seed".
 - **Model providers** names each card's fields and buttons after its provider
   for screen readers ("Save OpenAI key", "Test Anthropic (Claude)", "Ollama
   endpoint"); every card's buttons read the same, and the endpoint and model
