@@ -64,7 +64,9 @@
 - The online designer, both run analysts and the shopper interviews (one
   shopper, a group, an online shopper) say up front when no model is set up,
   with **Download local model** and **Model settings** buttons, in the chosen
-  language. Before, the first sign was an English error after sending.
+  language; so does **Change the layout in words**. Before, the first sign was
+  an English error after sending. A failed A/B report commentary or study
+  reading shows the same buttons when no model is set up.
 - Closing a dialog, sheet or confirmation returns keyboard focus to the button
   that opened it (such as **Watch a shopper**), so Tab carries on from there.
   Most dialogs open from a plain button, and focus used to drop to the start

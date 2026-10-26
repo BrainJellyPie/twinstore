@@ -20,6 +20,7 @@ import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 const GROUP_TONE = ["bg-primary", "bg-primary/35"];
 
@@ -93,6 +94,7 @@ function StudyReadingContent({ projectId, study, jobId, answers }: StudyReadingP
           {write.isPending ? t("mkReading") : t("mkReadAnswers")}
         </Button>
         {write.error && <p role="alert" className="basis-full text-xs text-destructive">{write.error.message}</p>}
+        {write.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
       </section>
     );
   }
