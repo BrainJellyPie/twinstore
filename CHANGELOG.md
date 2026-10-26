@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Layouts can be renamed on the Store & layout tab, so layouts made the same
+  way (for example several optimized copies) can be told apart. Finalized
+  layouts keep their names, as the server keeps the rest of them unchanged.
+
 - The run dialog's summary names a custom situation and the ordinary day in the
   selected language. It showed "Custom situation", or the server's English name
   for the ordinary-day preset, in every language. Situations the user named keep
