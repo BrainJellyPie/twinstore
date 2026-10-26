@@ -8,6 +8,14 @@ import { queryKeys } from "@/shared/queries/keys";
 
 const BUSY = new Set(["preparing", "downloading", "starting"]);
 
+/** Where the local model runs, as people know it (product names stay as they are in every language). */
+export const BACKEND_LABEL: Record<ModelSetup["plan"]["backend"], string> = {
+  cuda: "NVIDIA GPU (CUDA)",
+  metal: "Apple GPU (Metal)",
+  vulkan: "GPU (Vulkan)",
+  cpu: "CPU",
+};
+
 export function isPreparing(setup: ModelSetup | undefined): boolean {
   return !!setup && BUSY.has(setup.local.state);
 }

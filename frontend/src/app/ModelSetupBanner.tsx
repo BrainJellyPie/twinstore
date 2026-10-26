@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, Cpu, KeyRound, Loader2, Sparkles, Square, TriangleAlert, X } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
-import { isPreparing, useLocalModelControl, useModelSetup } from "@/features/settings/useModelSetup";
+import { BACKEND_LABEL, isPreparing, useLocalModelControl, useModelSetup } from "@/features/settings/useModelSetup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 
@@ -78,7 +78,13 @@ export function ModelSetupBanner() {
               <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
             </summary>
             <div className="mt-2 space-y-2 border-t border-glass-border pt-2">
-              <p className="break-words text-xs leading-relaxed text-muted-foreground">{data.warning}</p>
+              {/* Said here in the reader's language from the setup's state; the server's own warning is English. */}
+              <p className="break-words text-xs leading-relaxed text-muted-foreground">{(() => {
+                const model = t("localModelOn", { model: data.plan.model.label, backend: BACKEND_LABEL[data.plan.backend] });
+                return ready ? t("setupWarnReady", { model }) : busy ? t("setupWarnBusy", { model })
+                  : data.local.downloaded === false ? t("setupWarnOffDownload", { model, size: data.plan.model.download_gb })
+                    : t("setupWarnOff", { model });
+              })()}</p>
               <div className="flex flex-wrap items-center gap-2">
                 {(state === "off" || failed) && (
                   <Button size="sm" variant="outline" className="h-auto min-h-8 max-w-full py-1.5 whitespace-normal" onClick={() => start.mutate()} disabled={start.isPending}>

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Set up vision shoppers** explains the model setup in the selected
+  language (whether the local model is off, getting ready or running, and its
+  download size); it showed the server's English sentence in every language.
 - The browser tab names the page and the store ("Marketing studio · Corner
   Mart · TwinStore"), so tabs, history and screen readers tell pages apart; it
   always read "TwinStore". The floor, area and capture pages also give screen

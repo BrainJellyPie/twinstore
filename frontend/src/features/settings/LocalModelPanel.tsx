@@ -10,14 +10,8 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
 
-import { isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
+import { BACKEND_LABEL, isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
 
-const BACKEND_LABEL: Record<ModelSetup["plan"]["backend"], string> = {
-  cuda: "NVIDIA GPU (CUDA)",
-  metal: "Apple GPU (Metal)",
-  vulkan: "GPU (Vulkan)",
-  cpu: "CPU",
-};
 
 const STATE_LABEL: Record<ModelSetup["local"]["state"], MessageKey> = {
   off: "localStateOff",
