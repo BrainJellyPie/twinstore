@@ -48,6 +48,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
   const [selected, setSelected] = useState<string | null>(null);
   const [sort, setSort] = useState<ShopperSort>("spent");
   const [query, setQuery] = useState("");
+  const shopperList = useRef<HTMLUListElement>(null);
   const [limit, setLimit] = useState(40);
   const rows = useMemo(() => shopperRows(customers, personas), [customers, personas]);
   // Shoppers found from a sentence: the model writes the filter, the run's records decide who fits.
@@ -113,7 +114,17 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       </button>
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("shopperSearch", { count: rows.length })} className="h-9 pl-8 text-sm" />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("shopperSearch", { count: rows.length })}
+          aria-label={t("shopperSearch", { count: rows.length })} className="h-9 pl-8 text-sm"
+          onKeyDown={(e) => {
+            // Enter opens the first shopper listed, ↓ moves into the list (not while an IME is composing).
+            if (e.nativeEvent.isComposing || e.keyCode === 229 || !query.trim() || (e.key !== "Enter" && e.key !== "ArrowDown")) return;
+            const first = list[0];
+            if (!first) return;
+            e.preventDefault();
+            if (e.key === "Enter") { setSelected(first.id); setHighlight(first.id); }
+            else shopperList.current?.querySelector<HTMLElement>("li > button")?.focus();
+          }} />
       </div>
       <div className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.035] p-1.5">
         <Sparkles className="ml-1 size-3.5 shrink-0 text-primary" aria-hidden />
@@ -158,7 +169,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
           </button>
         ))}
       </div>
-      <ul className="space-y-1">
+      <ul ref={shopperList} className="space-y-1">
         {list.slice(0, limit).map((r) => (
           <li key={r.id} className="flex items-stretch gap-1">
             <button type="button" onClick={() => { setSelected(r.id); setHighlight(r.id); }}

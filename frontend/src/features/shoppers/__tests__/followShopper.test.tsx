@@ -34,3 +34,19 @@ it("follows a shopper in 3D straight from the list, from their arrival", () => {
   // The shopper's journey opens beside the 3D view.
   expect(screen.getByRole("button", { name: "All shoppers" })).toBeTruthy();
 });
+
+it("opens the first shopper a search finds with Enter and moves into the list with the down arrow", () => {
+  vi.mocked(getJourney).mockImplementation(() => new Promise(() => {}));
+  render(<QueryClientProvider client={new QueryClient()}>
+    <ShopperPanel projectId="p" runId="r" customers={customers} personas={personas} store={{ racks: [] } as unknown as Store} />
+  </QueryClientProvider>);
+  const box = screen.getByRole("textbox", { name: "Search 2 shoppers" });
+  fireEvent.change(box, { target: { value: "nurse" } });
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  expect(document.activeElement?.textContent).toContain("Nurse");
+  fireEvent.keyDown(box, { key: "Enter", isComposing: true });
+  expect(screen.queryByRole("button", { name: "All shoppers" })).toBeNull();
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(screen.getByRole("button", { name: "All shoppers" })).toBeTruthy();
+  expect(useSimulationStore.getState().highlightId).toBe("p2");
+});
