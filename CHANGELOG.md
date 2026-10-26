@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Give automatic starter-product selection readable currency amounts instead
+  of unqualified stored integers, and require both ends of a requested price
+  range. A cheaper product below the requested minimum is not a valid substitute.
+
 - Guide automatic starter selection to retain suitable shelf categories unless
   the store requirements override them. Put the actual store task after the
   catalog vocabulary, reducing unrelated assortment substitutions by small
