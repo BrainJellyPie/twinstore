@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 — Readable on every screen, and runs that say when they are done
+
 - Convert generated customer budgets from explicit currency amounts into stored
   units in code, so small models do not have to calculate cents. Existing saved
   integer budgets keep their units. Customer prompts distinguish people, visit
