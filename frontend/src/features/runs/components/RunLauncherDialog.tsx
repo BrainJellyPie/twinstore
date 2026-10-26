@@ -51,6 +51,7 @@ import { costText, durationText, runEstimateText, shoppersOverDaysText } from "@
 
 import { useAvailableModels, useEngines, useLayoutOperations } from "../hooks";
 import { photographShelves } from "../shelfPhotos";
+import { BASELINE_SCENARIO } from "../scenarioDefaults";
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 import { ScenarioEditor } from "./ScenarioEditor";
 
@@ -513,7 +514,8 @@ function LauncherForm({
 
         <p className="text-xs text-muted-foreground" aria-live="polite">
           {locked ? t("previewLockedSummary") : isPreview ? t("previewSummary") : t("finalSummary")}
-          {" · "}{scenario?.name ?? t("baselineSituation")}
+          {" · "}{scenario == null || scenario.id === "baseline" ? t("baselineSituation")
+            : scenario.id === "custom" && scenario.name === BASELINE_SCENARIO.name ? t("sitCustomName") : scenario.name}
           {usesLlm && ` · ${modelChoice.kind === "single" ? modelChoice.model ?? t("chooseModel") : modelChoice.kind === "ensemble" ? t("modelEnsemble") : modelOf(engine) || t("serverDefaultModel")}`}
           {town && useTown && ` · ${t("neighborSummary", { percent: Math.round(townScale * 100) })}`}
           {withPhotos && ` · ${t("shelfViewPhoto")}`}

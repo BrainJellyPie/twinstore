@@ -782,6 +782,7 @@ export const storeMessages = {
   sitCustomize: ["Customize", "직접 설정", "自定义", "カスタマイズ", "Personalizar", "Personnaliser"],
   sitPreset: ["Scenario preset", "상황 프리셋", "情境预设", "シチュエーションのプリセット", "Situación predefinida", "Situation prédéfinie"],
   sitCustom: ["Custom…", "직접 설정…", "自定义…", "カスタム…", "Personalizada…", "Personnalisée…"],
+  sitCustomName: ["Custom situation", "직접 설정한 상황", "自定义情境", "カスタムの状況", "Situación personalizada", "Situation personnalisée"],
   sitDescribe: ["Describe the day", "하루 상황 설명", "描述这一天", "その日の状況を説明", "Describe el día", "Décrivez la journée"],
   sitDescribePlaceholder: ["Or describe the day: rainy Friday, a match at the stadium tonight, 1+1 on cola…", "또는 상황을 적어 보세요: 비 오는 금요일, 오늘 밤 경기장 경기, 콜라 1+1…", "或描述这一天：下雨的周五、今晚体育场有比赛、可乐买一送一…", "または状況を入力：雨の金曜日、今夜スタジアムで試合、コーラ1+1…", "O describe el día: viernes lluvioso, partido en el estadio esta noche, 2x1 en cola…", "Ou décrivez la journée : vendredi pluvieux, match au stade ce soir, 1+1 sur le cola…"],
   sitDescribedNotes: ["Notes on the described day", "설명한 상황에 대한 참고 사항", "关于所描述这一天的说明", "入力した状況についての注意", "Notas sobre el día descrito", "Remarques sur la journée décrite"],
