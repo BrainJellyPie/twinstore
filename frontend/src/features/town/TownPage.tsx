@@ -407,6 +407,10 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
   const segments = Object.entries(demand.segment_totals).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
   const segTotal = segments.reduce((a, [, v]) => a + v, 0) || 1;
   const rivals = demand.store_shares.filter((s) => !s.is_focal).sort((a, b) => b.expected_visitors - a.expected_visitors).slice(0, 5);
+  // Zero visitors make every figure below read 0 m, "≈ 1 min" and an empty chart: say so once instead.
+  if (Math.round(demand.total_daily_visitors) === 0) {
+    return <p role="status" className="rounded-md border px-3 py-2 text-xs text-muted-foreground">{t("areaNoVisitors", { day: t(DAY_LABELS[demand.day_type]) })}</p>;
+  }
   return (
     <div className="space-y-3 text-xs">
       <div className="grid grid-cols-2 gap-2">

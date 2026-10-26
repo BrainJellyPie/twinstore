@@ -69,6 +69,10 @@
   of the page.
 - After **Close venue** on the neighborhood map, the map no longer follows the
   mouse around without a button held (it slid about 90 px on the next click).
+- When a neighborhood expects no visitors on a weekend or holiday (the sample
+  store's layout is closed at weekends), the panel says so and points to the
+  layout's opening hours, instead of showing 0 visitors, "half within 0 m", a
+  "≈ 1 min" walk and an empty hourly chart.
 
 - Show a local model as preparing as soon as Start is accepted. A scheduled
   startup no longer briefly reports the previous stopped or failed state before
