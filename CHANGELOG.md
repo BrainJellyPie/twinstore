@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.1 — An online price change becomes an in-store test
+
 - From an online variant to an in-store test: the online report's **Keep it in
   the store** block has **Test it in the store**, which opens the marketing
   studio's A/B builder with the variant's price changes on the chosen layout,
@@ -15,6 +17,10 @@
   being built (the chart waited to measure the panel).
 - The new-store format list shows about four rows of formats instead of two
   and a half, so browsing 82 formats takes less scrolling inside a small box.
+- Read actual online-shopper choices wrapped in `properties` without substituting
+  a rule-based action. Required choices, visible option numbers and search text
+  remain validated; copied schema definitions are not clicks. CPU checkout probes
+  now fail explicitly on fallback responses and orders beyond their stated budget.
 
 ## 0.8.0 — Readable on every screen, and runs that say when they are done
 

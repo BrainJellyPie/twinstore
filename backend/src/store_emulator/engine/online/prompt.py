@@ -6,7 +6,7 @@ reliably. The "Language" block keeps the narrative fields (search text, thoughts
 
 from typing import Self
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, JsonValue, ValidationInfo, field_validator, model_validator
 
 from store_emulator.domain.online import Arrival, ExitSurvey, OnlineShopper, OnlineSite, Vision
 from store_emulator.engine.prompting import display_price
@@ -134,6 +134,16 @@ def choice_model(numbers: list[int], search_number: int | None) -> type[BrowserC
 
     class PageChoice(BrowserChoice):
         option: int = Field(json_schema_extra={"enum": list(numbers)})
+
+        @model_validator(mode="before")
+        @classmethod
+        def _instance_values(cls, value: JsonValue) -> JsonValue:
+            # Tiny JSON-mode models sometimes wrap actual values in properties.
+            # Root fields stay authoritative; schema definitions still fail the
+            # usual option/search validation rather than becoming inferred clicks.
+            if isinstance(value, dict) and "properties" in value and not any(key in value for key in cls.model_fields):
+                return value["properties"]
+            return value
 
         @model_validator(mode="after")
         def _on_page(self) -> Self:

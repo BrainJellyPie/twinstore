@@ -5,7 +5,8 @@ OpenAI-compatible model server on port 8081; no paid provider is used. Saves
 the screenshot, shopper, site, raw request/response (without headers), and the
 chosen action. A $1 browse customer sees a $19.99 item already in checkout.
 Budget delivery and avoiding an unaffordable order are separate observations;
-neither proves that the thought and chosen action agree.
+neither proves that the thought and chosen action agree. A fallback or an
+unaffordable order fails this fixture even if the HTTP reply is valid JSON.
 """
 import argparse, asyncio, json, random, time
 from pathlib import Path
@@ -24,8 +25,9 @@ from store_emulator.engine.online.shoppers import sample_shoppers
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
 parser.add_argument('--device', choices=['desktop', 'mobile'], default='desktop')
+parser.add_argument('--structured-output', choices=['json_schema', 'json'], default='json_schema')
 args = parser.parse_args()
-root = args.output.resolve() / f'browse-budget-{time.time_ns()}'
+root = args.output.resolve() / f'browse-budget-{args.device}-{args.structured_output}-{time.time_ns()}'
 root.mkdir(parents=True)
 site = build_site('fashion', site_id='cpu_budget', currency='USD')
 site.options.welcome_popup = 'none'
@@ -43,7 +45,7 @@ numbers = numbering(page, 0)
 shot = render_page(page, site, numbers, _bundled_picture)
 (root / 'screen.png').write_bytes(shot.png)
 view = StepView(page, state, numbers, outline(page, site), 1, product.price, (product.name,), shot.scaled_data_url(896), seed=4, point=0)
-client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base='http://127.0.0.1:8081/v1', api_key=SecretStr('local'), temperature=0, seed=0, max_tokens=240, timeout_sec=180, max_parallel=1, chat_template_thinking=False, structured_output='json_schema', structured_sdk_retries=0, cache_dir=str(root / 'cache')))
+client = LiteLLMClient(LLMConfig(model='openai/local-model', api_base='http://127.0.0.1:8081/v1', api_key=SecretStr('local'), temperature=0, seed=0, max_tokens=240, timeout_sec=180, max_parallel=1, chat_template_thinking=False, structured_output=args.structured_output, structured_sdk_retries=0, cache_dir=str(root / 'cache')))
 policy = ModelPolicy(client, vision=True, max_tokens=240, max_retries=1)
 original = httpx.AsyncClient.send
 calls = 0
@@ -73,8 +75,17 @@ started = time.perf_counter()
 with patch.object(httpx.AsyncClient, 'send', traced):
     choice = asyncio.run(policy.choose(site, shopper, view, Memory(steps=['Viewed the product', 'Added it to cart', 'Opened checkout'], elapsed=60), random.Random(4)))
 visible = any(('Budget: $1.00' in text for text in prompts))
-result = {'root': str(root), 'budget': shopper.budget, 'product_price': product.price, 'budget_visible': visible, 'unaffordable_order_avoided': choice.control.action.kind != 'place_order', 'calls': calls, 'seconds': round(time.perf_counter() - started, 2), 'action': choice.control.action.model_dump(mode='json'), 'thought': choice.thought, 'source': choice.source, 'error': choice.error}
+issues = []
+if not visible:
+    issues.append('The request omitted the shopper budget')
+if choice.source != 'model':
+    issues.append('No valid model choice; the rule policy supplied a fallback')
+if choice.control.action.kind == 'place_order':
+    issues.append('The model ordered an item costing more than the explicit budget')
+result = {'root': str(root), 'success': not issues, 'issues': issues, 'device': args.device,
+    'structured_output': args.structured_output, 'budget': shopper.budget, 'product_price': product.price, 'budget_visible': visible, 'unaffordable_order_avoided': choice.control.action.kind != 'place_order', 'calls': calls, 'seconds': round(time.perf_counter() - started, 2), 'action': choice.control.action.model_dump(mode='json'), 'thought': choice.thought, 'source': choice.source, 'error': choice.error}
 (root / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
 (root / 'shopper.json').write_text(shopper.model_dump_json(indent=2))
 (root / 'site.json').write_text(site.model_dump_json(indent=2))
 print(json.dumps(result, ensure_ascii=False), flush=True)
+raise SystemExit(0 if result['success'] else 1)
