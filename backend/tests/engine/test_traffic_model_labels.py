@@ -121,14 +121,18 @@ def test_only_unique_equivalent_traffic_labels_are_normalized(identities, types,
         assert result.hourly_profiles[0].visitor_count == 2 and original["person_types"] == types
 
 
-def test_traffic_grammar_uses_inline_identity_choices_and_keeps_empty_hour_fallbacks():
+def test_traffic_grammar_uses_shared_identity_choices_and_keeps_empty_hour_fallbacks():
     schema = gen.traffic_response_model(9, 10, identities=["Resident", "동네 주민"])
     json_schema = schema.model_json_schema()
-    item = json_schema["properties"]["hourly_profiles"]["items"]["properties"]["person_types"]["items"]
-    assert "$ref" not in item and item["enum"] == ["Resident", "동네 주민"]
+    row = json_schema["properties"]["hourly_profiles"]["properties"]["0"]
+    row = json_schema["$defs"][row["$ref"].rsplit("/", 1)[1]]
+    item = row["properties"]["person_types"]["items"]
+    if "$ref" in item:
+        item = json_schema["$defs"][item["$ref"].rsplit("/", 1)[1]]
+    assert item["enum"] == ["Resident", "동네 주민"]
     validator = Draft202012Validator(json_schema)
     for types, valid in [(["Resident"], True), (["동네 주민"], True), ([], True), (["Tourist"], False)]:
-        assert validator.is_valid({"hourly_profiles": [dict(visitor_count=1, person_types=types)]}) == valid
+        assert validator.is_valid({"hourly_profiles": {"0": dict(visitor_count=1, person_types=types)}}) == valid
     # Inactive legacy rows do not determine a customer's identity.
     rows = [dict(hour=8, visitor_count=10, person_types=["Tourist"]),
             dict(hour=9, visitor_count=0, person_types=["Tourist"])]

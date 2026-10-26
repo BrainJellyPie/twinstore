@@ -32,28 +32,25 @@ def test_slot_grammar_prevents_repeated_or_missing_hours_through_population_and_
             schema = body["response_format"]["json_schema"]["schema"]
         else:
             system = next(m["content"] for m in reversed(body["messages"]) if m["role"] == "system")
-            schema = json.JSONDecoder().raw_decode(system[system.index('{'):])[0]
+            schema = json.JSONDecoder().raw_decode(system.rsplit('matching this schema:', 1)[-1].lstrip())[0]
         props = schema["properties"]
         if "identities" in props:
             payload = dict(keywords=[], identities=["resident"], purposes=["groceries"])
         elif "hourly_profiles" in props:
             rows = props["hourly_profiles"]
-            row = rows["items"]
+            assert rows["type"] == "object"
+            row = rows["properties"]["0"]
             if "$ref" in row:
                 row = schema["$defs"][row["$ref"].rsplit("/", 1)[1]]
-            if "hour" in row["properties"]:
-                # Script a legal old grammar output which failed semantic validation,
-                # or an empty estimate that silently invoked the generic-day fallback.
-                payload = {"hourly_profiles": [dict(hour=opening, visitor_count=2, person_types=["resident"])] * 2
-                           if fault == "repeated" else []}
-            else:
-                assert rows["minItems"] == rows["maxItems"] == len(hours)
-                payload = {"hourly_profiles": [dict(visitor_count=n, person_types=["resident"] if n else []) for n in counts]}
-                Draft202012Validator.check_schema(schema)
-                validator = Draft202012Validator(schema)
-                assert validator.is_valid(payload)
-                assert not validator.is_valid({"hourly_profiles": []})
-                assert not validator.is_valid({"hourly_profiles": payload["hourly_profiles"] * 2})
+            assert "hour" not in row["properties"]
+            assert set(rows["required"]) == {str(i) for i in range(len(hours))}
+            entries = {str(i): dict(visitor_count=n, person_types=["resident"] if n else []) for i, n in enumerate(counts)}
+            payload = {"hourly_profiles": entries}
+            Draft202012Validator.check_schema(schema)
+            validator = Draft202012Validator(schema)
+            assert validator.is_valid(payload)
+            bad = {**entries, str(len(hours)): entries["0"]} if fault == "repeated" else {}
+            assert not validator.is_valid({"hourly_profiles": bad})
         else:
             payload = {"personas": [dict(identity="resident", purpose="groceries", age_group="30s", gender="Female",
                 description=f"Customer {i}", intent="Groceries") for i in range(props["personas"]["minItems"])]}
@@ -117,13 +114,13 @@ def test_ambiguous_positional_counts_are_rejected_and_legacy_rows_keep_their_hou
 def test_slot_grammar_keeps_traffic_value_limits_and_has_no_generated_hour(window):
     schema = gen.traffic_response_model(*window).model_json_schema()
     validator = Draft202012Validator(schema)
-    rows = [dict(visitor_count=0, person_types=[]) for _ in range(window[1] - window[0])]
+    rows = {str(i): dict(visitor_count=0, person_types=[]) for i in range(window[1] - window[0])}
     assert validator.is_valid({"hourly_profiles": rows})
     for invalid in [dict(visitor_count=-1, person_types=[]), dict(visitor_count=True, person_types=[]),
                     dict(visitor_count=1.5, person_types=[]), dict(visitor_count=1, person_types=["r"] * 11),
                     dict(visitor_count=1, person_types=["r" * 121]), dict(visitor_count=1, person_types=None),
                     dict(visitor_count=1, person_types=[], hour=window[0])]:
-        assert not validator.is_valid({"hourly_profiles": [invalid, *rows[1:]]})
+        assert not validator.is_valid({"hourly_profiles": {**rows, "0": invalid}})
 
 
 @pytest.mark.parametrize("mode", ["json", "json_schema"])

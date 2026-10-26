@@ -36,7 +36,7 @@ def test_distinct_batch_and_split_positions_preserve_sample_identity(monkeypatch
             schema = body['response_format']['json_schema']['schema']
         else:
             system = next(m['content'] for m in reversed(body['messages']) if m['role'] == 'system')
-            schema = json.JSONDecoder().raw_decode(system[system.index('{'):])[0]
+            schema = json.JSONDecoder().raw_decode(system.rsplit('matching this schema:', 1)[-1].lstrip())[0]
         fields = schema['properties']
         finish = 'stop'
         if 'identities' in fields:

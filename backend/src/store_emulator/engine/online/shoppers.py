@@ -47,6 +47,8 @@ _PATIENCE: dict[ShopperMission, tuple[int, int]] = {
 # Window shoppers who only glance around rather than browse at length; those who do browse give the site longer.
 _GLANCING = 0.75
 _BROWSING_PATIENCE = (140, 2070)
+# Window shoppers who look around the whole shop rather than one category.
+_OPEN_BROWSING = 0.75
 _SENSITIVITY: dict[ShopperMission, float] = {
     "purchase": 0.45, "browse": 0.5, "compare": 0.6, "deal_hunt": 0.9, "gift": 0.35, "replenish": 0.3,
 }
@@ -115,14 +117,18 @@ def _mission_details(
         return ("Look for real bargains; buy only something that is clearly discounted", "", [], "", budget,
                 _PATIENCE[mission])
     budget = round(typical * rng.uniform(0.4, 1.2))
+    whole_shop = rng.random() < _OPEN_BROWSING
     if rng.random() < _GLANCING:
-        goal = (f"Look around {category.name.lower()} out of mild curiosity, with no plan to buy; you move on as soon as "
-                "nothing catches your eye")
+        place = "the shop" if whole_shop else category.name.lower()
+        goal = f"Look around {place} out of mild curiosity, with no plan to buy; you move on as soon as nothing catches your eye"
         patience = _PATIENCE[mission]
     else:
-        goal = f"Window-shop {category.name.lower()} for ideas, with no plan to buy anything in particular"
+        place = "the whole shop" if whole_shop else category.name.lower()
+        goal = f"Window-shop {place} for ideas, with no plan to buy anything in particular"
         patience = _BROWSING_PATIENCE
-    return goal, category.id, [category.name.lower()], "", budget, patience
+    # Arrival, rule browsing and rival routing also read these targets. A broad
+    # goal must not remain restricted to the randomly sampled category.
+    return goal, "" if whole_shop else category.id, [] if whole_shop else [category.name.lower()], "", budget, patience
 
 
 def _shopper(
