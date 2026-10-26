@@ -75,6 +75,9 @@ class LocalModel(BaseModel):
     memory_gb: float              # model + projector + a 8k context, rounded up
 
 
+ReasonCode = Literal["nvidia", "apple", "vulkan", "cpu_reliable", "cpu_fast", "cpu_smallest"]
+
+
 class LocalVLMPlan(BaseModel):
     backend: Backend
     model: LocalModel
@@ -84,6 +87,10 @@ class LocalVLMPlan(BaseModel):
     parallel: int                 # llama.cpp -np: concurrent shoppers
     context: int                  # total llama.cpp -c budget, divided across parallel slots
     reason: str
+    # What `reason` says, for the app to say it in the reader's language: which rule chose the model, and the memory
+    # it names (the GPU's, unified or free memory, in GB).
+    reason_code: ReasonCode | None = None
+    reason_gb: float = 0
 
 
 MODELS: list[LocalModel] = [
@@ -272,31 +279,36 @@ def recommend(hw: HardwareProfile) -> LocalVLMPlan:
         model = _largest_fitting(gpu.vram_gb * 0.85)
         return LocalVLMPlan(backend="cuda", model=model, device=f"{gpu.name} ({gpu.vram_gb:g} GB)", gpu_layers=999,
                             threads=max(1, hw.cores), parallel=2, context=16384,
-                            reason=f"NVIDIA GPU with {gpu.vram_gb:g} GB: the largest model that fits in 85 % of it")
+                            reason=f"NVIDIA GPU with {gpu.vram_gb:g} GB: the largest model that fits in 85 % of it",
+                            reason_code="nvidia", reason_gb=gpu.vram_gb)
     if gpu is not None and gpu.vendor == "apple":
         model = _largest_fitting(hw.ram_gb * 0.45)
         return LocalVLMPlan(backend="metal", model=model, device=f"{gpu.name} ({hw.ram_gb:g} GB unified memory)",
                             gpu_layers=999, threads=max(1, hw.cores), parallel=1, context=8192,
-                            reason=f"Apple silicon: Metal, at most 45 % of {hw.ram_gb:g} GB unified memory")
+                            reason=f"Apple silicon: Metal, at most 45 % of {hw.ram_gb:g} GB unified memory",
+                            reason_code="apple", reason_gb=hw.ram_gb)
     if gpu is not None and gpu.vendor in ("amd", "intel", "other") and gpu.vram_gb >= 3:
         model = _largest_fitting(gpu.vram_gb * 0.8, cap="qwen3.5-4b")
         return LocalVLMPlan(backend="vulkan", model=model, device=f"{gpu.name} ({gpu.vram_gb:g} GB)", gpu_layers=999,
                             threads=max(1, hw.cores), parallel=1, context=8192,
-                            reason=f"{gpu.vendor.upper()} GPU with {gpu.vram_gb:g} GB: Vulkan")
+                            reason=f"{gpu.vendor.upper()} GPU with {gpu.vram_gb:g} GB: Vulkan",
+                            reason_code="vulkan", reason_gb=gpu.vram_gb)
     # CPU: speed decides. 2B reads products far better but takes ~2.4× as long per glance.
     free = hw.ram_free_gb or hw.ram_gb * 0.5
+    code: ReasonCode
     if hw.cores >= 8 and free >= 6:
-        key, why = "qwen3.5-2b", f"{hw.cores} CPU cores and {free:g} GB free memory: the 2B model reads labels reliably"
+        key, code, why = "qwen3.5-2b", "cpu_reliable", f"{hw.cores} CPU cores and {free:g} GB free memory: the 2B model reads labels reliably"
     elif hw.cores >= 3 and free >= 2:
-        key, why = "qwen3.5-0.8b", f"{hw.cores} CPU cores and {free:g} GB free memory: the 0.8B model keeps runs fast"
+        key, code, why = "qwen3.5-0.8b", "cpu_fast", f"{hw.cores} CPU cores and {free:g} GB free memory: the 0.8B model keeps runs fast"
     else:
-        key, why = "lfm2.5-vl-450m", f"{hw.cores} CPU core(s) and {free:g} GB free memory: the smallest model"
+        key, code, why = "lfm2.5-vl-450m", "cpu_smallest", f"{hw.cores} CPU core(s) and {free:g} GB free memory: the smallest model"
     return LocalVLMPlan(backend="cpu", model=MODEL_BY_KEY[key], device=f"CPU, {hw.cores} cores, {hw.ram_gb:g} GB",
-                        gpu_layers=0, threads=max(1, hw.cores), parallel=1, context=8192, reason=why)
+                        gpu_layers=0, threads=max(1, hw.cores), parallel=1, context=8192, reason=why,
+                        reason_code=code, reason_gb=free)
 
 
 def downgrade(plan: LocalVLMPlan, hw: HardwareProfile) -> LocalVLMPlan:
     """The CPU plan, for when a GPU build does not start (missing driver, too old a GPU)."""
     cpu_only = hw.model_copy(update={"gpus": []})
     out = recommend(cpu_only)
-    return out.model_copy(update={"reason": f"{plan.backend} did not start; {out.reason}"})
+    return out.model_copy(update={"reason": f"{plan.backend} did not start; {out.reason}", "reason_code": None, "reason_gb": 0})

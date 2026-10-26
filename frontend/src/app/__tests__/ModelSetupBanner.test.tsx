@@ -73,6 +73,15 @@ it("offers retry for a failed model and settings for a disabled model", async ()
   expect(screen.getByRole("link", { name: "Model settings" })).toBeTruthy();
 });
 
+it.each([false, true])("does not suggest starting or downloading a disabled model (downloaded=%s)", async (downloaded) => {
+  await show({ ...base, local: { ...base.local, state: "disabled", downloaded } });
+  expand();
+  expect(screen.getByText(/No API key is set and the local model is disabled/)).toBeTruthy();
+  expect(screen.queryByText(/or start the local model/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /local model/ })).toBeNull();
+  expect(screen.getByRole("link", { name: "Model settings" })).toBeTruthy();
+});
+
 it("does not show a warning after a provider is connected", async () => {
   await show({ ...base, warning: null, cloud_providers: ["openai"] });
   expect(screen.queryByRole("status")).toBeNull();
@@ -143,4 +152,14 @@ it("says starting the local model downloads it, and how much, before anything is
   await show({ ...base, local: { ...base.local, downloaded: true } });
   expand();
   expect(screen.getByRole("button", { name: "Start local model" })).toBeTruthy();
+});
+
+it("explains the setup in the selected language rather than the server's English", async () => {
+  const { useLocale } = await import("@/shared/i18n/i18n");
+  useLocale.getState().setLocale("ko");
+  await show({ ...base, local: { ...base.local, downloaded: false } });
+  expand();
+  expect(screen.getByText("API 키가 없어 비전 AI 고객을 실행할 모델이 없습니다. 모델 설정에서 키를 추가하거나 로컬 모델(Small model · CPU, 최초 1회 2GB 다운로드)을 시작하세요.")).toBeTruthy();
+  expect(screen.queryByText(/No API key is set/)).toBeNull();
+  useLocale.getState().setLocale("en");
 });

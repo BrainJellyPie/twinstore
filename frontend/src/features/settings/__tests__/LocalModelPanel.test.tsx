@@ -113,3 +113,14 @@ it("names the download on Start when the model is not on this computer yet", asy
   fireEvent.click(screen.getByRole("button", { name: "Download and start Small model (2 GB)" }));
   await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
 });
+
+it("says why the model was chosen in the selected language, and as sent by an older server", async () => {
+  const { useLocale } = await import("@/shared/i18n/i18n");
+  useLocale.getState().setLocale("ko");
+  await show({ ...base, plan: { ...base.plan, reason: "4 CPU cores and 13.5 GB free memory: the 0.8B model keeps runs fast", reason_code: "cpu_fast", reason_gb: 13.5 } });
+  expect(screen.getByText("CPU 코어: 4, 여유 메모리: 13.5GB — 실행을 빠르게 유지하는 0.8B 모델.")).toBeTruthy();
+  cleanup();
+  await show(base);
+  expect(screen.getByText("Fits.")).toBeTruthy();
+  useLocale.getState().setLocale("en");
+});

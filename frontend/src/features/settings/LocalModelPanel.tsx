@@ -10,14 +10,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
 
-import { isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
-
-const BACKEND_LABEL: Record<ModelSetup["plan"]["backend"], string> = {
-  cuda: "NVIDIA GPU (CUDA)",
-  metal: "Apple GPU (Metal)",
-  vulkan: "GPU (Vulkan)",
-  cpu: "CPU",
-};
+import { BACKEND_LABEL, isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
 
 const STATE_LABEL: Record<ModelSetup["local"]["state"], MessageKey> = {
   off: "localStateOff",
@@ -29,8 +22,14 @@ const STATE_LABEL: Record<ModelSetup["local"]["state"], MessageKey> = {
   error: "localStateError",
 };
 
+// The server says why it chose the model in English; the app says it in the reader's language (older servers: as sent).
+const WHY: Record<NonNullable<ModelSetup["plan"]["reason_code"]>, MessageKey> = {
+  nvidia: "localWhyNvidia", apple: "localWhyApple", vulkan: "localWhyVulkan",
+  cpu_reliable: "localWhyCpuReliable", cpu_fast: "localWhyCpuFast", cpu_smallest: "localWhyCpuSmallest",
+};
+
 export function LocalModelPanel() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { data, isLoading, error, refetch, isFetching } = useModelSetup();
   const { start, stop } = useLocalModelControl();
   if (!data && error) {
@@ -107,7 +106,9 @@ export function LocalModelPanel() {
             {t(plan.parallel > 1 ? "localPlanMany" : "localPlanOne", { download: plan.model.download_gb, memory: plan.model.memory_gb, parallel: plan.parallel })}
           </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{plan.reason}.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{plan.reason_code ? t(WHY[plan.reason_code], {
+          cores: hw.cores, gb: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(plan.reason_gb ?? 0),
+        }) : plan.reason}.</p>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">

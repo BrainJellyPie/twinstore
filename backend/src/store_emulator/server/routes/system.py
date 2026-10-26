@@ -21,6 +21,9 @@ class ModelSetup(BaseModel):
 def _warning(cloud: list[str], local: LocalVLMStatus, plan: LocalVLMPlan) -> str | None:
     if cloud:
         return None
+    if local.state == "disabled":
+        return ("No API key is set and the local model is disabled. Open Model settings to connect a provider "
+                "or see how to enable the local model.")
     model = f"{plan.model.label} on {plan.device}"
     if local.state == "ready":
         return (f"No API key is set. Vision shoppers run on a small local model ({model}): slower and less accurate "

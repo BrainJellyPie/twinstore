@@ -272,7 +272,8 @@ class LocalVLMManager:
         plan = recommend(hw)
         forced = os.environ.get("TWINSTORE_LOCAL_VLM_MODEL", "")
         if forced in MODEL_BY_KEY:
-            plan = plan.model_copy(update={"model": MODEL_BY_KEY[forced], "reason": f"set by TWINSTORE_LOCAL_VLM_MODEL={forced}"})
+            plan = plan.model_copy(update={"model": MODEL_BY_KEY[forced], "reason": f"set by TWINSTORE_LOCAL_VLM_MODEL={forced}",
+                                           "reason_code": None, "reason_gb": 0})
         return hw, plan
 
     # ── the user's choice ──

@@ -194,6 +194,8 @@ def test_model_setup_warns_without_any_key_and_not_with_one(no_keys, monkeypatch
     client = TestClient(app)
     body = client.get("/api/system/models").json()
     assert body["cloud_providers"] == [] and "No API key is set" in body["warning"]
+    assert "local model is disabled" in body["warning"]
+    assert "or start" not in body["warning"] and "download" not in body["warning"]
     assert body["plan"]["model"]["key"] == "qwen3.5-0.8b" and body["hardware"]["cores"] == 4
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-0000000000")
     body = client.get("/api/system/models").json()
