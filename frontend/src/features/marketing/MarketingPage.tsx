@@ -353,7 +353,7 @@ function ExperimentJob({ projectId, id, setups, onDuplicate }: {
   const request = view.data.request;
   return (
     <>
-      {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
+      {request && <DuplicateBar onClick={() => onDuplicate({ ...request, currency: request.currency || report?.currency })} />}
       {report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name}
         variants={request?.variants} /> : <JobState job={view.data} />}
     </>

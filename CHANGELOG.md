@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep the currency of imported A/B prices through editing and submission.
+  A draft for another currency cannot be relabelled or run on the chosen layout;
+  use a matching layout or replace it with a newly drafted test. New saved tests
+  retain their currency for duplication, and the API checks it before starting.
+
 ## 0.8.1 — An online price change becomes an in-store test
 
 - From an online variant to an in-store test: the online report's **Keep it in

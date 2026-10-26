@@ -85,6 +85,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const [variants, setVariants] = useState<DraftVariant[]>(() => initial?.variants.length
     ? initial.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) }))
     : [{ id: uid(), name: t("mkVariantDefault", { letter: "B" }), changes: [] }]);
+  const [draftCurrency, setDraftCurrency] = useState(initial?.currency?.toUpperCase() || currency.toUpperCase());
   const [engine, setEngine] = useState<ExperimentEngine>(initial?.engine ?? "rule");
   const [model, setModel] = useState(initial?.model ?? "");
   const [panel, setPanel] = useState(initial?.panel ?? 300);
@@ -102,11 +103,13 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const usesPackage = variants.some((v) => v.changes.some((c) => c.kind === "package"));
   const focus = [...new Set([...variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).filter(Boolean), ...extraFocus])].slice(0, 20);
   const complete = variants.length > 0 && variants.every((v) => v.name.trim() && v.changes.length > 0 && v.changes.every(ready));
-  const blocked = usesPackage && engine === "rule" ? t("mkBlockedPackages") : "";
+  const currencyMismatch = draftCurrency !== currency.toUpperCase();
+  const blocked = currencyMismatch ? t("mkDraftCurrencyMismatch", { source: draftCurrency, target: currency })
+    : usesPackage && engine === "rule" ? t("mkBlockedPackages") : "";
 
   const run = useMutation({
     mutationFn: () => startExperiment(projectId, {
-      setup_id: setupId, name: name.trim(), engine, model: engine === "vlm" ? model : "", panel, focus_skus: focus,
+      setup_id: setupId, currency: draftCurrency, name: name.trim(), engine, model: engine === "vlm" ? model : "", panel, focus_skus: focus,
       variants: variants.map((v) => ({ name: v.name.trim(), changes: v.changes.map(({ id: _id, ...c }) => c) })),
     }),
     onSuccess: async (job) => {
@@ -136,6 +139,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
       const nextFocus = d.focus_skus.filter((s) => !d.variants.some((v) => v.changes.some((c) => c.sku === s)));
       const nextName = name.trim() ? name : d.name;
       setVariants(nextVariants);
+      setDraftCurrency(currency.toUpperCase());
       if (d.engine !== engine) switchEngine(d.engine);
       setHero(nextHero);
       setExtraFocus(nextFocus);
@@ -243,6 +247,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
                 const built = r.build();
                 if (built.length) {
                   setVariants(built);
+                  setDraftCurrency(currency.toUpperCase());
                   if (r.needs === "vlm" && engine !== "vlm") switchEngine("vlm");
                   if (!name) setName(`${heroProduct?.name ?? hero} · ${t(r.label).toLowerCase()}`);
                 }
@@ -271,7 +276,8 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
             </div>
           )}
         </div>
-        {variants.map((v, i) => (
+        {currencyMismatch && <p role="alert" className="text-sm text-destructive">{blocked}</p>}
+        {!currencyMismatch && variants.map((v, i) => (
           <VariantCard
             key={v.id}
             letter={String.fromCharCode(66 + i)}
@@ -289,7 +295,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
             describe={(c) => describeChange(c, productMap, fixtureMap, currency, t)}
           />
         ))}
-        {variants.length < 6 && (
+        {!currencyMismatch && variants.length < 6 && (
           <button type="button" onClick={() => setVariants((vs) => [...vs, { id: uid(), name: t("mkVariantDefault", { letter: String.fromCharCode(66 + vs.length) }), changes: [] }])}
             className="flex min-h-[7rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-foreground/12 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground">
             <Plus className="size-4" /> {t("mkAddVariant")}

@@ -37,6 +37,8 @@ export interface Variant { name: string; changes: VariantChange[] }
 
 export interface ExperimentRequest {
   setup_id: string;
+  /** Currency of drafted prices; omitted only for older saved requests. */
+  currency?: string;
   name?: string;
   variants: Variant[];
   focus_skus: string[];

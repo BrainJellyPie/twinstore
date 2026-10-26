@@ -23,6 +23,7 @@ const changes: online.RunStoreChanges = {
 
 beforeEach(() => {
   useLocale.getState().setLocale("en");
+  useExperimentDraft.setState({ pending: null });
   vi.mocked(api.getSetups).mockResolvedValue([
     { id: "setup_a", name: "Main floor" }, { id: "setup_b", name: "Summer layout" },
   ] as api.SetupSummary[]);
@@ -73,7 +74,7 @@ it("opens the variant's prices as an A/B test on the chosen layout", async () =>
   mount();
   fireEvent.click(await screen.findByRole("button", { name: "Test it in the store" }));
   expect(useExperimentDraft.getState().take("p1")).toEqual({
-    setup_id: "setup_b", engine: "rule", panel: 300, focus_skus: [],
+    setup_id: "setup_b", currency: "USD", engine: "rule", panel: 300, focus_skus: [],
     variants: [{ name: "Threadline – all prices 10 % lower than", changes: changes.changes }],
   });
   expect(navigate).toHaveBeenCalledWith({ to: "/marketing/$pid", params: { pid: "p1" } });

@@ -49,6 +49,7 @@ class Variant(BaseModel):
 
 class ExperimentRequest(BaseModel):
     setup_id: ResourceId = Field(description="the control layout; every variant starts from it")
+    currency: str = Field(default="", max_length=3, description="currency of the drafted prices; empty legacy requests use the layout's currency")
     name: str = Field(default="", max_length=80)
     variants: list[Variant] = Field(min_length=1, max_length=6)
     focus_skus: list[str] = Field(default_factory=list[str], max_length=20, description="products whose sales the test is about")

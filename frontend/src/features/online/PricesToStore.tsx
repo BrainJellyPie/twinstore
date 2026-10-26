@@ -60,7 +60,7 @@ export function PricesToStore({ projectId, runId, variant }: { projectId: string
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] text-muted-foreground">
           <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => {
             sendDraft(projectId, {
-              setup_id: setupId, engine: "rule", panel: 300, focus_skus: [],
+              setup_id: setupId, currency: changes.currency, engine: "rule", panel: 300, focus_skus: [],
               variants: [{ name: Array.from(changes.name).slice(0, AB_NAME_LENGTH).join("").trimEnd(), changes: changes.changes }],
             });
             void navigate({ to: "/marketing/$pid", params: { pid: projectId } });

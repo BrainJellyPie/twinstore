@@ -255,6 +255,11 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
     try:
         with setup_tree_transaction(pid, [req.setup_id]), FileLock(setup_lock_path(pid, req.setup_id), timeout=10):
             control = _load_store(pid, req.setup_id)
+            currency = simulation_currency(pid, control, config.currency)
+            if req.currency and req.currency.upper() != currency:
+                raise AppError(f"The drafted prices use {req.currency.upper()}, but this layout uses {currency}. "
+                               "Choose a layout in the same currency or draft a new test; prices are not converted automatically.", 422)
+            req = req.model_copy(update={"currency": currency})
             # Every arm's shoppers share one store run the same way, so a promotion that empties its shelf pays for it.
             operations = run_operations(pid, req.setup_id, req.operations, req.shared_store)
             config = config.model_copy(update={"operations": operations})
@@ -265,7 +270,6 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             if not personas:
                 raise AppError("No shoppers come while this layout is open, so there is nobody to test on. "
                                "Change the layout's opening hours.", 400)
-            currency = simulation_currency(pid, control, config.currency)
             config = config.model_copy(update={"currency": currency})
             per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
             uris: dict[str, str] = {}
