@@ -66,11 +66,14 @@ def test_official_family_policy_applies_to_native_self_hosted_endpoints(base):
 
 
 @pytest.mark.parametrize("model", ["qwen3.5:2b", "gpt-oss:20b"])
-def test_only_changed_thinking_policy_separates_old_cached_answers(tmp_path, model):
-    client = LiteLLMClient(LLMConfig(model="ollama_chat/" + model, api_base="http://127.0.0.1:11434", cache_dir=str(tmp_path)))
+@pytest.mark.parametrize("structured", ["json", "json_schema"])
+def test_only_changed_thinking_policy_separates_old_cached_answers(tmp_path, model, structured):
+    client = LiteLLMClient(LLMConfig(model="ollama_chat/" + model, api_base="http://127.0.0.1:11434",
+        cache_dir=str(tmp_path), structured_output=structured))
     messages = [{"role": "user", "content": "Hello"}]
     old_key = hashlib.sha256(json.dumps({"ollama_finish_reason": "native-v1", "ollama_context": "preserve-context-v2",
-        "structured_parser": "final-think-v2", "model": client.model, "api_base": client.api_base,
+        "structured_parser": "final-think-v2", "structured_output": structured,
+        "model": client.model, "api_base": client.api_base,
         "temperature": client.temperature, "max_tokens": client.max_tokens, "seed": client._effective_seed(None),
         "schema": Reply.model_json_schema(), "messages": messages}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     old_path = tmp_path / old_key[:2] / f"{old_key}.json"
