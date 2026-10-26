@@ -88,11 +88,10 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
                       {personaLabel(sh.age_group, t)} · {personaLabel(sh.gender, t)} · {t(DEVICE_LABELS[sh.device])}
                     </div>
                   </div>
-                  <span className="hidden shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary sm:inline">{t(MISSION_LABELS[sh.mission])}</span>
                 </div>
-                {/* On a phone card the mission leads the goal line, leaving the name the header's width. */}
+                {/* The mission leads the goal line, leaving the name the header's width in every language. */}
                 <p className="line-clamp-2 text-xs text-muted-foreground" title={sh.goal}>
-                  <span className="mr-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary sm:hidden">{t(MISSION_LABELS[sh.mission])}</span>
+                  <span className="mr-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary">{t(MISSION_LABELS[sh.mission])}</span>
                   {sh.goal}
                 </p>
                 <ul className="space-y-1">

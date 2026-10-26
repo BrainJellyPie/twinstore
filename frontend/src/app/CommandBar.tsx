@@ -213,7 +213,7 @@ export function CommandBar() {
                 )}
               </>
             ) : (
-              <span className="truncate font-semibold tracking-[-0.02em]">{pageTitle}</span>
+              <span className="truncate font-semibold tracking-[-0.02em]" title={pageTitle}>{pageTitle}</span>
             )}
           </nav>
         )}

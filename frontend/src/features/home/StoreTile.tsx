@@ -176,7 +176,7 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
         {QUICK_LINKS.map(({ to, label, icon: Icon }) => (
           <Link key={label} to={to} params={{ pid: project.project_id }}
             className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[0.72rem] leading-tight text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground">
-            <Icon className="size-4" aria-hidden /> <span className="max-w-full truncate">{t(label)}</span>
+            <Icon className="size-4" aria-hidden /> <span className="line-clamp-2 max-w-full text-center">{t(label)}</span>
           </Link>
         ))}
       </nav>
