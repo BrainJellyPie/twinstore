@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Layouts can be renamed on the Store & layout tab, so layouts made the same
+  way (for example several optimized copies) can be told apart. Finalized
+  layouts keep their names, as the server keeps the rest of them unchanged.
+  The server trims a new name and refuses a blank one or one over 300
+  characters. Pending renames preserve newer edits and block overlapping saves;
+  saved feedback applies only to the acknowledged name.
+
 - Keep package links from using a serving or nutrition-reference amount as
   the product size. Exclude candidates that explicitly contradict the observed
   net quantity in the same unit; preserve ordinary names and multipacks.

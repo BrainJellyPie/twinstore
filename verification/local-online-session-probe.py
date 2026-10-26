@@ -4,7 +4,8 @@ Requires a loopback model (port 8081 by default). Uses production screenshots, b
 transitions and policy calls; no model replies or actions are mocked. Raw replies,
 images and the full session are retained without HTTP headers. Technical validity,
 goal completion and semantic review are distinct: a valid survey is not evidence
-that its scores accurately describe the visit. No saved user store is modified.
+that its scores accurately describe the visit. Exit success requires both valid
+model responses and completion of the fixture goal. No saved user store is modified.
 """
 import argparse
 import asyncio
@@ -159,7 +160,8 @@ try:
                   'thought': step.thought, 'source': step.source} for step in session.steps])
 except Exception as error:
     result['error'] = repr(error)
+result['success'] = result['technical_success'] and bool(result.get('goal_completed', False))
 result.update(calls=calls, attempted_calls=attempts, seconds=round(time.perf_counter()-started, 2), usage=client.get_usage().model_dump(mode='json'))
 (root/'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
 print(json.dumps({'root': str(root), **result}, ensure_ascii=False, indent=2), flush=True)
-raise SystemExit(0 if result['technical_success'] else 1)
+raise SystemExit(0 if result['success'] else 1)

@@ -474,6 +474,7 @@ export const storeMessages = {
   storeTabTotalDays: ["Total over {days} days", "{days}일간 합계", "{days} 天合计", "{days}日間の合計", "Total en {days} días", "Total sur {days} jours"],
   storeTabPerDay: ["≈{count} a day", "하루 약 {count}명", "每天约 {count} 位", "1日約 {count} 人", "≈{count} al día", "≈{count} par jour"],
   storeTabItems: ["Items", "상품", "商品", "商品", "Productos", "Produits"],
+  layoutRename: ["Rename", "이름 바꾸기", "重命名", "名前を変更", "Cambiar nombre", "Renommer"],
   layoutDelete: ["Delete this layout", "이 배치 삭제", "删除此布局", "このレイアウトを削除", "Eliminar este plano", "Supprimer ce plan"],
   layoutDeleteConfirm: ["Delete “{name}”? This cannot be undone.", "“{name}” 배치를 삭제할까요? 되돌릴 수 없습니다.", "删除“{name}”？此操作无法撤销。", "「{name}」を削除しますか？元に戻せません。", "¿Eliminar «{name}»? No se puede deshacer.", "Supprimer « {name} » ? Cette action est irréversible."],
   layoutDeleteBranches: ["Layouts made from it are deleted too: {count}", "이 배치에서 만든 배치도 함께 삭제됩니다: {count}개", "由它生成的布局也会一并删除：{count} 个", "このレイアウトから作ったレイアウトも削除されます：{count}件", "También se eliminan los planos creados a partir de él: {count}", "Les plans créés à partir de celui-ci sont aussi supprimés : {count}"],
