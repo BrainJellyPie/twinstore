@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Saving or removing an API key in **Model providers** updates the "Explore
+  without an API key" banner, the local model's role and the "needs a model"
+  prompts at once; they stayed as before until the page was reloaded. After
+  **Remove**, focus moves to the key field.
+- A pack's delete button in **Products** is named "Delete?" while it asks, as
+  in the studies list, so screen readers hear that a second press deletes; after
+  deleting, focus moves to the drop zone instead of the top of the page.
+- Deleting an online store or run moves focus to the list entry that opens in
+  its place; focus fell back to the top of the page. Open a folded mobile list
+  first, and use the search field or **New online store** when no replacement
+  entry is visible. Keep an active search editable when deletion reduces the
+  list below the usual search-box threshold.
+- Deleting a study from the studio's list moves focus to the list's **New
+  test** button; the deleted item held focus, which then fell back to the top
+  of the page.
+- When uploaded packs could not be read for want of a model, the uploader
+  offers the model setup under its note that they kept their file names.
+
 - Local shelf recognition reads the price-tag strip separately so a small
   model can retain Korean discount and unit-rate words it omitted while
   reading the product. Missing or failed tag reading leaves the price

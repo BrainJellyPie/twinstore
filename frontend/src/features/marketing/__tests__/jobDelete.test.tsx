@@ -48,11 +48,18 @@ function mount() {
 }
 
 it("asks before deleting a finished study and deletes it on the second click", async () => {
+  vi.mocked(marketing.getExperiment).mockResolvedValue({ ...job, report: null });
   mount();
+  await waitFor(() => expect(marketing.getExperiment).toHaveBeenCalledTimes(1));
   fireEvent.click(await screen.findByRole("button", { name: "Delete Tea promo" }));
   expect(marketing.deleteExperiment).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Delete?" }));
   await waitFor(() => expect(marketing.deleteExperiment).toHaveBeenCalledWith("p", "exp_1"));
+  // The deleted item held focus; it moves to the list's New test button.
+  await waitFor(() => expect(document.activeElement?.textContent).toContain("New A/B test"));
+  // The open study is left and its query dropped, not refetched into a 404.
+  await waitFor(() => expect(marketing.listExperiments).toHaveBeenCalledTimes(2));
+  expect(marketing.getExperiment).toHaveBeenCalledTimes(1);
 });
 
 it("leaving the delete button cancels the question", async () => {

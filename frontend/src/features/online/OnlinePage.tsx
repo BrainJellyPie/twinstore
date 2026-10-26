@@ -112,14 +112,21 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
   // The open store or run's entry is scrolled into the list's view when it opens (a link, a reload, a new store).
   const aside = useRef<HTMLElement>(null);
+  const newStore = useRef<HTMLButtonElement>(null);
+  // Set when a store or run is deleted: its Delete button held focus, which the entry now open takes.
+  const refocus = useRef(false);
   const listsReady = sites.isSuccess && runs.isSuccess;
   useEffect(() => {
     const box = aside.current;
     const entry = box?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (refocus.current) {
+      const target = entry ?? box?.querySelector<HTMLElement>('input[type="search"]') ?? newStore.current;
+      if (target) { refocus.current = false; target.focus({ preventScroll: true }); }
+    }
     if (!box || !entry || !listsReady || box.scrollHeight <= box.clientHeight) return;
     const top = entry.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
     if (top < box.scrollTop || top + entry.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTo?.({ top: top - box.clientHeight / 3 });
-  }, [siteId, runId, listsReady, list.length]);
+  }, [siteId, runId, listsReady, list.length, selected?.id, listOpen]);
   const openSite = (id: string) => { setSiteId(id); setRunId(null); setGallery(false); setCompare(null); setPicks([]); setListOpen(false); reveal(); };
 
   return (
@@ -132,7 +139,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <h1 className="flex items-center gap-2 font-display text-2xl"><Globe2 className="size-5 text-primary" aria-hidden /> {t("onTitle")}</h1>
           <p className="mt-1 text-xs text-muted-foreground">{t("onSubtitle")}</p>
         </div>
-        <Button onClick={() => { setGallery(true); setRunId(null); }}><Plus className="size-4" aria-hidden /> {t("onNewStore")}</Button>
+        <Button ref={newStore} onClick={() => { setGallery(true); setRunId(null); }}><Plus className="size-4" aria-hidden /> {t("onNewStore")}</Button>
 
         {/* On a phone the lists fold behind one button that says what is open, so the work area comes first. */}
         <button type="button" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen}
@@ -144,7 +151,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ChevronDown className={cn("size-4 shrink-0 transition-transform", listOpen && "rotate-180")} aria-hidden />
         </button>
         <div className={cn("flex flex-col gap-4", !listOpen && "hidden lg:flex")} data-online-list>
-        {(list.length > 6 || (runs.data?.length ?? 0) > 6) && (
+        {(!!find || list.length > 6 || (runs.data?.length ?? 0) > 6) && (
           <label className="relative block">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={t("onFind")} aria-label={t("onFind")}
@@ -222,7 +229,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
 
       <main ref={main} className="m-3 flex min-h-[32rem] min-w-0 flex-1 scroll-mt-20 flex-col gap-3 lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
         {runId ? (
-          <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { setRunId(null); setWide(false); }}
+          <RunReport key={`${projectId}:${runId}`} projectId={projectId} runId={runId} onDeleted={() => { refocus.current = true; setListOpen(true); setRunId(null); setWide(false); }}
             wide={wide} onWide={() => setWide((w) => !w)}
             initialJourney={runId === initialRun && initialShopper ? { ...initialShopper, play: true } : undefined}
             onTry={list.length ? (id, experiments) => {
@@ -252,7 +259,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
             {tab === "browse" && <BrowserView key={`${selected.id}:${selected.updated_at}`} projectId={projectId} siteId={selected.id} />}
             {tab === "design" && (
               <SiteDesigner key={selected.id} projectId={projectId} siteId={selected.id}
-                onCopied={(id) => openSite(id)} onDeleted={() => setSiteId(null)}
+                onCopied={(id) => openSite(id)} onDeleted={() => { refocus.current = true; setListOpen(true); setSiteId(null); }}
                 onTest={(id) => { setCompare(id); setTab("simulate"); }} />
             )}
             {tab === "simulate" && (

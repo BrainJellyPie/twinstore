@@ -176,6 +176,7 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
 
   // A tab opened from a link can sit past the edge of the phone's scrolling tab row.
   const tabRow = useRef<HTMLDivElement>(null);
+  const newJob = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const row = tabRow.current;
     const chip = row?.querySelector<HTMLElement>('[aria-selected="true"]');
@@ -228,12 +229,13 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
         <div className="grid grid-cols-1 gap-3 lg:min-h-64 lg:flex-1 lg:grid-cols-[17rem_minmax(0,1fr)]">
           {/* Below lg the page scrolls as one, with a short list; side by side, the list and the test scroll apart. */}
           <aside className="flex max-h-56 min-h-0 flex-col gap-2 overflow-y-auto lg:max-h-none">
-            <button type="button" onClick={() => select("")}
+            <button ref={newJob} type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
                 current === "" ? "border-primary text-foreground" : "border-foreground/15 text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
               <Plus className="size-4" /> {t(NEW_JOB[tab as JobTab])}
             </button>
-            {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
+            {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)}
+              onDeleted={(wasActive) => { if (wasActive) select(""); newJob.current?.focus(); /* the deleted item held focus */ }} />)}
           </aside>
           <main className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} onDuplicate={duplicateExperiment} /> : setup.data?.store ? (
@@ -276,7 +278,7 @@ function Loading() {
   return <div className="grid h-40 place-items-center text-sm text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
 }
 
-function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: string; job: JobStatus; active: boolean; onSelect: () => void; onDeleted: () => void }) {
+function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: string; job: JobStatus; active: boolean; onSelect: () => void; onDeleted: (wasActive: boolean) => void }) {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
   const del = useMutation({
@@ -284,10 +286,13 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
       : job.kind === "shelf" ? deleteShelfTest(projectId, job.job_id) : job.kind === "conjoint" ? deleteConjoint(projectId, job.job_id)
         : deleteSurvey(projectId, job.job_id)),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId)
+      const list = job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId)
         : job.kind === "shelf" ? marketingKeys.shelfTests(projectId) : job.kind === "conjoint" ? marketingKeys.conjoints(projectId)
-          : marketingKeys.surveys(projectId) });
-      if (active) onDeleted();
+          : marketingKeys.surveys(projectId);
+      // Leave the deleted study and drop its own query rather than refetching it into a 404; only the list changes.
+      onDeleted(active);
+      qc.removeQueries({ queryKey: [...list, job.job_id], exact: true });
+      await qc.invalidateQueries({ queryKey: list, exact: true });
     },
   });
   // A finished study took model calls to make: the first click asks, the second deletes; leaving the button cancels.
