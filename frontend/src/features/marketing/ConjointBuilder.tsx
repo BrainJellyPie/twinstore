@@ -11,7 +11,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney, majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { formatMoney, majorUnitText, minorUnitDivisor, splitPriceList, toMinor } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { modelLabel } from "@/shared/i18n/providerLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -92,7 +92,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const parsed = attrs.map((a) => ({ name: a.name.trim(), levels: splitLevels(a.levels) }));
-  const priceParts = splitLevels(priceText);
+  const priceParts = splitPriceList(priceText);
   const prices = priceParts.map((p) => toMinor(p, divisor));
   const validPrices = prices.filter((p): p is number => p !== null);
 

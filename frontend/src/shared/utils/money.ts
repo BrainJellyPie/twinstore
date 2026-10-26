@@ -41,6 +41,12 @@ export function toMinor(text: string, divisor: number, locale: string = useLocal
   return Number.isSafeInteger(minor) && minor >= 0 ? minor : null;
 }
 
+/** A typed list of prices. Where the language writes a decimal comma, prices are separated by ";" or by a comma and a
+ *  space, so "1,49, 1,79" is two prices, not four. */
+export function splitPriceList(text: string, locale: string = useLocale.getState().locale): string[] {
+  return text.split(DECIMAL_COMMA.has(locale) ? /;|,\s+/ : ",").map((p) => p.trim()).filter(Boolean);
+}
+
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function cachedFormatter(key: string, create: () => Intl.NumberFormat): Intl.NumberFormat {

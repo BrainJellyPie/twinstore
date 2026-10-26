@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { designConjoint, startConjoint, type ConjointReport } from "@/shared/api/marketing";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 import { ConjointBuilder } from "../ConjointBuilder";
 import { ConjointReportView } from "../ConjointReport";
 import { defaultLineup, shareCurve, shares, utility } from "../conjoint";
@@ -179,4 +180,23 @@ it("drafts the study from a request routed by the command palette and keeps the 
   expect(designConjoint).toHaveBeenCalledWith("project", { question: "Would people pay more for a branded oat milk?", setup_id: "setup_1", currency: "KRW" });
   expect((screen.getByLabelText("Question for the study") as HTMLTextAreaElement).value).toBe("Would people pay more for a branded oat milk?");
   expect((screen.getByLabelText("Price levels") as HTMLInputElement).value).toBe("1500, 1800");
+});
+
+it("reads a French price list written with decimal commas as one price each", async () => {
+  useLocale.getState().setLocale("fr");
+  try {
+    vi.mocked(startConjoint).mockResolvedValue({ job_id: "cjt_test", kind: "conjoint", name: "Test", status: "pending",
+      stage: "queued", progress: 0, error: "", created_at: "", finished_at: "" });
+    const started = vi.fn();
+    render(<QueryClientProvider client={new QueryClient()}>
+      <ConjointBuilder projectId="project" personaCount={60} defaultCurrency="EUR" onStarted={started} />
+    </QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: translate("fr", "mkExIcedTea") }));
+    fireEvent.change(screen.getByLabelText(translate("fr", "mkPriceLevels")), { target: { value: "1,49, 2,79 ; 3,10" } });
+    fireEvent.click(screen.getByRole("button", { name: translate("fr", "mkFieldStudy") }));
+    await waitFor(() => expect(started).toHaveBeenCalled());
+    expect(vi.mocked(startConjoint).mock.calls[0]![1].prices).toEqual([149, 279, 310]);
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
 });

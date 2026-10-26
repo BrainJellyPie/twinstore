@@ -5,7 +5,9 @@
 - In Spanish and French, price fields accept a decimal comma ("2,50"), as
   those languages write it, instead of calling it an invalid price. A comma
   before three digits ("1,500") is still a thousands separator, and the other
-  languages read prices as before.
+  languages read prices as before. A conjoint study's price levels in those
+  languages are separated by ";" or a comma and a space, so "1,49, 2,79" is
+  two prices instead of four (1, 49, 2 and 79).
 
 - In a run of several days, dragging the time slider to closing time, pressing
   → near closing time, or clicking the last hour on the timeline now stays on
