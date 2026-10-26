@@ -195,6 +195,8 @@ def test_moved_racks_turn_to_face_the_floor(store: Store):
     assert {s.face for s in drink.slots} == {Face.N} and {s.face for s in ice.slots} == {Face.S}
     assert drink.rotation == 180 and ice.rotation == 180
     assert "Swap rack positions" in description
+    # Cells are named as the floor editor names them, counted from 1.
+    assert "(column 3, row 1)" in description and "(column 3, row 6)" in description
     assert _rack(store, DRINK_1).position == (2, 0)  # input untouched
 
 

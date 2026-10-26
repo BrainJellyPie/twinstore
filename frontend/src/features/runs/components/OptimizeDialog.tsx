@@ -5,7 +5,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, Loader2, Sparkles, Square, TriangleAlert, Wand2, Zap } from "lucide-react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import * as api from "@/shared/api/client";
 import type { JudgeSpec, OptimizeAlgorithm, OptimizeObjective, OptimizeScope, OptimizeSpec, OptimizationView, VLMJudgeReport } from "@/shared/api/client";
@@ -382,14 +382,17 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
         <div className="mt-1 text-xs text-muted-foreground">{t("optSearchScore", { improvement: improvementText(result.relative_improvement, searchGain, result.baseline_score, objective, code, locale) })}</div>
       </div>
 
-      <div className="h-40">
+      <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chart} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="i" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
+            {/* Candidates are numbered trials: a number axis ticked at 1, 10, 20 … instead of every other one. */}
+            <XAxis dataKey="i" type="number" domain={["dataMin", "dataMax"]} allowDecimals={false}
+              ticks={chart.filter((d) => d.i === 1 || d.i % 10 === 0).map((d) => d.i)} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
             <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={["auto", "auto"]} tickFormatter={score} width={64} />
             <Tooltip contentStyle={{ fontSize: 11 }} formatter={(value) => typeof value === "number" ? score(value) : value} />
-            <Line type="monotone" dataKey="score" stroke="var(--muted-foreground)" strokeOpacity={0.6} dot={false} strokeWidth={1} name={t("optChartCandidate")} isAnimationActive={false} />
+            <Legend verticalAlign="top" align="right" height={20} iconType="plainline" wrapperStyle={{ fontSize: 11 }} />
+            <Line type="linear" dataKey="score" stroke="var(--muted-foreground)" strokeOpacity={0.6} dot={false} strokeWidth={1} name={t("optChartCandidate")} isAnimationActive={false} />
             <Line type="stepAfter" dataKey="best" stroke="var(--primary)" dot={false} strokeWidth={2.5} name={t("optChartBest")} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>

@@ -102,6 +102,11 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- The optimizer's changes name rack cells as the floor editor does, counted from
+  1 ("Swap contents of 'Ice cream 1' (column 5, row 5) <-> 'Ice cream 2'
+  (column 6, row 5)"; it read "(4, 4)"). Its progress chart has a legend, ticks
+  at 1, 10, 20 … instead of every other candidate, and joins candidates with
+  straight lines rather than a smoothed curve.
 - **Compare runs** names a run in its notes as the run pickers do ("In layout 2
   — LLM · final · May 18 each shopper had the store alone") instead of by its
   id ("run_efd57c"), and explains zero baselines only when a row has one.
