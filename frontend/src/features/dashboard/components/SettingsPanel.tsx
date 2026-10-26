@@ -15,6 +15,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 import { personaLabel } from "@/shared/i18n/personaLabels";
+import { EmptyFloorStart } from "./EmptyFloorStart";
 
 type CustomerTab = "identity" | "purpose" | "age" | "gender";
 const CUSTOMER_TABS: { value: CustomerTab; label: MessageKey }[] = [
@@ -70,8 +71,9 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
   // (rack/item counts, Excel controls, RackDetailView).
   if (store == null) {
     return (
-      <div className="px-3 pt-3 text-xs text-muted-foreground">
-        {t("storeTabNoFloor")}
+      <div className="space-y-3 px-3 pt-3 text-xs text-muted-foreground">
+        <p>{t("storeTabNoFloor")}</p>
+        <EmptyFloorStart />
       </div>
     );
   }

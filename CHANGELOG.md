@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Keep recognized per-weight/per-volume rates (`/kg`, `/L`, `per litre`,
+  `리터당`) out of exact package prices in shelf capture. Preserve the product,
+  tag and existing store price, and ask the model to retain unit wording.
+
+- The floor editor's grid is one Tab stop: the arrow keys move between cells,
+  Home and End go to a row's ends, and Enter selects. Before, every cell was a
+  Tab stop (1,600 on a 40 by 40 floor). Cells read their place as "column 3,
+  row 3" for screen readers, as the panel shows it, instead of "2,2".
+  Shrinking the grid keeps a reachable cell in the Tab order even when the
+  previously visited cell no longer exists.
+- The floor editor opens at the largest zoom (up to 100 %) that shows every row:
+  an 8 by 8 floor opened at 100 % with its last row cut off. A floor too deep
+  to fit opens at the smallest zoom and scrolls.
+- A layout without a floor yet opens on its setup steps (Step 1: Floor
+  configuration), and the empty floor and the Store & layout tab both offer
+  **Go to Step 1**. Coming from another layout's store tab, a new empty layout
+  showed only "Add a floor first to see store info." with no way forward.
+
 - Keep visible multipack quantities when linking package photos to catalog
   products, so `6 x 500 ml` and `500 ml / 6 PACK` cannot silently select a
   single bottle. Support printed multiplication signs and recognized pack-count

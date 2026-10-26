@@ -5,6 +5,7 @@ export const storeMessages = {
   spResults: ["Results", "결과", "结果", "結果", "Resultados", "Résultats"],
   spShoppers: ["Shoppers", "고객", "顾客", "買い物客", "Compradores", "Clients"],
   spStoreLayout: ["Store & layout", "매장 및 배치", "门店与布局", "店舗とレイアウト", "Tienda y plano", "Magasin et plan"],
+  emptyFloorStart: ["Go to Step 1: Floor configuration", "1단계: 매장 배치 구성으로 이동", "前往第 1 步：布局配置", "ステップ1：フロア構成へ", "Ir al paso 1: configuración del plano", "Aller à l’étape 1 : configuration du plan"],
   emptyFloor: ["Your floor is empty.", "매장 배치가 비어 있습니다.", "布局还是空的。", "フロアはまだ空です。", "Tu plano está vacío.", "Votre plan est vide."],
 
   // Compass and shelf sides
@@ -944,9 +945,9 @@ export const storeMessages = {
   gridCellDoor: ["Door", "냉장고", "冷柜", "冷蔵", "Nevera", "Frigo"],
   gridCellCounter: ["Counter", "계산대", "收银台", "レジ", "Caja", "Caisse"],
   gridCellDining: ["Dining", "식탁", "餐桌", "席", "Mesa", "Table"],
-  gridEmptyCell: ["empty cell {x},{y}", "빈 칸 {x},{y}", "空格 {x},{y}", "空きマス {x},{y}", "celda vacía {x},{y}", "case vide {x},{y}"],
-  gridRackCell: ["{type} {name} at {x},{y}", "{type} {name}, {x},{y}", "{type} {name}，位于 {x},{y}", "{type} {name}（{x},{y}）", "{type} {name} en {x},{y}", "{type} {name} en {x},{y}"],
-  gridGateCell: ["gate {types} at {x},{y}", "출입구 {types}, {x},{y}", "出入口 {types}，位于 {x},{y}", "出入口 {types}（{x},{y}）", "acceso {types} en {x},{y}", "accès {types} en {x},{y}"],
+  gridEmptyCell: ["empty cell, column {x}, row {y}", "빈 칸, {x}열 {y}행", "空格，第 {x} 列第 {y} 行", "空きマス、{x}列目{y}行目", "celda vacía, columna {x}, fila {y}", "case vide, colonne {x}, ligne {y}"],
+  gridRackCell: ["{type} {name}, column {x}, row {y}", "{type} {name}, {x}열 {y}행", "{type} {name}，第 {x} 列第 {y} 行", "{type} {name}（{x}列目{y}行目）", "{type} {name}, columna {x}, fila {y}", "{type} {name}, colonne {x}, ligne {y}"],
+  gridGateCell: ["gate {types}, column {x}, row {y}", "출입구 {types}, {x}열 {y}행", "出入口 {types}，第 {x} 列第 {y} 行", "出入口 {types}（{x}列目{y}行目）", "acceso {types}, columna {x}, fila {y}", "accès {types}, colonne {x}, ligne {y}"],
   gridType_shelf: ["shelf", "진열대", "货架", "棚", "estante", "rayon"],
   gridType_fridge: ["fridge", "냉장고", "冷柜", "冷蔵庫", "nevera", "réfrigérateur"],
   gridType_counter: ["counter", "계산대", "收银台", "レジ", "caja", "caisse"],

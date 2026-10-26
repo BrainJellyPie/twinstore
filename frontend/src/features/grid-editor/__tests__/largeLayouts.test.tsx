@@ -76,3 +76,44 @@ it("prevents shrinking through a dining footprint and saves every fixture once t
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
   expect(save).toHaveBeenCalledWith("p", "s", { store: { ...setup.store, grid_size: [40, 40], racks: [table] } });
 });
+
+it("opens a floor small enough to fit with every row in view, and a deep one at the smallest step", () => {
+  window.innerHeight = 900;
+  const { unmount } = render(<GridEditor racks={[]} gridSize={[8, 8]} blockedFaces={[]} selectedCell={null} onCellClick={vi.fn()} />);
+  // 8 rows of 56 px and their gaps fit 55 % of 900 px; at 64 px the last row was cut off.
+  expect(screen.getByTestId("grid-canvas").style.gridAutoRows).toBe("56px");
+  expect(screen.getByLabelText("Grid zoom").textContent).toBe("88%");
+  unmount();
+  render(<GridEditor racks={[]} gridSize={[40, 40]} blockedFaces={[]} selectedCell={null} onCellClick={vi.fn()} />);
+  expect(screen.getByTestId("grid-canvas").style.gridAutoRows).toBe("40px");
+});
+
+it("takes one Tab stop and moves between cells with the arrow, Home and End keys", () => {
+  const select = vi.fn();
+  render(<GridEditor racks={[]} gridSize={[6, 5]} blockedFaces={[]} selectedCell={null} onCellClick={select} />);
+  const cells = screen.getAllByRole("button").filter((b) => b.dataset.testid?.startsWith("grid-cell-"));
+  expect(cells.filter((c) => c.tabIndex === 0).map((c) => c.dataset.testid)).toEqual(["grid-cell-0-0"]);
+  const first = screen.getByTestId("grid-cell-0-0");
+  expect(first.getAttribute("aria-label")).toBe("empty cell, column 1, row 1");
+  first.focus();
+  for (const [key, id] of [["ArrowRight", "1-0"], ["ArrowDown", "1-1"], ["End", "5-1"], ["ArrowRight", "5-1"], ["Home", "0-1"], ["ArrowUp", "0-0"]]) {
+    fireEvent.keyDown(document.activeElement!, { key });
+    expect(document.activeElement).toBe(screen.getByTestId(`grid-cell-${id}`));
+  }
+  expect(cells.filter((c) => c.tabIndex === 0).map((c) => c.dataset.testid)).toEqual(["grid-cell-0-0"]);
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  fireEvent.click(document.activeElement!);
+  expect(select).toHaveBeenCalledWith([0, 1]);
+});
+
+it("keeps keyboard entry when shrinking removes the last visited cell", () => {
+  const select = vi.fn();
+  const { rerender } = render(<GridEditor racks={[]} gridSize={[6, 5]} blockedFaces={[]} selectedCell={null} onCellClick={select} />);
+  fireEvent.click(screen.getByTestId("grid-cell-5-4"));
+  rerender(<GridEditor racks={[]} gridSize={[3, 2]} blockedFaces={[]} selectedCell={null} onCellClick={select} />);
+  const stops = screen.getAllByRole("button").filter((b) => b.dataset.testid?.startsWith("grid-cell-") && b.tabIndex === 0);
+  expect(stops.map((cell) => cell.dataset.testid)).toEqual(["grid-cell-0-0"]);
+  stops[0]!.focus();
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+  expect(document.activeElement).toBe(screen.getByTestId("grid-cell-1-0"));
+});
