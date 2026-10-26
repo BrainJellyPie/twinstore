@@ -238,7 +238,7 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)}
               onDeleted={(wasActive) => { if (wasActive) select(""); newJob.current?.focus(); /* the deleted item held focus */ }} />)}
           </aside>
-          <main className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+          <section className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} onDuplicate={duplicateExperiment} /> : setup.data?.store ? (
               <ExperimentBuilder key={`${activeSetup}:${abDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} products={products}
                 store={setup.data.store} currency={currency} initial={abDraft?.req}
@@ -268,7 +268,7 @@ export function MarketingPage({ projectId, tool, onToolChange }: {
                 prefill={prefillReady && prefill?.tab === "pitch" ? prefill : undefined} onPrefillHandled={prefillHandled}
                 personaCount={project.data?.personas.length ?? 0} onStarted={(j) => select(j.job_id)} />
             ) : <Loading />)}
-          </main>
+          </section>
         </div>
       )}
     </div>

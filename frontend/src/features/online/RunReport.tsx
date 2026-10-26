@@ -277,7 +277,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
         </Section>
       )}
 
-      <div id="online-changed" className="scroll-mt-16 empty:hidden"><WhoChanged result={result} money={money} onReplay={(variant, shopper) => onJourney({ variant, shopper })}
+      <div id="online-changed" className="empty:hidden"><WhoChanged result={result} money={money} onReplay={(variant, shopper) => onJourney({ variant, shopper })}
         onCompare={(variant, shopper) => onJourney({ variant, shopper, compare: true })} /></div>
 
       {customers && (
@@ -291,7 +291,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
           controlSiteId={result.variants[0]?.site_id} onTry={onTry} />
       </Section>
 
-      <div id="online-funnel" tabIndex={-1} className="grid grid-cols-1 scroll-mt-16 gap-3 outline-none xl:grid-cols-2">
+      <div id="online-funnel" tabIndex={-1} className="grid grid-cols-1 gap-3 outline-none xl:grid-cols-2">
         <Section icon={Filter} title={t("onFunnel")}>
           {v.length > 1 && <StoreKey names={names} />}
           <FunnelChart variants={v} />
@@ -315,14 +315,14 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
         </Section>
       )}
 
-      <div id="online-ads" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
-      <div id="online-recovery" className="scroll-mt-16 empty:hidden"><Recovery variants={v} money={money} pct={pct} /></div>
-      <div id="online-rival" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
-      <div id="online-frictions" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Frictions variants={v} money={money} pct={pct} /></div>
-      <div id="online-surveys" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Surveys variants={v} pct={pct} /></div>
-      <div id="online-segments" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
+      <div id="online-ads" tabIndex={-1} className="outline-none empty:hidden"><Ads result={result} money={money} pct={pct} /></div>
+      <div id="online-recovery" className="empty:hidden"><Recovery variants={v} money={money} pct={pct} /></div>
+      <div id="online-rival" tabIndex={-1} className="outline-none empty:hidden"><Rival result={result} money={money} pct={pct} /></div>
+      <div id="online-frictions" tabIndex={-1} className="outline-none empty:hidden"><Frictions variants={v} money={money} pct={pct} /></div>
+      <div id="online-surveys" tabIndex={-1} className="outline-none empty:hidden"><Surveys variants={v} pct={pct} /></div>
+      <div id="online-segments" tabIndex={-1} className="outline-none empty:hidden"><Segments result={result} money={money} pct={pct} /></div>
 
-      <div id="online-products" tabIndex={-1} className="grid grid-cols-1 scroll-mt-16 gap-3 outline-none xl:grid-cols-2">
+      <div id="online-products" tabIndex={-1} className="grid grid-cols-1 gap-3 outline-none xl:grid-cols-2">
         <Section icon={Search} title={t("onSearches")} hint={t("onSearchesHint")}>
           {v.map((s, si) => (
             <div key={s.site_id}>
@@ -364,7 +364,7 @@ function Report({ projectId, result, onJourney, onTry, customers }: {
         </Section>
       </div>
 
-      <div id="online-clicks" tabIndex={-1} className="scroll-mt-16 outline-none empty:hidden"><Heatmap variants={v} /></div>
+      <div id="online-clicks" tabIndex={-1} className="outline-none empty:hidden"><Heatmap variants={v} /></div>
     </>
   );
 }
@@ -723,7 +723,7 @@ function jumpTo(id: string) {
 
 function Section({ id, icon: Icon, title, hint, children }: { id?: string; icon?: LucideIcon; title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section id={id} tabIndex={id ? -1 : undefined} className="reveal panel flex min-w-0 scroll-mt-16 flex-col gap-3 rounded-[1.6rem] p-4 text-sm outline-none sm:p-5">
+    <section id={id} tabIndex={id ? -1 : undefined} className="reveal panel flex min-w-0 flex-col gap-3 rounded-[1.6rem] p-4 text-sm outline-none sm:p-5">
       <div className="flex items-start gap-3">
         {Icon && (
           <span className="grid size-9 shrink-0 place-items-center rounded-xl heat-gradient text-white dark:text-neutral-950 shadow-[0_8px_24px_-8px_var(--heat-2)]" aria-hidden>

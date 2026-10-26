@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Tabbing through an online run's report no longer leaves the focused button
+  under the floating **Watch a shopper** bar at the bottom, or (on a phone,
+  going back with Shift+Tab) under the sticky section bar at the top. The
+  online and studio pages also stop announcing a second "main" region inside
+  the app's own.
+
 - On phones and tablets, the delete buttons of studies, library products and
   saved interview groups are shown; they appeared only when a mouse hovered
   over the card, so a touch screen never showed them. The online report's
