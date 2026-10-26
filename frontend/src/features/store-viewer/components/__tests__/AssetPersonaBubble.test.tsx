@@ -40,3 +40,16 @@ it("drops a shopper's speech bubble once the day shows Closed", async () => {
   expect(html.rendered.some((markup) => markup.includes("Walks directly to the fridge."))).toBe(false);
   await renderer.unmount();
 });
+
+it("wraps a long thought or checkout description but keeps a purchase on one line", async () => {
+  const pay: TimelineEvent = { ...walk, action: "pay", description: "Places the pistachios, beef jerky, KIND bars and gelato on the counter." };
+  const buy: TimelineEvent = { ...walk, action: "buy", product_name: "Cherry Coke 20oz", price: 199 };
+  for (const [event, wraps] of [[walk, true], [pay, true], [buy, false]] as const) {
+    html.rendered = [];
+    const renderer = await create(<AssetPersona personaId="p1" gender="Female" facing={0} isMoving color="#ddd" label="Student" event={event} />);
+    const bubble = html.rendered.find((markup) => markup.includes(event.product_name || event.description))!;
+    expect(bubble.includes("white-space:nowrap")).toBe(!wraps);
+    expect(bubble.includes("-webkit-line-clamp:3")).toBe(wraps);
+    await renderer.unmount();
+  }
+});

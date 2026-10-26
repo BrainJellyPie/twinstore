@@ -34,7 +34,9 @@
 
 - A shopper's thought on the store floor wraps into a small card of at most
   three lines; a model's long thought ran as one line across the store and
-  under the playback panel. Purchases still read on one line. Shoppers' group
+  under the playback panel. A checkout description wraps the same way
+  ("Places the pistachios, beef jerky… on the counter" ran 600 px wide);
+  purchases still read on one line. Shoppers' group
   labels sit on small solid pills and bubbles are opaque, so where shoppers
   stand close the nearer one covers the farther instead of their text printing
   over each other ("MCorporate executivesrs").
