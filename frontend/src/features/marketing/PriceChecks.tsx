@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const FLAGS: Record<CheckFlag, MessageKey> = { missing_label: "mkPcFlagMissingLabel", missing_checkout: "mkPcFlagMissingCheckout", sku_mismatch: "mkPcFlagSku", pack_mismatch: "mkPcFlagPack", currency_mismatch: "mkPcFlagCurrency", outside_audit_date: "mkPcFlagDate", terms_unverified: "mkPcFlagTerms" };
 const RELATIONS: Record<string, MessageKey> = { checkout_higher: "mkPcRelHigher", checkout_lower: "mkPcRelLower", equal: "mkPcRelEqual", unavailable: "studioUnavailable" };
@@ -55,7 +56,7 @@ export function PriceChecks({ projectId }: { projectId: string }) {
     {preview.isPending && <p>{t("mkPcReconciling")}</p>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {report && <div className="space-y-3">
-      <p>{t("mkPcSummary", { comparable: report.rows.length - report.excluded_count, total: report.rows.length, excluded: report.excluded_count, labels: report.label_count, checkouts: report.checkout_count })}</p>
+      <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkPcSummary", { comparable: report.rows.length - report.excluded_count, total: report.rows.length, excluded: report.excluded_count, labels: report.label_count, checkouts: report.checkout_count })}</p>
       <p className="break-words">{t("mkPcScope", { store: report.scope.store_ref, date: report.scope.audit_date })}</p>
       <p className="text-xs">{t("mkPcDiffHint")}</p>
       {report.totals.length ? <div className="overflow-x-auto"><table className="w-full text-xs"><caption className="text-left">{t("mkPcByCurrency")}</caption><thead><tr className="text-left"><th>{t("mkColCurrency")}</th><th>{t("mkColComparable")}</th><th>{t("mkColHigherLowerEqual")}</th><th>{t("mkColPositiveSum")}</th><th>{t("mkColNegativeSum")}</th><th>{t("mkColNetSum")}</th></tr></thead><tbody>{report.totals.map((total) => <tr key={total.currency} className="border-t"><th className="py-2 text-left">{total.currency}</th><td>{total.comparable}</td><td>{total.higher} / {total.lower} / {total.equal}</td><td>{total.positive_difference_minor}</td><td>{total.negative_difference_minor}</td><td>{total.net_difference_minor}</td></tr>)}</tbody></table></div> : <p>{t("mkPcNoPairs")}</p>}

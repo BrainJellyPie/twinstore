@@ -10,9 +10,7 @@ import type { Variant } from "@/shared/api/marketing";
 import { listSites, onlineKeys, variantFromTest, type SiteSummary } from "@/shared/api/online";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
-
-// Stable, so a re-render does not pull focus back.
-const focusOnMount = (el: HTMLElement | null) => el?.focus();
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 
 export function TestOnline({ projectId, testName, variant, currency }: {
   projectId: string; testName: string; variant: Variant; currency: string;

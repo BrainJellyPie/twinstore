@@ -10,6 +10,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { useI18n } from "@/shared/i18n/i18n";
 import { Input } from "@/shared/components/ui/input";
 import { PilotPosReconciliation } from "./PilotPosReconciliation";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 export function PilotObservationReview({ projectId, pilot, disabled, onActive, onSaved }: {
   projectId: string; pilot: FieldPilot; disabled: boolean; onActive: (active: boolean) => void;
@@ -48,7 +49,7 @@ export function PilotObservationReview({ projectId, pilot, disabled, onActive, o
     <p className="text-xs text-muted-foreground">{t("mkReviewSheetHint")}</p>
     {preview.isPending && <p className="text-sm">{t("mkCheckingSheet")}</p>}
     {review && <div className="space-y-3">
-      <h4 className="text-sm font-semibold">{t("mkProposedChanges", { revision: String(review.preview.revision), file: review.file.name })}</h4>
+      <h4 ref={revealOnMount} tabIndex={-1} className="rounded-md text-sm font-semibold outline-offset-4">{t("mkProposedChanges", { revision: String(review.preview.revision), file: review.file.name })}</h4>
       <DiffSummary summary={review.preview.summary} />
       {review.preview.summary.changed_fields ? <>
         <ObservationChanges key={review.preview.review_token} changes={review.preview.changes} />

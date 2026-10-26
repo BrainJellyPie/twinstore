@@ -9,9 +9,7 @@ import { applyLayoutEdit, checkLayoutEdit, type Variant } from "@/shared/api/mar
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
-
-// Stable, so a re-render does not pull focus back.
-const focusOnMount = (el: HTMLElement | null) => el?.focus();
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 
 export function KeepAsLayout({ projectId, setupId, variant, currency, hint }: {
   projectId: string; setupId: string; variant: Variant;

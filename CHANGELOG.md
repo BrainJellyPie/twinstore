@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The studio's file reviews (price checks, unit prices, inventory, pilot
+  timing, pilot observations and till records) bring their result into view
+  and move focus to its summary when it is ready. The result opened below the
+  button, out of sight on a laptop screen, so a review looked as if nothing
+  had happened.
 - Names cut short with "…" show in full on hover: studio tests, online stores
   and runs, products in rack details, top items and rack rankings, real-map
   shops, conjoint attributes and the home page's last store.

@@ -27,7 +27,8 @@ it("connects two exact input files and scope to the API and displays signed diff
   render(<PriceChecks projectId="p" />, { wrapper });
   const button = screen.getByRole("button", { name: "Review price checks" }) as HTMLButtonElement;
   expect(button.disabled).toBe(true); fill(); fireEvent.click(button);
-  expect(await screen.findByText(/1 \/ 1 checks comparable/)).toBeTruthy();
+  const summary = await screen.findByText(/1 \/ 1 checks comparable/);
+  expect(document.activeElement).toBe(summary);  // the result opens below the button; focus takes the reader there
   expect(screen.getByText("Checkout lower")).toBeTruthy(); expect(screen.getAllByText("-10")).toHaveLength(3);
   const [url, init] = fetchMock.mock.calls[0]!; const body = init?.body as FormData;
   expect(url).toContain("/p/price-checks/preview"); expect(body.get("store_ref")).toBe("ours"); expect(body.get("audit_date")).toBe("2026-10-21");
