@@ -25,8 +25,14 @@ without deletion. Existing saved customers are not rewritten.
 ## Actual CPU observations and the repair limit
 
 Qwen3.5-2B Q4_K_M, mmproj F16, llama.cpp b11878, five CPU threads,
-no GPU, 8,192-token context, reasoning disabled. These customer-writer
-requests use the production temperature **1**, not temperature zero.
+no GPU, 8,192-token context, reasoning disabled. The fresh baseline/final
+requests and the two live correction requests in this report used
+temperature **0**. The historical duplicate reply from 405 was generated
+at temperature **1**, which is the default customer-writer setting.
+The previous version of this paragraph incorrectly labelled this cycle's
+new requests as temperature 1; their saved request/result artifacts were
+audited and this description corrected during cycle 417. These runs alone
+do not test the production sampling setting.
 The fixture has two fixed customer identities and two supplied categories.
 Times are observations; server prompt-prefix caching may vary.
 
