@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Shelf Lab's product slots can be filled from a list of the shelf's products
+  as well as by clicking the photo, so a swap, extension or any other change
+  can be set up from the keyboard. The button that clears a slot is no longer
+  nested inside the slot's own button.
+
 - A captured product's facings stay between 1 and 24, the most the server
   saves. The plus button used to go past 24, and saving then failed. At either
   limit the button shows as unavailable but keeps keyboard focus, and screen
