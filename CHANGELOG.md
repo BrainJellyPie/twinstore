@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The Area page's neighborhood generator sends rivals and seed as whole
+  numbers within limits. Typing 2.5, -4 or 75 rivals, or a decimal seed, made
+  the server reject the request.
+
 - Neighbor synergy on the Area page now scrolls to its results when the
   analysis finishes and moves focus there, instead of leaving focus on the
   page after the button disabled itself. A failed analysis is announced next to

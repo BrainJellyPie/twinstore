@@ -230,6 +230,15 @@ it("creates the first neighborhood without asking", async () => {
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledOnce());
 });
 
+it.each([["2.5", 2], ["-4", 0], ["75", 60], ["", null]])("sends rivals typed as %j as a count the server accepts", async (typed, sent) => {
+  vi.mocked(api.generateTown).mockResolvedValue(town);
+  await mount();
+  fireEvent.change(await screen.findByRole("spinbutton", { name: "Rivals" }), { target: { value: typed } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Seed" }), { target: { value: "3.7" } });
+  fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ n_competitors: sent, seed: 3 })));
+});
+
 it("says once that no visitors are expected instead of showing zero distances and walks", async () => {
   vi.mocked(api.getTown).mockResolvedValue(town);
   vi.mocked(api.getTownDemand).mockImplementation(async (_pid, day) => day === "weekend"

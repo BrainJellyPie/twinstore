@@ -333,9 +333,9 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRivals")}</span>
-          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} aria-label={t("areaRivals")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 w-20 text-xs" />
+          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} aria-label={t("areaRivals")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Math.min(60, Math.max(0, Math.trunc(Number(e.target.value)))) })} className="h-7 w-20 text-xs" />
           <span className="w-14 text-muted-foreground">{t("areaSeed")}</span>
-          <Input type="number" aria-label={t("areaSeed")} value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Number(e.target.value) || 0 })} className="h-7 w-20 text-xs" />
+          <Input type="number" aria-label={t("areaSeed")} value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Math.trunc(Number(e.target.value) || 0) })} className="h-7 w-20 text-xs" />
         </label>
         <div>
           <div className="mb-1 text-muted-foreground">{t("areaNextToUs")}</div>
