@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
@@ -53,4 +53,16 @@ it("marks a store tab current on its page only, not on an unknown address under 
   cleanup();
   show("/projects/proj_a/oops", ["proj_a"]);
   expect(screen.queryByRole("link", { current: "page" })).toBeNull();
+});
+
+it("names the page and the store in the browser tab's title", async () => {
+  vi.mocked(api.getProject).mockResolvedValue({ metadata: { name: "Corner Mart" } } as never);
+  show("/marketing/proj_a", ["proj_a"]);
+  await waitFor(() => expect(document.title).toBe("Marketing studio · Corner Mart · TwinStore"));
+  cleanup();
+  show("/settings", ["proj_a"]);
+  expect(document.title).toBe("Model providers · TwinStore");
+  cleanup();
+  show("/", ["proj_a"]);
+  expect(document.title).toBe("TwinStore");
 });

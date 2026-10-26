@@ -75,6 +75,7 @@ export function TownPage({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row">
+      <h1 className="sr-only">{t("neighborhood")}</h1>
       <div className="relative m-3 h-[28rem] min-w-0 shrink-0 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)] lg:mr-0 lg:h-auto lg:min-h-64 lg:flex-1">
         {town ? (
           <>

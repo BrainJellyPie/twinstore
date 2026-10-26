@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The browser tab names the page and the store ("Marketing studio · Corner
+  Mart · TwinStore"), so tabs, history and screen readers tell pages apart; it
+  always read "TwinStore". The floor, area and capture pages also give screen
+  readers a page heading, as the other pages do, and side panels say "Close"
+  in the selected language.
 - Fields that had only a placeholder or a shared label now have their own
   names for screen readers: the shelf test's new price, the test and study
   names, the concept test's brief, and the area page's address, rivals and

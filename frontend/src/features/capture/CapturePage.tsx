@@ -61,6 +61,7 @@ export function CapturePage({ projectId }: { projectId: string }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:min-h-0">
+        <h1 className="sr-only">{t("shelfCapture")}</h1>
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
         {selected && hasSavedQueue && <Button variant="outline" onClick={() => select(null)}>{t("capContinueQueue")}</Button>}
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
