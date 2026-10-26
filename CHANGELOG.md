@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Guide automatic starter selection to retain suitable shelf categories unless
+  the store requirements override them. Put the actual store task after the
+  catalog vocabulary, reducing unrelated assortment substitutions by small
+  local models. Extend CPU probes to check shelf purposes as well as valid IDs.
+
 - Keep advertised price limits ("FROM $1.00", "UNDER $1.00", "1,000원부터")
   from becoming exact captured selling prices. Preserve the printed label,
   mark the fallback as estimated and retain existing matched-product prices.
