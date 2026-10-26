@@ -114,7 +114,7 @@ export function DiffForest({ rows }: { rows: ForestRow[] }) {
           <div key={r.key} tabIndex={0} onPointerEnter={() => setHover(r.key)} onPointerLeave={() => setHover(null)}
             onFocus={() => setHover(r.key)} onBlur={() => setHover(null)}
             className="grid grid-cols-[minmax(6.5rem,10rem)_minmax(0,1fr)_minmax(6rem,8.5rem)] items-center gap-3 rounded-lg px-1.5 py-1 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50">
-            <div className="min-w-0 truncate text-xs font-medium">{r.label}</div>
+            <div className="line-clamp-2 min-w-0 text-xs leading-tight font-medium" title={r.label}>{r.label}</div>
             <div className="relative h-7">
               <div className="absolute inset-y-1 left-1/2 w-px bg-foreground/25" aria-hidden />
               {r.low !== null && r.high !== null && (

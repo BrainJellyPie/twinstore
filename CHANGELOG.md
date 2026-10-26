@@ -67,6 +67,12 @@
   buildings no longer show through its labels, and the area's figure tiles
   wrap their notes to two lines instead of cutting them off ("of convenience
   trips in to…").
+- Give shopper names, age, gender and device more room on phone cards
+  (even "Graduate student" was cut off, and in French at any width): the
+  shopping mission now leads the goal line. Online report change labels such
+  as "Revenu de la concurrente par visite" wrap to two lines, the store card's
+  links wrap ("マーケティング"), and long run names, goals and page titles show
+  in full on hover.
 - The top bar no longer marks **Floor** (or another store tab) as the current
   page on an address under a store that matches no page.
 - A store whose brand colour is near black (Threadline's navy) keeps a
