@@ -54,7 +54,8 @@ def test_a_request_in_words_becomes_a_checked_draft_and_nothing_is_saved(client:
     assert set(reply["changed"]) == {"page_style", "theme_color", "shipping_fee", "hero_text"}  # urgency was already off
     system, user = fake.calls[0]
     assert "luxury" in system and "major units of USD" in system and "Write reply in English." in system
-    assert "page_style: classic" in user and user.endswith("Owner: Make it feel premium and calm, cheaper delivery")
+    assert "page_style: classic" in user and "Owner: Make it feel premium and calm, cheaper delivery" in user
+    assert "Return the edit result:" in user and "not a JSON schema" in user
     assert client.get(f"/api/projects/{PID}/online/sites/{site['id']}").json()["options"] == site["options"]
 
     # The next turn edits the draft, not the saved store, and sees the whole conversation.
@@ -67,6 +68,24 @@ def test_a_request_in_words_becomes_a_checked_draft_and_nothing_is_saved(client:
     second = r.json()
     assert second["options"]["page_style"] == "luxury" and second["options"]["quick_add"] is True
     assert second["changed"] == ["quick_add"]
+
+
+def test_an_unchanged_fee_cannot_hide_a_claimed_threshold_change(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    site = client.post(f"/api/projects/{PID}/online/sites", json={"template_id": "pet_store"}).json()
+    draft = {**site["options"], "shipping_fee": 499, "free_shipping_threshold": 3500}
+    _fake(monkeypatch, {
+        "updates": [{"option": "shipping_fee", "value": 4.99}],
+        "reply": "I've updated the shipping fee to $4.99 on every order, removing the free shipping threshold.",
+    })
+    response = client.post(f"/api/projects/{PID}/online/sites/{site['id']}/design-chat", json={
+        "options": draft,
+        "messages": [{"role": "owner", "text": "Disable free shipping entirely. Charge $4.99 on every order."}],
+    })
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["options"] == draft and result["changed"] == []
+    assert result["unapplied"] == ["free_shipping_threshold"]
+    assert client.get(f"/api/projects/{PID}/online/sites/{site['id']}").json()["options"] == site["options"]
 
 
 def test_a_question_back_changes_nothing_and_bad_proposals_are_refused(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -119,8 +138,8 @@ def test_long_history_keeps_current_design_and_the_full_latest_request(client, m
     prompt = fake.calls[0][1]
     assert "theme_color: #ABCDEF" in prompt and "12.34" in prompt
     assert "Old request 0:" not in prompt
-    assert prompt.endswith("Owner: " + latest)
-    conversation = prompt.split("\n\nConversation:\n", 1)[1]
+    conversation = prompt.split("\n\nConversation:\n", 1)[1].split("\n\nReturn the edit result:", 1)[0]
+    assert conversation.endswith("Owner: " + latest)
     notice, recent = conversation.split("\n", 1)
     assert "Earlier messages omitted" in notice
     assert recent.startswith("Owner:")

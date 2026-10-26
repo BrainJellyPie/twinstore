@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Distinguish delivery fees from free-delivery thresholds in AI design edits,
+  including zero and fractional thresholds. Give JSON-mode models a concrete
+  result-format reminder to avoid copying the response schema. Report explicit
+  threshold claims as unapplied when the model only set the delivery fee.
+
 - Keep the actual model-selection reason visible for a manual model override
   or a GPU-to-CPU fallback, instead of replacing it with the automatic
   recommendation. A disabled local model's setup guidance directs users to

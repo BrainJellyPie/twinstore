@@ -51,6 +51,12 @@ a dark theme colour, no urgency or popups). Do not undo earlier changes unless a
 Examples: "Change ONLY the color to #00AA33" => updates=[{{"option":"theme_color","value":"#00AA33"}}].
 "Remove the welcome popup" => updates=[{{"option":"welcome_popup","value":"none"}}].
 "Free delivery" => updates=[{{"option":"shipping_fee","value":0}}]. Never change unrelated options.
+"Free delivery and remove the welcome popup" => updates=[{{"option":"shipping_fee","value":0}},{{"option":"welcome_popup","value":"none"}}].
+Cover every requested change when the owner combines several instructions.
+"Free shipping from an order total of 20; keep the shipping fee" => updates=[{{"option":"free_shipping_threshold","value":20}}].
+"Set the free-delivery threshold to zero; keep the shipping fee" => updates=[{{"option":"free_shipping_threshold","value":0}}].
+shipping_fee is the charge below the free_shipping_threshold; the threshold is the order total that qualifies for free delivery.
+When asked to change only the threshold, set free_shipping_threshold and leave shipping_fee unchanged, including for a threshold of zero.
 
 ## Language
 Write reply in English."""
@@ -176,7 +182,8 @@ _MENTION_PATTERNS: list[tuple[str, str, tuple[str, ...]]] = [
     ("cookie banner", r"\bcookies?\b", ("cookie_banner",)),
     ("chat widget", r"\bchat\b", ("chat_widget",)),
     ("trust badges", r"\btrust\b", ("trust_badges",)),
-    ("delivery fees", r"\bshipping\b|\bdelivery\b", ("shipping_fee", "free_shipping_threshold")),
+    ("free-delivery threshold", r"\bfree[- ](?:shipping|delivery)[- ]threshold\b", ("free_shipping_threshold",)),
+    ("delivery fees", r"\b(?:shipping|delivery)\b(?![- ]threshold\b)", ("shipping_fee", "free_shipping_threshold")),
     ("coupon", r"\bcoupons?\b|\b(discount|promo) code\b", ("coupon_code", "coupon_percent", "welcome_popup")),
     ("guest checkout", r"\bguest\b", ("guest_checkout",)),
     ("checkout steps", r"\bone[- ]page checkout\b|\bmulti[- ]step\b|\bcheckout (steps|flow)\b", ("checkout_flow",)),
@@ -236,7 +243,10 @@ async def chat_design(llm: StructuredLLM, site: OnlineSite, options: SiteOptions
     if start:
         talk = "[Earlier messages omitted; the current design above is authoritative.]\n" + talk
     system = DESIGN_PROMPT.format(styles=", ".join(PAGE_STYLES), currency=site.currency.upper())
-    user = f"{_describe(site, options)}\n\nConversation:\n{talk}"
+    user = (f"{_describe(site, options)}\n\nConversation:\n{talk}\n\n"
+            'Return the edit result: {"updates":[{"option":"the_option_to_change","value":"its new value"}],"reply":"your answer"}. '
+            "Use the option's actual value type and an empty updates list when nothing should change. "
+            "Return actual changes, not a JSON schema; do not copy $defs, properties, required or type definitions.")
     reply = await llm.generate_structured_async(DesignReply, system, user, max_retries=2, seed=0)
     if reply.changes.model_dump(exclude_none=True) or reply.reply.rstrip().endswith("?"):
         return reply

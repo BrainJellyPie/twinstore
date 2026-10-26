@@ -97,6 +97,11 @@ design_requests = {
     "design-free-popup-scan": "Set delivery to free and remove the welcome popup. Keep every other option unchanged.",
     "design-neon": "Change only the page style to neon. Keep every other option unchanged.",
     "design-calm": "Make the shop feel premium and calm. Remove pressure tactics. Keep shipping fees and all discount amounts unchanged.",
+    "design-no-free-shipping": "Disable free shipping entirely. Charge $4.99 shipping on every order, regardless of the order total. Do not change any other option.",
+    "design-always-free": "Set the free-shipping threshold to zero so every order gets free shipping. Keep the stored shipping fee and all other options unchanged.",
+    "design-threshold-usd": "Set the free-shipping threshold to $50. Keep the stored shipping fee and all other options unchanged.",
+    "design-threshold-fractional": "Set the free-shipping threshold to $7.25. Keep the stored shipping fee and all other options unchanged.",
+    "design-threshold-krw": "무료 배송 기준을 30,000원으로 바꿔주세요. 기존 배송비와 다른 설정은 그대로 두세요.",
 }
 layout_requests = {
     "layout-price-krw": "Green Tea 가격만 3,000원으로 바꿔 주세요. 다른 상품이나 설정은 그대로 유지해 주세요.",
@@ -209,10 +214,10 @@ result = {"case": args.case, "model": args.model, "endpoint": args.endpoint, "st
           "cache_replay_from": str(args.cache_from) if args.cache_from else None}
 try:
     if args.case in design_requests:
-        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history"} else "USD")
+        site = build_site("fashion", site_id="cpu-probe", currency="KRW" if args.case in {"design-color-ko", "design-long-history", "design-threshold-krw"} else "USD")
         site.options.welcome_popup = "coupon"
         site.options.coupon_percent = 15
-        site.options.shipping_fee = 499
+        site.options.shipping_fee = 4990 if args.case == "design-threshold-krw" else 499
         before = site.options.model_dump(mode="json")
         messages = [DesignMessage(role="owner", text=design_requests[args.case])]
         if args.case == "design-long-history":
@@ -229,10 +234,17 @@ try:
             "design-free-popup-scan": {"shipping_fee": 0, "welcome_popup": "none"},
             "design-neon": {"page_style": "neon"},
             "design-calm": {"urgency": False, "social_proof": False, "welcome_popup": "none"},
+            "design-no-free-shipping": {},
+            "design-always-free": {"free_shipping_threshold": 0},
+            "design-threshold-usd": {"free_shipping_threshold": 5000},
+            "design-threshold-fractional": {"free_shipping_threshold": 725},
+            "design-threshold-krw": {"free_shipping_threshold": 30000},
         }[args.case]
         allowed = set(expected) | ({"page_style", "theme_color"} if args.case == "design-calm" else set())
         issues = [f"Expected {key}={value!r}, received {after[key]!r}" for key, value in expected.items() if after[key] != value]
         issues += [f"Unrequested change: {key}" for key in changed if key not in allowed]
+        if args.case == "design-no-free-shipping" and (reply.changes.model_dump(exclude_none=True) or not reply.reply.rstrip().endswith("?")):
+            issues.append("An unavailable never-free-shipping policy needs clarification without setting contradictory options.")
         if args.case == "design-free-popup-scan":
             captured = []
 

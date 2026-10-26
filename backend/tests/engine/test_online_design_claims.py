@@ -28,6 +28,16 @@ def test_option_names_in_a_reply_read_as_the_changes_they_name():
         "page_style", "shipping_fee", "coupon_code", "guest_checkout", "checkout_flow", "page_load_ms"]
 
 
+@pytest.mark.parametrize("name", ["free shipping threshold", "free-delivery threshold", "free_shipping_threshold"])
+def test_setting_a_shipping_fee_does_not_cover_an_unset_threshold_claim(name):
+    # Actual CPU reply set the already-current shipping fee and claimed this threshold was removed.
+    reply = f"I've set the shipping fee to $4.99 on every order, removing the {name}."
+    assert unapplied_mentions(reply, ["shipping_fee"]) == ["free_shipping_threshold"]
+    assert unapplied_mentions(reply, ["shipping_fee", "free_shipping_threshold"]) == []
+    assert unapplied_mentions(f"I changed the {name}.", []) == ["free_shipping_threshold"]
+    assert unapplied_mentions(f"I changed the {name}.", ["free_shipping_threshold"]) == []
+
+
 @pytest.mark.parametrize("reply,set_options", [
     ("I added a cookie banner at the bottom.", ["cookie_banner"]),  # not the hero banner
     ("A luxury style with a deep navy colour, and no popup.", ["page_style", "theme_color", "welcome_popup"]),
