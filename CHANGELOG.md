@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Starting a run from **Run simulation…** moves focus to **Play** once the
+  run shows, ready for Space; the dialog's opener was replaced by the run and
+  focus fell back to the top of the page.
 - **Model providers** says why it chose the local model in the selected
   language ("CPU 코어: 4, 여유 메모리: 14GB — 실행을 빠르게 유지하는 0.8B 모델");
   the reason was the server's English in every language. The local model plan

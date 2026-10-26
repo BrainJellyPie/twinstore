@@ -146,6 +146,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               </Button>
               <button
                 type="button"
+                data-playback-play
                 disabled={disabled}
                 onClick={togglePlay}
                 title={playing ? t("pbPauseSpace") : t("pbPlaySpace")}
