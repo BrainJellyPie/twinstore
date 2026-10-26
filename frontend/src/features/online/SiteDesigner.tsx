@@ -91,7 +91,7 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
     mutationFn: async () => {
       await saveSite(projectId, draft);
       return copySite(projectId, site.id, {
-        name: t("onNoAdsName", { name: draft.name }).slice(0, 60), note: t("onNoAdsNote"),
+        name: Array.from(t("onNoAdsName", { name: draft.name })).slice(0, 60).join(""), note: t("onNoAdsNote"),
         ads: ads.map((ad) => ({ ...ad, active: false })),
       });
     },
@@ -109,7 +109,7 @@ function Designer({ projectId, site, onCopied, onDeleted, onTest, turns, onTurns
   const test = useMutation({
     // The design as it stands, as a variant of the saved store; products and ads stay the store's.
     mutationFn: (asked: string) => copySite(projectId, site.id, {
-      name: t("onAiVariantName", { name: site.name }).slice(0, 60), note: asked.slice(0, 400), options,
+      name: Array.from(t("onAiVariantName", { name: site.name })).slice(0, 60).join(""), note: Array.from(asked).slice(0, 400).join(""), options,
     }),
     onSuccess: async (copy) => { await refresh(); onTest(copy.id); },
   });

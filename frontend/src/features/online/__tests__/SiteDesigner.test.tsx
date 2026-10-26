@@ -503,3 +503,15 @@ it.each([
   await waitFor(() => expect(online.designChat).toHaveBeenCalledOnce());
   expect(vi.mocked(online.designChat).mock.calls[0]![2].messages).toEqual([{ role: "owner", text: expected }]);
 });
+
+it("keeps a whole emoji when a generated store or ad name reaches its length limit", async () => {
+  // 59 letters and an emoji: cutting at 60 UTF-16 units would leave half the emoji, which the server rejects.
+  const long = `${"a".repeat(59)}👕`;
+  vi.mocked(online.getSite).mockResolvedValue({ ...source, name: long, products: [{ ...source.products[0]!, name: long }], ads: [ad] });
+  vi.mocked(online.saveSite).mockImplementation(async (_pid, site) => site);
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Make a version without ads" }));
+  await waitFor(() => expect(online.copySite).toHaveBeenCalledWith("p1", "s1", expect.objectContaining({ name: long })));
+  fireEvent.click(await screen.findByRole("button", { name: "Add an ad" }));
+  expect(screen.getAllByRole("textbox", { name: "Ad name" }).map((input) => (input as HTMLInputElement).value)).toEqual(["Shirt banner", long]);
+});

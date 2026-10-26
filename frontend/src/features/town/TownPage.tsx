@@ -23,9 +23,11 @@ import { ModelWaiting } from "@/shared/components/ModelWaiting";
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, labelOf, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
 import { formatPercent } from "@/shared/utils/money";
+import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
 const DAY_LABELS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekday", weekend: "areaDayWeekend", holiday: "areaDayHoliday" };
+const DAY_OPTIONS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekdayOption", weekend: "areaDayWeekendOption", holiday: "areaDayHolidayOption" };
 
 export function TownPage({ projectId }: { projectId: string }) {
   const { t } = useI18n();
@@ -123,7 +125,6 @@ export function TownPage({ projectId }: { projectId: string }) {
         {town && <TownSummary town={town} />}
         {town && loadError}
         {error && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
-        {analysisError && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{analysisError.message}</p>}
         {(townQ.isSuccess || town) && <>
           <GeneratePanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
           <ImportPanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
@@ -135,8 +136,8 @@ export function TownPage({ projectId }: { projectId: string }) {
               <h3 className="font-medium">{t("areaOurCustomers")}</h3>
               <div className="inline-flex rounded-md border p-0.5 text-xs">
                 {(["weekday", "weekend", "holiday"] as TownDayType[]).map((d) => (
-                  <button key={d} type="button" onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
-                    {t(DAY_LABELS[d])}
+                  <button key={d} type="button" aria-pressed={dayType === d} onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+                    {t(DAY_OPTIONS[d])}
                   </button>
                 ))}
               </div>
@@ -167,6 +168,7 @@ export function TownPage({ projectId }: { projectId: string }) {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">{t("areaSynergyHint")}</p>
+            {analysisError && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{analysisError.message}</p>}
             {synergy && <SynergyTable rows={synergy} onAskShoppers={setVlmVenue} />}
           </section>
         )}
@@ -182,8 +184,8 @@ function MapToolbar({
 }: { mode: MapMode; setMode: (m: MapMode) => void; category: VenueCategory; setCategory: (c: VenueCategory) => void; busy: boolean }) {
   const { t } = useI18n();
   const btn = (m: MapMode, Icon: typeof MousePointer2, label: string) => (
-    <button type="button" onClick={() => setMode(m)} className={cn("flex items-center gap-1 rounded px-2 py-1", mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
-      <Icon className="size-3.5" /> {label}
+    <button type="button" aria-pressed={mode === m} onClick={() => setMode(m)} className={cn("flex items-center gap-1 rounded px-2 py-1", mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+      <Icon className="size-3.5" aria-hidden /> {label}
     </button>
   );
   return (
@@ -332,9 +334,9 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRivals")}</span>
-          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} aria-label={t("areaRivals")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 w-20 text-xs" />
+          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} aria-label={t("areaRivals")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Math.min(60, Math.max(0, Math.trunc(Number(e.target.value)))) })} className="h-7 w-20 text-xs" />
           <span className="w-14 text-muted-foreground">{t("areaSeed")}</span>
-          <Input type="number" aria-label={t("areaSeed")} value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Number(e.target.value) || 0 })} className="h-7 w-20 text-xs" />
+          <Input type="number" aria-label={t("areaSeed")} value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Math.trunc(Number(e.target.value) || 0) })} className="h-7 w-20 text-xs" />
         </label>
         <div>
           <div className="mb-1 text-muted-foreground">{t("areaNextToUs")}</div>
@@ -342,7 +344,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
             {neighborChoices.map((c) => {
               const on = spec.neighbor_categories.includes(c);
               return (
-                <button key={c} type="button" onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
+                <button key={c} type="button" aria-pressed={on} onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
                   className={cn("rounded-full border px-2 py-0.5", on ? "border-primary bg-primary/10" : "hover:bg-muted")}>
                   {t(VENUE_LABELS[c])}
                 </button>
@@ -472,7 +474,7 @@ function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppe
   const { t } = useI18n();
   const sorted = [...rows].sort((a, b) => Math.abs(b.effect_on_focal_visitors) - Math.abs(a.effect_on_focal_visitors));
   return (
-    <div className="max-h-[22rem] overflow-y-auto pr-1">
+    <div ref={revealOnMount} tabIndex={-1} className="max-h-[22rem] overflow-y-auto rounded-md pr-1 outline-offset-4">
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
         <tr><th className="text-left font-normal">{t("areaColVenue")}</th><th className="text-right font-normal">{t("areaColDistance")}</th><th className="text-right font-normal">{t("areaColEffect")}</th><th /></tr>

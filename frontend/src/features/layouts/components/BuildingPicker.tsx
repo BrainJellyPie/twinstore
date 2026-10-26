@@ -42,7 +42,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
 
   const duplicateFloor = () => {
     if (!floor || floors.length >= 6) return;
-    const base = floor.label.trim().slice(0, 68) || t("layFloorFallbackName");
+    const base = Array.from(floor.label.trim()).slice(0, 68).join("") || t("layFloorFallbackName");
     const copyName = (number: number) => t("layFloorCopyName", { name: base, number });
     let n = 1;
     while (floors.some((f) => f.label.trim().toLowerCase() === copyName(n).toLowerCase())) n++;

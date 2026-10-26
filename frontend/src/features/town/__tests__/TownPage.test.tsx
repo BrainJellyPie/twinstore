@@ -129,10 +129,16 @@ it("clears the previous demand failure when changing the day type", async () => 
     return { ...demand, day_type: day };
   });
   await mount(); await screen.findByRole("alert");
-  fireEvent.click(screen.getByRole("button", { name: "weekend" }));
+  fireEvent.click(screen.getByRole("button", { name: "Weekend" }));
   expect(await screen.findByText("137", { exact: true })).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(api.getTownDemand).toHaveBeenLastCalledWith("alpha", "weekend", null, expect.any(AbortSignal));
+  // The chosen day and map tool are announced, not shown by color alone.
+  expect(screen.getByRole("button", { name: "Weekend", pressed: true })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Weekday", pressed: false })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Explore", pressed: true })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Open venue" }));
+  expect(screen.getByRole("button", { name: "Explore", pressed: false })).toBeTruthy();
 });
 
 it("keeps cached estimates visible after a refresh failure and prevents duplicate retries", async () => {
@@ -174,7 +180,7 @@ it("sets up the generator from a description and generates only on request", asy
   expect(api.describeTown).toHaveBeenCalledWith("alpha", { text: "A busy campus street with two rival stores", seed: 1 });
   expect(api.generateTown).not.toHaveBeenCalled();
   expect((screen.getByLabelText("Archetype") as HTMLSelectElement).value).toBe("university");
-  expect(screen.getByRole("button", { name: "Bank" })).toBeTruthy();  // a neighbor outside the usual chips still shows
+  expect(screen.getByRole("button", { name: "Bank", pressed: true })).toBeTruthy();  // a neighbor outside the usual chips still shows
   fireEvent.click(screen.getByRole("button", { name: "Generate" }));
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ archetype: "university", n_competitors: 2 })));
 });
@@ -224,6 +230,15 @@ it("creates the first neighborhood without asking", async () => {
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledOnce());
 });
 
+it.each([["2.5", 2], ["-4", 0], ["75", 60], ["", null]])("sends rivals typed as %j as a count the server accepts", async (typed, sent) => {
+  vi.mocked(api.generateTown).mockResolvedValue(town);
+  await mount();
+  fireEvent.change(await screen.findByRole("spinbutton", { name: "Rivals" }), { target: { value: typed } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Seed" }), { target: { value: "3.7" } });
+  fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ n_competitors: sent, seed: 3 })));
+});
+
 it("says once that no visitors are expected instead of showing zero distances and walks", async () => {
   vi.mocked(api.getTown).mockResolvedValue(town);
   vi.mocked(api.getTownDemand).mockImplementation(async (_pid, day) => day === "weekend"
@@ -232,7 +247,7 @@ it("says once that no visitors are expected instead of showing zero distances an
     : demand);
   await mount();
   expect(await screen.findByText("137", { exact: true })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "weekend" }));
+  fireEvent.click(screen.getByRole("button", { name: "Weekend" }));
   expect((await screen.findByText(/No visitors are expected on a weekend/)).getAttribute("role")).toBe("status");
   expect(screen.queryByText("0 m")).toBeNull();
 });

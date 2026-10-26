@@ -114,7 +114,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
         const label = t(x.label);
         const base = control.data!;
         const copy = await copySite(projectId, base.id, {
-          name: `${base.name} – ${label}`.slice(0, 60), note: label, options: x.options, products: x.products,
+          name: Array.from(`${base.name} – ${label}`).slice(0, 60).join(""), note: label, options: x.options, products: x.products,
         });
         created.push(copy.id);
         // Keep confirmed copies selected if a later copy or the run start fails.

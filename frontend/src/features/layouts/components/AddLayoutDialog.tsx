@@ -290,7 +290,7 @@ export function AddLayoutDialog({
                       onClick={() => {
                         if (!savedFloors) return;
                         setFloors(savedFloors);
-                        setName(t("buildingAlternativeName", { name: sourceLayout.building!.name.slice(0, 148) }));
+                        setName(t("buildingAlternativeName", { name: Array.from(sourceLayout.building!.name).slice(0, 148).join("") }));
                       }}>{t("reuseBuildingOptions", { name: sourceLayout.building.name })}</button>
                     <p className="text-muted-foreground">{t("reuseBuildingHint")}</p>
                     <p className="text-muted-foreground">{t("buildingRegenerationHint")}</p>

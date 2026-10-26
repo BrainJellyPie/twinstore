@@ -33,7 +33,7 @@ export function AdsEditor({ ads, products, currency, onChange, costText, onCostT
     const product = popular.find((p) => !ads.some((ad) => ad.product_id === p.id)) ?? popular[0];
     if (!product) return;
     onChange([...ads, {
-      id: newAdId(), name: product.name.slice(0, 60), product_id: product.id, placement: "hero_banner", headline: "",
+      id: newAdId(), name: Array.from(product.name).slice(0, 60).join(""), product_id: product.id, placement: "hero_banner", headline: "",
       pricing: "cpc", cost: minorUnitDivisor(currency) === 1 ? 500 : 50, active: true,
     }]);
   };

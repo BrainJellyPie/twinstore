@@ -294,7 +294,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
             currency={currency}
             defaultSku={hero}
             onChange={(fn) => update(v.id, fn)}
-            onDuplicate={variants.length < 6 ? () => setVariants((vs) => [...vs.slice(0, i + 1), { ...v, id: uid(), name: t("mkVariantCopy", { name: v.name }).slice(0, 40), changes: v.changes.map((c) => ({ ...c, id: uid() })) }, ...vs.slice(i + 1)]) : undefined}
+            onDuplicate={variants.length < 6 ? () => setVariants((vs) => [...vs.slice(0, i + 1), { ...v, id: uid(), name: Array.from(t("mkVariantCopy", { name: v.name })).slice(0, 40).join(""), changes: v.changes.map((c) => ({ ...c, id: uid() })) }, ...vs.slice(i + 1)]) : undefined}
             onRemove={variants.length > 1 ? () => setVariants((vs) => vs.filter((x) => x.id !== v.id)) : undefined}
             describe={(c) => describeChange(c, productMap, fixtureMap, currency, t)}
           />
@@ -514,7 +514,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
                 {p}
               </button>
             ))}
-            <Input value={c.promo ?? ""} onChange={(e) => onPatch({ promo: e.target.value.slice(0, 24) })} className="h-7 w-20 text-xs" aria-label={t("mkSignText")} />
+            <Input value={c.promo ?? ""} onChange={(e) => onPatch({ promo: Array.from(e.target.value).slice(0, 24).join("") })} className="h-7 w-20 text-xs" aria-label={t("mkSignText")} />
           </div>
         )}
         {c.kind === "move" && (

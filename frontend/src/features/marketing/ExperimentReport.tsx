@@ -206,7 +206,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName, variant
                 <div className={cn("mt-3 grid grid-cols-1 items-start gap-3 [&>*]:mt-0", r.variants.length === 1 && "lg:grid-cols-2")}>
                   {/* Named after the tested layout too: "-20 %" alone says nothing in a list of layouts. */}
                   <KeepAsLayout projectId={projectId} setupId={r.setup_id} label={asked.name}
-                    variant={{ ...asked, name: (layoutName ? `${layoutName} · ${asked.name}` : asked.name).slice(0, 80) }} />
+                    variant={{ ...asked, name: Array.from(layoutName ? `${layoutName} · ${asked.name}` : asked.name).slice(0, 80).join("") }} />
                   <TestOnline projectId={projectId} testName={r.name} variant={asked} currency={r.currency} />
                 </div>
               );

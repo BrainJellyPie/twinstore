@@ -6,6 +6,28 @@
   of unqualified stored integers, and require both ends of a requested price
   range. A cheaper product below the requested minimum is not a valid substitute.
 
+- Capitalize the crowding choices in the situation editor and the day-type
+  switch on the Area page, like the options around them ("Busy",
+  "Weekend").
+
+- The Area page's neighborhood generator sends rivals and seed as whole
+  numbers within limits. Typing 2.5, -4 or 75 rivals, or a decimal seed, made
+  the server reject the request.
+
+- Neighbor synergy on the Area page now scrolls to its results when the
+  analysis finishes and moves focus there, instead of leaving focus on the
+  page after the button disabled itself. A failed analysis is announced next to
+  the Analyze button instead of at the top of the panel.
+
+- Screen readers now announce which day type, map tool and neighbor kinds are
+  chosen on the Area page, and which local events are on in the situation
+  editor. Before, only the button color showed it.
+
+- Keep a whole emoji when the app shortens a generated name or note to its
+  limit: online variants and ads, marketing variant copies, pilots and test
+  runs, building floors and alternatives, and sign text. Cutting through an
+  emoji left half of it, and the server then refused to save.
+
 - Guide automatic starter selection to retain suitable shelf categories unless
   the store requirements override them. Put the actual store task after the
   catalog vocabulary, reducing unrelated assortment substitutions by small
