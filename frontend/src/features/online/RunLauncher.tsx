@@ -20,7 +20,7 @@ import { experimentsFor } from "./experiments";
 import { ACCESSIBILITY_LABELS, ARRIVAL_HINTS, ARRIVAL_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
-const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 30, search_engine: 45, social: 15, email: 10 };
+const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 16, search_engine: 58, social: 25, email: 1 };
 const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 1, browse: 98, compare: 1, deal_hunt: 0, gift: 0, replenish: 0 };
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
 const TYPICAL_STEPS = 6;

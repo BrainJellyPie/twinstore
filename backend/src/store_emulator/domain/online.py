@@ -439,7 +439,7 @@ class OnlineRunRequest(BaseModel):
         "purchase": 0.01, "browse": 0.98, "compare": 0.01, "deal_hunt": 0.0, "gift": 0.0, "replenish": 0.0,
     })
     arrivals: dict[Arrival, Annotated[float, Field(ge=0, le=1000)]] = Field(default_factory=lambda: {
-        "direct": 0.3, "search_engine": 0.45, "social": 0.15, "email": 0.1,
+        "direct": 0.16, "search_engine": 0.58, "social": 0.25, "email": 0.01,
     })
     mobile_share: float = Field(default=0.68, ge=0, le=1)
     source: ShopperSource = "panel"
