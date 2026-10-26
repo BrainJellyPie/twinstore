@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **New store** shows the store type it starts with, or the one a template
+  sets, by its name in the selected language ("편의점", "Convenience store")
+  instead of the internal id "convenience"; the id is still what is saved
+  until the field is edited.
 - On a phone or narrow window the marketing studio scrolls as one page: a
   test's results and the file reviews were each a small scroll box under the
   header and tabs (about 200 px tall on a phone), and the tests list keeps a

@@ -22,6 +22,11 @@ export function storeTypeLabel(type: string, locale: Locale): string {
   return words ? words[0]!.toUpperCase() + words.slice(1) : translate(locale, "store");
 }
 
+/** A known category id ("convenience"), which a store-type field shows by its label until the user edits it. */
+export function isStoreTypeId(type: string): boolean {
+  return Object.prototype.hasOwnProperty.call(TYPES, type);
+}
+
 /** Display name of a store format (template): the server's English name, translated by template id otherwise. */
 export function templateName(id: string, name: string, locale: Locale): string {
   const key = `tpl_${id}`;

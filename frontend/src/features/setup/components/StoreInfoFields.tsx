@@ -1,4 +1,5 @@
 import { useI18n } from "@/shared/i18n/i18n";
+import { isStoreTypeId, storeTypeLabel } from "@/shared/i18n/storeLabels";
 import { cn } from "@/shared/utils/cn";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -34,7 +35,7 @@ export function StoreInfoFields({
   errors,
   disabled,
 }: StoreInfoFieldsProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -97,7 +98,8 @@ export function StoreInfoFields({
         <Input
           id="setup-store-type"
           className={cn(errors?.storeType && errorBorderClass)}
-          value={storeType}
+          // A category id from the defaults or a template ("convenience") reads as its label; typing replaces it.
+          value={isStoreTypeId(storeType) ? storeTypeLabel(storeType, locale) : storeType}
           placeholder={t("storeTypePlaceholder")}
           disabled={disabled}
           aria-required="true"
