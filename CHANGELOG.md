@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Match discount previews to the physical and online stores' rounding,
+  including half-cent and half-won boundaries. Block out-of-range discount
+  and category percentages with localized correction guidance while keeping
+  fractional discounts and valid boundary values available.
+
 - Keep a coupon's face value, such as "$1.00 COUPON", from becoming an exact
   product price during shelf capture. Preserve the printed text, mark the
   fallback price as estimated and retain existing product prices when placing

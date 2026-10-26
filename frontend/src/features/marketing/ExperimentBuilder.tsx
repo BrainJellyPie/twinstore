@@ -57,11 +57,11 @@ function describeChange(c: VariantChange, products: Map<string, Product>, fixtur
 function ready(c: VariantChange): boolean {
   switch (c.kind) {
     case "price": return !!c.sku && c.price != null;
-    case "discount": return !!c.sku && c.percent != null && c.percent < 0;
+    case "discount": return !!c.sku && c.percent != null && Number.isFinite(c.percent) && c.percent >= -100 && c.percent < 0;
     case "promo": return !!c.sku;
     case "move": return !!c.sku && !!c.rack_id;
     case "package": return !!c.sku && !!c.asset_id;
-    case "category_price": return !!c.category && c.percent != null;
+    case "category_price": return !!c.category && c.percent != null && Number.isFinite(c.percent) && c.percent >= -100 && c.percent <= 300;
   }
 }
 
@@ -447,6 +447,13 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
   const Icon = meta.icon;
   const product = products.find((p) => p.sku === c.sku);
   const discountBase = product ? c.discount_basis === "current" ? product.price : product.regularPrice || product.price : 0;
+  const rawDiscountPrice = discountBase * (1 + (c.percent ?? 0) / 100);
+  const roundedDiscountPrice = Math.round(rawDiscountPrice);
+  // Match Python round in both store engines: exact halves go to the even minor unit.
+  const discountPrice = rawDiscountPrice % 1 === 0.5 && roundedDiscountPrice % 2 !== 0 ? roundedDiscountPrice - 1 : roundedDiscountPrice;
+  const validPercent = c.percent != null && Number.isFinite(c.percent) && c.percent >= -100
+    && (c.kind === "discount" ? c.percent < 0 : c.percent <= 300);
+  const percentErrorId = `${c.id}-percent-error`;
   return (
     <div className={cn("rounded-xl border p-2.5", ready(c) ? "bg-foreground/[0.02]" : "border-warn/50 bg-warn/[0.04]")}>
       <div className="mb-2 flex items-center gap-2 text-xs">
@@ -470,15 +477,20 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
           </label>
         )}
         {(c.kind === "discount" || c.kind === "category_price") && (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {(c.kind === "discount" ? [-10, -20, -30, -50] : [-10, 0, 5, 10]).map((p) => (
               <button key={p} type="button" onClick={() => onPatch({ percent: p })}
                 className={cn("num rounded-md border px-1.5 py-0.5 text-xs", c.percent === p ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
                 {p > 0 ? "+" : ""}{p}%
               </button>
             ))}
-            <Input type="number" value={c.percent ?? ""} onChange={(e) => onPatch({ percent: e.target.value === "" ? null : Number(e.target.value) })}
-              className="num h-7 w-20 px-2 text-xs md:text-xs" aria-label={t("mkPercent")} />
+            <Input type="number" min={-100} max={c.kind === "discount" ? 0 : 300} step="any"
+              value={c.percent ?? ""} onChange={(e) => onPatch({ percent: e.target.value === "" ? null : Number(e.target.value) })}
+              className="num h-7 w-20 px-2 text-xs md:text-xs" aria-label={t("mkPercent")}
+              aria-invalid={!validPercent} aria-describedby={!validPercent ? percentErrorId : undefined} />
+            {!validPercent && <span id={percentErrorId} className="basis-full text-xs text-destructive">
+              {t(c.kind === "discount" ? "mkDiscountPercentRange" : "mkCategoryPercentRange")}
+            </span>}
           </div>
         )}
         {c.kind === "discount" && (
@@ -489,9 +501,9 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
             <option value="current">{t("mkDiscountCurrent")}</option>
           </select>
         )}
-        {c.kind === "discount" && product && c.percent != null && c.percent < 0 && (
+        {c.kind === "discount" && product && validPercent && (
           <span className="num text-xs text-muted-foreground">
-            {formatMoney(discountBase, currency)} → <b className="text-foreground">{formatMoney(Math.round(discountBase * (1 + c.percent / 100)), currency)}</b>
+            {formatMoney(discountBase, currency)} → <b className="text-foreground">{formatMoney(discountPrice, currency)}</b>
           </span>
         )}
         {c.kind === "promo" && (
