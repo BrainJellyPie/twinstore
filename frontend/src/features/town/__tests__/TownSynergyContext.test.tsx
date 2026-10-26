@@ -43,13 +43,13 @@ const analyze = () => screen.getByRole("button", { name: "Analyze" });
 const check = (name = row.name) => screen.queryByRole("button", { name: `Vision shopper check for ${name}` });
 async function completed() { fireEvent.click(analyze()); await screen.findByRole("button", { name: `Vision shopper check for ${row.name}` }); }
 async function change(client: QueryClient, kind: "day" | "town") {
-  if (kind === "day") fireEvent.click(screen.getByRole("button", { name: "weekend" }));
+  if (kind === "day") fireEvent.click(screen.getByRole("button", { name: "Weekend" }));
   else {
     await act(async () => { client.setQueryData(queryKeys.town("alpha"), { ...town, name: "Updated neighborhood" }); });
     await screen.findByRole("img", { name: "Updated neighborhood" });
   }
 }
-it.each(["weekend", "holiday"])("hides completed weekday results after choosing %s", async day => {
+it.each(["Weekend", "Holiday"])("hides completed weekday results after choosing %s", async day => {
   await mount(); await completed(); fireEvent.click(screen.getByRole("button", { name: day })); expect(check()).toBeNull();
 });
 it.each(["day", "town"] as const)("ignores an old successful analysis after the %s changes", async kind => {
@@ -84,7 +84,7 @@ it("retains results when a background read returns the same town data", async ()
 });
 it("closes the selected vision result on a day change and does not reopen it when switching back", async () => {
   const client = await mount(); await completed(); fireEvent.click(check()!); expect(screen.getByRole("dialog")).toBeTruthy();
-  await change(client, "day"); expect(screen.queryByRole("dialog")).toBeNull(); fireEvent.click(screen.getByRole("button", { name: "weekday" })); expect(screen.queryByRole("dialog")).toBeNull();
+  await change(client, "day"); expect(screen.queryByRole("dialog")).toBeNull(); fireEvent.click(screen.getByRole("button", { name: "Weekday" })); expect(screen.queryByRole("dialog")).toBeNull();
 });
 it("closes the selected vision result when the current town changes", async () => {
   const client = await mount(); await completed(); fireEvent.click(check()!); expect(screen.getByRole("dialog")).toBeTruthy();

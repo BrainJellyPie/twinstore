@@ -27,6 +27,7 @@ import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
 const DAY_LABELS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekday", weekend: "areaDayWeekend", holiday: "areaDayHoliday" };
+const DAY_OPTIONS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekdayOption", weekend: "areaDayWeekendOption", holiday: "areaDayHolidayOption" };
 
 export function TownPage({ projectId }: { projectId: string }) {
   const { t } = useI18n();
@@ -136,7 +137,7 @@ export function TownPage({ projectId }: { projectId: string }) {
               <div className="inline-flex rounded-md border p-0.5 text-xs">
                 {(["weekday", "weekend", "holiday"] as TownDayType[]).map((d) => (
                   <button key={d} type="button" aria-pressed={dayType === d} onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
-                    {t(DAY_LABELS[d])}
+                    {t(DAY_OPTIONS[d])}
                   </button>
                 ))}
               </div>

@@ -129,13 +129,13 @@ it("clears the previous demand failure when changing the day type", async () => 
     return { ...demand, day_type: day };
   });
   await mount(); await screen.findByRole("alert");
-  fireEvent.click(screen.getByRole("button", { name: "weekend" }));
+  fireEvent.click(screen.getByRole("button", { name: "Weekend" }));
   expect(await screen.findByText("137", { exact: true })).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(api.getTownDemand).toHaveBeenLastCalledWith("alpha", "weekend", null, expect.any(AbortSignal));
   // The chosen day and map tool are announced, not shown by color alone.
-  expect(screen.getByRole("button", { name: "weekend", pressed: true })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "weekday", pressed: false })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Weekend", pressed: true })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Weekday", pressed: false })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Explore", pressed: true })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Open venue" }));
   expect(screen.getByRole("button", { name: "Explore", pressed: false })).toBeTruthy();
@@ -247,7 +247,7 @@ it("says once that no visitors are expected instead of showing zero distances an
     : demand);
   await mount();
   expect(await screen.findByText("137", { exact: true })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "weekend" }));
+  fireEvent.click(screen.getByRole("button", { name: "Weekend" }));
   expect((await screen.findByText(/No visitors are expected on a weekend/)).getAttribute("role")).toBe("status");
   expect(screen.queryByText("0 m")).toBeNull();
 });

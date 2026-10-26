@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Capitalize the crowding choices in the situation editor and the day-type
+  switch on the Area page, like the options around them ("Busy",
+  "Weekend").
+
 - The Area page's neighborhood generator sends rivals and seed as whole
   numbers within limits. Typing 2.5, -4 or 75 rivals, or a decimal seed, made
   the server reject the request.
