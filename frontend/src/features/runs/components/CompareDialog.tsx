@@ -103,7 +103,7 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
               {compare.error instanceof Error ? compare.error.message : t("cmpFailed")}
             </p>
           )}
-          {compare.data && <CompareTable report={compare.data} code={code} />}
+          {compare.data && <CompareTable report={compare.data} code={code} nameOf={nameOf} />}
           {compare.data && a && b && a !== b && <Explain key={`${a}:${b}`} projectId={projectId} a={a} b={b} />}
         </>
       )}
@@ -143,7 +143,7 @@ function Explain({ projectId, a, b }: { projectId: string; a: string; b: string 
   );
 }
 
-function CompareTable({ report, code }: { report: ComparisonReport; code: string }) {
+function CompareTable({ report, code, nameOf }: { report: ComparisonReport; code: string; nameOf: (id: string) => string | undefined }) {
   const { locale, t } = useI18n();
   // On narrow screens the table scrolls sideways: the metric column stays put, the right edge fades until the end.
   const [scrolledToEnd, setScrolledToEnd] = useState(false);
@@ -188,19 +188,27 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
       <p className="text-xs text-muted-foreground sm:hidden">{t("cmpScrollHint")}</p>
       <p className="text-xs text-muted-foreground">
         {t("cmpFootnote", { paired: report.paired_customers, draws: report.n_bootstrap })}
+        {report.metrics.some((m) => m.mean_a === 0) && ` ${t("cmpFootnoteZero")}`}
       </p>
       {report.notes.map((n, i) => (
-        <p key={`${i}-${n}`} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{noteText(report, i, t)}</p>
+        <p key={`${i}-${n}`} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{noteText(report, i, t, nameOf)}</p>
       ))}
     </div>
   );
 }
 
+// Note parameters that hold run ids ("runs": several, comma-separated): shown by the names the run pickers use.
+const RUN_PARAMS = new Set(["run", "runA", "runB", "runs"]);
+
 /** A note in the user's language when its kind is known here; else the server's English text. */
-function noteText(report: ComparisonReport, index: number, t: (key: MessageKey, params?: Record<string, string | number>) => string): string {
+function noteText(report: ComparisonReport, index: number, t: (key: MessageKey, params?: Record<string, string | number>) => string,
+  nameOf: (id: string) => string | undefined): string {
   const coded = report.note_codes?.[index];
   const key = coded ? `cmpNote_${coded.code}` : "";
-  return coded && Object.prototype.hasOwnProperty.call(messages, key) ? t(key as MessageKey, coded.params) : report.notes[index]!;
+  if (!coded || !Object.prototype.hasOwnProperty.call(messages, key)) return report.notes[index]!;
+  const params = Object.fromEntries(Object.entries(coded.params).map(([name, value]) => [name,
+    RUN_PARAMS.has(name) && typeof value === "string" ? value.split(", ").map((id) => nameOf(id) ?? id).join("; ") : value]));
+  return t(key as MessageKey, params);
 }
 
 function Headline({ m, code, locale }: { m: MetricComparison; code: string; locale: Locale }) {

@@ -100,6 +100,9 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- **Compare runs** names a run in its notes as the run pickers do ("In layout 2
+  — LLM · final · May 18 each shopper had the store alone") instead of by its
+  id ("run_efd57c"), and explains zero baselines only when a row has one.
 - File fields in the marketing studio (price checks, unit prices, inventory,
   pilot timing, reviews and till records) read "Choose file" and "No file
   chosen" in the app's language, then the chosen file's name. The browser's
