@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pressing Escape to close the command palette or another dialog opened over a
+  shelf's detail panel no longer closes the shelf panel too; a second Escape
+  closes it.
 - In Windows high-contrast mode the language picker shows when it has
   keyboard focus; its ring is a shadow, which that mode removes, and the
   list itself is transparent over the **EN** chip.

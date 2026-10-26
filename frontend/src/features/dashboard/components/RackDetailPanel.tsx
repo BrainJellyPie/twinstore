@@ -101,7 +101,8 @@ export function RackDetailPanel({ rack, open, onClose, onAsk }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // An Escape that closed a dialog or menu over the panel (they mark it handled) leaves the panel open.
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
