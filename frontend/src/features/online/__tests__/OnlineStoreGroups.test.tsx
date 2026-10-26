@@ -103,3 +103,25 @@ it("keeps the open store in the address, dropping one-time hand-offs, so a reloa
   expect(window.location.pathname + window.location.search).toBe("/online/p1?site=b");
   expect(window.history.state).toEqual({ key: "kept" });  // the router's own entry data stays
 });
+
+it.each([false, true])("opens the matching variant instead of its non-matching parent (previously collapsed: %s)", async (collapsed) => {
+  vi.mocked(online.listSites).mockResolvedValue([
+    site("a", "Shop A"), site("a1", "No popup", "a"), site("a2", "Faster checkout", "a1"),
+    site("b", "Shop B"), site("c", "Corner Mart"), site("d", "Glow Room"), site("e", "Edge pets"),
+  ]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><OnlinePage projectId="p1" /></QueryClientProvider>);
+  const box = await screen.findByRole("searchbox", { name: "Find a store or run" });
+  const stores = within(screen.getByRole("region", { name: "Stores" }));
+  if (collapsed) {
+    fireEvent.click(stores.getByRole("button", { name: "Variants: 2" }));
+    fireEvent.click(stores.getByRole("button", { name: "Variants: 2" }));
+  }
+  fireEvent.change(box, { target: { value: "faster" } });
+  const variant = () => stores.getByRole("button", { name: /Faster checkout/ });
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(variant());
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(variant().getAttribute("aria-current")).toBe("true");
+  expect(new URLSearchParams(window.location.search).get("site")).toBe("a2");
+});

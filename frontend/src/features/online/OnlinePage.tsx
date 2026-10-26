@@ -166,17 +166,18 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
           <ul className="space-y-1.5">
             {roots.map((root) => {
               const variants = family.get(root.id) ?? [];
-              const expanded = open[root.id] ?? (variants.some((v) => v.id === selected?.id) || (!!needle && variants.length > 0));
+              const expanded = !!needle || (open[root.id] ?? variants.some((v) => v.id === selected?.id));
               return (
                 <li key={root.id} className="space-y-1">
-                  <SiteButton site={root} active={!showGallery && !runId && selected?.id === root.id} onOpen={openSite} />
+                  <SiteButton site={root} active={!showGallery && !runId && selected?.id === root.id} onOpen={openSite}
+                    searchResult={found(root.name, root.note)} />
                   {variants.length > 0 && (
                     <>
-                      <button type="button" aria-expanded={expanded} onClick={() => setOpen((o) => ({ ...o, [root.id]: !expanded }))}
+                      {!needle && <button type="button" aria-expanded={expanded} onClick={() => setOpen((o) => ({ ...o, [root.id]: !expanded }))}
                         className="ml-3 inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
                         <ChevronRight className={cn("size-3.5 transition-transform", expanded && "rotate-90")} aria-hidden />
                         {t("onVariantsCount", { count: variants.length })}
-                      </button>
+                      </button>}
                       {expanded && (
                         <ul className="ml-3 space-y-1 border-l pl-2">
                           {variants.map((v) => (
@@ -272,12 +273,12 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   );
 }
 
-function SiteButton({ site, active, onOpen, compact = false }: {
-  site: SiteSummary; active: boolean; onOpen: (id: string) => void; compact?: boolean;
+function SiteButton({ site, active, onOpen, compact = false, searchResult = true }: {
+  site: SiteSummary; active: boolean; onOpen: (id: string) => void; compact?: boolean; searchResult?: boolean;
 }) {
   const { t } = useI18n();
   return (
-    <button data-online-result type="button" onClick={() => onOpen(site.id)} aria-current={active ? "true" : undefined}
+    <button data-online-result={searchResult ? "" : undefined} type="button" onClick={() => onOpen(site.id)} aria-current={active ? "true" : undefined}
       className={cn("w-full rounded-xl border text-left transition-colors", compact ? "px-2.5 py-1.5" : "px-3 py-2",
         active ? "border-primary bg-primary/8" : "hover:bg-muted")}>
       <span className={cn("flex items-center gap-2 font-medium", compact && "text-[0.8rem]")}>

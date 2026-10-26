@@ -44,7 +44,11 @@ export function GridEditor({
   const [cellSize, setCellSize] = useState(() => fittingCellSize(height));
   // One Tab stop for the whole grid (the cell last moved to, else the selected one); the arrow keys move from there.
   const [current, setCurrent] = useState<string | null>(null);
-  const stop = current ?? (selectedCell ? `${selectedCell[0]},${selectedCell[1]}` : "0,0");
+  const stop = [current, selectedCell ? `${selectedCell[0]},${selectedCell[1]}` : null].find((key) => {
+    if (!key) return false;
+    const [x = -1, y = -1] = key.split(",").map(Number);
+    return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < width && y < height;
+  }) ?? "0,0";
 
   // Position-keyed lookup: `${x},${y}` → rack[]. A cell may hold two racks (entrance + exit).
   const racksByCell = useMemo(() => {

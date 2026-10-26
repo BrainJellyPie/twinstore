@@ -161,6 +161,8 @@ LABEL_PROMPT = (
     "or \"\". Preserve discount words such as SAVE, OFF and 할인 in price_text. "
     "price: the current selling price as a number, or null if no selling price is shown. "
     "A savings amount, coupon value or amount off is not the selling price; use null for those. "
+    "A rate per weight or volume (such as /kg, /L or 리터당) is not the package price; "
+    "preserve that rate wording in price_text and use null for price. "
     "confidence: 0-10 for how sure you are of the name.\n"
     "For any unreadable text field, use an empty string, not null. Do not invent missing text.\n"
     "Copy any printed currency symbol or code unchanged, even if it differs from the store currency. "

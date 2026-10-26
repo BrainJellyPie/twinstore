@@ -63,9 +63,16 @@ const NEW_JOB: Record<JobTab, MessageKey> = { ab: "mkNewAb", shelf: "mkNewShelf"
 
 const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 
-export function MarketingPage({ projectId, initialTool }: { projectId: string; initialTool?: MarketingTool }) {
+export function MarketingPage({ projectId, tool, onToolChange }: {
+  projectId: string; tool?: MarketingTool; onToolChange?: (tool: MarketingTool) => void;
+}) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<MarketingTool>(initialTool ?? "ab");
+  const [localTab, setLocalTab] = useState<MarketingTool>("ab");
+  const tab = tool ?? localTab;
+  const setTab = useCallback((next: MarketingTool) => {
+    setLocalTab(next);
+    onToolChange?.(next);
+  }, [onToolChange]);
   const [selected, setSelected] = useState<Record<JobTab, string | null>>({ ab: null, shelf: null, survey: null, conjoint: null, pitch: null });
   // A request routed here from the command palette opens the right builder and drafts from the same words.
   const pendingAsk = useAssistStore((s) => s.pending);
@@ -83,7 +90,7 @@ export function MarketingPage({ projectId, initialTool }: { projectId: string; i
     setTab(target);
     setSelected((s) => ({ ...s, [target]: "" }));
     setPrefill({ tab: target, text: ask.text, id: ask.id });
-  }, [pendingAsk, projectId, takeAsk]);
+  }, [pendingAsk, projectId, takeAsk, setTab]);
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
@@ -99,7 +106,7 @@ export function MarketingPage({ projectId, initialTool }: { projectId: string; i
     setSetupId(req.setup_id);  // checked against the store's layouts where it is used
     setAbDraft({ key: Date.now(), req });
     setSelected((s) => ({ ...s, ab: "" }));
-  }, [pendingDraft, projectId, takeDraft]);
+  }, [pendingDraft, projectId, takeDraft, setTab]);
   const activeSetup = [setupId, project.data?.state.activeSetupId]
     .find((id) => setups.some((candidate) => candidate.id === id)) ?? setups[0]?.id ?? "";
   const setup = useQuery({

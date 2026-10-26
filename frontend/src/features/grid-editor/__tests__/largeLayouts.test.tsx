@@ -105,3 +105,15 @@ it("takes one Tab stop and moves between cells with the arrow, Home and End keys
   fireEvent.click(document.activeElement!);
   expect(select).toHaveBeenCalledWith([0, 1]);
 });
+
+it("keeps keyboard entry when shrinking removes the last visited cell", () => {
+  const select = vi.fn();
+  const { rerender } = render(<GridEditor racks={[]} gridSize={[6, 5]} blockedFaces={[]} selectedCell={null} onCellClick={select} />);
+  fireEvent.click(screen.getByTestId("grid-cell-5-4"));
+  rerender(<GridEditor racks={[]} gridSize={[3, 2]} blockedFaces={[]} selectedCell={null} onCellClick={select} />);
+  const stops = screen.getAllByRole("button").filter((b) => b.dataset.testid?.startsWith("grid-cell-") && b.tabIndex === 0);
+  expect(stops.map((cell) => cell.dataset.testid)).toEqual(["grid-cell-0-0"]);
+  stops[0]!.focus();
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+  expect(document.activeElement).toBe(screen.getByTestId("grid-cell-1-0"));
+});

@@ -100,7 +100,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted",
-    "capture-price", "capture-saving", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price",
+    "capture-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-unit-price", "capture-unit-price-krw",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -540,9 +540,11 @@ try:
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("capture-"):
-        tags = {"capture-price": "$1.00", "capture-saving": "SAVE $1.00", "capture-off": "$1.00 OFF",
-                "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00"}
-        currency = "KRW" if args.case == "capture-saving-krw" else "USD"
+        tags = {"capture-price": "$1.00", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
+                "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
+                "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00",
+                "capture-unit-price": "$1.00 / L", "capture-unit-price-krw": "리터당 1,000원"}
+        currency = "KRW" if args.case.endswith("-krw") else "USD"
         fixture = Image.new("RGB", (448, 512), "#f5f1e9")
         drawing = ImageDraw.Draw(fixture)
         drawing.rounded_rectangle((138, 24, 310, 376), radius=28, fill="#553023", outline="black", width=3)
@@ -570,7 +572,7 @@ try:
             if item.price != expected_price or item.price_estimated:
                 issues.append(f"The printed selling price was not retained as {expected_price} cents.")
         elif not item.price_estimated:
-            issues.append("A savings, discount or reference amount became an exact selling price.")
+            issues.append("A savings, reference or unit-rate amount became an exact package selling price.")
         result.update(success=not issues, issues=issues, fixture_tag=tags[args.case], currency=currency,
                       label=label.model_dump(mode="json"), item=item.model_dump(mode="json"))
     elif args.case.startswith("pack-"):

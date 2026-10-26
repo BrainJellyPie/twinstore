@@ -27,14 +27,25 @@
 - When the graphics driver resets the 3D store view (heavy work such as Photo
   mode's path tracing can cause it), the view says so and offers **Restart the
   3D view**, which brings the store back; Photo mode ends. Before, the store
-  went blank until the page was reloaded.
+  went blank until the page was reloaded. Detach the old canvas's listeners
+  when replacing or leaving it so delayed disposal cannot report another
+  failure or stop a new Photo session.
+- In the Shoppers tab, Enter opens the first shopper matching the search,
+  and the down arrow moves focus into the list. The search has a screen-reader
+  name.
+
+- Preserve qualified savings and cash-back tags without turning their amounts
+  into exact selling prices: `SAVE UP TO $1.00`, `SAVE AT LEAST £1.00` and
+  `$1.00 CASH BACK` remain estimated. Keep ordinary and explicitly stated
+  sale prices usable.
+
 - A layout that has no floor yet can be deleted from its Store & layout tab;
   one added by mistake could not be removed until a floor was built for it.
 - In the online stores' **Find a store or run**, Enter opens the first match and
   ↓ moves into the matches, as in **Find a layout**; Enter in the home page's
-  **Filter stores** opens the first store it shows, and in the Shoppers tab's
-  search it opens the first shopper listed (the search box also has a name for
-  screen readers now).
+  **Filter stores** opens the first store it shows. Matching variants stay
+  visible during filtering, and keyboard search opens the matching variant
+  instead of its non-matching parent.
 - **New online store** puts focus in the template search, so typing filters the
   ready-made shops at once; focus stayed on the button behind the gallery.
 - A real-map import says what it is doing while it runs ("Downloading
@@ -44,11 +55,19 @@
 - The command palette finds each marketing studio tool by name in any of the six
   languages ("shelf test", "conjoint", "선반 테스트") and opens the studio on it;
   before, only "Marketing studio" matched. `/marketing/<store>?tool=shelf`
-  links to a tool.
+  links to a tool. Keep the selected tab in the URL so reopening the same
+  tool works after selecting another tab, without resetting the whole studio.
+
+- Keep recognized per-weight/per-volume rates (`/kg`, `/L`, `per litre`,
+  `리터당`) out of exact package prices in shelf capture. Preserve the product,
+  tag and existing store price, and ask the model to retain unit wording.
+
 - The floor editor's grid is one Tab stop: the arrow keys move between cells,
   Home and End go to a row's ends, and Enter selects. Before, every cell was a
   Tab stop (1,600 on a 40 by 40 floor). Cells read their place as "column 3,
   row 3" for screen readers, as the panel shows it, instead of "2,2".
+  Shrinking the grid keeps a reachable cell in the Tab order even when the
+  previously visited cell no longer exists.
 - The floor editor opens at the largest zoom (up to 100 %) that shows every row:
   an 8 by 8 floor opened at 100 % with its last row cut off. A floor too deep
   to fit opens at the smallest zoom and scrolls.
@@ -56,6 +75,7 @@
   configuration), and the empty floor and the Store & layout tab both offer
   **Go to Step 1**. Coming from another layout's store tab, a new empty layout
   showed only "Add a floor first to see store info." with no way forward.
+
 - Keep visible multipack quantities when linking package photos to catalog
   products, so `6 x 500 ml` and `500 ml / 6 PACK` cannot silently select a
   single bottle. Support printed multiplication signs and recognized pack-count

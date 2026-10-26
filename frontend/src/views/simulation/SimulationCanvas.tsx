@@ -176,6 +176,19 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
   // say so and offer a fresh canvas, which gets a new context.
   const [canvasKey, setCanvasKey] = useState(0);
   const [lost, setLost] = useState(false);
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (!canvas) return;
+    const onLost = () => { usePhotoMode.getState().stop(); setLost(true); };
+    const onRestored = () => setLost(false);
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
+    // R3F forces context loss while disposing an old renderer after unmount.
+    return () => {
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+    };
+  }, [canvas]);
   const graphicsMode = useSimulationStore((s) => s.graphicsMode);
   const shopperViewOn = useSimulationStore((s) => s.shopperView);
   const quality = useRealisticSettings((s) => s.quality);
@@ -200,8 +213,7 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
         // thread while (software) GL compiles the realistic scene's programs.
         onCreated={({ gl }) => {
           gl.debug.checkShaderErrors = import.meta.env.DEV;
-          gl.domElement.addEventListener("webglcontextlost", () => { usePhotoMode.getState().stop(); setLost(true); });
-          gl.domElement.addEventListener("webglcontextrestored", () => setLost(false));
+          setCanvas(gl.domElement);
         }}
       >
         {/* The post stack ("high") tone-maps its input, so there the canvas stays
@@ -252,7 +264,7 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
         <div role="alert" className="absolute inset-0 z-20 grid place-items-center p-4">
           <div className="panel max-w-sm space-y-3 rounded-2xl p-4 text-center text-sm">
             <p>{t("canvasLost")}</p>
-            <Button size="sm" onClick={() => { setLost(false); setCanvasKey((k) => k + 1); }}>{t("canvasRestart")}</Button>
+            <Button size="sm" onClick={() => { setCanvas(null); setLost(false); setCanvasKey((k) => k + 1); }}>{t("canvasRestart")}</Button>
           </div>
         </div>
       )}

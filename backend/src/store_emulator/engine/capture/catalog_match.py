@@ -195,12 +195,21 @@ _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
 _NON_SELLING_PREFIX_RE = re.compile(
-    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cashback|coupon(?:\s+value)?|was|msrp|rrp)"
-    r"|할인액|절약|値引き)\s*:?\s*$",
+    r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?|was|msrp|rrp)"
+    r"|할인액|절약|値引き)\s*(?:(?:up\s+to|at\s+least|as\s+much\s+as)\s*)?:?\s*$",
     re.IGNORECASE,
 )
 _SAVINGS_SUFFIX_RE = re.compile(
-    r"^(?:off\b|savings?\b|rebate\b|cashback\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
+    r"^(?:off\b|savings?\b|rebate\b|cash[\s-]*back\b|(?:할인|절약|引き|割引|値引き)(?:\s|$))", re.IGNORECASE,
+)
+_MEASURE_UNIT = (
+    r"(?:fl\.?\s*oz|(?:kilo|milli)?grams?|(?:milli|centi|deci)?lit(?:er|re)s?"
+    r"|pounds?|ounces?|kg|mg|g|lbs?|oz|ml|cl|dl|l|리터|밀리리터|킬로그램|그램)"
+)
+_MEASURE_RATE_RE = re.compile(
+    rf"(?:(?:[/∕⁄]|\bper\s+)\s*{_MEASURE_UNIT}(?:\s*(?:당|当たり|あたり))?"
+    rf"|(?<!\w){_MEASURE_UNIT}\s*(?:당|当たり|あたり))(?!\w)",
+    re.IGNORECASE,
 )
 
 
@@ -231,6 +240,9 @@ def _parse_number(text: str) -> tuple[float, bool] | None:
     price_context = [re.sub(r"[$€£¥₩¢원円]", "", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
                      for part in (before, after)]
     if _NON_SELLING_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
+        return None
+    if any(_MEASURE_RATE_RE.search(part) for part in price_context):
+        # The photographed package can contain a different volume/weight.
         return None
     if (re.search(r"[-−–—]\s*(?:[$€£¥₩]|[A-Z]{3})?\s*$", before, re.IGNORECASE)
             or after.startswith(("-", "−")) or before.endswith((".", ","))
