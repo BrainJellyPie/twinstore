@@ -22,6 +22,15 @@ interface GridEditorProps {
   placing?: boolean;
 }
 
+// Cells are 64 px at 100 %; zoom steps by 8 px between 40 and 96.
+/** The largest zoom step, at most 100 %, whose rows all fit the grid area (55 % of the window), so the floor opens
+ *  whole instead of cutting its last row; a floor too deep for that opens at the smallest step and scrolls. */
+function fittingCellSize(rows: number): number {
+  const room = typeof window === "undefined" ? Infinity : window.innerHeight * 0.55 - 10;
+  for (let size = 64; size > 40; size -= 8) if (rows * size + (rows - 1) * 4 <= room) return size;
+  return 40;
+}
+
 export function GridEditor({
   racks,
   gridSize,
@@ -32,7 +41,7 @@ export function GridEditor({
 }: GridEditorProps) {
   const { t } = useI18n();
   const [width, height] = gridSize;
-  const [cellSize, setCellSize] = useState(64);
+  const [cellSize, setCellSize] = useState(() => fittingCellSize(height));
 
   // Position-keyed lookup: `${x},${y}` → rack[]. A cell may hold two racks (entrance + exit).
   const racksByCell = useMemo(() => {

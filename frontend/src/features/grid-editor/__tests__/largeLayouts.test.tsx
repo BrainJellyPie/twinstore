@@ -76,3 +76,14 @@ it("prevents shrinking through a dining footprint and saves every fixture once t
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
   expect(save).toHaveBeenCalledWith("p", "s", { store: { ...setup.store, grid_size: [40, 40], racks: [table] } });
 });
+
+it("opens a floor small enough to fit with every row in view, and a deep one at the smallest step", () => {
+  window.innerHeight = 900;
+  const { unmount } = render(<GridEditor racks={[]} gridSize={[8, 8]} blockedFaces={[]} selectedCell={null} onCellClick={vi.fn()} />);
+  // 8 rows of 56 px and their gaps fit 55 % of 900 px; at 64 px the last row was cut off.
+  expect(screen.getByTestId("grid-canvas").style.gridAutoRows).toBe("56px");
+  expect(screen.getByLabelText("Grid zoom").textContent).toBe("88%");
+  unmount();
+  render(<GridEditor racks={[]} gridSize={[40, 40]} blockedFaces={[]} selectedCell={null} onCellClick={vi.fn()} />);
+  expect(screen.getByTestId("grid-canvas").style.gridAutoRows).toBe("40px");
+});

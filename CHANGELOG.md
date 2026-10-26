@@ -103,6 +103,9 @@
   Browse / Design / Simulate tabs move with ← and →, Home and End, and take one
   Tab stop instead of one per tab (eleven in the studio). The studio's tab row
   has an accessible name.
+- The floor editor opens at the largest zoom (up to 100 %) that shows every row:
+  an 8 by 8 floor opened at 100 % with its last row cut off. A floor too deep
+  to fit opens at the smallest zoom and scrolls.
 - A layout without a floor yet opens on its setup steps (Step 1: Floor
   configuration), and the empty floor and the Store & layout tab both offer
   **Go to Step 1**. Coming from another layout's store tab, a new empty layout
