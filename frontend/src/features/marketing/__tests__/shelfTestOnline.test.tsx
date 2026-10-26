@@ -37,7 +37,7 @@ it("tries a shelf test's changes in an online store", async () => {
   });
   show(changes);
   await screen.findByRole("option", { name: "Tea shop" });
-  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Make an online variant/ }));
   expect(await screen.findByText("Green tea: first in its category, as on an eye-level shelf")).toBeTruthy();
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", {
     name: "Tea shop – Green tea", note: "Tea at eye level: Green tea", currency: "USD", changes,
@@ -47,5 +47,5 @@ it("tries a shelf test's changes in an online store", async () => {
 it("offers nothing when the test's changes are not known", () => {
   vi.mocked(marketing.getStudyReading).mockReturnValue(new Promise(() => {}));
   show(undefined);
-  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Make an online variant/ })).toBeNull();
 });

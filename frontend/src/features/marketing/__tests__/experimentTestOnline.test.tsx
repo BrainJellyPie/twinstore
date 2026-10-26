@@ -43,7 +43,7 @@ it("carries a tested variant to an online store in the test's currency and links
   const picker = screen.getByRole("combobox", { name: "Online store" }) as HTMLSelectElement;
   expect([...picker.options].map((o) => o.text)).toEqual(["Tea shop", "Tea outlet"]);
   fireEvent.change(picker, { target: { value: "s3" } });
-  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make an online variant of Cheaper tea" }));
   const ready = await screen.findByText("Online variant ready: Tea outlet – Cheaper tea");
   expect(document.activeElement).toBe(ready.parentElement);
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s3", {
@@ -60,7 +60,7 @@ it("points to putting a store online when none has the test's currency", async (
   show();
   expect(await screen.findByText(/No online store has prices in USD yet/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "Put a store online" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Make an online variant/ })).toBeNull();
 });
 
 it("reviews a tested variant on its layout and keeps it as a new layout", async () => {
@@ -69,7 +69,7 @@ it("reviews a tested variant on its layout and keeps it as a new layout", async 
     changes: variants[0]!.changes, applied: ["Green tea: price 299 → 249"], warnings: ["a new package is only shown in tests, not saved to a layout"] });
   vi.mocked(marketing.applyLayoutEdit).mockResolvedValue({ id: "setup_new", name: "Main floor · Cheaper tea", applied: [], warnings: [] });
   show("Main floor");
-  fireEvent.click(screen.getByRole("button", { name: "Review on the layout" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review Cheaper tea on the layout" }));
   const note = await screen.findByText("· a new package is only shown in tests, not saved to a layout");
   // The pressed button is gone; focus moves to the review that replaced it.
   expect(document.activeElement).toBe(note.parentElement);
@@ -91,7 +91,7 @@ it("offers the best tested price as an online variant", async () => {
     <ExperimentReportView projectId="p" report={{ ...report, price_response: { sku: "tea", name: "Green tea", points: [], elasticity: null, best_price: 249 } }} />
   </QueryClientProvider>);
   await screen.findByRole("option", { name: "Tea shop" });
-  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Make an online variant/ }));
   expect(await screen.findByText("Online variant ready: Tea shop – Best price $2.49")).toBeTruthy();
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({
     name: "Tea shop – Best price $2.49", changes: [{ kind: "price", sku: "tea", price: 249 }],
@@ -116,7 +116,7 @@ it("says so when no online store sells the tested products", async () => {
   vi.mocked(online.listSites).mockResolvedValue([{ ...site("s1", "Threadline"), carries: 0 }]);
   show();
   expect(await screen.findByText(/No online store in USD sells these products yet/)).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Make an online variant/ })).toBeNull();
 });
 
 it("explains that a shelf sign has nothing to carry online", () => {
@@ -125,7 +125,7 @@ it("explains that a shelf sign has nothing to carry online", () => {
     <ExperimentReportView projectId="p" report={report} variants={[{ name: "Cheaper tea", changes: [{ kind: "promo", sku: "tea", promo: "SALE" }] }]} />
   </QueryClientProvider>);
   expect(screen.getByText(/A shelf sign has no web counterpart/)).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Make an online variant" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Make an online variant/ })).toBeNull();
   expect(online.listSites).not.toHaveBeenCalled();
 });
 
@@ -143,7 +143,7 @@ it("keeps category-wide changes available when the store carries none of the sep
     <ExperimentReportView projectId="p" report={report} variants={[mixed]} />
   </QueryClientProvider>);
   await screen.findByRole("option", { name: "Tea outlet" });
-  fireEvent.click(screen.getByRole("button", { name: "Make an online variant" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Make an online variant/ }));
   expect(await screen.findByText("Tea prices reduced by 10%")).toBeTruthy();
   expect(screen.getByText("MISSING: no matching product")).toBeTruthy();
   expect(online.variantFromTest).toHaveBeenCalledWith("p", "s1", expect.objectContaining({ changes: mixed.changes }));

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- In an A/B test's results, each variant's **Review on the layout** and **Make
+  an online variant** buttons name the variant for screen readers ("Review
+  -20 % on the layout"), so a test with several variants no longer repeats
+  the same names.
 - In an online run's report, each shopper's buttons name the shopper for
   screen readers ("Side by side for Retired teacher", "Watch Retired
   teacher's visit to No fee", "Replay Retired teacher in Control store");
