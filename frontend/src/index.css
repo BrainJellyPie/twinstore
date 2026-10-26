@@ -324,6 +324,11 @@ body {
 }
 
 /* Recharts makes a chart focusable (arrow keys move its tooltip): show where focus is. */
+/* In forced colors (Windows high contrast) box-shadow focus rings are dropped, and `outline-none` leaves nothing:
+   every focused control then draws an outline in the system's highlight colour. */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight !important; outline-offset: 2px; }
+}
 .recharts-surface:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;

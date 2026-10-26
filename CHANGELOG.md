@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- In Windows high-contrast (forced colors) mode, buttons, fields and cards show
+  where focus is, outlined in the system's highlight colour; their focus rings
+  are drawn as shadows, which that mode removes, so focus was invisible.
 - With reduced motion turned on in the system, report sections no longer fade,
   blur and slide in as they scroll into view; the scroll-linked effect ignored
   the app's reduced-motion setting, and a section half in view stayed blurred.
