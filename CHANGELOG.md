@@ -77,7 +77,8 @@
   an English error after sending. A failed A/B report commentary or study
   reading shows the same buttons when no model is set up, as do the
   optimizer's goal box and the studio's "What do you want to know?" drafts
-  (A/B, shelf, concept, conjoint, staff scripts, field pilots).
+  (A/B, shelf, concept, conjoint, staff scripts, field pilots) and the new-store
+  form's **Describe the store in your own words**.
 - Closing a dialog, sheet or confirmation returns keyboard focus to the button
   that opened it (such as **Watch a shopper**), so Tab carries on from there.
   Most dialogs open from a plain button, and focus used to drop to the start

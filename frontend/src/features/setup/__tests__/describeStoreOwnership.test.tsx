@@ -6,6 +6,7 @@ import { useLocale } from "@/shared/i18n/i18n";
 import { DescribeStoreField } from "../components/DescribeStoreField";
 
 vi.mock("@/shared/api/client", async original => ({ ...await original<typeof import("@/shared/api/client")>(), draftStoreSetup: vi.fn() }));
+vi.mock("@/features/settings/NeedsModel", () => ({ NeedsModel: () => null }));
 const draft: api.StoreSetupDraft = { name: "Old store", description: "Old description", address: "", store_type: "convenience", template_id: "urban_cvs", open_days: "7", open_hour: 0, close_hour: 24, currency: "USD", rationale: "", warnings: ["Old warning"] };
 function deferred() {
   let resolve!: (value: api.StoreSetupDraft) => void, reject!: (error: Error) => void;
