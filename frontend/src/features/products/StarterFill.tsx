@@ -96,7 +96,9 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
   }) });
   const busy = preview.isPending || save.isPending || auto.isPending || refreshing;
   // A save in flight is not asked about: it goes on after closing.
-  const unsaved = !save.data && !save.isPending && (requirements.trim() !== "" || selected.size > 0);
+  const unsaved = !save.data && !save.isPending && (
+    requirements.trim() !== "" || selected.size > 0 || auto.isPending || preview.isPending || prepared !== null
+  );
   useEffect(() => { onUnsaved(unsaved); }, [unsaved, onUnsaved]);
   useEffect(() => () => onUnsaved(false), [onUnsaved]);
   const locked = busy || !!save.data;

@@ -113,7 +113,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
   // While searching, a section without matches is left out instead of showing an empty heading.
   const noStoreFound = !!needle && roots.length === 0 && !sites.isPending && !sites.isError;
-  const noRunFound = !!needle && shownRuns.length === 0 && !runs.isPending;
+  const noRunFound = !!needle && shownRuns.length === 0 && runs.isSuccess;
   // The open store or run's entry is scrolled into the list's view when it opens (a link, a reload, a new store).
   const aside = useRef<HTMLElement>(null);
   const newStore = useRef<HTMLButtonElement>(null);
@@ -207,7 +207,9 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
 
         {!noRunFound && <section aria-labelledby="online-runs" className="space-y-2">
           <h2 id="online-runs" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onRuns")}</h2>
-          {runs.data?.length === 0 && <p className="text-xs text-muted-foreground">{t("onNoRuns")}</p>}
+          {runs.isPending && <p role="status" className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
+          {runs.isError && <p role="alert" className="text-xs text-destructive">{runs.error.message}</p>}
+          {runs.isSuccess && runs.data.length === 0 && <p className="text-xs text-muted-foreground">{t("onNoRuns")}</p>}
           <ul className="space-y-1.5">
             {shownRuns.map((r) => (
               <li key={r.run_id}>

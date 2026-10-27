@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Ask receipt models to preserve signed quantities and amounts, including
+  returned product rows, so the existing review can block refunds instead of
+  accepting them as positive purchases.
+
+- Keep automatic starter selection and its preview behind the discard
+  confirmation even when no requirements were typed. Failed online run-list
+  requests remain visible as errors instead of looking like empty searches.
+
+- Read the printed row behind an inferred receipt total. If that row is a
+  subtotal, leave the final total unknown and retain the original row for
+  review, while keeping the purchased products and their paid amounts.
+
 - Asking TwinStore from the command palette with no model set up now offers
   model setup (download the local model or open **Model settings**) right in
   the palette, which closes when the settings link is followed. Before, it

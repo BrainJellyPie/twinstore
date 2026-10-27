@@ -75,6 +75,35 @@ it("asks before closing with typed requirements, and closes at once without choi
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
+it("keeps an automatic preview on closing even when requirements were left empty", async () => {
+  vi.mocked(api.autoSelectStarterProducts).mockResolvedValue(automatic);
+  await openAuto();
+  fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+  await screen.findByRole("button", { name: "Save stocked layout" });
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  await screen.findByRole("alertdialog");
+  fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+  await screen.findByRole("button", { name: "Save stocked layout" });
+  expect(api.autoSelectStarterProducts).toHaveBeenCalledTimes(1);
+  expect(api.saveStarterFill).not.toHaveBeenCalled();
+});
+
+it("continues an automatic selection when closing is cancelled with empty requirements", async () => {
+  let finish!: (value: typeof automatic) => void;
+  const selecting = new Promise<typeof automatic>((resolve) => { finish = resolve; });
+  vi.mocked(api.autoSelectStarterProducts).mockReturnValue(selecting);
+  await openAuto();
+  fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+  await waitFor(() => expect(api.autoSelectStarterProducts).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  await screen.findByRole("alertdialog");
+  fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+  await act(async () => { finish(automatic); await selecting; });
+  await screen.findByRole("button", { name: "Save stocked layout" });
+  expect(api.previewStarterFill).toHaveBeenCalledTimes(1);
+  expect(api.saveStarterFill).not.toHaveBeenCalled();
+});
+
 it("waits for the new layout to be listed before offering to open it", async () => {
   let refreshed!: () => void;
   const refresh = new Promise<void>((resolve) => { refreshed = resolve; });
@@ -143,6 +172,7 @@ it("locks edits during model selection and ignores a late selection after closin
   await screen.findByRole("button", { name: "Choosing catalog products…" });
   expect((screen.getByLabelText("Assortment requirements") as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Discard changes" }));
   resolve(automatic);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.previewStarterFill).not.toHaveBeenCalled();

@@ -12,6 +12,7 @@ matched to the store's products so receipts can score a run like a POS export.
 
 import csv
 import io
+import re
 from typing import Protocol, Self
 
 import numpy as np
@@ -136,6 +137,7 @@ class _ReceiptVLM(BaseModel):
     time: str = Field(default="", description="HH:MM as printed, or empty")
     currency: str = Field(default="", description="ISO 4217 code if you can tell, e.g. USD, KRW")
     lines: list[_ReceiptLineVLM] = Field(default_factory=list[_ReceiptLineVLM], description="Every purchased product row, excluding subtotal, tax and payment rows")
+    total_row: str = Field(default="", max_length=160, description="The complete printed row supplying the final total, preserving its label; empty if absent")
     total: float | None = Field(default=None, allow_inf_nan=False)
 
     @field_validator("total", mode="before")
@@ -145,7 +147,7 @@ class _ReceiptVLM(BaseModel):
             raise ValueError("Receipt total must be a number or null when unreadable, not true or false.")
         return value
 
-    @field_validator("store", "date", "time", "currency", mode="before")
+    @field_validator("store", "date", "time", "currency", "total_row", mode="before")
     @classmethod
     def _unknown_metadata(cls, value: object) -> object:
         return "" if value is None else value
@@ -167,9 +169,13 @@ so the product can be chosen during review. Never omit a purchased line just bec
 For unreadable store, date, time or currency text use an empty string, not null. Do not invent missing text.
 Use finite numbers only, never true or false. For unreadable or missing amounts use null, never NaN or Infinity.
 Copy only the printed amount; do not repeat digits. Amounts must fit within 9007199254740991 minor units
-(cents for USD, whole won for KRW, whole yen for JPY)."""
+(cents for USD, whole won for KRW, whole yen for JPY).
+Before total, fill total_row by copying its complete printed row, including the label and amount exactly as written.
+Do not rename a SUBTOTAL row to TOTAL. When no final total row is printed, set total_row="" and total=null.
+Include returned or refunded product rows for review. Preserve every printed minus sign in quantity and amounts; a returned quantity -1 must remain -1 and a row amount -2.50 must remain -2.50. Never turn a negative number into its positive absolute value."""
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
+_SUBTOTAL_ROW = re.compile(r"^(?:sub\s*total|sous\s*total|소계(?:\s*금액)?|小[計计])(?=\s|\d|$)")
 
 
 def _minor(v: float | None, currency: str) -> int | None:
@@ -206,8 +212,10 @@ async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, defa
                          line_total=_minor(line.line_total, currency))
              for line in r.lines]
     stamp = f"{r.date} {r.time}".strip() if r.date else ""
+    subtotal = _SUBTOTAL_ROW.match(normalize_text(r.total_row)) is not None
     return ReceiptReading(receipt_id=receipt_id, store=r.store.strip(), timestamp=stamp, currency=currency, lines=lines,
-                          total=_minor(r.total, currency))
+                          total=None if subtotal else _minor(r.total, currency),
+                          notes=[r.total_row.strip()] if subtotal else [])
 
 
 def match_lines(reading: ReceiptReading, products: dict[str, str]) -> ReceiptReading:
