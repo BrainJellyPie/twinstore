@@ -49,7 +49,7 @@ import { rackTypeLabel } from "@/shared/i18n/rackTypeLabels";
 import { useProject } from "@/shared/queries/useProject";
 import type { Store } from "@/shared/types/domain";
 import type { EditorRack, SetupDetailWithBlocked } from "./types";
-import type { MessageKey } from "@/shared/i18n/messages";
+import type { Locale, MessageKey } from "@/shared/i18n/messages";
 
 // Layout issues the server reports that have their own words; others show as the server wrote them.
 const ISSUE_TEXT: Record<string, MessageKey> = {
@@ -72,6 +72,16 @@ interface GridEditorDialogProps {
   onSaved: () => void;
   onCreateNewSetup?: () => void;
   clearItemsOnSave?: boolean;
+}
+
+/** Fixtures that a smaller floor leaves partly or wholly off the grid. */
+function outsideGrid(racks: Rack[], [width, depth]: [number, number]): Rack[] {
+  return racks.filter((rack) => rackCells(rack).some(([x, y]) => x < 0 || y < 0 || x >= width || y >= depth));
+}
+
+function outsideMessage(outside: Rack[], locale: Locale): string {
+  const names = outside.slice(0, 3).map((rack) => rack.rack_name || rackTypeLabel(rack.type, (key) => translate(locale, key))).join(", ");
+  return translate(locale, "gridOutside", { count: outside.length, names: `${names}${outside.length > 3 ? ", …" : ""}` });
 }
 
 function withoutItems(store: Store): Store {
@@ -247,6 +257,9 @@ export function GridEditorDialog({
   // Save — flushSync any pending text via flushPendingText, then saveSetup.
   // The "Build from scratch" case (setup.store == null) synthesizes a fresh Store
   // from project metadata; the id is generated frontend-side.
+  // Shrinking the floor hides fixtures at once; say so now rather than only when Save refuses them.
+  const hidden = outsideGrid(editor.racks, editor.gridSize);
+
   const onSave = useCallback(async () => {
     flushSync(() => {
       panelRef.current?.flushPendingText();
@@ -260,12 +273,9 @@ export function GridEditorDialog({
       onClose();
       return;
     }
-    const outside = racksForSave.filter((rack) => rackCells(rack).some(([x, y]) =>
-      x < 0 || y < 0 || x >= editor.gridSize[0] || y >= editor.gridSize[1],
-    ));
+    const outside = outsideGrid(racksForSave, editor.gridSize);
     if (outside.length > 0) {
-      const names = outside.slice(0, 3).map((rack) => rack.rack_name || rackTypeLabel(rack.type, (key) => translate(locale, key))).join(", ");
-      setSaveError(translate(locale, "gridOutside", { count: outside.length, names: `${names}${outside.length > 3 ? ", …" : ""}` }));
+      setSaveError(outsideMessage(outside, locale));
       return;
     }
     // shelf/fridge/counter require a name for identification; entrance/exit do not.
@@ -425,6 +435,7 @@ export function GridEditorDialog({
                 onChange={(height) => { editor.setGridSize([editor.gridSize[0], height]); setSaveError(null); }} />
               <span className="text-xs text-muted-foreground">{t("gridCellsPerSide", { min: MIN_DIM, max: MAX_DIM })}</span>
             </div>
+            {hidden.length > 0 && !saveError && <p role="status" className="text-sm text-warn">{outsideMessage(hidden, locale)}</p>}
 
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

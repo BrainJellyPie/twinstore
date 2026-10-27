@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The floor editor says at once which fixtures a smaller width or depth
+  leaves off the grid, instead of hiding them silently until **Save** refuses
+  the floor.
+
 - Validate generated shelf and product search conditions before caching. A
   nonempty target list with no resolvable shelf or product requests correction
   instead of silently disappearing from the applied shopper filter.
