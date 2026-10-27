@@ -272,6 +272,15 @@ async def find_shoppers(
                                  "do not substitute a different product or remove a requested condition.")
             return values
 
+        @field_validator("stopped_at")
+        @classmethod
+        def shelf_targets(cls, values: list[str]) -> list[str]:
+            if values and not any(resolve_listed(name, shelves) is not None for name in values):
+                raise ValueError("stopped_at requires at least one listed shelf name. "
+                                 "Correct the requested shelf using the supplied Shelves list; "
+                                 "do not substitute a different shelf or remove a requested condition.")
+            return values
+
         @model_validator(mode="after")
         def shelf_purchase_target(self) -> Self:
             if self.bought_there != "any" and not any(

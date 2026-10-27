@@ -23,7 +23,7 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.shopper_filter import find_shoppers
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--mode',choices=['json_schema','json'],default='json_schema')
-p.add_argument('--case',choices=['shelf-only','nothing','free','precision','precision-shifted','precision-before','minute-window','missing','known','excluded'],required=True)
+p.add_argument('--case',choices=['shelf-only','nothing','free','precision','precision-shifted','precision-before','minute-window','missing-shelf','named-shelf','known-shelf','missing','known','excluded'],required=True)
 p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'))
 p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1')
 args=p.parse_args()
@@ -46,6 +46,9 @@ cases={
  'precision-shifted':('Find shoppers who arrived at or after 15:00:29 and before 15:00:31. Apply these exact arrival times only.',{'elsewhere','free_elsewhere'}),
  'precision-before':('Find shoppers who arrived before 15:00:30. Apply this exact arrival time only.',{'empty','elsewhere','away_empty'}),
  'minute-window':('Find shoppers who arrived at or after 15:00 and before 16:00. Apply these exact arrival times only.',{'empty','elsewhere','free_elsewhere','there'}),
+ 'missing-shelf':('Find shoppers who stopped at the Ice cream freezer. Apply only that shelf condition. This shelf is not listed in this store.',set()),
+ 'named-shelf':('Find shoppers who stopped at the shelf named Ice cream freezer. Apply only that shelf condition.',set()),
+ 'known-shelf':('Find shoppers who stopped at the Tea shelf. Apply only that shelf condition.',{'empty','elsewhere','free_elsewhere','there','both'}),
  'missing':('Find shoppers who bought Moonberry Soda. This product is not listed in this store.',set()),
  'known':('Find shoppers who bought Green Tea 500ml.',{'there','both'}),
  'excluded':('Find shoppers who did not buy Green Tea 500ml, whether or not they bought something else.',{'empty','elsewhere','free_elsewhere','away_empty','away_buyer'}),
@@ -73,6 +76,9 @@ try:
   'precision-shifted':{'Arrived at or after 15:00:29','Arrived before 15:00:31'},
   'precision-before':{'Arrived before 15:00:30'},
   'minute-window':{'Arrived at or after 15:00','Arrived before 16:00'},
+  'missing-shelf':{'Stopped at Ice cream freezer'},
+  'named-shelf':{'Stopped at Ice cream freezer'},
+  'known-shelf':{'Stopped at Tea shelf'},
   'missing':{'Bought Moonberry Soda'},
   'known':{'Bought Green Tea 500ml'},
   'excluded':{'Did not buy Green Tea 500ml'},

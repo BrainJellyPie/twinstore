@@ -33,8 +33,9 @@ def sample():
 
 
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
-@pytest.mark.parametrize("there", ["yes", "no"])
-@pytest.mark.parametrize("shelves", [None, [], ["  "], ["Unlisted shelf"]])
+@pytest.mark.parametrize("there,shelves", [
+    (there, shelves) for there in ["yes", "no"] for shelves in (None, [], ["  "], ["Unlisted shelf"])]
+    + [("any", ["  "]), ("any", ["Unlisted shelf"])])
 @pytest.mark.parametrize("recovery", ["corrected", "repeated", "legacy_cache"])
 def test_shelf_condition_requires_a_resolvable_shelf_before_cache(
     monkeypatch, tmp_path, mode, there, shelves, recovery,
@@ -89,8 +90,8 @@ def test_shelf_condition_requires_a_resolvable_shelf_before_cache(
                 assert len(calls) == 2 and not list(tmp_path.rglob("*.json"))
                 retry_later = True
             result = await search()
-            assert result.persona_ids == (["buyer"] if there == "yes" else ["browser"])
-            assert result.total == 3 and len(result.criteria) == 2 and not result.warnings
+            assert set(result.persona_ids) == {"yes": {"buyer"}, "no": {"browser"}, "any": {"buyer", "browser"}}[there]
+            assert result.total == 3 and len(result.criteria) == (1 if there == "any" else 2) and not result.warnings
             assert await search() == result
             assert len(calls) == {"corrected": 2, "repeated": 3, "legacy_cache": 1}[recovery]
             assert client.get_usage().cached_requests == 1
@@ -103,7 +104,7 @@ def test_shelf_condition_requires_a_resolvable_shelf_before_cache(
     asyncio.run(exercise())
 
 
-@pytest.mark.parametrize("there", ["yes", "no"])
+@pytest.mark.parametrize("there", ["yes", "no", "any"])
 @pytest.mark.parametrize("name", ["Tea shelf", " tea SHELF ", '"Tea shelf"', "the Tea shelf near the door"])
 def test_existing_shelf_name_resolution_remains_usable(there, name):
     store, customers = sample()
@@ -113,10 +114,10 @@ def test_existing_shelf_name_resolution_remains_usable(there, name):
             return schema.model_validate({"label": "Tea", "stopped_at": [name], "bought_there": there})
 
     result = asyncio.run(find_shoppers(Model(), "Find Tea visitors", customers, {}, store, "USD"))
-    assert result.persona_ids == (["buyer"] if there == "yes" else ["browser"])
+    assert set(result.persona_ids) == {"yes": {"buyer"}, "no": {"browser"}, "any": {"buyer", "browser"}}[there]
 
 
-@pytest.mark.parametrize("shelves", [[], ["Tea shelf"], ["Unlisted shelf"]])
+@pytest.mark.parametrize("shelves", [[], ["Tea shelf"]])
 def test_unspecified_shelf_purchase_condition_keeps_existing_behavior(shelves):
     store, customers = sample()
 
@@ -128,7 +129,7 @@ def test_unspecified_shelf_purchase_condition_keeps_existing_behavior(shelves):
     assert set(result.persona_ids) == ({"browser", "buyer"} if shelves == ["Tea shelf"] else set(customers))
 
 
-@pytest.mark.parametrize("there", ["yes", "no"])
+@pytest.mark.parametrize("there", ["yes", "no", "any"])
 def test_one_unknown_alternative_keeps_the_known_shelf_and_warning(there):
     store, customers = sample()
 
@@ -137,11 +138,12 @@ def test_one_unknown_alternative_keeps_the_known_shelf_and_warning(there):
             return schema.model_validate({"label": "Tea", "stopped_at": ["Moon shelf", "Tea shelf"], "bought_there": there})
 
     result = asyncio.run(find_shoppers(Model(), "Find Tea visitors", customers, {}, store, "USD"))
-    assert result.persona_ids == (["buyer"] if there == "yes" else ["browser"])
+    assert set(result.persona_ids) == {"yes": {"buyer"}, "no": {"browser"}, "any": {"buyer", "browser"}}[there]
     assert len(result.warnings) == 1 and "Moon shelf" in result.warnings[0]
 
 
-def test_a_single_ambiguous_name_does_not_supply_a_shelf_target():
+@pytest.mark.parametrize("there", ["yes", "no", "any"])
+def test_a_single_ambiguous_name_does_not_supply_a_shelf_target(there):
     store, customers = sample()
     store.racks.append(store.racks[0].model_copy(deep=True, update={
         "id": "snacks", "rack_name": "Snack shelf", "position": (3, 1),
@@ -149,13 +151,14 @@ def test_a_single_ambiguous_name_does_not_supply_a_shelf_target():
 
     class Model:
         async def generate_structured_async(self, schema, *args, **kwargs):
-            return schema.model_validate({"label": "Either", "stopped_at": ["Tea shelf or Snack shelf"], "bought_there": "no"})
+            return schema.model_validate({"label": "Either", "stopped_at": ["Tea shelf or Snack shelf"], "bought_there": there})
 
-    with pytest.raises(ValidationError, match="bought_there requires stopped_at"):
+    with pytest.raises(ValidationError, match="stopped_at"):
         asyncio.run(find_shoppers(Model(), "Find visitors", customers, {}, store, "USD"))
 
 
-def test_duplicate_display_names_keep_all_rack_ids():
+@pytest.mark.parametrize("there", ["yes", "no", "any"])
+def test_duplicate_display_names_keep_all_rack_ids(there):
     store, customers = sample()
     store.racks.append(store.racks[0].model_copy(deep=True, update={"id": "tea2", "position": (3, 1)}))
     second = customers["browser"].model_copy(deep=True, update={"persona_id": "second"})
@@ -164,7 +167,21 @@ def test_duplicate_display_names_keep_all_rack_ids():
 
     class Model:
         async def generate_structured_async(self, schema, *args, **kwargs):
-            return schema.model_validate({"label": "Tea", "stopped_at": ["Tea shelf"], "bought_there": "no"})
+            return schema.model_validate({"label": "Tea", "stopped_at": ["Tea shelf"], "bought_there": there})
 
     result = asyncio.run(find_shoppers(Model(), "Find Tea visitors", customers, {}, store, "USD"))
-    assert set(result.persona_ids) == {"browser", "second"} and not result.warnings
+    assert set(result.persona_ids) == {"yes": {"buyer"}, "no": {"browser", "second"}, "any": {"buyer", "browser", "second"}}[there]
+    assert not result.warnings
+
+
+@pytest.mark.parametrize("names", [["Tea shelf"], ["  "]])
+def test_a_store_without_shelves_cannot_resolve_a_generated_stop(names):
+    store, customers = sample()
+    store.racks = []
+
+    class Model:
+        async def generate_structured_async(self, schema, *args, **kwargs):
+            return schema.model_validate({"label": "Stopped", "stopped_at": names})
+
+    with pytest.raises(ValidationError, match="stopped_at"):
+        asyncio.run(find_shoppers(Model(), "Find visitors", customers, {}, store, "USD"))

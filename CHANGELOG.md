@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Validate generated product-purchase search conditions before caching. A
-  nonempty product list with no resolvable target now requests correction
+- Validate generated shelf and product search conditions before caching. A
+  nonempty target list with no resolvable shelf or product requests correction
   instead of silently disappearing from the applied shopper filter.
 
 - Choice buttons that showed which one is picked only by colour now also
