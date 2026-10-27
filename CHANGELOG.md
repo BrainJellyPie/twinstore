@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep local JSON Schema corrections concise as well as plain JSON
+  corrections. Preserve the validation error and original response history
+  without repeating SDK response dumps inside each retry message.
+
 - Keep each generated customer's identity within that individual's requested
   types, including requests at the same hour. Revalidate cached and split
   batches and give correction requests the complete expected row order.
