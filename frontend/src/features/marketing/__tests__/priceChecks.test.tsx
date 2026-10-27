@@ -148,3 +148,11 @@ it("says what the review still needs while it cannot run, including spaces aroun
   fireEvent.change(screen.getByLabelText("Store reference"), { target: { value: " ours" } });
   expect(screen.getByText(needs)).toBeTruthy();
 });
+
+it("announces that the review is running", async () => {
+  fetchMock.mockImplementationOnce(() => new Promise(() => {}));
+  render(<PriceChecks projectId="p" />, { wrapper });
+  fill();
+  fireEvent.click(screen.getByRole("button", { name: "Review price checks" }));
+  expect((await screen.findByRole("status")).textContent).toMatch(/^Reconciling/);
+});

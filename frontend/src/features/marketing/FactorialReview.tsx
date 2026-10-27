@@ -44,7 +44,7 @@ export function FactorialReview({ projectId, experimentId }: { projectId: string
       <p>{t("mkFactIntro")}</p>
       <p className="text-xs text-muted-foreground">{t("mkFactRules")}</p>
       <Button size="sm" variant="outline" disabled={busy} onClick={() => { clear(); void source.refetch(); }}>{t("mkFactReload")}</Button>
-      {source.isFetching && <p>{t("mkFactLoading")}</p>}
+      {source.isFetching && <p role="status">{t("mkFactLoading")}</p>}
       {source.data && !source.data.available && <p>{source.data.reason}</p>}
       {source.data?.available && <>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -62,7 +62,7 @@ export function FactorialReview({ projectId, experimentId }: { projectId: string
         <p className="text-xs">{t("mkFactExploratory")}</p>
         <Button disabled={!valid || busy} onClick={() => { clear(); if (source.data) preview.mutate({ source_sha256: source.data.source_sha256, price_arm: price, sign_arm: sign, combined_arm: both, metric }); }}>{t("mkFactCalculate")}</Button>
       </>}
-      {preview.isPending && <p>{t("mkFactCalculating")}</p>}
+      {preview.isPending && <p role="status">{t("mkFactCalculating")}</p>}
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {report && <div className="space-y-3">
         <p>{t("mkFactCoverage", {

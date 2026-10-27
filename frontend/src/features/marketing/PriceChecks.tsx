@@ -55,7 +55,7 @@ export function PriceChecks({ projectId }: { projectId: string }) {
     }} /></label>)}
     <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { clear(); if (labels && checkouts) preview.mutate({ labels, checkouts, store_ref: store, audit_date: date }); }}>{t("mkPcReview")}</Button>
     {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkPcReviewNeeds")}</p>}
-    {preview.isPending && <p>{t("mkPcReconciling")}</p>}
+    {preview.isPending && <p role="status">{t("mkPcReconciling")}</p>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {report && <div className="space-y-3">
       <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkPcSummary", { comparable: report.rows.length - report.excluded_count, total: report.rows.length, excluded: report.excluded_count, labels: report.label_count, checkouts: report.checkout_count })}</p>

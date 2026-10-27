@@ -43,14 +43,14 @@ export function FieldPilots({ projectId, source, onOpenScripts }: { projectId: s
     <div className="flex flex-wrap gap-2">{pilots.map((p) => <Button key={p.pilot_id} aria-pressed={selected === p.pilot_id} variant={selected === p.pilot_id ? "default" : "outline"} onClick={() => selectPilot(p.pilot_id)}>
       {p.name} · {p.enrolled}/{p.planned} · {p.finalized_at ? t("mkPilotClosed") : t("mkPilotCollecting")}
     </Button>)}</div>
-    {list.isPending && <p className="text-sm">{t("mkLoadingPilots")}</p>}
+    {list.isPending && <p role="status" className="text-sm">{t("mkLoadingPilots")}</p>}
     {!list.isPending && !list.error && pilots.length === 0 && <p className="text-sm text-muted-foreground">{t("mkNoPilots")}</p>}
     {selected && <div className="space-y-3">
       <div className="flex gap-2"><Button aria-pressed={mode === "collection"} variant={mode === "collection" ? "default" : "outline"} onClick={() => setMode("collection")}>{t("mkCollectionChecks")}</Button><Button aria-pressed={mode === "results"} variant={mode === "results" ? "default" : "outline"} onClick={() => setMode("results")}>{t("mkObservationsResults")}</Button></div>
       {mode === "collection" ? <PilotCollectionChecks key={selected} projectId={projectId} pilotId={selected} /> : <>
         <Button variant="ghost" size="sm" onClick={() => void view.refetch()} disabled={view.isFetching}>{t("mkReloadPilot")}</Button>
         {view.error && <p role="alert" className="text-sm text-destructive">{view.error.message}</p>}
-        {view.data ? <PilotResults key={`${selected}:${view.data.pilot.revision}`} projectId={projectId} view={view.data} /> : view.isPending && <p className="text-sm">{t("mkLoadingObservations")}</p>}
+        {view.data ? <PilotResults key={`${selected}:${view.data.pilot.revision}`} projectId={projectId} view={view.data} /> : view.isPending && <p role="status" className="text-sm">{t("mkLoadingObservations")}</p>}
       </>}
     </div>}
   </section>;

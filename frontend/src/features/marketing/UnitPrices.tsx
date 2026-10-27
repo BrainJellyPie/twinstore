@@ -51,7 +51,7 @@ export function UnitPrices({ projectId }: { projectId: string }) {
     }} /></label>
     <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { clear(); if (file) preview.mutate({ file, focal_retailer: retailer, as_of: asOf, max_age_days: Number(age) }); }}>{t("mkUpCompare")}</Button>
     {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkUpCompareNeeds")}</p>}
-    {preview.isPending && <p>{t("mkUpReviewing")}</p>}
+    {preview.isPending && <p role="status">{t("mkUpReviewing")}</p>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {report && <div className="space-y-3">
       <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkUpSummary", { qualify: report.rows.filter((r) => !r.flags.length).length, total: report.rows.length, retailer: report.scope.focal_retailer, asOf: report.scope.as_of, age: report.scope.max_age_days })}</p>

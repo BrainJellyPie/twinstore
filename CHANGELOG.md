@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Progress lines that appear after you start something ("Reconciling
+  supplied checks…", "Calculating…", "Loading…") are announced to screen
+  readers in the price, unit-price, inventory and pilot reviews, the
+  restock planner, Compare runs and the online stores page.
+
 - Describe generated shopping actions with the fields each operation uses.
   Native local models must name the action and supply a valid product code
   and quantity for purchases, avoiding anonymous movement loops. Existing

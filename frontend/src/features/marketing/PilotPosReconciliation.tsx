@@ -38,7 +38,7 @@ export function PilotPosReconciliation({ projectId, pilot, disabled, onActive, o
       if (file.size > 2 * 1024 * 1024) { setError(t("mkPosTooLarge")); onActive(false); return; }
       onActive(true); preview.mutate(file);
     }} /></label>
-    {preview.isPending && <p className="text-sm">{t("mkPosMatching")}</p>}
+    {preview.isPending && <p role="status" className="text-sm">{t("mkPosMatching")}</p>}
     {(error || preview.error) && <p role="alert" className="text-sm text-destructive">{error || preview.error?.message}</p>}
     {preview.data && <PosReport key={preview.data.source_sha256} report={preview.data} disabled={busy} onReview={(data) => {
       const file = new File([data.candidate_csv], `${data.pilot_id}-pos-proposals.csv`, { type: "text/csv" });

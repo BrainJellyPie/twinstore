@@ -97,7 +97,7 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
           </div>
 
           {a === b && <p className="text-xs text-muted-foreground">{t("cmpPickTwo")}</p>}
-          {compare.isLoading && <p className="text-sm text-muted-foreground">{t("cmpBootstrapping")}</p>}
+          {compare.isLoading && <p role="status" className="text-sm text-muted-foreground">{t("cmpBootstrapping")}</p>}
           {compare.isError && (
             <p role="alert" className="text-xs text-destructive">
               {compare.error instanceof Error ? compare.error.message : t("cmpFailed")}

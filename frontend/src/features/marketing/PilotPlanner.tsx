@@ -35,7 +35,7 @@ export function PilotPlanner({ projectId, inputs, onChange, counts, onApply }: {
       {!assumptions && <p className="text-xs text-muted-foreground">{t("mkPlanInvalid")}</p>}
       {!validCounts && <p className="text-xs text-muted-foreground">{t("mkFixBlocks")}</p>}
       {assumptions && validCounts && <>
-        {plan.isPending && <p className="text-sm">{t("mkCalcSample")}</p>}
+        {plan.isPending && <p role="status" className="text-sm">{t("mkCalcSample")}</p>}
         {plan.error && <p role="alert" className="text-sm text-destructive">{plan.error.message}</p>}
         {plan.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
         {plan.data && <>
