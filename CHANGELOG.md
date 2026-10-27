@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- In a concept test, the example shelf price follows the selected language
+  ("1,99" in French and Spanish), and each question's hint wraps as a compact
+  block under its name instead of leaving "5)" alone on a widely spaced line.
+
 - Reject receipt replies that copy JSON Schema metadata instead of receipt
   values. Retry them as invalid answers instead of caching a blank receipt;
   real receipt values can still carry harmless extra metadata.

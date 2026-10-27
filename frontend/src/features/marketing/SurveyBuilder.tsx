@@ -13,7 +13,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
+import { formatDecimal, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import { modelLabel } from "@/shared/i18n/providerLabels";
 
@@ -184,7 +184,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
                   <span className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded border", on && !off ? "border-primary bg-primary text-primary-foreground" : "")}>
                     {on && !off && <Check className="size-3" />}
                   </span>
-                  <span><b className="block text-sm">{t(q.label)}</b><span className="text-[0.7rem] text-muted-foreground">{off ? t("mkNeedsTwo") : t(q.hint)}</span></span>
+                  <span><b className="block text-sm">{t(q.label)}</b><span className="block text-[0.7rem] text-pretty text-muted-foreground">{off ? t("mkNeedsTwo") : t(q.hint)}</span></span>
                 </button>
               );
             })}
@@ -197,7 +197,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
           <div className="flex items-end gap-2">
             <label className="flex flex-1 flex-col gap-1">
               <span className="text-xs text-muted-foreground">{t("mkShelfPriceA")}</span>
-              <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="1.99" className="num h-9"
+              <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder={formatDecimal(1.99, 2)} className="num h-9"
                 aria-invalid={invalidPrice} aria-describedby={invalidPrice ? "survey-price-error" : undefined} />
             </label>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2 text-sm" aria-label={t("mkCurrency")}>
