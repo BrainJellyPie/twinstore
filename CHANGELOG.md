@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve unspecified customer budgets when a local JSON model returns
+  only blank or zero amounts. Avoid a correction request that can invent
+  spending limits; a blank paired with a nonzero amount still needs correction.
+
 - Validate generated shelf and product search conditions before caching. A
   nonempty target list with no resolvable shelf or product requests correction
   instead of silently disappearing from the applied shopper filter.

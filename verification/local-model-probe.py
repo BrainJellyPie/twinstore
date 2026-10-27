@@ -126,9 +126,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-reversed", "pack-multipack-reversed-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
     "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-foreign-inr-price", "capture-inr-price", "capture-foreign-brl-price", "capture-brl-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-item-code", "capture-reference-code", "capture-hash-code", "capture-item-price", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
-    "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
+    "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero", "traffic-quoted-counts", "traffic-identity-comma",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -532,7 +532,19 @@ try:
         source = "Neighborhood residents buy snacks and drinks at this small convenience store."
         evidence = "Observed visitors: exactly one visitor in each open hour. Preserve these supplied hourly counts."
         observed = {hour: 1 for hour in range(opening, closing)}
-        if args.case == "traffic-24h-varied":
+        if args.case in {"traffic-quoted-counts", "traffic-identity-comma"}:
+            opening, closing = 9, 11
+            observed = {9: 2, 10: 0}
+            if args.case == "traffic-identity-comma":
+                identities = ["local residents, including retirees"]
+            else:
+                identities = ["local resident"]
+            area = TradeAreaProfile(keywords=["neighborhood"], identities=identities, purposes=["buy snacks"])
+            evidence = "Observed Monday visitors from a CSV export; preserve these counts and the supplied identity label.\n" + json.dumps([
+                {"hour": "09:00", "visitor_count": "2", "person_types": identities[0]},
+                {"hour": "10:00", "visitor_count": "0", "person_types": ""},
+            ], ensure_ascii=False)
+        elif args.case == "traffic-24h-varied":
             observed = {hour: [0, 2, 5, 1][hour // 6] for hour in range(24)}
         elif args.case == "traffic-last-hour-zero":
             observed = {23: 0}
@@ -574,6 +586,10 @@ try:
             address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
             profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
+        if args.case == "persona-mixed-types":
+            customer_count, budget = 3, (0, 0)
+            categories = ["snacks", "drinks"]
+            profile = "Students, retirees and nurses visit the neighborhood shop for snacks and drinks. No spending budget is specified. Preserve each requested customer's own type."
         if args.case.startswith("persona-nightmarket"):
             expected_hour, customer_count = 23, 12
             categories = ["drinks", "snacks"]
@@ -592,7 +608,7 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities"}:
+            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types"}:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
@@ -600,6 +616,9 @@ try:
                 if args.case == "persona-category-labels":
                     area = TradeAreaProfile(keywords=["neighborhood", "reading"],
                         identities=["local resident", "student"], purposes=["buy books", "buy stationery"])
+                if args.case == "persona-mixed-types":
+                    area = TradeAreaProfile(keywords=["neighborhood"],
+                        identities=["student", "retiree", "nurse"], purposes=["buy snacks", "buy drinks"])
                 hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
                 if args.case == "persona-hour-identities":
                     area = TradeAreaProfile(keywords=["neighborhood", "convenience"],
@@ -618,8 +637,23 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities"} and len(written) != customer_count:
+        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types"} and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
+        if args.case == "persona-mixed-types":
+            requests = [json.loads(line)["request"] for line in (output / "requests.jsonl").read_text().splitlines()]
+            types_by_position = {}
+            for request in requests:
+                for message in request["messages"]:
+                    text = str(message.get("content", ""))
+                    position = re.search(r"daily customer positions=(\d+)-(\d+)", text)
+                    if message["role"] == "user" and position:
+                        for index, labels in re.findall(r"^\[(\d+)\] 9시, ([^,]+), 키워드:", text, re.MULTILINE):
+                            types_by_position[int(position[1]) + int(index)] = labels.split("+")
+            requested_types = [types_by_position[position] for position in sorted(types_by_position)]
+            result["requested_types"] = requested_types
+            if len(requested_types) != customer_count or any(person.identity not in allowed
+                    for person, allowed in zip(written, requested_types)):
+                issues.append("The writer changed an individual request's customer type within the same hour")
         if args.case == "persona-hour-identities":
             if Counter(person.arrival_hour for person in people) != {hour: 1 for hour in identities_by_hour}:
                 issues.append("The writer changed the fixed cohort's per-hour counts")

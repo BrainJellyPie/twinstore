@@ -510,9 +510,19 @@ async def generate_personas_for_day(
                 return row  # Existing providers and canonical cached models use minor integers.
             if not all(field in row for field in major) or any(field in row for field in ("budget_min", "budget_max")):
                 raise ValueError("Return both budget_min_major and budget_max_major; do not mix major and stored-unit fields.")
+            # Some JSON models use a blank lower amount with a zero upper amount
+            # for no budget. Preserve that sentinel without reasking for invented
+            # limits; a blank paired with a real amount still needs correction.
+            unbounded = all(
+                (isinstance(amount, str) and (not amount.strip() or re.fullmatch(r"0{1,16}(?:\.0{1,2})?", amount.strip())))
+                or (isinstance(amount, int) and not isinstance(amount, bool) and amount == 0)
+                for amount in (row[field] for field in major)
+            )
             converted = row.copy()
             for field in major:
                 amount = converted.pop(field)
+                if unbounded and isinstance(amount, str) and not amount.strip():
+                    amount = "0"
                 if isinstance(amount, int) and not isinstance(amount, bool):
                     amount = str(amount)  # Plain JSON providers may omit quotes around whole amounts.
                 if not isinstance(amount, str) or not re.fullmatch(r"[0-9]{1,16}(\.[0-9]{1,2})?", amount.strip()):
