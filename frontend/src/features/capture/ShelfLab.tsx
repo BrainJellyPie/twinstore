@@ -300,7 +300,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
       {draft.kind === "promo" && (
         <div className="flex flex-wrap gap-1.5">
           {PROMOS.map((p) => (
-            <button key={p} type="button" onClick={() => setPromo(p)}
+            <button aria-pressed={promo === p} key={p} type="button" onClick={() => setPromo(p)}
               className={cn("rounded-full border px-3 py-1 text-xs font-semibold", promo === p ? "border-transparent bg-[#e8182e] text-white" : "hover:border-foreground/20")}>
               {p}
             </button>

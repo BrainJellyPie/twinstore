@@ -206,7 +206,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted, onUnsaved }: {
             { id: "planogram", label: t("capTabPlanogram"), icon: ListChecks },
             { id: "lab", label: t("capTabLab"), icon: FlaskConical },
           ] as const).map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" onClick={() => setTab(id)}
+            <button aria-pressed={tab === id} key={id} type="button" onClick={() => setTab(id)}
               className={cn("flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-colors",
                 tab === id ? "bg-foreground/[0.08] text-foreground shadow-[inset_0_1px_0_var(--highlight)]" : "text-muted-foreground hover:text-foreground")}>
               <Icon className="hidden size-4 shrink-0 sm:block" /> {label}

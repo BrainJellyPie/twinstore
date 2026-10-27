@@ -46,7 +46,9 @@ it("keeps unsaved corrections across the Shelf Lab tab and asks before another p
   fireEvent.change(name, { target: { value: "Green tea" } });
 
   fireEvent.click(screen.getByRole("button", { name: /Shelf Lab/ }));
+  expect(screen.getByRole("button", { name: /Shelf Lab/ }).getAttribute("aria-pressed")).toBe("true");
   fireEvent.click(screen.getByRole("button", { name: /Planogram/ }));
+  expect(screen.getByRole("button", { name: /Planogram/ }).getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByDisplayValue("Green tea")).toBeTruthy();
 
   fireEvent.click(screen.getByTitle("second.png"));

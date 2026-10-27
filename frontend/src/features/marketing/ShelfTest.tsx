@@ -213,7 +213,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
           <h3 className="mb-2 text-sm font-semibold">{t("mkSign")}</h3>
           <div className="flex flex-wrap gap-1.5">
             {promos.map((p) => (
-              <button key={p || "none"} type="button" onClick={() => setPromo(p)}
+              <button aria-pressed={promo === p} key={p || "none"} type="button" onClick={() => setPromo(p)}
                 className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold", promo === p ? (p ? "border-transparent bg-[#e8182e] text-white" : "border-primary") : "hover:border-foreground/25")}>
                 {p || t("studioNone")}
               </button>
