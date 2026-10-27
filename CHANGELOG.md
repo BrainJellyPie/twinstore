@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ask receipt models to preserve signed quantities and amounts, including
+  returned product rows, so the existing review can block refunds instead of
+  accepting them as positive purchases.
+
 - Keep automatic starter selection and its preview behind the discard
   confirmation even when no requirements were typed. Failed online run-list
   requests remain visible as errors instead of looking like empty searches.

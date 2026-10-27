@@ -171,7 +171,8 @@ Use finite numbers only, never true or false. For unreadable or missing amounts 
 Copy only the printed amount; do not repeat digits. Amounts must fit within 9007199254740991 minor units
 (cents for USD, whole won for KRW, whole yen for JPY).
 Before total, fill total_row by copying its complete printed row, including the label and amount exactly as written.
-Do not rename a SUBTOTAL row to TOTAL. When no final total row is printed, set total_row="" and total=null."""
+Do not rename a SUBTOTAL row to TOTAL. When no final total row is printed, set total_row="" and total=null.
+Include returned or refunded product rows for review. Preserve every printed minus sign in quantity and amounts; a returned quantity -1 must remain -1 and a row amount -2.50 must remain -2.50. Never turn a negative number into its positive absolute value."""
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 _SUBTOTAL_ROW = re.compile(r"^(?:sub\s*total|sous\s*total|소계(?:\s*금액)?|小[計计])(?=\s|\d|$)")
