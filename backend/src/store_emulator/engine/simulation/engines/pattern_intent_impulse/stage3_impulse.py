@@ -9,8 +9,9 @@ from store_emulator.domain.behavior import BehaviorCue
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action
+from store_emulator.domain.types import Action, Face
 from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
+from store_emulator.engine.routing.route_builder import face_access_tile
 from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 from .prompt_utils import format_cue_prompt
 
@@ -175,16 +176,22 @@ def build_user_prompt(
     else:
         lines.append("시인성(0~1)은 고객이 실제 동선에서 그 상품을 봤을 가능성입니다 (진열 높이·거리·방향 반영). 높을수록 눈에 잘 띕니다.")
     record_ids = {(item.sku, item.name, item.price, item.promo): code for code, item in (records or {}).items()}
-    rack_codes: dict[str, str] = {}
+    rack_codes: dict[tuple[str, int, Face], str] = {}
     if not selection:
-        lines.append("진열대 표의 R번호는 상품이 놓인 곳입니다. target은 그 진열대의 접근타일을 사용하세요.")
-        for rack, _, _ in exposed_products:
-            if rack.id in rack_codes:
+        lines.append("R번호는 상품이 놓인 진열대 면입니다. 그 항목의 target과 face를 그대로 복사하세요.")
+        lines.append("A location marked unavailable has no walkable access tile. Do not add actions at that location.")
+        grid = store.walkable_grid()
+        for rack, slot, _ in exposed_products:
+            key = (rack.id, slot.block, slot.face)
+            if key in rack_codes:
                 continue
             code = f"R{len(rack_codes) + 1}"
-            rack_codes[rack.id] = code
+            rack_codes[key] = code
             overlay = f" (매대: {rack.rack_decoration_desc})" if rack.rack_decoration_desc else ""
-            lines.append(f"  {code}: {rack.rack_name or rack.id}({rack.type}){overlay} @ 접근타일 {sorted(rack.access_tiles(grid_size))[:3]}")
+            target = face_access_tile(rack, slot.face, grid_size, grid, block=slot.block)
+            location = (json.dumps({"target": target, "face": slot.face.value}, separators=(",", ":"))
+                        if target is not None else "unavailable")
+            lines.append(f"  {code}: {rack.rack_name or rack.id}({rack.type}){overlay} @ {location}")
         lines.append("상품 줄: 상품 코드/sku, 이름, 가격, 프로모션, 진열대 R번호, level, 시인성(제공된 경우).")
     for f, slot, sku in exposed_products:
         matched = next((i for i in slot.items if i.sku == sku), None)
@@ -202,7 +209,7 @@ def build_user_prompt(
             lines.append("\t".join(columns))
         else:
             lines.append(
-                f"  - {code}: {name} {format_price(price, currency)}{promo} | {rack_codes[f.id]} level={slot.level}{seen}"
+                f"  - {code}: {name} {format_price(price, currency)}{promo} | {rack_codes[(f.id, slot.block, slot.face)]} level={slot.level}{seen}"
             )
     lines.append("")
 
