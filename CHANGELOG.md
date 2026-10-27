@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Read the pack** on a product card now offers model setup (add a key or
+  download the local model) when no model can read it, as a batch upload
+  already did. The notice's buttons wrap inside a narrow card or phone screen
+  instead of running past its edge.
+
 - **Model providers** announces a connection test's result to screen readers:
   a reply as a status update and a failure as an alert. Before, the result
   appeared under the card without being read out.

@@ -102,6 +102,15 @@ it("offers model setup when packs could not be read for want of a model", async 
   expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });
 
+it("offers model setup when one pack's reading fails for want of a model", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(api.readPackage).mockRejectedValue(new Error("No model server answers at http://127.0.0.1:8081/v1"));
+  wrap(<ProductLibrary projectId="p" products={[]} setupId="s1" />);
+  fireEvent.click(screen.getByRole("button", { name: "Read the pack" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("No model server answers");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
+});
+
 it("asks before deleting a pack, then moves focus to the drop zone", async () => {
   vi.mocked(api.deletePackage).mockResolvedValue(undefined as never);
   wrap(<ProductLibrary projectId="p" products={[]} />);

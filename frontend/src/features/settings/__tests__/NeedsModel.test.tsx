@@ -42,6 +42,13 @@ it("asks for a key or the local model's download, and downloads only on the clic
   await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
 });
 
+it("lets the download button wrap inside a narrow card instead of overflowing it", async () => {
+  await show(noKey, <NeedsModel purpose="assist" />);
+  const download = screen.getByRole("button", { name: "Download local model (2 GB)" });
+  expect(download.className).toContain("whitespace-normal");
+  expect(download.className).toContain("max-w-full");
+});
+
 it("words the hint for a model helper such as the designer or an analyst", async () => {
   await show(noKey, <NeedsModel purpose="assist" />);
   expect(screen.getByTestId("needs-model").textContent).toContain("This needs a model.");
