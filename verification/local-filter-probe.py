@@ -7,7 +7,7 @@ bodies omit headers; matching IDs and applied criteria are checked separately
 so an empty result for the wrong reasons does not pass. This is a text task
 for the local VLM, not a vision or real-shopper quality evaluation.
 """
-import argparse,asyncio,json,time
+import argparse,asyncio,json,re,time
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlsplit
@@ -23,7 +23,7 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.shopper_filter import find_shoppers
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--mode',choices=['json_schema','json'],default='json_schema')
-p.add_argument('--case',choices=['shelf-only','nothing','free','precision','missing','known','excluded'],required=True)
+p.add_argument('--case',choices=['shelf-only','nothing','free','precision','precision-shifted','precision-before','minute-window','missing','known','excluded'],required=True)
 p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'))
 p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1')
 args=p.parse_args()
@@ -43,6 +43,9 @@ cases={
  'nothing':('Find shoppers who bought nothing at all, even if they visited shelves.',{'empty','away_empty'}),
  'free':('Find shoppers who purchased at least one item but spent exactly 0 USD in total.',{'free_elsewhere'}),
  'precision':('Find shoppers who arrived at or after 15:00:30 and before 16:00. Apply these exact arrival times only.',{'free_elsewhere','there'}),
+ 'precision-shifted':('Find shoppers who arrived at or after 15:00:29 and before 15:00:31. Apply these exact arrival times only.',{'elsewhere','free_elsewhere'}),
+ 'precision-before':('Find shoppers who arrived before 15:00:30. Apply this exact arrival time only.',{'empty','elsewhere','away_empty'}),
+ 'minute-window':('Find shoppers who arrived at or after 15:00 and before 16:00. Apply these exact arrival times only.',{'empty','elsewhere','free_elsewhere','there'}),
  'missing':('Find shoppers who bought Moonberry Soda. This product is not listed in this store.',set()),
  'known':('Find shoppers who bought Green Tea 500ml.',{'there','both'}),
  'excluded':('Find shoppers who did not buy Green Tea 500ml, whether or not they bought something else.',{'empty','elsewhere','free_elsewhere','away_empty','away_buyer'}),
@@ -67,12 +70,20 @@ try:
   'nothing':{'Bought nothing'},
   'free':{'Bought something','Spent at most $0.00'},
   'precision':{'Arrived at or after 15:00:30','Arrived before 16:00'},
+  'precision-shifted':{'Arrived at or after 15:00:29','Arrived before 15:00:31'},
+  'precision-before':{'Arrived before 15:00:30'},
+  'minute-window':{'Arrived at or after 15:00','Arrived before 16:00'},
   'missing':{'Bought Moonberry Soda'},
   'known':{'Bought Green Tea 500ml'},
   'excluded':{'Did not buy Green Tea 500ml'},
  }[args.case]
  optional={'free':{'Spent at least $0.00'},'known':{'Bought something'}}.get(args.case,set())
- criteria=set(result.criteria)
+ # HH:MM and HH:MM:00 are the same boundary; keep nonzero seconds distinct.
+ def criterion(value):
+  match=re.fullmatch(r'(Arrived (?:at or after|before) )(\d{1,2}):(\d{2})(?::(\d{2}))?',value)
+  return f'{match[1]}{int(match[2]):02}:{match[3]}:{match[4] or "00"}' if match else value
+ criteria={criterion(value) for value in result.criteria}
+ required={criterion(value) for value in required}
  issues=[]
  if set(result.persona_ids)!=expected: issues.append('Matched customer IDs do not equal the requested group')
  if required-criteria: issues.append('Missing requested criteria: '+repr(sorted(required-criteria)))
