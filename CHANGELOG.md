@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ask receipt models to count product rows before transcribing them and check
+  the returned count, reducing empty-row repetition in small local models
+  without dropping unreadable products or shortening long receipts.
+
 - Ask receipt models to preserve signed quantities and amounts, including
   returned product rows, so the existing review can block refunds instead of
   accepting them as positive purchases.
@@ -13,6 +17,22 @@
 - Read the printed row behind an inferred receipt total. If that row is a
   subtotal, leave the final total unknown and retain the original row for
   review, while keeping the purchased products and their paid amounts.
+
+- Fields marked as wrong now point screen readers to the message that says
+  what is wrong: the run dialog's seed, replicate and shared-store settings,
+  the operations lab's hours, shifts, roster, costs and memory settings, and
+  online amounts (fees, ad costs).
+- The operations lab now says why an hour's tills or crew block the plan
+  ("Each hour takes a whole number from 0 to 50, or stays blank."). Before,
+  only the field's border turned red and the buttons stayed off.
+- A new price in an A/B test variant that is not an amount now says "Not an
+  amount" under the field instead of only turning its border red.
+
+- Names and descriptions cut short to fit now show in full on hover: products
+  on a shelf's detail panel (two "Grandma's Chocolate…" products could not be
+  told apart), experiment arms in lift charts, shelf-test picks, stockouts and
+  their shelves in **Store operations**, store descriptions in the gallery and
+  shopper descriptions in a run.
 
 - When a search finds nothing in the layout finder, the run's shopper list, the
   online template gallery or the online shopper cards, screen readers now hear

@@ -257,7 +257,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
       <div className="rounded-2xl border bg-card p-3">
         <div className="text-sm font-semibold">{p.identity}</div>
         <div className="text-[0.72rem] text-muted-foreground">{personaLabel(p.age_group, t)} · {personaLabel(p.gender, t)} · {t("shopperDay", { day: j.day })} · {j.arrival_time.slice(0, 5)}–{j.leave_time.slice(0, 5)} · {engineLabel(j.engine_type, locale)}</div>
-        <p className="mt-1.5 line-clamp-3 text-[0.76rem] text-muted-foreground">{p.description}</p>
+        <p className="mt-1.5 line-clamp-3 text-[0.76rem] text-muted-foreground" title={p.description}>{p.description}</p>
         <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
           <Fact label={t("shopperCameFor")} value={p.purpose || p.intent || "–"} />
           <Fact label={t("shopperBudget")} value={p.budget_max ? `${formatMoney(p.budget_min, j.currency)}–${formatMoney(p.budget_max, j.currency)}` : "–"} />

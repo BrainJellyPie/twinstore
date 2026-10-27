@@ -1,6 +1,7 @@
 // The store's ad campaigns: which product each promotes, where it shows, its headline and what it costs. Saved with
 // the store; compare a store with and without an ad on the same shoppers to see what the ad adds.
 
+import { useId } from "react";
 import { Megaphone, Plus, Trash2 } from "lucide-react";
 
 import { AD_PLACEMENTS, type AdCampaign, type AdPlacement, type OnlineProduct } from "@/shared/api/online";
@@ -107,17 +108,19 @@ function CostInput({ value, currency, label, text, onTextChange, onChange }: {
   const { t } = useI18n();
   const displayed = text ?? majorUnitText(value, currency);
   const invalid = toMinor(displayed, minorUnitDivisor(currency)) === null;
+  const id = useId();
   return (
     <span className="flex flex-wrap items-center gap-1">
       <Input className="h-8 w-24" inputMode="decimal" value={displayed} aria-label={label} aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-hint ${id}-error` : `${id}-hint`}
         onChange={(e) => {
           onTextChange(e.target.value);
           const minor = toMinor(e.target.value, minorUnitDivisor(currency));
           if (minor !== null) onChange(minor);
         }} />
       <span className="text-[0.7rem] text-muted-foreground">{currency}</span>
-      {invalid && <span role="alert" className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
-      <span className="sr-only">{t("onAdCostHint")}</span>
+      {invalid && <span id={`${id}-error`} role="alert" className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
+      <span id={`${id}-hint`} className="sr-only">{t("onAdCostHint")}</span>
     </span>
   );
 }

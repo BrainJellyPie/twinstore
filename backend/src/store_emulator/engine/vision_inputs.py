@@ -136,9 +136,24 @@ class _ReceiptVLM(BaseModel):
     date: str = Field(default="", description="YYYY-MM-DD as printed, or empty")
     time: str = Field(default="", description="HH:MM as printed, or empty")
     currency: str = Field(default="", description="ISO 4217 code if you can tell, e.g. USD, KRW")
+    product_row_count: int | None = Field(default=None, ge=0, description="Count of actual purchased or returned product rows, excluding subtotal, tax, payment and change rows; zero when no products")
     lines: list[_ReceiptLineVLM] = Field(default_factory=list[_ReceiptLineVLM], description="Every purchased product row, excluding subtotal, tax and payment rows")
     total_row: str = Field(default="", max_length=160, description="The complete printed row supplying the final total, preserving its label; empty if absent")
     total: float | None = Field(default=None, allow_inf_nan=False)
+
+    @field_validator("product_row_count", mode="before")
+    @classmethod
+    def _numeric_product_count(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("The product row count must be an integer, not true or false.")
+        return value
+
+    @model_validator(mode="after")
+    def _complete_product_rows(self) -> Self:
+        if self.product_row_count is not None and self.product_row_count != len(self.lines):
+            raise ValueError(f"The receipt declares {self.product_row_count} product rows but returns {len(self.lines)}. "
+                             "Include each printed product once; exclude footer rows and empty padding.")
+        return self
 
     @field_validator("total", mode="before")
     @classmethod
@@ -172,7 +187,9 @@ Copy only the printed amount; do not repeat digits. Amounts must fit within 9007
 (cents for USD, whole won for KRW, whole yen for JPY).
 Before total, fill total_row by copying its complete printed row, including the label and amount exactly as written.
 Do not rename a SUBTOTAL row to TOTAL. When no final total row is printed, set total_row="" and total=null.
-Include returned or refunded product rows for review. Preserve every printed minus sign in quantity and amounts; a returned quantity -1 must remain -1 and a row amount -2.50 must remain -2.50. Never turn a negative number into its positive absolute value."""
+Include returned or refunded product rows for review. Preserve every printed minus sign in quantity and amounts; a returned quantity -1 must remain -1 and a row amount -2.50 must remain -2.50. Never turn a negative number into its positive absolute value.
+Column mapping: QTY / 수량 -> quantity; UNIT / 단가 -> unit_price; AMOUNT / 금액 -> line_total. These numbers are separate observations. Never calculate line_total from quantity or another amount. Copy the amount printed in its own column even when the arithmetic appears inconsistent.
+Before lines, set product_row_count to the number of actual purchased or returned product rows. Include exactly that many lines, once per printed product row, and then close the array. Do not count or emit subtotal, tax, total, cash or change rows as products. An unreadable product name is not a blank placeholder or a footer row. Never pad lines with empty or zero-filled objects."""
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 _SUBTOTAL_ROW = re.compile(r"^(?:sub\s*total|sous\s*total|소계(?:\s*금액)?|小[計计])(?=\s|\d|$)")

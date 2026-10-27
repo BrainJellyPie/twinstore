@@ -45,8 +45,8 @@ export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format
             className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:grid-cols-[minmax(7rem,11rem)_1fr_6.5rem]"
           >
             <div className="min-w-0">
-              <div className="truncate text-sm font-medium">{r.label}</div>
-              {r.sub && <div className="truncate text-[0.7rem] text-muted-foreground">{r.sub}</div>}
+              <div className="truncate text-sm font-medium" title={r.label}>{r.label}</div>
+              {r.sub && <div className="truncate text-[0.7rem] text-muted-foreground" title={r.sub}>{r.sub}</div>}
             </div>
             <div className="relative order-last col-span-2 h-7 sm:order-none sm:col-span-1">
               <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/25" aria-hidden />

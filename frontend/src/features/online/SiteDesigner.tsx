@@ -1,7 +1,7 @@
 // Design an online store: its look, catalog, persuasion and checkout choices, prices and stock. Save the store, or
 // save the changes as a variant to compare with the original on the same virtual shoppers.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Loader2, Save, Trash2 } from "lucide-react";
 
@@ -387,16 +387,18 @@ function Money({ label, value, currency, text, onTextChange, onChange }: {
   const displayed = text ?? majorUnitText(value, currency);
   const invalid = toMinor(displayed, minorUnitDivisor(currency)) === null;
   const { t } = useI18n();
+  const errorId = useId();
   return (
     <div className="flex items-center gap-1">
       <Input className="h-8 w-24" inputMode="decimal" value={displayed} aria-label={label} aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? errorId : undefined}
         onChange={(e) => {
           onTextChange(e.target.value);
           const minor = toMinor(e.target.value, minorUnitDivisor(currency));
           if (minor !== null) onChange(minor);
         }} />
       <span className="text-[0.7rem] text-muted-foreground">{currency}</span>
-      {invalid && <span role="alert" className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
+      {invalid && <span id={errorId} role="alert" className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
     </div>
   );
 }

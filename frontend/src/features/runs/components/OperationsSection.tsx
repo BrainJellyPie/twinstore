@@ -180,8 +180,8 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
             {report.stockouts.slice(0, STOCKOUTS_SHOWN).map((s) => (
               <li key={`${s.rack_id}:${s.sku}`} className="rounded-md border px-2 py-1.5 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium" title={s.sku}>{s.name || s.sku}</span>
-                  <span className="shrink-0 truncate text-muted-foreground">{s.rack_name || s.rack_id}</span>
+                  <span className="truncate font-medium" title={s.name ? `${s.name} (${s.sku})` : s.sku}>{s.name || s.sku}</span>
+                  <span className="shrink-0 truncate text-muted-foreground" title={s.rack_name || s.rack_id}>{s.rack_name || s.rack_id}</span>
                 </div>
                 <div className="mt-0.5 flex flex-wrap gap-x-3 text-muted-foreground tabular-nums">
                   {s.first_out && <span>{t("opsRanOut", { time: s.first_out.slice(0, 5), minutes: duration(s.minutes_out * 60) })}</span>}

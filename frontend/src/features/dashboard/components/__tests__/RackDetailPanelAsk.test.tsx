@@ -30,3 +30,9 @@ it("closes on Escape, but not on one a dialog over it already handled", () => {
   fireEvent.keyDown(window, { key: "Escape" });
   expect(onClose).toHaveBeenCalledTimes(1);
 });
+
+it("keeps a long product name whole in a tooltip where two lines cut it off", () => {
+  const long = { ...rack, slots: [{ block: 0, face: "N", level: 1, items: [{ sku: "b", name: "Grandma's Chocolate Brownie 2.5oz", price: 199, promo: "" }] }] } as unknown as Rack;
+  render(<RackDetailPanel rack={long} open onClose={vi.fn()} />);
+  expect(screen.getByText("Grandma's Chocolate Brownie 2.5oz").getAttribute("title")).toBe("Grandma's Chocolate Brownie 2.5oz");
+});
