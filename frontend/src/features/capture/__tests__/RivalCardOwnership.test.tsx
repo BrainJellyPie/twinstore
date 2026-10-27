@@ -221,3 +221,15 @@ it("does not display a positive price index as zero", async () => {
   expect(screen.getByText("<0.01")).toBeTruthy();
   expect(screen.queryByText("0.00")).toBeNull();
 });
+
+it("says why it cannot compare yet when no product on the photo is named", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  clients.push(client);
+  render(<QueryClientProvider client={client}>
+    <RivalCard projectId="p" captureId="c" result={{ ...capture, items: [{ ...capture.items[0]!, labeled: false }] }} />
+  </QueryClientProvider>);
+  await screen.findByRole("option", { name: "Rival one" });
+  const button = screen.getByRole("button", { name: "Compare with our store" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  expect(document.getElementById(button.getAttribute("aria-describedby")!)!.textContent).toBeTruthy();
+});

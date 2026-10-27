@@ -144,3 +144,13 @@ it("names a local server and its model in the selected language", async () => {
     useLocale.getState().setLocale("en");
   }
 });
+
+it("says why a provider cannot be tested yet", async () => {
+  vi.mocked(api.getProviders).mockResolvedValue([openai]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+  const test = await screen.findByRole("button", { name: "Test OpenAI" }) as HTMLButtonElement;
+  expect(test.disabled).toBe(true);
+  expect(document.getElementById(test.getAttribute("aria-describedby")!)!.textContent).toBe("Needs API key");
+  client.clear();
+});

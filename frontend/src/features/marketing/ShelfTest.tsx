@@ -1,7 +1,7 @@
 // Virtual shelf test: respondents stand in front of one shelf face twice — as it is and with a change to one
 // product (new pack, price, sign) — pick what they would take and name what caught their eye first.
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Loader2, Rows3, Sparkles } from "lucide-react";
 
@@ -141,6 +141,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   const shownDraft = drafted?.context === draftContext && drafted.form === formKey ? drafted.design : null;
   const promos = promo && !PROMOS.includes(promo) ? [...PROMOS, promo] : PROMOS;
 
+  const needsId = useId();
   const run = useMutation({
     mutationFn: () => startShelfTest(projectId, { name: name.trim(), setup_id: setupId, rack_id: rackId, target_sku: target, changes, panel, age_groups: ages, model }),
     onSuccess: async (job) => {
@@ -258,12 +259,13 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} aria-label={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
-        {!target && <span className="text-sm text-muted-foreground">{t("mkChooseUnderTest")}</span>}
-        {target && changes.length === 0 && <span className="text-sm text-muted-foreground">{t("mkChangeSomething")}</span>}
-        {invalidPrice && <p role="alert" className="text-sm text-destructive">{t("mkInvalidPriceCurrent")}</p>}
+        {!target && <span id={needsId} className="text-sm text-muted-foreground">{t("mkChooseUnderTest")}</span>}
+        {target && changes.length === 0 && <span id={needsId} className="text-sm text-muted-foreground">{t("mkChangeSomething")}</span>}
+        {invalidPrice && <p id={`${needsId}-price`} role="alert" className="text-sm text-destructive">{t("mkInvalidPriceCurrent")}</p>}
         {preview.error && <p role="alert" className="text-sm text-destructive">{preview.error.message}</p>}
         {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
-        <Button size="lg" disabled={!target || invalidPrice || changes.length === 0 || run.isPending} onClick={() => run.mutate()}>
+        <Button size="lg" disabled={!target || invalidPrice || changes.length === 0 || run.isPending} onClick={() => run.mutate()}
+          aria-describedby={!target || changes.length === 0 ? needsId : invalidPrice ? `${needsId}-price` : undefined}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rows3 className="size-4" />} {t("mkRunShelf")}
         </Button>
         {run.error && <div className="basis-full"><NeedsModel /></div>}

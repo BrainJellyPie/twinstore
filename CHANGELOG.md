@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve the moved fixture's selection and refused-drop message when touch
+  generates a click after dragging. Ordinary taps and keyboard selection keep
+  working.
+
 - Reject receipt replies that copy JSON Schema metadata instead of receipt
   values. Retry them as invalid answers instead of caching a blank receipt;
   real receipt values can still carry harmless extra metadata.
@@ -9,6 +13,22 @@
 - Ask receipt models to count product rows before transcribing them and check
   the returned count, reducing empty-row repetition in small local models
   without dropping unreadable products or shortening long receipts.
+- An ID longer than 128 characters in an address or request (a run, layout,
+  photo, test, online store or project) is now refused as invalid. Before, about
+  thirty pages of the API answered such an ID with a server error, because the
+  file system cannot hold a file name that long.
+
+- Opening a shopper or the **Group interview** from a run's shopper list now
+  moves focus to its **All shoppers** button, and leaving the group interview
+  returns focus to the button that opened it. **Track a shopper** on the
+  Results tab moves focus to the Shoppers tab it opens. Before, focus fell back
+  to the top of the page because the control it was on had been replaced.
+
+- **Run shelf test**, **Field the study** (conjoint), a rival's **Compare with
+  our store** and a model provider's **Test** buttons now tell screen readers
+  why they are off, using the hint or badge already shown beside them ("Choose
+  the product under test.", the first thing the study still needs, "Name the
+  products first", "Needs API key").
 
 - Ask receipt models to preserve signed quantities and amounts, including
   returned product rows, so the existing review can block refunds instead of
@@ -21,6 +41,19 @@
 - Read the printed row behind an inferred receipt total. If that row is a
   subtotal, leave the final total unknown and retain the original row for
   review, while keeping the purchased products and their paid amounts.
+
+- Asking TwinStore from the command palette with no model set up now offers
+  model setup (download the local model or open **Model settings**) right in
+  the palette, which closes when the settings link is followed. Before, it
+  showed only the server's text.
+
+- Leaving the floor editor's **Width** or **Depth** field without changing it
+  no longer clears the message under the floor (such as a refused move).
+
+- In the floor editor a fixture can now be dragged to another cell with the
+  mouse or a finger to move it. A drop onto another fixture or off the floor is
+  refused with the same message as the move buttons, and focus follows the
+  fixture. Clicking a cell still selects it.
 
 - Fields marked as wrong now point screen readers to the message that says
   what is wrong: the run dialog's seed, replicate and shared-store settings,

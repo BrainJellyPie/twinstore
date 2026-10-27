@@ -1,7 +1,7 @@
 // Conjoint builder: the product, its attributes and levels, price levels, the choice-task design, and the
 // respondents. A sample task shows what one respondent will be asked.
 
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dices, Grid3x3, Loader2, Plus, Sparkles, X } from "lucide-react";
 
@@ -136,6 +136,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
     ];
   });
 
+  const needsId = useId();
   const run = useMutation({
     mutationFn: () => startConjoint(projectId, {
       name: name.trim(), product: product.trim(), context: context.trim(), attributes: parsed, prices: validPrices, currency,
@@ -333,8 +334,9 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkStudyNameOptional")} aria-label={t("mkStudyNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
-        {(problems[0] || run.error) && <p role={run.error ? "alert" : undefined} className="text-sm text-destructive">{run.error?.message ?? problems[0]}</p>}
-        <Button size="lg" disabled={problems.length > 0 || run.isPending} onClick={() => run.mutate()}>
+        {(problems[0] || run.error) && <p id={needsId} role={run.error ? "alert" : undefined} className="text-sm text-destructive">{run.error?.message ?? problems[0]}</p>}
+        <Button size="lg" disabled={problems.length > 0 || run.isPending} onClick={() => run.mutate()}
+          aria-describedby={problems.length > 0 ? needsId : undefined}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Grid3x3 className="size-4" />}
           {t("mkFieldStudy")}
         </Button>

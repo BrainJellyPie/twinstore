@@ -13,6 +13,7 @@ import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 import { modelLabel } from "@/shared/i18n/providerLabels";
 import { personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -72,7 +73,8 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
 
   return (
     <div className="space-y-3 py-3">
-      <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {t("allShoppers")}</Button>
+      {/* It replaces the list, and the button that opened it: focus lands on the way back. */}
+      <Button ref={focusOnMount} variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {t("allShoppers")}</Button>
       <section className="space-y-2 rounded-2xl border bg-card p-3">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold"><UsersRound className="size-4 text-primary" /> {t("groupInterview")}</h3>
         <div className="flex flex-wrap gap-1">
