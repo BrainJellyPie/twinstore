@@ -40,7 +40,7 @@ export function PilotTiming({ projectId, pilotId, revision, eligible }: {
         else setFile(chosen);
       }} /></label>
       <Button size="sm" variant="outline" disabled={!file || busy} onClick={() => { if (file) preview.mutate({ file, revision }); }}>{t("mkTimingReview")}</Button>
-      {preview.isPending && <p className="text-sm">{t("mkTimingChecking")}</p>}
+      {preview.isPending && <p role="status" className="text-sm">{t("mkTimingChecking")}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </>}
     {report && <div className="space-y-3 text-sm">

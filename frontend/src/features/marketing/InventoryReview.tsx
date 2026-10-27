@@ -56,7 +56,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
     }} /></label>
     <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { if (file) preview.mutate({ file, start_date: start, end_date: end, currency }); }}>{t("mkInvReview")}</Button>
     {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkInvReviewNeeds")}</p>}
-    {preview.isPending && <p className="text-sm">{t("mkInvReconciling")}</p>}
+    {preview.isPending && <p role="status" className="text-sm">{t("mkInvReconciling")}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {report && <div className="space-y-3 text-sm">
       <p ref={revealOnMount} tabIndex={-1} className="rounded-md outline-offset-4">{t("mkInvPeriod", { start: report.period.start_date, end: report.period.end_date, days: report.period_days, currency: report.period.currency, reconciled: report.totals.reconciled_skus, total: report.totals.sku_count })}</p>

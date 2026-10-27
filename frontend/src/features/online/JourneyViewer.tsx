@@ -63,7 +63,7 @@ export function JourneyViewer({ projectId, runId, variant, shopperId, variants, 
             names={variants} money={(x) => formatMoney(x, code)} />
         ) : (
           <>
-            {session.isPending && <p className="text-sm text-muted-foreground">{t("studioLoading")}</p>}
+            {session.isPending && <p role="status" className="text-sm text-muted-foreground">{t("studioLoading")}</p>}
             {session.isError && <p role="alert" className="text-sm text-destructive">{session.error.message}</p>}
             {session.data && (
               <Journey key={`${variant}:${shopperId}`} projectId={projectId} runId={runId} view={session.data} currency={currency}

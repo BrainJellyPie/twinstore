@@ -169,7 +169,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
         )}
         <section aria-labelledby="online-sites" className="space-y-2">
           <h2 id="online-sites" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onStores")}</h2>
-          {sites.isPending && <p className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
+          {sites.isPending && <p role="status" className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
           {sites.isError && <p role="alert" className="text-xs text-destructive">{sites.error.message}</p>}
           <ul className="space-y-1.5">
             {roots.map((root) => {

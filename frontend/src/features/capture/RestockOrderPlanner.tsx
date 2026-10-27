@@ -67,7 +67,7 @@ export function RestockOrderPlanner({ projectId, report }: { projectId: string; 
     </fieldset>)}</div>
     {!valid && <p className="text-xs text-muted-foreground">{t("capOrderInvalid")}</p>}
     <Button type="button" size="sm" variant="outline" disabled={!valid || busy} onClick={() => preview.mutate(request())}>{t("capOrderCalculate")}</Button>
-    {preview.isPending && <p className="text-xs">{t("capOrderCalculating")}</p>}
+    {preview.isPending && <p role="status" className="text-xs">{t("capOrderCalculating")}</p>}
     {(preview.error || download.error) && <p role="alert" className="text-xs text-destructive">{preview.error?.message || download.error?.message}</p>}
     {plan && <div className="space-y-3 text-xs">
       <p><b>{t("capOrderPlannedSpend", { amount: formatMoney(plan.total_cost_minor, plan.currency) })}</b>{t("capOrderSpendBreakdown", { goods: formatMoney(plan.goods_cost_minor, plan.currency), delivery: formatMoney(plan.delivery_charged_minor, plan.currency), unspent: formatMoney(plan.remaining_budget_minor, plan.currency) })}</p>

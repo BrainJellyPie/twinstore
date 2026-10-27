@@ -347,3 +347,14 @@ it("requires explicit facing reduction acceptance and freezes it for uncertain r
     fetchMock.mock.calls[2]![1]!.body,
   );
 });
+it("counts a long list of products that do not fit and keeps the full list one click away", async () => {
+  const dropped = Array.from({ length: 30 }, (_, i) => `Product ${i + 1}`);
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ...preview, dropped })));
+  mount();
+  await review();
+  const alert = screen.getByRole("alert").textContent!;
+  expect(alert).toMatch(/^30 products do not fit, including Product 1, .*Product 8\. /);
+  expect(alert).not.toContain("Product 9,");
+  fireEvent.click(screen.getByText("All 30 products that do not fit"));
+  expect(screen.getByText(/Product 29, Product 30$/)).toBeTruthy();
+});

@@ -51,7 +51,7 @@ export function PilotEconomics({ projectId, pilotId, revision, currency, eligibl
       }} /></label>)}</div>
       <Button size="sm" variant="outline" disabled={!valid || busy} onClick={() => preview.mutate(request())}>{t("mkEconCalculate")}</Button>
       {!valid && <p className="text-xs text-muted-foreground">{t("mkEconInvalid")}</p>}
-      {preview.isPending && <p className="text-sm">{t("mkEconCalculating")}</p>}
+      {preview.isPending && <p role="status" className="text-sm">{t("mkEconCalculating")}</p>}
       {(preview.error || download.error) && <p role="alert" className="text-sm text-destructive">{preview.error?.message || download.error?.message}</p>}
     </>}
     {report && <div className="space-y-3 text-sm">

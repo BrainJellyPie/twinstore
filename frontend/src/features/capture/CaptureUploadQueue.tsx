@@ -11,6 +11,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import { modelLabel } from "@/shared/i18n/providerLabels";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { checkRecoveryRevision, forgetRecovery, queueIntent, readRecovery, recoveryErrorMessage, restoreRecovery, saveRecovery,
   type RecoveryCopy, type RecoveryOptions } from "./queueRecovery";
@@ -398,6 +399,8 @@ export function CaptureUploadQueue({
         </label>
       </div>
       <p>{t("capQueueSettingsHint")}</p>
+      {/* Reading products needs a model; say so before the first photo fails, not after. */}
+      {model !== "none" && <NeedsModel purpose="assist" />}
       <button
         type="button"
         disabled={!canPick}

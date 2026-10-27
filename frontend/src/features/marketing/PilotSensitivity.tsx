@@ -25,7 +25,7 @@ export function PilotSensitivity({ projectId, pilotId, revision, eligible }: { p
     <p className="text-sm text-muted-foreground">{t("mkSensIntro")}</p>
     {!eligible ? <p className="text-sm">{t("mkSensAfterClosing")}</p> : <>
       <Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => { if (requested) void query.refetch(); else setRequested(true); }}>{requested ? t("mkSensReload") : t("mkSensShow")}</Button>
-      {query.isFetching && <p className="text-sm">{t("mkSensLoading")}</p>}
+      {query.isFetching && <p role="status" className="text-sm">{t("mkSensLoading")}</p>}
       {query.error && <p role="alert" className="text-sm text-destructive">{query.error.message}</p>}
     </>}
     {report && <div className="space-y-3">

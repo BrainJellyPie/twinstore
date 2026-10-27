@@ -10,6 +10,22 @@
   fill the pattern's product allowance. Keep normal impulse purchases when
   capacity remains, including after catalog context recovery.
 
+- **Combine reviewed shelf photos** says how many products do not fit and
+  names the first eight, with the full list one click away, instead of
+  running every name together in one long sentence. Its price and
+  recognition counts say they cover all the selected photos, so they no
+  longer look at odds with the smaller number placed.
+
+- Adding shelf photos says up front that reading product names needs a model,
+  with the buttons to download the local model or open Model settings, when
+  none is set up. Before, each photo failed only after it was sent. Choosing
+  **Don't read** hides the note.
+
+- Progress lines that appear after you start something ("Reconciling
+  supplied checks…", "Calculating…", "Loading…") are announced to screen
+  readers in the price, unit-price, inventory and pilot reviews, the
+  restock planner, Compare runs and the online stores page.
+
 - Describe generated shopping actions with the fields each operation uses.
   Native local models must name the action and supply a valid product code
   and quantity for purchases, avoiding anonymous movement loops. Existing
@@ -85,7 +101,9 @@
   before three digits ("1,500") is still a thousands separator, and the other
   languages read prices as before. A conjoint study's price levels in those
   languages are separated by ";" or a comma and a space, so "1,49, 2,79" is
-  two prices instead of four (1, 49, 2 and 79).
+  two prices instead of four (1, 49, 2 and 79). The bulk product editor's
+  price hint and the conjoint price-format message say so in those languages
+  (12,50; 1,99) instead of asking for a decimal point.
 
 - Keep item/reference numbers and hash-prefixed codes from becoming captured
   selling prices. Preserve their printed labels and estimated-price review;

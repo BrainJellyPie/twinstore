@@ -14,7 +14,7 @@ export function PilotCollectionChecks({ projectId, pilotId }: { projectId: strin
   return <section className="space-y-3">
     <Button variant="ghost" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>{t("mkReloadChecks")}</Button>
     {query.error && <p role="alert" className="text-sm text-destructive">{query.error.message}</p>}
-    {query.isFetching && <p className="text-sm text-muted-foreground">{t("mkLoadingChecks")}</p>}
+    {query.isFetching && <p role="status" className="text-sm text-muted-foreground">{t("mkLoadingChecks")}</p>}
     {query.data && <CollectionReport key={`${query.data.pilot_id}:${query.data.revision}`} projectId={projectId} report={query.data} />}
   </section>;
 }

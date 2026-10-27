@@ -47,7 +47,7 @@ export function PilotObservationReview({ projectId, pilot, disabled, onActive, o
       startReview(file);
     }} /></label>
     <p className="text-xs text-muted-foreground">{t("mkReviewSheetHint")}</p>
-    {preview.isPending && <p className="text-sm">{t("mkCheckingSheet")}</p>}
+    {preview.isPending && <p role="status" className="text-sm">{t("mkCheckingSheet")}</p>}
     {review && <div className="space-y-3">
       <h4 ref={revealOnMount} tabIndex={-1} className="rounded-md text-sm font-semibold outline-offset-4">{t("mkProposedChanges", { revision: String(review.preview.revision), file: review.file.name })}</h4>
       <DiffSummary summary={review.preview.summary} />
@@ -83,7 +83,7 @@ export function PilotImportHistory({ projectId, pilot }: { projectId: string; pi
         <span className="ml-2">{t("mkImportRecord", { at: record.imported_at, assignments: record.summary.changed_assignments, fields: record.summary.changed_fields })}</span>
         <p className="whitespace-pre-wrap">{record.reason}</p>
       </div>)}</div>
-      {audit.isFetching && <p className="text-sm">{t("mkLoadingChanges")}</p>}
+      {audit.isFetching && <p role="status" className="text-sm">{t("mkLoadingChanges")}</p>}
       {audit.error && <p role="alert" className="text-sm text-destructive">{audit.error.message}</p>}
       {audit.data && <div className="space-y-2"><DiffSummary summary={audit.data.record.summary} /><ObservationChanges key={audit.data.record.revision} changes={audit.data.changes} />
         <p className="break-all text-xs text-muted-foreground">{t("mkUploadedSha", { sha: audit.data.record.source_sha256 })}</p></div>}

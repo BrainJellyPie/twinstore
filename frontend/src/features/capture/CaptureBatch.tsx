@@ -14,6 +14,8 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 const STATUS: Record<string, MessageKey> = { completed: "capStatusCompleted", failed: "capStatusFailed", pending: "capStatusPending", running: "capStatusRunning" };
+// A long list of products that do not fit is cut to a few names in the sentence; the rest open on request.
+const DROPPED_SHOWN = 8;
 
 export function CaptureBatch({
   projectId,
@@ -243,9 +245,17 @@ export function CaptureBatch({
                   {note}
                 </p>
               ))}
-              {!!report.dropped.length && (
+              {!!report.dropped.length && (report.dropped.length <= DROPPED_SHOWN ? (
                 <p role="alert">{t("capDropped", { products: report.dropped.join(", ") })}</p>
-              )}
+              ) : (
+                <div>
+                  <p role="alert">{t("capDroppedCount", { count: report.dropped.length, products: report.dropped.slice(0, DROPPED_SHOWN).join(", ") })}</p>
+                  <details className="text-xs">
+                    <summary className="cursor-pointer">{t("capDroppedAll", { count: report.dropped.length })}</summary>
+                    <p className="mt-1 break-words text-muted-foreground">{report.dropped.join(", ")}</p>
+                  </details>
+                </div>
+              ))}
               {report.reduced_facings > 0 && (
                 <label className="block rounded-lg border p-2">
                   <input
