@@ -15,6 +15,7 @@ import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelP
 import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 export function VlmSynergyDialog({
   projectId, venue, dayType, scenarioId, onOpenChange,
@@ -74,6 +75,7 @@ function Body({ projectId, venue, dayType, scenarioId }: { projectId: string; ve
           {/* Up to two thirds of the panel are affected visitors, each walked a second time without the venue. */}
           <p className="text-xs text-muted-foreground">{t("optVlmVisits", { count: customers + Math.ceil((customers * 2) / 3) })}</p>
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+          {error && <NeedsModel purpose="assist" />}
           <div className="flex justify-end">
             <Button onClick={() => start.mutate()} disabled={start.isPending}>
               {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("areaVlmRun")}

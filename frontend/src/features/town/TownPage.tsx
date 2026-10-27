@@ -17,6 +17,7 @@ import { cn } from "@/shared/utils/cn";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { ModelWaiting } from "@/shared/components/ModelWaiting";
 
@@ -321,6 +322,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         </div>
         {rationale && <p className="text-muted-foreground">{rationale} {t("areaCheckSettings")}</p>}
         {describe.error && <p role="alert" className="text-destructive">{describe.error.message}</p>}
+        {describe.error && <NeedsModel purpose="assist" />}
         <select className="h-8 w-full rounded-md border bg-background px-2" value={spec.archetype} onChange={(e) => setSpec({ ...spec, archetype: e.target.value as TownArchetype })} aria-label={t("areaArchetype")}>
           {Object.entries(ARCHETYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
         </select>

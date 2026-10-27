@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import * as api from "@/shared/api/client";
+import { setupWithKey } from "@/features/settings/__tests__/modelSetupWithKey";
 import { askGroup, findShoppers, listGroups } from "@/shared/api/interview";
 import type { CustomerResult, Persona, Store } from "@/shared/types/domain";
 import { useAssistStore } from "@/stores/assistStore";
@@ -12,7 +14,11 @@ vi.mock("@/shared/api/interview", async (original) => ({
   ...await original<typeof import("@/shared/api/interview")>(), findShoppers: vi.fn(), listGroups: vi.fn(), askGroup: vi.fn(),
   suggestGroupQuestions: vi.fn(), deleteGroup: vi.fn(),
 }));
-vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]), getModelSetup: vi.fn() }));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
+}));
+beforeEach(() => { vi.mocked(api.getModelSetup).mockResolvedValue(setupWithKey); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); useAssistStore.setState({ pending: null }); });
 
 const shopper = (id: string, spent: number): CustomerResult => ({
@@ -94,4 +100,15 @@ it("tells assistive technology which sort is chosen", () => {
   expect([top.getAttribute("aria-pressed"), empty.getAttribute("aria-pressed")]).toEqual(["true", "false"]);
   fireEvent.click(empty);
   expect([top.getAttribute("aria-pressed"), empty.getAttribute("aria-pressed")]).toEqual(["false", "true"]);
+});
+
+it("offers model setup when no model can find shoppers from a description", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(findShoppers).mockRejectedValue(new Error("No model API key is set."));
+  vi.mocked(listGroups).mockResolvedValue([]);
+  mount();
+  fireEvent.change(screen.getByLabelText("Describe shoppers to find"), { target: { value: "browsers who bought nothing" } });
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("No model API key is set.");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });

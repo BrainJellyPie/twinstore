@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 import * as api from "@/shared/api/client";
+import { setupWithKey } from "@/features/settings/__tests__/modelSetupWithKey";
 import type { Scenario } from "@/shared/api/client";
 import { ScenarioEditor } from "../ScenarioEditor";
 
@@ -13,7 +14,12 @@ vi.mock("@/shared/api/client", async (original) => ({
   getScenarios: vi.fn().mockResolvedValue([]),
   previewScenario: vi.fn().mockResolvedValue({ situation: "Rain.", traffic: 0.85, traffic_by_hour: {}, demand: {}, impulse: 1, dwell: 1.1, walkout: 1, budget: 1, quantity: 1 }),
   describeScenario: vi.fn(),
+  getModelSetup: vi.fn(),
 }));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
+}));
+beforeEach(() => { vi.mocked(api.getModelSetup).mockResolvedValue(setupWithKey); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const TEXT = "Rainy Friday, 1+1 on Pepsi";
@@ -56,6 +62,16 @@ it("shows why a day could not be set up", async () => {
   fireEvent.change(screen.getByLabelText("Describe the day"), { target: { value: TEXT } });
   fireEvent.keyDown(screen.getByLabelText("Describe the day"), { key: "Enter" });
   expect((await screen.findByRole("alert")).textContent).toContain("took too long");
+});
+
+it("offers model setup when no model can set up a described day", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(api.describeScenario).mockRejectedValue(new Error("No model API key is set."));
+  render(<QueryClientProvider client={new QueryClient()}><Harness onChange={vi.fn()} /></QueryClientProvider>);
+  fireEvent.change(screen.getByLabelText("Describe the day"), { target: { value: TEXT } });
+  fireEvent.keyDown(screen.getByLabelText("Describe the day"), { key: "Enter" });
+  expect((await screen.findByRole("alert")).textContent).toBe("No model API key is set.");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });
 
 it("does not submit the run dialog's form it sits in", async () => {

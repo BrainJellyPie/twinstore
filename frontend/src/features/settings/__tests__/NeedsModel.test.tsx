@@ -42,6 +42,25 @@ it("asks for a key or the local model's download, and downloads only on the clic
   await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
 });
 
+it("lets the download button wrap inside a narrow card instead of overflowing it", async () => {
+  await show(noKey, <NeedsModel purpose="assist" />);
+  const download = screen.getByRole("button", { name: "Download local model (2 GB)" });
+  expect(download.className).toContain("whitespace-normal");
+  expect(download.className).toContain("max-w-full");
+});
+
+it.each([false, true])("starting the local model does not submit its enclosing form (downloaded=%s)", async (downloaded) => {
+  const submitted = vi.fn();
+  const setup = { ...noKey, local: { ...noKey.local, downloaded } };
+  vi.mocked(api.startLocalModel).mockResolvedValue({ ...setup.local, state: "starting" });
+  await show(setup, <form onSubmit={(event) => { event.preventDefault(); submitted(); }}>
+    <NeedsModel purpose="assist" />
+  </form>);
+  fireEvent.click(screen.getByRole("button", { name: downloaded ? "Start local model" : "Download local model (2 GB)" }));
+  await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
+  expect(submitted).not.toHaveBeenCalled();
+});
+
 it("words the hint for a model helper such as the designer or an analyst", async () => {
   await show(noKey, <NeedsModel purpose="assist" />);
   expect(screen.getByTestId("needs-model").textContent).toContain("This needs a model.");

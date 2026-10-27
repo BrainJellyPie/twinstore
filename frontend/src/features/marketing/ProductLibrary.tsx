@@ -216,6 +216,7 @@ function ProductCard({ projectId, asset, products, setupId, onDeleted }: {
           </p>
         )}
         {read.error && <p role="alert" className="text-[0.68rem] text-destructive">{read.error.message}</p>}
+        {read.error && <NeedsModel purpose="assist" />}
         {save.error && <p role="alert" className="text-[0.68rem] text-destructive">{save.error.message}</p>}
         {del.error && <p role="alert" className="text-[0.68rem] text-destructive">{del.error.message}</p>}
       </div>

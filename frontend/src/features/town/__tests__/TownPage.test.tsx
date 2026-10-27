@@ -10,7 +10,7 @@ import { useAssistStore } from "@/stores/assistStore";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getTown: vi.fn(), getTownDemand: vi.fn(), getScenarios: vi.fn(),
-  generateTown: vi.fn(), importTownFromMap: vi.fn(), describeTown: vi.fn(),
+  generateTown: vi.fn(), importTownFromMap: vi.fn(), describeTown: vi.fn(), getModelSetup: vi.fn(),
 }));
 vi.mock("../TownMap", () => ({ TownMap: ({ town }: { town: api.Town }) => <div role="img" aria-label={town.name} /> }));
 vi.mock("../StorefrontCard", () => ({ StorefrontCard: () => null }));
@@ -183,6 +183,16 @@ it("sets up the generator from a description and generates only on request", asy
   expect(screen.getByRole("button", { name: "Bank", pressed: true })).toBeTruthy();  // a neighbor outside the usual chips still shows
   fireEvent.click(screen.getByRole("button", { name: "Generate" }));
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ archetype: "university", n_competitors: 2 })));
+});
+
+it("offers model setup when no model can set up the generator from a description", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(api.describeTown).mockRejectedValue(new Error("No model API key is set."));
+  await mount();
+  fireEvent.change(await screen.findByLabelText("Describe the area"), { target: { value: "A busy campus street" } });
+  fireEvent.click(screen.getByRole("button", { name: "Set up" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("No model API key is set.");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });
 
 it("opens the generator and sets it up from an area described in the command palette", async () => {

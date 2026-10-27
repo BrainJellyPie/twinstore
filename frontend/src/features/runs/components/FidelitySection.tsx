@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { readReceipts, uploadFidelity, type FidelityMetric } from "@/shared/api/client";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { ReceiptReviewPanel } from "./ReceiptReviewPanel";
 
 function verdict(m: FidelityMetric): "good" | "fair" | "poor" | null {
@@ -120,6 +121,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
       {receipts.isError && (
         <p role="alert" className="text-xs text-destructive">{receipts.error instanceof Error ? receipts.error.message : t("fidelityReadFailed")}</p>
       )}
+      {receipts.isError && <NeedsModel purpose="assist" />}
       {upload.isError && (
         <p role="alert" className="text-xs text-destructive">
           {upload.error instanceof Error ? upload.error.message : t("fidelityUploadFailed")}

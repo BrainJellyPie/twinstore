@@ -17,6 +17,7 @@ import { useAssistStore } from "@/stores/assistStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { ageBadge, personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { engineLabel } from "@/features/runs/labels";
@@ -145,6 +146,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
         </Button>
       </div>
       {finder.error && <p role="alert" className="text-[0.72rem] text-destructive">{finder.error.message}</p>}
+      {finder.error && <NeedsModel purpose="assist" />}
       {found && (
         <section ref={foundCard} className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label={t("shopperFound")}>
           <div className="flex items-start justify-between gap-2">

@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { explainComparison, type ComparisonReport, type MetricComparison } from "@/shared/api/client";
+import { explainComparison, getModelSetup, type ComparisonReport, type MetricComparison, type ModelSetup } from "@/shared/api/client";
 import { CompareDialog } from "../CompareDialog";
 
 const state = vi.hoisted(() => ({ report: null as ComparisonReport | null, currency: undefined as string | undefined }));
@@ -15,7 +15,10 @@ vi.mock("../../hooks", () => ({
   useCompare: () => ({ data: state.report, isLoading: false, isError: false }),
 }));
 vi.mock("@/shared/api/client", async (original) => ({
-  ...await original<typeof import("@/shared/api/client")>(), explainComparison: vi.fn(),
+  ...await original<typeof import("@/shared/api/client")>(), explainComparison: vi.fn(), getModelSetup: vi.fn(),
+}));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
 }));
 afterEach(() => { cleanup(); state.currency = undefined; });
 
@@ -132,6 +135,15 @@ it("explains the difference on request, with the figures it used", async () => {
   expect(await screen.findByText("B sells more drinks.")).toBeTruthy();
   expect(explainComparison).toHaveBeenCalledWith("p", "run_a", "run_b");
   expect(screen.getByRole("list", { name: "Figures used" }).textContent).toContain("Drink 3 1027 / 917");
+});
+
+it("offers model setup when no model can explain the difference", async () => {
+  vi.mocked(getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as ModelSetup);
+  vi.mocked(explainComparison).mockRejectedValue(new Error("No model server answers at http://127.0.0.1:8081/v1"));
+  show({ mean_a: 1000, mean_b: 1500, rel_diff: 0.5 });
+  fireEvent.click(screen.getByRole("button", { name: "Explain the difference" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("No model server answers");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });
 
 it("cuts long run names with an ellipsis, keeps the full name as a tooltip and points to the hidden columns", () => {

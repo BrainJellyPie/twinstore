@@ -8,6 +8,7 @@ import { Loader2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import type { TemplateChoice } from "../templateOptions";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
@@ -54,6 +55,7 @@ export function LayoutBriefField({ value, onApply, onBriefChange }: {
         <span className="text-muted-foreground">{t("layoutBriefHint")}</span>
       </div>
       {reader.error && <p role="alert" className="text-destructive">{reader.error.message}</p>}
+      {reader.error && <NeedsModel purpose="assist" />}
       {shown && (
         <div className="space-y-1 rounded-md bg-muted/50 p-2" aria-label={t("layoutBriefApplied")}>
           {shown.rationale && <p className="text-muted-foreground">{shown.rationale}</p>}

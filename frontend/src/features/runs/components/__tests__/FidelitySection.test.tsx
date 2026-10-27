@@ -3,10 +3,13 @@ import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { readReceipts, uploadFidelity, type FidelityReport, type ReceiptsResult } from "@/shared/api/client";
+import { getModelSetup, readReceipts, uploadFidelity, type FidelityReport, type ModelSetup, type ReceiptsResult } from "@/shared/api/client";
 import { FidelitySection } from "../FidelitySection";
 
-vi.mock("@/shared/api/client", () => ({ readReceipts: vi.fn(), uploadFidelity: vi.fn(), reviewReceipts: vi.fn() }));
+vi.mock("@/shared/api/client", async (original) => ({
+  ...await original<typeof import("@/shared/api/client")>(), readReceipts: vi.fn(), uploadFidelity: vi.fn(), reviewReceipts: vi.fn(), getModelSetup: vi.fn(),
+}));
+vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a> }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
 const receipts: ReceiptsResult = {
@@ -86,4 +89,13 @@ it("announces a failed sales upload to screen readers", async () => {
     target: { files: [new File(["csv"], "sales.csv")] },
   });
   expect((await screen.findByRole("alert")).textContent).toBe("The file has no receipt id column");
+});
+
+it("offers model setup when no model can read the receipt photos", async () => {
+  vi.mocked(getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as ModelSetup);
+  vi.mocked(readReceipts).mockRejectedValue(new Error("No model server answers at http://127.0.0.1:8081/v1"));
+  const { container } = render(<FidelitySection projectId="p" runId="r" />, { wrapper });
+  fireEvent.change(container.querySelector('input[type="file"][multiple]')!, { target: { files: [new File(["photo"], "receipt.png")] } });
+  expect((await screen.findByRole("alert")).textContent).toContain("No model server answers");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });

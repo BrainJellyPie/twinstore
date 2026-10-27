@@ -2,11 +2,30 @@
 
 ## Unreleased
 
+- Starting or downloading the local model from an inline setup notice no
+  longer submits its surrounding form and accidentally starts another task.
+
 - Preserve additional printed currencies when reading shelf prices. Treat
   unresolved currency symbols and ambiguous single-letter tags such as
   `B100` or `P100` as estimated prices instead of exact store-currency amounts.
   Ask the price transcriber to retain symbol strokes without replacing them
   with letters; uncertain readings still require review.
+
+- Describing the day in the situation editor, describing an area on the
+  **Area** page, applying a layout brief, finding shoppers from a description
+  and running vision shoppers for a neighbor now offer model setup (add a key or
+  download the local model) when no model is set up. Before, they showed only
+  the server's error.
+
+- **Explain the difference** in Compare runs and reading **receipt photos** for
+  validation now offer model setup (add a key or download the local model)
+  when no model can do the job, like the app's other model helpers. Before,
+  they showed only the server's error.
+
+- **Read the pack** on a product card now offers model setup (add a key or
+  download the local model) when no model can read it, as a batch upload
+  already did. The notice's buttons wrap inside a narrow card or phone screen
+  instead of running past its edge.
 
 - **Model providers** announces a connection test's result to screen readers:
   a reply as a status update and a failure as an alert. Before, the result

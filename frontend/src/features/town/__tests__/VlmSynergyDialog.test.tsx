@@ -6,7 +6,12 @@ import * as api from "@/shared/api/client";
 import { VlmSynergyDialog } from "../VlmSynergyDialog";
 import { useSimulationStore } from "@/stores/simulationStore";
 
-vi.mock("@/shared/api/client", () => ({ startVlmSynergy: vi.fn(), getVlmSynergyJob: vi.fn() }));
+vi.mock("@/shared/api/client", async (original) => ({
+  ...await original<typeof import("@/shared/api/client")>(), startVlmSynergy: vi.fn(), getVlmSynergyJob: vi.fn(), getModelSetup: vi.fn(),
+}));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
+}));
 vi.mock("@/features/runs/components/ModelPicker", () => ({ ModelPicker: () => null }));
 
 const clients: QueryClient[] = [];
@@ -100,6 +105,18 @@ it("keeps a displayed result in its own currency when another simulation changes
   useSimulationStore.getState().setCurrency("KRW"); vi.mocked(api.getVlmSynergyJob).mockResolvedValue(completed("KRW")); show();
   await screen.findByText("+₩1,000 / day"); act(() => useSimulationStore.getState().setCurrency("USD"));
   expect(screen.getByText("+₩1,000 / day")).toBeTruthy(); expect(screen.queryByText("+$10.00 / day")).toBeNull();
+});
+
+it("offers model setup when no model can run the vision shoppers", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
+  render(<QueryClientProvider client={client}>
+    <VlmSynergyDialog projectId="p" venue={venue} dayType="weekday" scenarioId={null} onOpenChange={() => {}} />
+  </QueryClientProvider>);
+  vi.mocked(api.startVlmSynergy).mockRejectedValue(new Error("No model server answers at http://127.0.0.1:8081/v1"));
+  fireEvent.click(screen.getByRole("button", { name: "Run vision shoppers" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("No model server answers");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });
 
 it("says how many vision-shopper visits a run takes before it starts", () => {

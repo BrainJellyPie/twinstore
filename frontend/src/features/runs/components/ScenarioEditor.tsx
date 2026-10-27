@@ -12,6 +12,7 @@ import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 import { BASELINE_SCENARIO } from "../scenarioDefaults";
@@ -198,6 +199,7 @@ export function ScenarioEditor({
         </button>
       </div>
       {describe.error && <p role="alert" className="text-xs text-destructive">{describe.error.message}</p>}
+      {describe.error && <NeedsModel purpose="assist" />}
       {described && scenario?.description === described.scenario.description && described.warnings.length > 0 && (
         <ul className="space-y-0.5 text-xs text-muted-foreground" aria-label={t("sitDescribedNotes")}>
           {described.warnings.map((w) => <li key={w}>· {w}</li>)}
