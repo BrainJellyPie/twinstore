@@ -39,6 +39,7 @@ import { searchText } from "@/shared/utils/searchText";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { MARKETING_TOOLS } from "@/features/marketing/tools";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 
 import { useCommandPalette, useShortcutsSheet } from "./commandPalette";
 import { quitLauncher, useLauncher } from "./launcher";
@@ -187,11 +188,14 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   // A sentence typed in a store's palette can be handed to the right tool, which drafts from the same words.
   const [asking, setAsking] = useState(false);
   const [askNote, setAskNote] = useState<string | null>(null);
+  // The request could not be routed (usually no model answers): offer setting one up here.
+  const [askFailed, setAskFailed] = useState(false);
   const requestId = useRef(0);
   useLayoutEffect(() => {
     requestId.current += 1;
     setAsking(false);
     setAskNote(null);
+    setAskFailed(false);
     return () => { requestId.current += 1; };
   }, [query, pid, open]);
   const sendAsk = useAssistStore((s) => s.send);
@@ -244,7 +248,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       const to = route.destination === "area" ? "/town/$pid" : online ? "/online/$pid" : onFloor ? "/projects/$pid" : "/marketing/$pid";
       void navigate({ to, params: { pid }, search: onlineRun ? { run: onlineRun } : undefined });
     } catch (e) {
-      if (id === requestId.current) setAskNote(e instanceof Error ? e.message : String(e));
+      if (id === requestId.current) { setAskNote(e instanceof Error ? e.message : String(e)); setAskFailed(true); }
     } finally {
       if (id === requestId.current) setAsking(false);
     }
@@ -316,6 +320,12 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
           <X className="size-4" aria-hidden />
         </button>
       </div>
+      {askFailed && (
+        // Following the settings link leaves the palette behind.
+        <div className="mx-3 mt-2" onClickCapture={(e) => { if ((e.target as HTMLElement).closest("a")) onDone(); }}>
+          <NeedsModel purpose="assist" />
+        </div>
+      )}
       <div id="command-list" role="listbox" aria-label={t("commandResults")} className="min-h-0 max-h-[min(26rem,60vh)] overflow-y-auto p-2">
         {visible.length === 0 && (
           <p role="status" className="break-words px-3 py-10 text-center text-sm text-muted-foreground">{t("commandNoMatches", { query })}</p>

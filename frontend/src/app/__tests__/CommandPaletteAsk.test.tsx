@@ -16,11 +16,12 @@ const state = vi.hoisted(() => ({
   navigate: vi.fn(), pathname: "/projects/proj_cafe",
   projects: [{ project_id: "proj_cafe", name: "Café Étoile", store_type: "cafe", status: "Simulated" }],
 }));
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => state.navigate, useLocation: () => ({ pathname: state.pathname }) }));
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => state.navigate, useLocation: () => ({ pathname: state.pathname }),
+  Link: ({ children }: { children: ReactNode }) => <a href="/settings">{children}</a> }));
 vi.mock("@/shared/queries/useProjects", () => ({ useProjects: () => ({ data: state.projects }) }));
 vi.mock("../theme", () => ({ useTheme: () => ({ theme: "dark", setTheme: vi.fn() }) }));
 vi.mock("../launcher", () => ({ useLauncher: () => false, quitLauncher: vi.fn() }));
-vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), routeAssist: vi.fn() }));
+vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), routeAssist: vi.fn(), getModelSetup: vi.fn() }));
 vi.mock("@/shared/api/online", async (original) => ({ ...await original<typeof import("@/shared/api/online")>(), listRuns: vi.fn(), listSites: vi.fn(async () => []) }));
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 
@@ -148,4 +149,15 @@ it("keeps the palette open with a note when no online run has finished", async (
   expect(await screen.findByText(translate("en", "commandAskNoOnlineRun"))).toBeTruthy();
   expect(state.navigate).not.toHaveBeenCalled();
   expect(useAssistStore.getState().pending).toBeNull();
+});
+
+it("offers model setup when no model can route the request, and closes when its settings link is followed", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(api.routeAssist).mockRejectedValue(new Error("No model API key is set."));
+  const input = type("Why does the freezer sell so little?");
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(await screen.findByText("No model API key is set.")).toBeTruthy();
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
+  fireEvent.click(screen.getByRole("link", { name: "Model settings" }));
+  expect(useCommandPalette.getState().open).toBe(false);
 });

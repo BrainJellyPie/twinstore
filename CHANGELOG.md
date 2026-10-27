@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Asking TwinStore from the command palette with no model set up now offers
+  model setup (download the local model or open **Model settings**) right in
+  the palette, which closes when the settings link is followed. Before, it
+  showed only the server's text.
+
 - Leaving the floor editor's **Width** or **Depth** field without changing it
   no longer clears the message under the floor (such as a refused move).
 
