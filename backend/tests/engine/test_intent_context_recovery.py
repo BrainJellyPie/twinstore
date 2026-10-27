@@ -42,7 +42,8 @@ def test_full_catalog_is_considered_before_focused_intent_and_cached_recovery(mo
             if mode == "json_schema":
                 schema = body["response_format"]["json_schema"]["schema"]
                 name = schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]
-                quantity = schema["$defs"][name]["properties"]["quantity"]
+                purchase = next(row for row in schema["$defs"][name]["anyOf"] if row["properties"]["action"]["const"] == "buy")
+                quantity = purchase["properties"]["quantity"]
                 assert quantity["minimum"] == 1 and quantity["maximum"] == 6
         if "## 행동 패턴 목록" in system:
             kind, answer = "pattern", {"pattern_id": "exploratory"}

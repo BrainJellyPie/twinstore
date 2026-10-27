@@ -1,8 +1,9 @@
 """Run production intent generation on a real local model, then resolve its purchases.
 
-This exercises the intent stage only: it does not run pattern selection, impulse
-planning, checkout, or a full simulation. Every run uses a fresh response cache
-and saves actual HTTP bodies. No model replies or purchase choices are mocked.
+By default this exercises intent and offer resolution only. --full also runs
+pattern selection, impulse planning and receipt execution for one customer.
+Every run uses a fresh response cache and saves actual HTTP bodies. No model
+replies or purchase choices are mocked.
 """
 import argparse
 import asyncio
@@ -15,18 +16,20 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import SecretStr
 
-from store_emulator.domain.behavior import BehaviorPattern
-from store_emulator.domain.config import LLMConfig
+from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
+from store_emulator.domain.config import LLMConfig, SimulationConfig
+from store_emulator.domain.engine import PerCustomerContext
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, Face
+from store_emulator.domain.types import Action, Face, Weekday
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.engines.pattern_intent_impulse import stage2_intent as stage
-from store_emulator.engine.simulation.engines.pattern_intent_impulse.engine import drop_invalid_buys
+from store_emulator.engine.simulation.engines.pattern_intent_impulse.engine import PatternIntentImpulseEngine, drop_invalid_buys
+from store_emulator.engine.simulation.customer_executor import execute_decision
 
-p=argparse.ArgumentParser();p.add_argument('--case',choices=['one','browse','missing','free'],default='one');p.add_argument('--mode',choices=['json','json_schema'],default='json');p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1');p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'));args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--case',choices=['one','browse','missing','free'],default='one');p.add_argument('--mode',choices=['json','json_schema'],default='json');p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1');p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'));p.add_argument('--full',action='store_true');args=p.parse_args()
 endpoint=urlsplit(args.endpoint)
 if endpoint.scheme!='http' or endpoint.hostname not in {'localhost','127.0.0.1','::1'}:p.error('Use an HTTP loopback endpoint for the local model.')
 root=args.output.resolve()/f'{args.case}-{args.mode}-{time.time_ns()}';root.mkdir(parents=True)
@@ -55,13 +58,32 @@ async def traced(self,request,*a,**kw):
 async def run():
     started=time.monotonic();row={'case':args.case,'mode':args.mode,'temperature':0,'source_stage':'intent_only_then_offer_resolution'}
     try:
-        result=await client.generate_structured_async(schema,stage.build_system_prompt(store,records=records,max_quantity=1),stage.build_user_prompt(person,9,1,pattern=pattern),max_retries=2)
-        decoded=stage.decode_catalog_response(stage.IntentResponse,result,records,store,pathfinder=AStarPathFinder())
-        actions,dropped=drop_invalid_buys(decoded.actions,store)
-        purchases=[(a.product_sku,a.quantity) for a in actions if a.action==Action.BUY]
         expected=[('green-tea',1)] if args.case in {'one','free'} else []
-        row.update(success=purchases==expected and dropped==0 and any(a.nav=='leave' for a in actions),purchases=purchases,expected=expected,dropped=dropped,result=result.model_dump(mode='json'),decoded=decoded.model_dump(mode='json'))
+        if args.full:
+            context=PerCustomerContext(store=store,persona=person,day=Weekday.MON,arrival_hour=9,
+                concurrent_visitors_in_hour=1,cue=BehaviorCue(),behavior_patterns=[pattern],seed=4)
+            engine=PatternIntentImpulseEngine(client,AStarPathFinder(),SimulationConfig(currency='USD',max_quantity_per_line=1,budget_tolerance=1.0))
+            decision=await engine.decide_actions(context)
+            receipt=execute_decision(store,person.id,Weekday.MON,'09:00:00',decision,AStarPathFinder(),1,max_quantity=1)
+            purchases=[(item.product_sku,item.quantity) for item in receipt.purchases]
+            pays=sum(event.action==Action.PAY for event in receipt.timeline)
+            modeled=[(item['product_sku'],item['quantity']) for name in ('stage2','stage3')
+                for item in decision.trace[name]['actions'] if item.get('action')=='buy']
+            execution_ok=purchases==expected
+            execution_ok=execution_ok and receipt.total_spent==(price if expected else 0) and receipt.dropped_invalid_buys==0
+            execution_ok=execution_ok and pays==int(bool(expected)) and receipt.timeline[-1].action==Action.EXIT
+            row.update(source_stage='pattern_intent_impulse_and_receipt',success=execution_ok and modeled==expected,
+                execution_ok=execution_ok,model_semantic_ok=modeled==expected,model_purchases=modeled,
+                purchases=purchases,expected=expected,total_spent=receipt.total_spent,payments=pays,
+                decision=decision.model_dump(mode='json'),receipt=receipt.model_dump(mode='json'))
+        else:
+            result=await client.generate_structured_async(schema,stage.build_system_prompt(store,records=records,max_quantity=1),stage.build_user_prompt(person,9,1,pattern=pattern),max_retries=2)
+            decoded=stage.decode_catalog_response(stage.IntentResponse,result,records,store,pathfinder=AStarPathFinder())
+            actions,dropped=drop_invalid_buys(decoded.actions,store)
+            purchases=[(a.product_sku,a.quantity) for a in actions if a.action==Action.BUY]
+            row.update(success=purchases==expected and dropped==0 and any(a.nav=='leave' for a in actions),purchases=purchases,expected=expected,dropped=dropped,result=result.model_dump(mode='json'),decoded=decoded.model_dump(mode='json'))
     except Exception as e:row.update(success=False,error=repr(e))
     row['seconds']=round(time.monotonic()-started,2);row['usage']=client.get_usage().model_dump()
-    (root/'result.json').write_text(json.dumps(row,indent=2,ensure_ascii=False));print(json.dumps({'path':str(root),**row},ensure_ascii=False),flush=True)
+    (root/'result.json').write_text(json.dumps(row,indent=2,ensure_ascii=False))
+    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','success','seconds','usage','execution_ok','model_semantic_ok','error') if key in row}},ensure_ascii=False),flush=True)
 with patch.object(httpx.AsyncClient,'send',traced):asyncio.run(run())

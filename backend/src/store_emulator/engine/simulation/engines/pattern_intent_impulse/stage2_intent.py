@@ -178,7 +178,51 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
     quantity_bounds: dict[str, JsonValue] = ({"minimum": 1, "maximum": max_quantity}
                                             if max_quantity is not None else {})
 
+    def action_schema(schema: dict[str, JsonValue]) -> None:
+        # A generic action with only nav required lets native models repeat
+        # anonymous area movements until their output limit. Expose the fields
+        # used by each operation; canonical cached actions retain the full model.
+        properties = cast(dict[str, JsonValue], schema.pop("properties"))
+
+        def field(name: str) -> dict[str, JsonValue]:
+            source = cast(dict[str, JsonValue], properties[name])
+            value = {key: item for key, item in source.items() if key not in {"default", "anyOf"}}
+            choices = source.get("anyOf")
+            if isinstance(choices, list):
+                value.update(next(choice for choice in choices
+                                  if isinstance(choice, dict) and choice.get("type") != "null"))
+            return value
+
+        variants: list[JsonValue] = []
+        for kind, names, required in (
+            ("enter", ("target", "description"), ()),
+            ("move", ("target", "face", "dwell", "description"), ("target",)),
+            ("browse", ("target", "face", "dwell", "description"), ("target",)),
+            ("buy", ("product_sku", "quantity", "target", "face", "dwell", "description"), ("product_sku", "quantity")),
+            ("pay", ("target", "dwell", "description"), ()),
+            ("exit", ("description",), ()),
+        ):
+            fields: dict[str, JsonValue] = {"action": {"type": "string", "const": kind},
+                                            **{name: field(name) for name in names}}
+            if kind == "buy":
+                if not records:
+                    continue
+                product = field("product_sku")
+                product["enum"] = [code for code in records]
+                fields["product_sku"] = product
+            variants.append({"type": "object", "properties": fields, "required": ["action", *required],
+                             "additionalProperties": False})
+        for nav, name in (("area", "area"), ("path", "target")):
+            variants.append({"type": "object", "properties": {
+                "action": {"type": "string", "const": "wander"}, "nav": {"type": "string", "const": nav},
+                name: field(name), "dwell": field("dwell"), "description": field("description"),
+            }, "required": ["action", "nav", name], "additionalProperties": False})
+        schema.pop("type", None)
+        schema.pop("required", None)
+        schema["anyOf"] = variants
+
     class CatalogAction(GeneratedAction):
+        model_config = ConfigDict(json_schema_extra=action_schema)
         product_sku: str = Field(default="", json_schema_extra=constraints)
         # Guide constrained decoding; non-enforcing providers still use the
         # executor's existing clamping rather than invalidating the whole visit.
@@ -271,14 +315,14 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - actions 필드는 반드시 포함하세요. 행동이 없으면 빈 배열 []을 명시하고 필드를 생략하지 마세요.
 - pay는 카운터에서 딱 1회만 발생합니다 (구매 물건이 없거나 매장에 카운터가 없으면 생략)
 - 시퀀스 순서는 enter → 이동/browse/buy → pay → exit
-- 반드시 {{"nav": "leave"}} 으로 종료
+- 반드시 {{"action": "exit"}} 으로 종료
 - **buy 의 product_sku 는 아래 상품 목록의 짧은 상품 코드 중 하나만 사용하고 대소문자와 @ 개수를 그대로 복사**
 - **browse / buy 의 description 은 아래 진열대 목록의 상품만 묘사**
 - **buy 는 아래 진열대 목록에 적합한 상품이 있을 때만 추가**
 - 고객의 예산을 크게 넘는 구매는 하지 않습니다
 - reasoning은 600자 이하, 각 행동의 description은 400자 이하로 간결하게 작성하고 같은 문장을 반복하지 마세요
 - 설명이 없으면 null 대신 빈 문자열("")을 사용하세요
-- buy가 아닌 행동의 product_sku는 빈 문자열(""), quantity는 1로 작성하세요. null을 사용하지 마세요.
+- buy가 아닌 행동에는 product_sku와 quantity를 넣지 마세요. null을 사용하지 마세요.
 
 {price_unit_rule(currency)}
 
@@ -297,7 +341,9 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - 구조적 필드(`action`, `target`, `face`, `dwell`, `product_sku`, `quantity`, `nav`, `area`)는 한국어 prompt 에서 정의된 그대로 유지합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요.
 
-{scope}{_store_block(store, currency, catalog_records(store) if records is None else records)}"""
+{scope}{_store_block(store, currency, catalog_records(store) if records is None else records)}
+Return actual JSON action records, not a schema. Start each action with action. Include only fields used by that action.
+Omit nav except for wander; the application derives navigation for other actions."""
 
 
 def _store_block(store: Store, currency: str, records: dict[str, SlotItem]) -> str:

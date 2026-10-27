@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Describe generated shopping actions with the fields each operation uses.
+  Native local models must name the action and supply a valid product code
+  and quantity for purchases, avoiding anonymous movement loops. Existing
+  canonical actions and cached responses remain readable.
+
 - Recover an omitted navigation mode in generated shopping actions when
   the action already determines it. Preserve purchases and quantities;
   ambiguous area movement and explicit invalid modes still need correction.

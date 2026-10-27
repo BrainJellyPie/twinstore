@@ -33,7 +33,8 @@ def test_http_quantity_grammar_matches_execution_while_non_enforcing_responses_s
         else:
             schema = body["response_format"]["json_schema"]["schema"]
             name = schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]
-            quantity = schema["$defs"][name]["properties"]["quantity"]
+            purchase = next(row for row in schema["$defs"][name]["anyOf"] if row["properties"]["action"]["const"] == "buy")
+            quantity = purchase["properties"]["quantity"]
             assert quantity["minimum"] == 1 and quantity["maximum"] == active_maximum
             assert f"1~{active_maximum} 사이의 정수" in system
             if "세렌디피티" not in system:
