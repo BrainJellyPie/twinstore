@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Combine reviewed shelf photos** says how many products do not fit and
+  names the first eight, with the full list one click away, instead of
+  running every name together in one long sentence. Its price and
+  recognition counts say they cover all the selected photos, so they no
+  longer look at odds with the smaller number placed.
+
 - Adding shelf photos says up front that reading product names needs a model,
   with the buttons to download the local model or open Model settings, when
   none is set up. Before, each photo failed only after it was sent. Choosing
