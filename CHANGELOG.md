@@ -4,8 +4,9 @@
 
 - Opening a shopper or the **Group interview** from a run's shopper list now
   moves focus to its **All shoppers** button, and leaving the group interview
-  returns focus to the button that opened it. Before, focus fell back to the
-  top of the page because the list it was on had been replaced.
+  returns focus to the button that opened it. **Track a shopper** on the
+  Results tab moves focus to the Shoppers tab it opens. Before, focus fell back
+  to the top of the page because the control it was on had been replaced.
 
 - **Run shelf test**, **Field the study** (conjoint), a rival's **Compare with
   our store** and a model provider's **Test** buttons now tell screen readers
