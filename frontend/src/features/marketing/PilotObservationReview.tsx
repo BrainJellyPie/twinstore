@@ -79,7 +79,7 @@ export function PilotImportHistory({ projectId, pilot }: { projectId: string; pi
     {history.length > 0 && <>
       <Button asChild variant="outline" size="sm"><a href={pilotHistoryCsvUrl(projectId, pilot.pilot_id)} download>{t("mkExportHistory")}</a></Button>
       <div className="space-y-2">{[...history].reverse().map((record) => <div className="rounded-lg border p-2 text-sm" key={record.revision}>
-        <Button type="button" size="sm" variant={selected === record.revision ? "secondary" : "ghost"} onClick={() => setSelected(record.revision)}>{t("mkReviewRevision", { revision: String(record.revision) })}</Button>
+        <Button type="button" size="sm" aria-pressed={selected === record.revision} variant={selected === record.revision ? "secondary" : "ghost"} onClick={() => setSelected(record.revision)}>{t("mkReviewRevision", { revision: String(record.revision) })}</Button>
         <span className="ml-2">{t("mkImportRecord", { at: record.imported_at, assignments: record.summary.changed_assignments, fields: record.summary.changed_fields })}</span>
         <p className="whitespace-pre-wrap">{record.reason}</p>
       </div>)}</div>
