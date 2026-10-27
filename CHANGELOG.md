@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep captured `ID` reference numbers from becoming exact selling prices.
+  Preserve the original label, existing product prices and prices with an
+  explicit currency unit.
+
 - Recognize Vietnamese dong marks on captured price tags, including `d`
   or `đ` beside an amount. Foreign dong amounts remain estimates for review;
   matching VND amounts retain their literal value.

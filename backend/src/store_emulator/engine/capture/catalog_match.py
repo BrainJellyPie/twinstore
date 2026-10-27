@@ -232,7 +232,7 @@ _PRICE_LIMIT_SUFFIX_RE = re.compile(
 )
 _REFERENCE_NUMBER_PREFIX_RE = re.compile(
     r"(?:\b(?:sku|upc|ean|gtin"
-    r"|(?:lot|batch|serial|model|item|article|product|ref(?:erence)?\.?)(?:\s+(?:no\.?|number|code))?"
+    r"|(?:lot|batch|serial|model|item|article|product|id|ref(?:erence)?\.?)(?:\s+(?:no\.?|number|code))?"
     r"|exp(?:iry|ires?|iration)?(?:\s+date)?|best\s+(?:before|by)|use\s+by|sell\s+by"
     r"|mfg(?:\s+date)?|manufactur(?:ed|ing)(?:\s+(?:date|on))?)"
     r"|상품(?:번호|코드)|제품(?:번호|코드)|제조(?:일자|일|번호)|유통기한|소비기한"
