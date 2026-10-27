@@ -68,7 +68,9 @@
   before three digits ("1,500") is still a thousands separator, and the other
   languages read prices as before. A conjoint study's price levels in those
   languages are separated by ";" or a comma and a space, so "1,49, 2,79" is
-  two prices instead of four (1, 49, 2 and 79).
+  two prices instead of four (1, 49, 2 and 79). The bulk product editor's
+  price hint and the conjoint price-format message say so in those languages
+  (12,50; 1,99) instead of asking for a decimal point.
 
 - Keep item/reference numbers and hash-prefixed codes from becoming captured
   selling prices. Preserve their printed labels and estimated-price review;
