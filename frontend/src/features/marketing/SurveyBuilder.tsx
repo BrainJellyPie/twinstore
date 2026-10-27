@@ -1,7 +1,7 @@
 // Concept test builder: up to four product images side by side (A–D), a short standard questionnaire, a quota of
 // the project's personas, and a vision model that answers as each of them.
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ClipboardList, Loader2, Sparkles } from "lucide-react";
 
@@ -38,6 +38,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   const qc = useQueryClient();
   const packages = usePackages(projectId).data ?? [];
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
+  const needsId = useId();
   const [stimuli, setStimuli] = useState<string[]>(initial?.stimuli ?? []);
   const [names, setNames] = useState<Record<string, string>>(() =>
     Object.fromEntries((initial?.stimuli ?? []).map((id, i) => [id, initial?.stimulus_names[i] ?? ""]).filter(([, n]) => n)));
@@ -224,7 +225,9 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} aria-label={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
         {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
-        <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || invalidPrice || run.isPending} onClick={() => run.mutate()}>
+        {(stimuli.length === 0 || asked.length === 0) && <p id={needsId} className="text-sm text-muted-foreground">{t("mkSurveyNeeds")}</p>}
+        <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || invalidPrice || run.isPending} onClick={() => run.mutate()}
+          aria-describedby={stimuli.length === 0 || asked.length === 0 ? needsId : undefined}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}
           {t("mkFieldSurvey")}
         </Button>

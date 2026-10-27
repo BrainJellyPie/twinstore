@@ -711,6 +711,7 @@ export const studioMessages = {
   mkFixture: ["Fixture", "진열대", "货架", "什器", "Mueble", "Meuble"],
   mkFixtureEllipsis: ["Fixture…", "진열대…", "货架…", "什器…", "Mueble…", "Meuble…"],
   mkAddImagesFirst: ["Add images in the Products tab first.", "먼저 [상품] 탭에서 이미지를 추가하세요.", "请先在“商品”标签页添加图片。", "先に［商品］タブで画像を追加してください。", "Añade primero imágenes en la pestaña Productos.", "Ajoutez d’abord des images dans l’onglet Produits."],
+  mkSurveyNeeds: ["To field the survey, pick at least one pack and one question.", "설문을 시작하려면 패키지를 하나 이상, 질문을 하나 이상 고르세요.", "要开始调查，请至少选择一个包装和一个问题。", "調査を始めるには、パッケージと質問をそれぞれ1つ以上選んでください。", "Para lanzar la encuesta, elige al menos un envase y una pregunta.", "Pour lancer l’enquête, choisissez au moins un emballage et une question."],
   mkCategory: ["Category", "카테고리", "品类", "カテゴリー", "Categoría", "Catégorie"],
   mkCategoryEllipsis: ["Category…", "카테고리…", "品类…", "カテゴリー…", "Categoría…", "Catégorie…"],
   mkCharm: ["end in .99", "끝자리 .99", "尾数 .99", "末尾を .99 に", "terminar en ,99", "finir en ,99"],

@@ -80,7 +80,8 @@
   Photo button, and the saved field pilots, protocols and observation
   revisions.
 
-- **Staff scripts**, **Price checks**, **Unit prices** and **Inventory** say
+- **Concept tests**, **Staff scripts**, **Price checks**, **Unit prices** and
+  **Inventory** say
   what the test or review still needs (for example the store reference without spaces at either end,
   the dates and the CSV files) while its button is unavailable, instead of
   leaving the button greyed out unexplained.
