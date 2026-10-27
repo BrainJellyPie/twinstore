@@ -119,3 +119,21 @@ it("says when no shopper matches the search, to screen readers too", () => {
   fireEvent.change(screen.getByLabelText("Search 3 shoppers"), { target: { value: "zzz" } });
   expect(screen.getByText("No shopper matches.").getAttribute("role")).toBe("status");
 });
+
+it("moves focus to the way back when a shopper's details replace the list", async () => {
+  vi.mocked(listGroups).mockResolvedValue([]);
+  mount();
+  fireEvent.click(document.querySelector<HTMLElement>("[data-shopper='p1']")!);
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "All shoppers" })));
+});
+
+it("moves focus into the group interview and back to the button that opened it", async () => {
+  vi.mocked(listGroups).mockResolvedValue([]);
+  mount();
+  const open = screen.getByRole("button", { name: /^Group interview/ });
+  fireEvent.click(open);
+  const back = await screen.findByRole("button", { name: "All shoppers" });
+  await waitFor(() => expect(document.activeElement).toBe(back));
+  fireEvent.click(back);
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Group interview/ })));
+});

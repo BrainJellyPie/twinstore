@@ -17,6 +17,7 @@ import { useAssistStore } from "@/stores/assistStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { useI18n } from "@/shared/i18n/i18n";
+import { focusOnMount } from "@/shared/utils/focusOnMount";
 import { NeedsModel } from "@/features/settings/NeedsModel";
 import { ageBadge, personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
@@ -75,6 +76,14 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
     finder.mutate(text, { onSuccess: (match) => setAccepted({ scope, text, match }) });
   };
   const [group, setGroup] = useState(false);
+  // Back from the group interview, focus returns to the button that opened it.
+  const groupButton = useRef<HTMLButtonElement>(null);
+  const backFromGroup = useRef(false);
+  useEffect(() => {
+    if (group || !backFromGroup.current) return;
+    backFromGroup.current = false;
+    groupButton.current?.focus();
+  }, [group]);
   useEffect(() => { if (found) foundCard.current?.scrollIntoView?.({ block: "nearest" }); }, [found]);
   // A description typed in the command palette and routed here is searched once the run's shoppers are open.
   const pendingAsk = useAssistStore((s) => s.pending);
@@ -109,11 +118,11 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
   if (group) {
     return <GroupInterviewPanel projectId={projectId} runId={runId} currency={currency}
       preset={found && found.persona_ids.length >= 2 ? { label: found.label, personaIds: found.persona_ids } : undefined}
-      onOpen={(sid) => { setSelected(sid); setHighlight(sid); }} onBack={() => setGroup(false)} />;
+      onOpen={(sid) => { setSelected(sid); setHighlight(sid); }} onBack={() => { backFromGroup.current = true; setGroup(false); }} />;
   }
   return (
     <div className="space-y-2.5 py-3">
-      <button type="button" onClick={() => setGroup(true)}
+      <button ref={groupButton} type="button" onClick={() => setGroup(true)}
         className="flex w-full items-center gap-2.5 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.04] px-3 py-2.5 text-left transition-colors hover:border-primary">
         <UsersRound className="size-4 shrink-0 text-primary" />
         <span className="min-w-0">
@@ -239,7 +248,8 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
   if (!journey.data) {
     return (
       <div className="py-3">
-        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
+        {/* The shopper's row is gone: focus lands on the way back instead of the page. */}
+        <Button ref={focusOnMount} variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
         <div className="grid h-40 place-items-center">{journey.error ? <p role="alert" className="text-sm text-destructive">{journey.error.message}</p> : <Loader2 className="size-5 animate-spin" />}</div>
       </div>
     );
@@ -248,7 +258,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
   const p = j.persona;
   return (
     <div className="space-y-3 py-3">
-      <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
+      <Button ref={focusOnMount} variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
       <button type="button" onClick={follow} title={t("shopperFollowHint")}
         className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3 text-sm font-semibold text-white dark:text-neutral-950 shadow-[0_12px_32px_-12px_var(--heat-2)] heat-gradient transition-transform hover:scale-[1.01] active:scale-[0.99]">
         <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_35%,rgb(255_255_255/0.25)_50%,transparent_65%)] bg-[length:250%_100%] animate-shimmer" aria-hidden />
