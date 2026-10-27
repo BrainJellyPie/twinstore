@@ -48,7 +48,8 @@
 
 - The floor editor says at once which fixtures a smaller width or depth
   leaves off the grid, instead of hiding them silently until **Save** refuses
-  the floor.
+  the floor. Past the first three names it counts the rest ("+2") instead of
+  ending the list with an ellipsis and a second full stop.
 
 - Keep captured `ID` reference numbers from becoming exact selling prices.
   Preserve the original label, existing product prices and prices with an
