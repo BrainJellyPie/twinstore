@@ -11,7 +11,7 @@ from math import isfinite
 import re
 from typing import Literal, Protocol, cast
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
 
 from store_emulator.domain.marketing import QuestionKind
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender
@@ -31,16 +31,30 @@ class StructuredLLM(Protocol):
     ) -> T: ...
 
 
+def _explicit_draft_fields(schema: dict[str, JsonValue]) -> None:
+    fields = schema.get("properties")
+    assert isinstance(fields, dict)
+    required: list[JsonValue] = list(fields)
+    schema["required"] = required
+    for field in fields.values():
+        if isinstance(field, dict):
+            field.pop("default", None)
+
+
 class _Draft(BaseModel):
-    name: str = Field(max_length=80, description="a short test name")
+    # Local grammars must ask for an explicit choice rather than silently omit
+    # images/prices/quotas. Runtime defaults still read older partial drafts.
+    model_config = ConfigDict(json_schema_extra=_explicit_draft_fields)
+
     images: list[str] = Field(default_factory=list[str], max_length=6,
                               description="one to four listed product images to show side by side, exactly as listed")
-    questions: list[Literal["purchase_intent", "appeal", "value", "uniqueness", "price_vw", "preference", "open"]] = Field(
-        min_length=1, max_length=7)
-    context: str = Field(default="", max_length=400, description="one or two sentences respondents read before answering")
     reference_price: float | None = Field(default=None, ge=0, description="shelf price shown with image A, major units")
     age_groups: list[AgeGroup] = Field(default_factory=list[AgeGroup], max_length=6)
     genders: list[Gender] = Field(default_factory=list[Gender], max_length=2)
+    questions: list[Literal["purchase_intent", "appeal", "value", "uniqueness", "price_vw", "preference", "open"]] = Field(
+        min_length=1, max_length=7)
+    name: str = Field(max_length=80, description="a short test name")
+    context: str = Field(default="", max_length=400, description="one or two sentences respondents read before answering")
     rationale: str = Field(default="", max_length=500)
 
     @field_validator("questions", "age_groups", "genders", mode="before")
@@ -86,18 +100,22 @@ images side by side (A to D) and answer a short standard questionnaire. From the
 - questions, from: purchase_intent (likelihood to buy, 1 to 5), appeal (pack appeal), value (value for money),
   uniqueness (stands out from the usual shelf), price_vw (Van Westendorp price range for image A), preference (which
   one they would take home; only with two or more images), open (why, in their own words). Ask what the question
-  needs, and include open unless the manager asks for scales only;
+  needs, and include open unless the manager asks for scales only. When the manager lists the exact questions,
+  return only those IDs; the list above describes available choices, not a required questionnaire;
 - context: what respondents are told about the product, plainly, without leading them toward an answer;
-- reference_price: the shelf price shown with image A in major units of {currency}, only when price matters to the
-  question and a listed price or the question gives it;
-- age_groups and genders: quotas only when the question names a group; otherwise leave them empty (everyone);
+- reference_price: the shelf price shown with image A in major units of {currency}. Copy a price the manager
+  explicitly asks to show, including zero for FREE, even without a price_vw question. Use null when no price is given;
+- age_groups and genders: put the named groups in these fields, not just the context or rationale. For example,
+  twenties / 20대 => age_groups=["20s"]; women / 여성 => genders=["Female"]. Leave them empty only when unspecified;
 - a short name and rationale.
 Use [] for unspecified images, age_groups and genders, and empty strings for unspecified context and rationale.
 Copy the lowercase question IDs exactly, including underscores. Use age labels 10s, 20s, 30s, 40s, 50s, 60s+
 and gender labels Male, Female exactly as written.
 Use null only when reference_price is not given. Use 0 for an explicitly free offer.
-When several shelf offers are listed for an image, use a reference price only when the question identifies the offer
-or states a price; otherwise leave it null. Do not choose between different offers by their listing order.
+The manager's explicitly stated price takes precedence over the image library: write it as a NUMBER in reference_price,
+including 0 for a free offer, even when no prices appear in the library. Without a stated price, use a listed price
+only if one offer is identified; if several offers are ambiguous or no price is available, use null.
+For Korean requests, 구매 의향 = purchase_intent, 가격 대비 가치 = value, 두 포장 중 선호 = preference, 자유 응답 = open.
 Write in English."""
 
 
