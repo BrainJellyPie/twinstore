@@ -266,7 +266,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
       <PersonaOnlineVisits projectId={projectId} personaId={sid} />
       <div className="flex rounded-xl bg-foreground/[0.055] p-1">
         {([["journey", "shopperJourney", Route], ["interview", "shopperInterview", MessagesSquare]] as const).map(([id, label, Icon]) => (
-          <button key={id} type="button" onClick={() => setTab(id)}
+          <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}
             className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[0.8rem] font-medium", tab === id ? "bg-card shadow-sm" : "text-muted-foreground")}>
             <Icon className="size-3.5" /> {t(label)}
           </button>

@@ -6,8 +6,8 @@
   tell screen readers: package pictures in concept tests, shelf tests and the
   A/B builder, shelf photos and Shelf Lab's changes, renders and conditions,
   age and gender chips, discount and placement levels, the Optimize scope and
-  judge, model chips in Settings, and the shopper sort and group-interview
-  segments.
+  judge, model chips in Settings, the shopper sort and group-interview
+  segments, and a shopper's Journey / Interview switch.
 
 - **Price checks**, **Unit prices** and **Inventory** say what the review
   still needs (for example the store reference without spaces at either end,
