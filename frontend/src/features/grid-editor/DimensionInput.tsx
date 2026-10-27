@@ -29,7 +29,9 @@ export function DimensionInput({ axis, value, onChange }: DimensionInputProps) {
           if (Number.isInteger(next) && next >= MIN_DIM && next <= MAX_DIM) onChange(next);
         }}
         onBlur={(event) => {
-          onChange(clampDim(Number(event.target.value)));
+          // Leaving the field unchanged is not a change (it would clear the editor's message).
+          const next = clampDim(Number(event.target.value));
+          if (next !== value) onChange(next);
           setDraft(null);
         }}
         onKeyDown={(event) => {

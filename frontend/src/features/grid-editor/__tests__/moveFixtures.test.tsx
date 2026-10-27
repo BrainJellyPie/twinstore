@@ -127,6 +127,17 @@ it("moves a fixture dragged onto free cells and refuses a drop onto another fixt
   expect(save).toHaveBeenCalledWith("p", "s", { store: { ...initialSetup.store, racks: [table, { ...shelf, position: [6, 6] }] } });
 });
 
+it("keeps a refused move's message when the floor width is left unchanged", () => {
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={setup([table, shelf])} onClose={vi.fn()} onSaved={vi.fn()} />);
+  const width = screen.getByTestId("grid-width-input");
+  width.focus();
+  fireEvent.click(screen.getByTestId("grid-cell-3-3"));
+  fireEvent.click(screen.getByRole("button", { name: "Move fixture right" }));
+  expect(screen.getByRole("alert").textContent).toContain("overlaps");
+  fireEvent.blur(width);
+  expect(screen.getByRole("alert").textContent).toContain("overlaps");
+});
+
 it("cancels placement with Escape without closing the editor or moving the fixture", async () => {
   const initialSetup = setup([table, shelf]);
   const onClose = vi.fn();

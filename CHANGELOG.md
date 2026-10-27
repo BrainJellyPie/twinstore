@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Leaving the floor editor's **Width** or **Depth** field without changing it
+  no longer clears the message under the floor (such as a refused move).
+
 - In the floor editor a fixture can now be dragged to another cell with the
   mouse or a finger to move it. A drop onto another fixture or off the floor is
   refused with the same message as the move buttons, and focus follows the
