@@ -43,7 +43,8 @@
   age and gender chips, discount and placement levels, the Optimize scope and
   judge, model chips in Settings, the shopper sort and group-interview
   segments, a shopper's Journey / Interview switch, the shelf-photo
-  Planogram / Shelf Lab switch and the promotion-sign choices.
+  Planogram / Shelf Lab switch, the promotion-sign choices and the 3D view's
+  Photo button.
 
 - **Price checks**, **Unit prices** and **Inventory** say what the review
   still needs (for example the store reference without spaces at either end,

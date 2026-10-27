@@ -105,6 +105,7 @@ export function RealisticHud({ personaNames, showModeSwitch, shopperViewActive, 
               className="h-6 gap-1 px-2 text-[0.8rem]"
               disabled={!ready}
               onClick={() => (photo.status === "off" ? photo.start() : photo.stop())}
+              aria-pressed={photo.status !== "off"}
               title={t("hudPhotoHint")}
             >
               <Aperture className="size-3.5" /> {t("hudPhoto")}
