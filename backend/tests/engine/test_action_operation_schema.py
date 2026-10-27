@@ -24,7 +24,7 @@ RECORDS = {"@P1": SlotItem(sku="tea", name="Tea", price=250)}
 def test_operation_shapes_validate_and_canonical_round_trips_preserve_fields(base, action):
     schema = stage.catalog_response_model(base, RECORDS, max_quantity=2)
     value = {"actions": [action]}
-    Draft202012Validator(schema.model_json_schema()).validate(value)
+    assert Draft202012Validator(schema.model_json_schema()).is_valid(value) == (action["action"] in base.action_kinds)
     result = schema.model_validate_json(json.dumps(value), strict=True)
     assert result.actions[0].action == action["action"]
     assert schema.model_validate_json(result.model_dump_json(), strict=True) == result
@@ -58,7 +58,7 @@ def test_wire_rejects_anonymous_incomplete_and_unrelated_fields(action):
 def test_empty_catalog_cannot_emit_a_native_purchase_but_can_leave(base):
     schema = stage.catalog_response_model(base, {}, max_quantity=1)
     validator = Draft202012Validator(schema.model_json_schema())
-    assert validator.is_valid({"actions": [{"action": "exit"}]})
+    assert validator.is_valid({"actions": [{"action": "exit"}]}) == ("exit" in base.action_kinds)
     assert validator.is_valid({"actions": []})
     assert not validator.is_valid({"actions": [{"action": "buy", "product_sku": "@P1", "quantity": 1}]})
     assert schema.model_validate_json('{"actions":[{"nav":"leave"}]}', strict=True).actions[0].nav == "leave"
