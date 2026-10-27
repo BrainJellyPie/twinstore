@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 type Position = tuple[int, int]
 type Shape = list[list[int]]
 
-RESOURCE_ID_PATTERN = r"^[A-Za-z0-9_-]+$"
+# At most 128 characters: an ID names a file or folder, and a longer name than the file system takes made every lookup
+# of it fail with a server error instead of "not found".
+RESOURCE_ID_PATTERN = r"^[A-Za-z0-9_-]{1,128}$"
 type ResourceId = Annotated[str, Field(pattern=RESOURCE_ID_PATTERN)]
 
 CARDINAL_DIRECTIONS: list[tuple[int, int]] = [(-1, 0), (1, 0), (0, -1), (0, 1)]

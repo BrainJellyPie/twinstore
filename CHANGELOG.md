@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- An ID longer than 128 characters in an address or request (a run, layout,
+  photo, test, online store or project) is now refused as invalid. Before, about
+  thirty pages of the API answered such an ID with a server error, because the
+  file system cannot hold a file name that long.
+
 - Opening a shopper or the **Group interview** from a run's shopper list now
   moves focus to its **All shoppers** button, and leaving the group interview
   returns focus to the button that opened it. **Track a shopper** on the
