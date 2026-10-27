@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Edit products together** asks before Escape, the close button or a click
+  outside drops edits that were not saved. Before, the edits were lost without
+  a word.
+
 - **Edit products together** no longer labels a product without a promotion
   "Mixed — unchanged". The empty field now reads "(no promotion)"; "Mixed"
   appears only when the product's placements carry different promotions.
