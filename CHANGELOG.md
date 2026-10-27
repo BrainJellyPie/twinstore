@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Percentages and distances now follow the selected language: French and Spanish
-  show "38 %", and large values are grouped ("1 273 m", "1.273 m"). This covers
+  show "38 %", and large values are grouped ("1 273 m" in French). This covers
   the live conversion and playback progress, the visitor mix in **Settings**, the
   conjoint report, shelf-test charts, rival prices in shelf capture, the online
   page flow, channel mix and shopper-mix sliders, and the area page's radius,
