@@ -31,3 +31,13 @@ it.each(["KRW", "JPY"])("uses the project's %s currency for a new survey and its
   await waitFor(() => expect(started).toHaveBeenCalled());
   expect(startSurvey).toHaveBeenCalledWith("project", expect.objectContaining({ currency, reference_price: 2500 }));
 });
+
+it("tells assistive technology which library pack is picked", () => {
+  render(<QueryClientProvider client={new QueryClient()}>
+    <SurveyBuilder projectId="project" personaCount={60} defaultCurrency="USD" onStarted={vi.fn()} />
+  </QueryClientProvider>);
+  const tea = screen.getByRole("button", { name: "Tea" });
+  expect(tea.getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(tea);
+  expect(tea.getAttribute("aria-pressed")).toBe("true");
+});

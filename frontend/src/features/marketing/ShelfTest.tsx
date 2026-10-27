@@ -192,10 +192,10 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkNewPack")}</h3>
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => setAssetId("")}
+            <button type="button" onClick={() => setAssetId("")} aria-pressed={!assetId}
               className={cn("h-16 rounded-lg border px-2 text-[0.7rem]", !assetId ? "border-primary text-foreground" : "text-muted-foreground")}>{t("mkCurrent1")}<br />{t("mkCurrent2")}</button>
             {packages.map((p) => (
-              <button key={p.asset_id} type="button" title={p.name} onClick={() => setAssetId(p.asset_id)}
+              <button key={p.asset_id} type="button" title={p.name} aria-pressed={assetId === p.asset_id} onClick={() => setAssetId(p.asset_id)}
                 className={cn("flex size-16 items-center justify-center overflow-hidden rounded-lg border bg-white p-1", assetId === p.asset_id ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
                 <img src={api.packageUrl(projectId, p.asset_id)} alt={p.name} className="max-h-full max-w-full object-contain" />
               </button>

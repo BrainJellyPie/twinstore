@@ -538,7 +538,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
           <div className="flex flex-wrap gap-1.5">
             {packages.length === 0 && <span className="text-xs text-muted-foreground">{t("mkAddImagesFirst")}</span>}
             {packages.map((p) => (
-              <button key={p.asset_id} type="button" title={p.name} onClick={() => onPatch({ asset_id: p.asset_id })}
+              <button key={p.asset_id} type="button" title={p.name} aria-pressed={c.asset_id === p.asset_id} onClick={() => onPatch({ asset_id: p.asset_id })}
                 className={cn("flex size-11 items-center justify-center overflow-hidden rounded-lg border bg-white p-0.5", c.asset_id === p.asset_id ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
                 <img src={api.packageUrl(projectId, p.asset_id)} alt={p.name} className="max-h-full max-w-full object-contain" />
               </button>

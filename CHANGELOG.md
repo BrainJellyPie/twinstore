@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Package pictures picked in concept tests, shelf tests and the A/B
+  builder's package change tell screen readers whether they are picked; before,
+  only a coloured ring showed it.
+
 - **Price checks**, **Unit prices** and **Inventory** say what the review
   still needs (for example the store reference without spaces at either end,
   the dates and the CSV files) while its button is unavailable, instead of

@@ -147,7 +147,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
           {packages.map((p) => {
             const i = stimuli.indexOf(p.asset_id);
             return (
-              <button key={p.asset_id} type="button" onClick={() => pickStimulus(p.asset_id)} title={p.name}
+              <button key={p.asset_id} type="button" onClick={() => pickStimulus(p.asset_id)} title={p.name} aria-pressed={i >= 0}
                 className={cn("relative flex h-28 w-24 items-center justify-center rounded-xl border bg-white p-1.5 transition-[box-shadow,border-color]",
                   i >= 0 ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
                 <img src={api.packageUrl(projectId, p.asset_id)} alt={p.name} className="max-h-full max-w-full object-contain" />
