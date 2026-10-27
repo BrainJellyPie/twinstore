@@ -31,7 +31,7 @@ async function open() {
   render(<QueryClientProvider client={qc}><StarterFill pid="p" sid="s" /></QueryClientProvider>);
   fireEvent.click(screen.getByRole("button", { name: "Auto-place starter products" }));
   fireEvent.click(await screen.findByLabelText("Choose categories manually"));
-  await screen.findByLabelText("Select rack empty");
+  await screen.findByLabelText(/^Select rack .* \(empty\)$/);
 }
 
 async function openAuto() {
@@ -133,7 +133,7 @@ it("locks edits during model selection and ignores a late selection after closin
 });
 it("selects empty racks, previews starter products, saves and explicitly opens a stocked child", async () => {
   await open();
-  expect((screen.getByLabelText("Select rack stocked") as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Select rack Stocked shelf (stocked)") as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Select shown empty racks" }));
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
   await screen.findByRole("button", { name: "Save stocked layout" });
@@ -151,7 +151,7 @@ async function preview() {
 it("requires explicit categories when a rack has no known suggestion", async () => {
   vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, racks: [{ ...catalog.racks[0]!, suggested_category: null }] });
   await open();
-  fireEvent.click(screen.getByLabelText("Select rack empty"));
+  fireEvent.click(screen.getByLabelText("Select rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
   expect((await screen.findByRole("alert")).textContent).toContain("Choose a category");
   expect(api.previewStarterFill).not.toHaveBeenCalled();
@@ -173,11 +173,11 @@ it("invalidates preview after density or selection changes and retains hidden se
   expect(screen.queryByRole("button", { name: "Save stocked layout" })).toBeNull();
 });
 it("preserves choices during background refresh but resets on explicit successful reload", async () => {
-  await open(); fireEvent.click(screen.getByLabelText("Select rack empty"));
+  await open(); fireEvent.click(screen.getByLabelText("Select rack Empty shelf (empty)"));
   await qc.invalidateQueries({ queryKey: ["starter-fill", "p", "s"] });
-  expect((screen.getByLabelText("Select rack empty") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Select rack Empty shelf (empty)") as HTMLInputElement).checked).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Discard choices and reload" }));
-  await waitFor(() => expect((screen.getByLabelText("Select rack empty") as HTMLInputElement).checked).toBe(false));
+  await waitFor(() => expect((screen.getByLabelText("Select rack Empty shelf (empty)") as HTMLInputElement).checked).toBe(false));
 });
 it("shows failed reload and allows an explicit retry to update the catalog", async () => {
   await open();
@@ -192,9 +192,9 @@ it("locks choice changes during preview and replays the identical uncertain save
   await open();
   let resolve!: (value: api.StarterPreview) => void;
   vi.mocked(api.previewStarterFill).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
-  fireEvent.click(screen.getByLabelText("Select rack empty"));
+  fireEvent.click(screen.getByLabelText("Select rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
-  await waitFor(() => expect((screen.getByLabelText("Select rack empty") as HTMLInputElement).disabled).toBe(true));
+  await waitFor(() => expect((screen.getByLabelText("Select rack Empty shelf (empty)") as HTMLInputElement).disabled).toBe(true));
   resolve({ racks: [{ id: "empty", name: "Empty shelf", category: "water", slots_added: 8, placements_added: 8, products: [product], reused_skus: [] }], placements_added: 8, new_skus: 1, reused_skus: 0 });
   await screen.findByRole("button", { name: "Save stocked layout" });
   vi.mocked(api.saveStarterFill).mockRejectedValueOnce(new Error("Lost response"));
@@ -219,7 +219,7 @@ it("rejects more than 100 selections accumulated across searches before an API c
   await open();
   fireEvent.click(screen.getByRole("button", { name: "Select shown empty racks" }));
   fireEvent.change(screen.getByLabelText("Search shelves"), { target: { value: "rack_100" } });
-  fireEvent.click(screen.getByLabelText("Select rack rack_100"));
+  fireEvent.click(screen.getByLabelText("Select rack Shelf 100 (rack_100)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
   expect((await screen.findByRole("alert")).textContent).toContain("1–100");
   expect(api.previewStarterFill).not.toHaveBeenCalled();
@@ -228,10 +228,10 @@ it("rejects more than 100 selections accumulated across searches before an API c
 it("shows a stale-layout preview error without saving or discarding choices", async () => {
   await open();
   vi.mocked(api.previewStarterFill).mockRejectedValueOnce(new Error("The layout changed. Reload and preview again"));
-  fireEvent.click(screen.getByLabelText("Select rack empty"));
+  fireEvent.click(screen.getByLabelText("Select rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
   expect((await screen.findByRole("alert")).textContent).toContain("layout changed");
-  expect((screen.getByLabelText("Select rack empty") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Select rack Empty shelf (empty)") as HTMLInputElement).checked).toBe(true);
   expect(screen.queryByRole("button", { name: "Save stocked layout" })).toBeNull();
   expect(api.saveStarterFill).not.toHaveBeenCalled();
 });
@@ -284,11 +284,11 @@ it("keeps pending automatic choices, preview and retry identity across language 
 it("updates manual validation text when the language changes without losing selections", async () => {
   vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, racks: [{ ...catalog.racks[0]!, suggested_category: null }] });
   await open();
-  fireEvent.click(screen.getByLabelText("Select rack empty"));
+  fireEvent.click(screen.getByLabelText("Select rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
   await screen.findByRole("alert");
   act(() => useLocale.getState().setLocale("ja"));
   expect(screen.getByRole("alert").textContent).toBe(translate("ja", "starterChooseCategoryEach"));
-  expect((screen.getByLabelText(translate("ja", "starterSelectRack", { rack: "empty" })) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText(translate("ja", "starterSelectRack", { rack: "Empty shelf (empty)" })) as HTMLInputElement).checked).toBe(true);
   expect(api.previewStarterFill).not.toHaveBeenCalled();
 });

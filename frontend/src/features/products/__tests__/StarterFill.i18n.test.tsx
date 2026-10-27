@@ -55,7 +55,7 @@ it.each(LOCALES)("fills, reviews, saves and opens in $label without translating 
   expect(screen.getByText(t("starterExamples", { editor: t("bulkTitle") }))).toBeTruthy();
   expect(screen.getByText(t("copyReasonOccupied"))).toBeTruthy();
   expect(screen.getByText(t("starterNoFace"))).toBeTruthy();
-  expect(screen.getByRole("checkbox", { name: t("starterSelectRack", { rack: "stocked" }) }).matches(":disabled")).toBe(true);
+  expect(screen.getByRole("checkbox", { name: t("starterSelectRack", { rack: "Existing (stocked)" }) }).matches(":disabled")).toBe(true);
   fireEvent.change(screen.getByLabelText(t("starterCategoryToApply")), { target: { value: "home_coffee_tea" } });
   expect(screen.getByText(t("starterReferenceProducts", { category: starterCategoryLabel("home_coffee_tea", "Coffee & tea", code) }))).toBeTruthy();
   await preview();
@@ -76,7 +76,7 @@ it("retains a translated accent-insensitive search and hidden choices when chang
   fireEvent.click(screen.getByRole("button", { name: t("starterSelectShown") }));
   act(() => useLocale.getState().setLocale("ja"));
   expect((screen.getByLabelText(t("starterSearch")) as HTMLInputElement).value).toBe("refrigerateur cafe");
-  expect((screen.getByLabelText(t("starterSelectRack", { rack: "棚_1" })) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText(t("starterSelectRack", { rack: "Café 🌿 (棚_1)" })) as HTMLInputElement).checked).toBe(true);
   fireEvent.change(screen.getByLabelText(t("starterSearch")), { target: { value: "absent" } });
   expect(screen.getByText(t("starterNoMatch"))).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: t("starterPreview") }));

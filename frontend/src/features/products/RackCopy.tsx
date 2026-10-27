@@ -78,7 +78,7 @@ function CopySession({ pid, sid, close }: { pid: string; sid: string; close: () 
       <p>{t("copyCounts", { shown: shown.length, selected: selected.size })}</p>
       <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!current || !source} onClick={() => choose(new Set([...selected, ...shown.filter(r => !r.reason).map(r => r.id)]))}>{t("copySelectShown")}</Button><Button variant="outline" onClick={() => choose(new Set())}>{t("productClearSelection")}</Button></div>
       <div className="max-h-[30dvh] overflow-auto rounded border">
-        {shown.map(r => <div key={r.id} className="border-b p-2"><label><input type="checkbox" aria-label={t("copyToRack", { id: r.id })} disabled={!!r.reason} checked={selected.has(r.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(r.id); else next.delete(r.id); choose(next); }} /> {r.name} · {fixtureLabel(r.type, locale)} · {r.id}</label><p>{rackCopyReason(r, locale) ?? t("copyTargetCount", { count: r.placements })}</p></div>)}
+        {shown.map(r => <div key={r.id} className="border-b p-2"><label><input type="checkbox" aria-label={t("copyToRack", { id: `${r.name} (${r.id})` })} disabled={!!r.reason} checked={selected.has(r.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(r.id); else next.delete(r.id); choose(next); }} /> {r.name} · {fixtureLabel(r.type, locale)} · {r.id}</label><p>{rackCopyReason(r, locale) ?? t("copyTargetCount", { count: r.placements })}</p></div>)}
       </div>
     </fieldset>
     {options.isFetching && <p role="status">{t("copyChecking")}</p>}

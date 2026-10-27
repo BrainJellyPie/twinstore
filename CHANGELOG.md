@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The rack checkboxes in **Copy shelf products** and **Auto-place starter
+  products** now give screen readers the rack's name as well as its id
+  ("Copy to rack Snacks 1 (r_fe3c6bc9)"). Before, they read only the generated
+  id, while sighted users saw the name.
+
 - **Use library photos** spaces its "Allow replacing existing images" checkbox
   from its label like the app's other checkboxes.
 
