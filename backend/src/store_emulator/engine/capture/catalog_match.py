@@ -188,14 +188,18 @@ _NUMBER_RE = re.compile(r"(?:\d|[.,](?=\d))[\d,.\s']*")
 # an unqualified dollar/yen sign still uses the store's currency as before.
 _PRICE_CURRENCY_SYMBOLS = {
     "USD": "$", "KRW": "₩원", "JPY": "¥円", "EUR": "€", "GBP": "£", "CNY": "¥",
-    "CAD": "$", "AUD": "$", "NZD": "$", "SGD": "$", "HKD": "$", "TWD": "$", "CLP": "$",
-    "VND": "", "IDR": "", "ISK": "", "HUF": "", "CHF": "", "INR": "",
+    "CAD": "$", "AUD": "$", "NZD": "$", "SGD": "$", "HKD": "$", "TWD": "$", "CLP": "$", "BRL": "$",
+    "VND": "", "IDR": "", "ISK": "", "HUF": "", "CHF": "", "INR": "₹",
 }
+_PRICE_MAJOR_SYMBOLS = frozenset("".join(_PRICE_CURRENCY_SYMBOLS.values()))
+_PRICE_CASH_SYMBOL_RE = re.compile(rf"[{re.escape(''.join(sorted(_PRICE_MAJOR_SYMBOLS)) + '¢')}]")
 _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
 # These qualified dollar signs identify a currency; a bare dollar sign does not.
-_QUALIFIED_DOLLARS = {"US": "USD", "CA": "CAD", "AU": "AUD", "NZ": "NZD", "HK": "HKD", "SG": "SGD", "NT": "TWD"}
+_QUALIFIED_DOLLARS = {
+    "US": "USD", "CA": "CAD", "AU": "AUD", "NZ": "NZD", "HK": "HKD", "SG": "SGD", "NT": "TWD", "R": "BRL",
+}
 _QUALIFIED_DOLLAR_RE = re.compile(rf"(?<![A-Za-z])({'|'.join(_QUALIFIED_DOLLARS)})\s*\$", re.IGNORECASE)
 _NON_SELLING_PREFIX_RE = re.compile(
     r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?"
@@ -309,7 +313,7 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
     before, after = normalized[:match.start()].strip(), normalized[match.end():].strip()
     # A savings/coupon/reference value is not a selling price, even when the model left
     # its numeric price unknown. Strip currency marks only for this label test.
-    price_context = [re.sub(r"[$€£¥₩¢원円]", "", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
+    price_context = [_PRICE_CASH_SYMBOL_RE.sub("", _PRICE_CURRENCY_CODE_RE.sub("", part)).strip()
                      for part in (before, after)]
     if _NON_SELLING_PREFIX_RE.search(price_context[0]) or _SAVINGS_SUFFIX_RE.search(price_context[1]):
         return None
@@ -325,7 +329,7 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
     if any(_MEASURE_RATE_RE.search(part) for part in price_context):
         # The photographed package can contain a different volume/weight.
         return None
-    cash_unit = (any(symbol in normalized for symbol in "$€£¥₩¢원円")
+    cash_unit = (_PRICE_CASH_SYMBOL_RE.search(normalized) is not None
                  or _PRICE_CURRENCY_CODE_RE.search(normalized) is not None
                  or re.search(r"\bcents?\b", normalized, re.IGNORECASE) is not None)
     if not cash_unit and _REFERENCE_NUMBER_PREFIX_RE.search(before):
@@ -390,7 +394,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     if any(match.upper() != code for match in _PRICE_CURRENCY_CODE_RE.findall(printed)):
         return None
     if code in _PRICE_CURRENCY_SYMBOLS and any(
-        symbol in printed and symbol not in _PRICE_CURRENCY_SYMBOLS[code] for symbol in "$€£¥₩원円"
+        symbol in printed and symbol not in _PRICE_CURRENCY_SYMBOLS[code] for symbol in _PRICE_MAJOR_SYMBOLS
     ):
         return None
     zero_decimal = code in ZERO_DECIMAL
@@ -407,7 +411,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     if not math.isfinite(value) or value < 0:
         return None
     cents = "¢" in printed or re.search(r"\bcents?\b", printed, re.IGNORECASE) is not None
-    major_symbol = any(symbol in printed for symbol in "$€£¥₩원円")
+    major_symbol = any(symbol in printed for symbol in _PRICE_MAJOR_SYMBOLS)
     major_unit = major_symbol or re.search(rf"(?<![A-Za-z]){re.escape(code)}(?![A-Za-z])", printed, re.IGNORECASE) is not None
     if cents and (zero_decimal or major_symbol):
         return None
