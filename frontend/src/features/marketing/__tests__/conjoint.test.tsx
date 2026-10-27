@@ -132,7 +132,10 @@ it.each(["", "Regular"])("keeps incomplete drafts editable with insufficient dis
   fireEvent.change(screen.getByLabelText("Levels of attribute 1"), { target: { value: levels } });
   fireEvent.change(screen.getByLabelText("Levels of attribute 2"), { target: { value: levels } });
   fireEvent.click(screen.getByRole("button", { name: "Another" }));
-  expect((screen.getByRole("button", { name: "Field the study" }) as HTMLButtonElement).disabled).toBe(true);
+  const field = screen.getByRole("button", { name: "Field the study" }) as HTMLButtonElement;
+  expect(field.disabled).toBe(true);
+  // The first thing still missing is what the disabled button is described by.
+  expect(document.getElementById(field.getAttribute("aria-describedby")!)!.textContent).toBeTruthy();
 });
 
 it("drafts the study from a question, in the study's currency, and keeps it editable", async () => {

@@ -33,6 +33,19 @@ function show() {
   return screen.getByPlaceholderText(/leave empty to keep/);
 }
 
+it("says why the run waits: no product under test, then nothing changed", () => {
+  render(<QueryClientProvider client={new QueryClient()}>
+    <ShelfTestBuilder projectId="project" setupId="setup" store={store} currency="USD" onStarted={vi.fn()} />
+  </QueryClientProvider>);
+  const runButton = () => screen.getByRole("button", { name: "Run shelf test" });
+  const reason = () => document.getElementById(runButton().getAttribute("aria-describedby")!)!.textContent;
+  expect(reason()).toBe("Choose the product under test.");
+  fireEvent.change(screen.getByRole("combobox", { name: "Product under test" }), { target: { value: "tea" } });
+  expect(reason()).toMatch(/change/i);
+  fireEvent.click(screen.getByRole("button", { name: "NEW" }));
+  expect(runButton().getAttribute("aria-describedby")).toBeNull();
+});
+
 it.each(["-1", "invalid", "1e3"])("does not silently discard an invalid price %s when a sign is also selected", (price) => {
   fireEvent.change(show(), { target: { value: price } });
   expect((screen.getByRole("button", { name: "Run shelf test" }) as HTMLButtonElement).disabled).toBe(true);

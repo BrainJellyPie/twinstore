@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Run shelf test** and **Field the study** (conjoint) now tell screen readers
+  why they are off, using the hint already shown beside them ("Choose the
+  product under test.", the first thing the study still needs).
+
 - Ask receipt models to preserve signed quantities and amounts, including
   returned product rows, so the existing review can block refunds instead of
   accepting them as positive purchases.
