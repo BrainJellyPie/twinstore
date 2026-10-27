@@ -178,7 +178,9 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
               className="h-8 w-full rounded-lg border bg-background pr-2 pl-8 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
           </label>
         )}
-        {shownSites.length === 0 && <p className="text-xs text-muted-foreground">{t("onFindNone")}</p>}
+        {/* The chosen stores stay listed, so the list alone does not show that the search found nothing. */}
+        {storeNeedle && !listedSites.some((s) => searchText(s.name).includes(storeNeedle))
+          && <p role="status" className="text-xs text-muted-foreground">{t("onFindNone")}</p>}
         <ul className="max-h-[22rem] space-y-1 overflow-y-auto pr-1">
           {shownSites.map((s) => {
             const index = chosen.indexOf(s.id);
