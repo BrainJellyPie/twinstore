@@ -109,6 +109,7 @@ export const operationsMessages = {
     "Dans cette simulation, chaque client avait le magasin pour lui seul. Rejouez-les avec un vrai stock et une file aux caisses pour voir ce que la journée aurait perdu.",
   ],
   labTillsAt: ["Tills at {hour}", "{hour} 계산대 수", "{hour} 收银台数", "{hour}のレジ数", "Cajas a las {hour}", "Caisses à {hour}"],
+  labHoursInvalid: ["Each hour takes a whole number from 0 to {max}, or stays blank.", "시간대마다 0–{max} 사이의 정수를 넣거나 비워 두세요.", "每个小时请填写 0–{max} 的整数，或留空。", "各時間帯には 0–{max} の整数を入れるか、空欄のままにしてください。", "Cada hora admite un número entero de 0 a {max}, o queda en blanco.", "Chaque heure prend un nombre entier de 0 à {max}, ou reste vide."],
   labTillsByHourHint: ["Blank: the number above", "비우면 위의 계산대 수", "留空：使用上面的数量", "空欄：上の台数", "En blanco: el número de arriba", "Vide : le nombre ci-dessus"],
   labCosts: ["Costs ({currency})", "비용({currency})", "成本（{currency}）", "コスト（{currency}）", "Costes ({currency})", "Coûts ({currency})"],
   labTillHourCost: ["One till staffed for an hour", "계산대 1대·1시간 인건비", "一个收银台值班一小时", "レジ1台を1時間稼働", "Una caja atendida una hora", "Une caisse tenue une heure"],

@@ -156,7 +156,8 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
       <Input id={`${id}-mem-${key}`} type="number" min={key === "weeks" ? 2 : 0} max={key === "weeks" ? 52 : 100}
         step={key === "weeks" ? 1 : 0.5} className="h-7" value={memoryText[key]}
         onChange={(e) => setMemoryText({ ...memoryText, [key]: e.target.value })}
-        aria-invalid={key === "weeks" ? weeks === null : chance(memoryText[key]) === null} />
+        aria-invalid={key === "weeks" ? weeks === null : chance(memoryText[key]) === null}
+        aria-describedby={(key === "weeks" ? weeks === null : chance(memoryText[key]) === null) ? `${id}-mem-invalid` : undefined} />
     </div>
   );
   const costField = (key: keyof CostText, label: MessageKey) => (
@@ -164,7 +165,8 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
     <div className="flex flex-col justify-end gap-1">
       <label className="block font-medium" htmlFor={`${id}-${key}`}>{t(label)}</label>
       <Input id={`${id}-${key}`} inputMode="decimal" className="h-7" value={costs[key]} placeholder="0"
-        onChange={(e) => setCosts({ ...costs, [key]: e.target.value })} aria-invalid={money(costs[key]) === null} />
+        onChange={(e) => setCosts({ ...costs, [key]: e.target.value })} aria-invalid={money(costs[key]) === null}
+        aria-describedby={money(costs[key]) === null ? `${id}-cost-invalid` : undefined} />
     </div>
   );
 
@@ -186,11 +188,13 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
                   <Input type="number" min={0} max={hourMax} step={1} className="h-7" value={byHour[hour] ?? ""}
                     aria-label={t(crewMode ? "labCrewAt" : "labTillsAt", { hour: t("opsHourLabel", { hour }) })}
                     aria-invalid={(byHour[hour] ?? "").trim() !== "" && wholeIn(byHour[hour] ?? "", 0, hourMax) === null}
+                    aria-describedby={(byHour[hour] ?? "").trim() !== "" && wholeIn(byHour[hour] ?? "", 0, hourMax) === null ? `${id}-hours-invalid` : undefined}
                     onChange={(e) => setByHour({ ...byHour, [hour]: e.target.value })} />
                 </label>
               ))}
             </div>
             <p className="text-muted-foreground">{t(crewMode ? "labCrewByHourHint" : "labTillsByHourHint")}</p>
+            {!scheduleValid && <p id={`${id}-hours-invalid`} role="alert" className="text-destructive">{t("labHoursInvalid", { max: hourMax })}</p>}
           </fieldset>
         )}
         {crewMode && (
@@ -204,15 +208,18 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <label className="flex items-center gap-1">{t("labShiftFrom")}
                       <Input type="number" min={0} max={23} step={1} className="h-7 w-16 px-2" value={shift.start}
-                        aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ start: e.target.value })} />
+                        aria-invalid={parsedShifts[index] === null} aria-describedby={parsedShifts[index] === null ? `${id}-shift-invalid` : undefined}
+                        onChange={(e) => set({ start: e.target.value })} />
                     </label>
                     <label className="flex items-center gap-1">{t("labShiftTo")}
                       <Input type="number" min={1} max={24} step={1} className="h-7 w-16 px-2" value={shift.end}
-                        aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ end: e.target.value })} />
+                        aria-invalid={parsedShifts[index] === null} aria-describedby={parsedShifts[index] === null ? `${id}-shift-invalid` : undefined}
+                        onChange={(e) => set({ end: e.target.value })} />
                     </label>
                     <label className="flex items-center gap-1">{t("labShiftStaff")}
                       <Input type="number" min={1} max={100} step={1} className="h-7 w-16 px-2" value={shift.staff}
-                        aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ staff: e.target.value })} />
+                        aria-invalid={parsedShifts[index] === null} aria-describedby={parsedShifts[index] === null ? `${id}-shift-invalid` : undefined}
+                        onChange={(e) => set({ staff: e.target.value })} />
                     </label>
                     <Button type="button" size="icon" variant="ghost" className="size-7" aria-label={t("labRemoveShift", { n: index + 1 })}
                       onClick={() => setShifts(shifts.filter((_, i) => i !== index))}><X className="size-3.5" aria-hidden /></Button>
@@ -235,7 +242,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
             <Button type="button" size="sm" variant="outline" onClick={() => setShifts([...shifts, NEW_SHIFT])}>
               <Plus className="size-3.5" aria-hidden />{t("labAddShift")}
             </Button>
-            {!shiftsValid && <p role="alert" className="text-destructive">{t("labShiftInvalid")}</p>}
+            {!shiftsValid && <p id={`${id}-shift-invalid`} role="alert" className="text-destructive">{t("labShiftInvalid")}</p>}
             <label className="flex items-start gap-2 pt-1 font-medium" htmlFor={`${id}-roster`}>
               <input id={`${id}-roster`} type="checkbox" className="mt-0.5 size-4 accent-primary" checked={rosterOn}
                 onChange={(e) => setRosterOn(e.target.checked)} aria-describedby={`${id}-roster-hint`} />
@@ -247,16 +254,18 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
                 <div className="space-y-1">
                   <label className="block font-medium" htmlFor={`${id}-roster-min`}>{t("labRosterMin")}</label>
                   <Input id={`${id}-roster-min`} type="number" min={1} max={12} step={1} className="h-7" value={rosterText.min}
-                    onChange={(e) => setRosterText({ ...rosterText, min: e.target.value })} aria-invalid={rosterMin === null} />
+                    onChange={(e) => setRosterText({ ...rosterText, min: e.target.value })} aria-invalid={rosterMin === null}
+                    aria-describedby={rosterValid ? undefined : `${id}-roster-invalid`} />
                 </div>
                 <div className="space-y-1">
                   <label className="block font-medium" htmlFor={`${id}-roster-max`}>{t("labRosterMax")}</label>
                   <Input id={`${id}-roster-max`} type="number" min={1} max={16} step={1} className="h-7" value={rosterText.max}
-                    onChange={(e) => setRosterText({ ...rosterText, max: e.target.value })} aria-invalid={rosterMax === null} />
+                    onChange={(e) => setRosterText({ ...rosterText, max: e.target.value })} aria-invalid={rosterMax === null}
+                    aria-describedby={rosterValid ? undefined : `${id}-roster-invalid`} />
                 </div>
               </div>
             )}
-            {!rosterValid && <p role="alert" className="text-destructive">{t("labRosterInvalid")}</p>}
+            {!rosterValid && <p id={`${id}-roster-invalid`} role="alert" className="text-destructive">{t("labRosterInvalid")}</p>}
           </fieldset>
         )}
         <fieldset className="space-y-1.5">
@@ -266,7 +275,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
             {costField("refill", "labRestockCost")}
             {costField("unit", "labUnitDayCost")}
           </div>
-          {!costsValid && <p role="alert" className="text-destructive">{t("labInvalidCost")}</p>}
+          {!costsValid && <p id={`${id}-cost-invalid`} role="alert" className="text-destructive">{t("labInvalidCost")}</p>}
         </fieldset>
         <fieldset className="space-y-1.5">
           <label className="flex items-start gap-2 font-medium" htmlFor={`${id}-remember`}>
@@ -284,7 +293,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
               {memoryField("churn", "memChurn")}
             </div>
           )}
-          {!memoryValid && <p role="alert" className="text-destructive">{t("memInvalid")}</p>}
+          {!memoryValid && <p id={`${id}-mem-invalid`} role="alert" className="text-destructive">{t("memInvalid")}</p>}
         </fieldset>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={!valid || busy} onClick={() => run("replay")}>

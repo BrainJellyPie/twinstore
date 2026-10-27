@@ -157,7 +157,11 @@ describe("the run dialog", () => {
   it("blocks the run until an impossible setting is corrected", async () => {
     showDialog();
     fireEvent.change(screen.getByLabelText("Tills open"), { target: { value: "0" } });
-    expect(screen.getByRole("alert").textContent).toContain("Check the store settings");
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("Check the store settings");
+    // The field out of range points to the message giving the ranges; the fields in range do not.
+    expect(screen.getByLabelText("Tills open").getAttribute("aria-describedby")!.split(" ")).toContain(alert.id);
+    expect(screen.getByLabelText("Patience in line (minutes)").getAttribute("aria-describedby")!.split(" ")).not.toContain(alert.id);
     await submit();
     expect(api.startRun).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText("Tills open"), { target: { value: "" } });

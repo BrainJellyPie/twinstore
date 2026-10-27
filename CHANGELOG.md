@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Fields marked as wrong now point screen readers to the message that says
+  what is wrong: the run dialog's seed, replicate and shared-store settings,
+  the operations lab's hours, shifts, roster, costs and memory settings, and
+  online amounts (fees, ad costs).
+- The operations lab now says why an hour's tills or crew block the plan
+  ("Each hour takes a whole number from 0 to 50, or stays blank."). Before,
+  only the field's border turned red and the buttons stayed off.
+- A new price in an A/B test variant that is not an amount now says "Not an
+  amount" under the field instead of only turning its border red.
+
 - Names and descriptions cut short to fit now show in full on hover: products
   on a shelf's detail panel (two "Grandma's Chocolate…" products could not be
   told apart), experiment arms in lift charts, shelf-test picks, stockouts and

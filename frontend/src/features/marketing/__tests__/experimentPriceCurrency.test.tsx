@@ -63,3 +63,15 @@ it("lets a newly generated test replace the mismatched draft in the current curr
   expect(vi.mocked(marketing.startExperiment).mock.calls[0]![1]).toMatchObject({ currency: "USD",
     variants: [{ changes: [{ price: 250 }] }] });
 });
+
+it("says a typed new price is not an amount, and points the field to that message", () => {
+  mount("USD");
+  const price = screen.getByLabelText("New price");
+  fireEvent.change(price, { target: { value: "abc" } });
+  const message = screen.getByText("Not an amount");
+  expect(message.getAttribute("role")).toBe("alert");
+  expect(price.getAttribute("aria-describedby")).toBe(message.id);
+  expect(runButton().disabled).toBe(true);
+  fireEvent.change(price, { target: { value: "2.50" } });
+  expect(screen.queryByText("Not an amount")).toBeNull();
+});

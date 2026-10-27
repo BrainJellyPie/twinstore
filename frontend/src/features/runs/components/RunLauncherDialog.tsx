@@ -480,11 +480,13 @@ function LauncherForm({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="run-seed">{t("seed")}</label>
-                <Input id="run-seed" type="number" value={seed} onChange={(e) => setSeed(e.target.value)} aria-invalid={!validSeed} />
+                <Input id="run-seed" type="number" value={seed} onChange={(e) => setSeed(e.target.value)} aria-invalid={!validSeed}
+                  aria-describedby={validSample && !validSeed ? "run-input-error" : undefined} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="run-replicate">{t("replicate")}</label>
-                <Input id="run-replicate" type="number" min={0} value={replicate} onChange={(e) => setReplicate(e.target.value)} aria-invalid={!validReplicate} />
+                <Input id="run-replicate" type="number" min={0} value={replicate} onChange={(e) => setReplicate(e.target.value)} aria-invalid={!validReplicate}
+                  aria-describedby={validSample && validSeed && !validReplicate ? "run-input-error" : undefined} />
               </div>
               <p className="col-span-2 flex gap-1.5 text-xs text-muted-foreground">
                 <FlaskConical className="mt-0.5 size-3 shrink-0" aria-hidden />

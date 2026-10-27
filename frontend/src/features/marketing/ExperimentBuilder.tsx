@@ -2,7 +2,7 @@
 // a was-price tag, promotion sign, a move to eye level, new package art, category pricing). Every variant runs on
 // the same shoppers as the control, so the differences come from the change.
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, BadgePercent, Copy, Eye, FlaskConical, Loader2, Package, Plus, Sparkles, Tag, Tags, Trash2, Wand2, X } from "lucide-react";
 
@@ -444,6 +444,8 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
   const { t } = useI18n();
   const divisor = minorUnitDivisor(currency);
   const [priceText, setPriceText] = useState(c.price != null ? majorUnitText(c.price, currency, { fixed: true }) : "");
+  const badPrice = priceText.trim().length > 0 && c.price == null;
+  const priceErrorId = useId();
   const meta = KINDS.find((k) => k.kind === c.kind)!;
   const Icon = meta.icon;
   const product = products.find((p) => p.sku === c.sku);
@@ -470,8 +472,9 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
         {c.kind === "price" && (
           <Input value={priceText} inputMode="decimal" placeholder={product ? t("mkNowPrice", { price: formatMoney(product.price, currency) }) : t("mkPrice")} className="num h-8 w-28 text-xs"
             onChange={(e) => { setPriceText(e.target.value); onPatch({ price: toMinor(e.target.value, divisor) }); }} aria-label={t("mkNewPrice")}
-            aria-invalid={priceText.trim().length > 0 && c.price == null} />
+            aria-invalid={badPrice} aria-describedby={badPrice ? priceErrorId : undefined} />
         )}
+        {c.kind === "price" && badPrice && <span id={priceErrorId} role="alert" className="text-xs text-destructive">{t("onInvalidAmount")}</span>}
         {c.kind === "price" && (
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground" title={t("mkKeepReferenceTitle")}>
             <input type="checkbox" checked={!!c.keep_reference} onChange={(e) => onPatch({ keep_reference: e.target.checked })} /> {t("mkKeepReference")}

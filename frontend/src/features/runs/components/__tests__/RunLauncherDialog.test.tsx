@@ -137,6 +137,7 @@ it.each([
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
   details.open = false;
   expect(screen.getByRole("alert").textContent).toContain("Advanced settings");
+  expect(screen.getByLabelText(label).getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
   expect((screen.getByRole("button", { name: "Run preview" }) as HTMLButtonElement).disabled).toBe(true);
   await submit();
   expect(api.startRun).not.toHaveBeenCalled();

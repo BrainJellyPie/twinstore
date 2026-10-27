@@ -104,6 +104,14 @@ it.each(["Delivery fee", "Free delivery from", "Service fee at the last step", "
   expect((screen.getByRole("button", { name: "Save as a variant" }) as HTMLButtonElement).disabled).toBe(true);
 });
 
+it("points an invalid delivery fee to the message saying it is not an amount", async () => {
+  mount();
+  const fee = await screen.findByRole("textbox", { name: "Delivery fee" });
+  expect(fee.getAttribute("aria-describedby")).toBeNull();
+  fireEvent.change(fee, { target: { value: "invalid" } });
+  expect(document.getElementById(fee.getAttribute("aria-describedby")!)!.textContent).toBe("Not an amount");
+});
+
 it("retains an invalid price when a filter temporarily hides the product", async () => {
   mount();
   fireEvent.change(await screen.findByRole("textbox", { name: "Shirt: Price" }), { target: { value: "invalid" } });
@@ -157,6 +165,8 @@ it("blocks saving while an ad cost is invalid, until the ad is fixed or removed"
   const cost = await screen.findByRole("textbox", { name: "Cost per click" });
   fireEvent.change(cost, { target: { value: "lots" } });
   expect(cost.getAttribute("aria-invalid")).toBe("true");
+  const description = cost.getAttribute("aria-describedby")!.split(" ").map((id) => document.getElementById(id)!.textContent);
+  expect(description).toContain("Not an amount");
   expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
   expect(screen.queryByRole("button", { name: "Make a version without ads" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Remove ad" }));

@@ -162,10 +162,20 @@ it("offers no saving without the run's layout", () => {
   expect(lab.queryByRole("button", { name: "Save for this layout" })).toBeNull();
 });
 
+it("says why an hour's tills block the plan, and points the field to the message", () => {
+  const lab = show();
+  fireEvent.change(lab.getByLabelText("Tills at 18:00"), { target: { value: "99" } });
+  const alert = lab.getByRole("alert");
+  expect(alert.textContent).toBe("Each hour takes a whole number from 0 to 50, or stays blank.");
+  expect(lab.getByLabelText("Tills at 18:00").getAttribute("aria-describedby")).toBe(alert.id);
+  expect((lab.getByRole("button", { name: "Replay" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 it("refuses a cost that is not an amount of money", () => {
   const lab = show();
   fireEvent.change(lab.getByLabelText("One round of refilling the shelves"), { target: { value: "-3" } });
   expect(lab.getByRole("alert").textContent).toBe("Enter costs as amounts of zero or more.");
+  expect(lab.getByLabelText("One round of refilling the shelves").getAttribute("aria-describedby")).toBe(lab.getByRole("alert").id);
   expect((lab.getByRole("button", { name: "Replay" }) as HTMLButtonElement).disabled).toBe(true);
   expect((lab.getByRole("button", { name: "Find the best plan" }) as HTMLButtonElement).disabled).toBe(true);
 });
