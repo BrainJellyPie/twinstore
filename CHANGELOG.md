@@ -2,9 +2,12 @@
 
 ## Unreleased
 
-- Package pictures picked in concept tests, shelf tests and the A/B
-  builder's package change tell screen readers whether they are picked; before,
-  only a coloured ring showed it.
+- Choice buttons that showed which one is picked only by colour now also
+  tell screen readers: package pictures in concept tests, shelf tests and the
+  A/B builder, shelf photos and Shelf Lab's changes, renders and conditions,
+  age and gender chips, discount and placement levels, the Optimize scope and
+  judge, model chips in Settings, and the shopper sort and group-interview
+  segments.
 
 - **Price checks**, **Unit prices** and **Inventory** say what the review
   still needs (for example the store reference without spaces at either end,

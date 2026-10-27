@@ -231,7 +231,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="w-10 text-xs text-muted-foreground">{t("studioAge")}</span>
           {AGES.map((a) => (
-            <button key={a} type="button" onClick={() => setAges((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a]))}
+            <button aria-pressed={ages.includes(a)} key={a} type="button" onClick={() => setAges((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a]))}
               className={cn("rounded-full border px-2 py-0.5 text-xs", ages.includes(a) ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>{personaLabel(a, t)}</button>
           ))}
           {ages.length === 0 && <span className="text-[0.7rem] text-muted-foreground">{t("studioAll")}</span>}

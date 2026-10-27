@@ -77,13 +77,13 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
         <h3 className="flex items-center gap-1.5 text-sm font-semibold"><UsersRound className="size-4 text-primary" /> {t("groupInterview")}</h3>
         <div className="flex flex-wrap gap-1">
           {preset && (
-            <button type="button" onClick={() => { setSegment("found"); setQuestion(t(FOUND_QUESTION)); }}
+            <button aria-pressed={segment === "found"} type="button" onClick={() => { setSegment("found"); setQuestion(t(FOUND_QUESTION)); }}
               className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", segment === "found" ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
               {preset.label} · {preset.personaIds.length}
             </button>
           )}
           {SEGMENTS.map((s) => (
-            <button key={s.id} type="button" onClick={() => { setSegment(s.id); setQuestion(t(s.question)); }}
+            <button aria-pressed={segment === s.id} key={s.id} type="button" onClick={() => { setSegment(s.id); setQuestion(t(s.question)); }}
               className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", segment === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
               {t(s.label)}
             </button>

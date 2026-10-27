@@ -171,7 +171,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       )}
       <div className={cn("flex flex-wrap gap-1", found && "hidden")}>
         {SORTS.map((s) => (
-          <button key={s.id} type="button" onClick={() => setSort(s.id)}
+          <button aria-pressed={sort === s.id} key={s.id} type="button" onClick={() => setSort(s.id)}
             className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", sort === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
             {t(s.label)}
           </button>

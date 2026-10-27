@@ -225,7 +225,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
     <section className="space-y-3">
       <div className="grid grid-cols-3 gap-1.5">
         {OPS.map(({ kind, label, icon: Icon }) => (
-          <button
+          <button aria-pressed={draft.kind === kind}
             key={kind}
             type="button"
             onClick={() => setDraft({ ...draft, kind, slot: "target", other: needsOther(kind) ? draft.other : null })}
@@ -260,7 +260,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
               aria-invalid={invalidPrice} aria-describedby={invalidPrice ? priceErrorId : undefined} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <button aria-pressed={!assetId}
               type="button"
               onClick={() => setAssetId("")}
               className={cn("h-14 rounded-lg border px-3 text-xs", !assetId ? "border-primary text-foreground" : "text-muted-foreground hover:border-foreground/20")}
@@ -268,7 +268,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
               {t("capLabPrinted1")}<br />{t("capLabPrinted2")}
             </button>
             {(packages.data ?? []).map((p) => (
-              <button
+              <button aria-pressed={assetId === p.asset_id}
                 key={p.asset_id}
                 type="button"
                 onClick={() => setAssetId(p.asset_id)}
@@ -360,12 +360,12 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
     <section className="space-y-2">
       <div className="eyebrow">{t("capLabCounterfactuals")}</div>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        <button type="button" onClick={() => onSelect(null)}
+        <button aria-pressed={!editId} type="button" onClick={() => onSelect(null)}
           className={cn("grid h-16 w-20 shrink-0 place-items-center rounded-xl border text-xs", !editId ? "border-primary" : "text-muted-foreground hover:border-foreground/20")}>
           {t("capLabOriginal")}
         </button>
         {list.map((e) => (
-          <button key={e.edit_id} type="button" onClick={() => onSelect(e.edit_id)}
+          <button aria-pressed={e.edit_id === editId} key={e.edit_id} type="button" onClick={() => onSelect(e.edit_id)}
             className={cn("relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border-2", e.edit_id === editId ? "border-primary" : "border-transparent hover:border-foreground/20")}>
             <img src={api.editFileUrl(projectId, captureId, e.edit_id, "image")} alt="" className="h-full w-full object-cover" />
             <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[0.68rem] text-white">{t(e.edits.length > 1 ? "capLabEditsCount" : "capLabEditCount", { count: e.edits.length })}</span>
@@ -428,7 +428,7 @@ function RecentJobs({ projectId, captureId, kind, current, onPick }: {
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="text-muted-foreground">{t("capLabEarlierRuns")}</span>
       {mine.map((j) => (
-        <button key={j.job_id} type="button" onClick={() => onPick(j.job_id)}
+        <button aria-pressed={current === j.job_id} key={j.job_id} type="button" onClick={() => onPick(j.job_id)}
           className={cn("num rounded-full border px-2 py-0.5", current === j.job_id ? "border-primary text-foreground" : "text-muted-foreground hover:border-foreground/20")}>
           {new Date(j.created_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
         </button>
@@ -514,7 +514,7 @@ function AttentionToggle({ report, onAttention }: { report: Sim2RealReport; onAt
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="text-muted-foreground">{t("capLabAttention")}</span>
       {report.conditions.map((c) => (
-        <button key={c} type="button" onClick={() => show(on === c ? null : c)}
+        <button aria-pressed={on === c} key={c} type="button" onClick={() => show(on === c ? null : c)}
           className={cn("rounded-full border px-2.5 py-1", on === c ? "border-transparent bg-primary font-medium text-primary-foreground" : "hover:border-foreground/20")}>
           {t(CONDITION_LABEL[c])}
         </button>

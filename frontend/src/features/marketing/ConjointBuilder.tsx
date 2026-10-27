@@ -350,7 +350,7 @@ function Chips({ label, options, value, onToggle }: { label: string; options: st
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="w-14 text-xs text-muted-foreground">{label}</span>
       {options.map((o) => (
-        <button key={o} type="button" onClick={() => onToggle(o)}
+        <button aria-pressed={value.includes(o)} key={o} type="button" onClick={() => onToggle(o)}
           className={cn("rounded-full border px-2.5 py-0.5 text-xs", value.includes(o) ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
           {personaLabel(o, t)}
         </button>

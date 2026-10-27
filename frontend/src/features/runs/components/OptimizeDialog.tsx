@@ -197,7 +197,7 @@ function OptimizeBody({ active, projectId, setupId, goalPrefill, onClose }: {
             <div className="mb-1 text-xs text-muted-foreground">{t("optWhatMayChange")}</div>
             <div className="grid grid-cols-3 gap-2">
               {SCOPES.map((s) => (
-                <button key={s.value} type="button" onClick={() => setSpec({ ...spec, scope: s.value })}
+                <button aria-pressed={spec.scope === s.value} key={s.value} type="button" onClick={() => setSpec({ ...spec, scope: s.value })}
                   className={cn("rounded-lg border p-2 text-left text-xs", spec.scope === s.value ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
                   <div className="font-medium">{t(s.label)}</div>
                   <div className="text-muted-foreground">{t(s.hint)}</div>
@@ -245,7 +245,7 @@ function OptimizeBody({ active, projectId, setupId, goalPrefill, onClose }: {
                 { id: "rule", icon: Zap, title: t("optJudgeRule"), hint: t("optJudgeRuleHint") },
                 { id: "vlm", icon: Eye, title: t("optJudgeVision"), hint: t("optJudgeVisionHint") },
               ] as const).map(({ id, icon: Icon, title, hint }) => (
-                <button key={id} type="button" onClick={() => setJudge({ ...judge, judge: id })}
+                <button aria-pressed={judge.judge === id} key={id} type="button" onClick={() => setJudge({ ...judge, judge: id })}
                   className={cn("rounded-lg border p-2.5 text-left text-xs", judge.judge === id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
                   <div className="flex items-center gap-1.5 font-medium"><Icon className="size-3.5" />{title}</div>
                   <div className="text-muted-foreground">{hint}</div>

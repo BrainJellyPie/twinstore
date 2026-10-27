@@ -210,7 +210,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
 
       <div className="flex flex-wrap gap-1">
         {preset.models.map((m) => (
-          <button
+          <button aria-pressed={m.id === model}
             key={m.id}
             type="button"
             onClick={() => setModel(m.id)}
