@@ -71,7 +71,24 @@ it("finds stores and runs by name, opening the group of a matching variant", asy
   expect(runs.getByRole("button", { name: /Popup test/ })).toBeTruthy();
   expect(runs.queryByRole("button", { name: /Pets/ })).toBeNull();
   fireEvent.change(box, { target: { value: "zzz" } });
-  expect(screen.getByText("Nothing matches.")).toBeTruthy();
+  expect(screen.getByRole("status").textContent).toBe("Nothing matches.");
+  // No empty Stores and Runs headings above it.
+  expect(screen.queryByRole("region", { name: "Stores" })).toBeNull();
+  expect(screen.queryByRole("region", { name: "Runs" })).toBeNull();
+  fireEvent.change(box, { target: { value: "" } });
+  expect(screen.getByRole("region", { name: "Stores" })).toBeTruthy();
+});
+
+it("shows a failed run request instead of reporting that the search matched nothing", async () => {
+  vi.mocked(online.listSites).mockResolvedValue(Array.from({ length: 7 }, (_, i) => site(`s${i}`, `Shop ${i}`)));
+  vi.mocked(online.listRuns).mockRejectedValue(new Error("Runs unavailable"));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><OnlinePage projectId="p1" /></QueryClientProvider>);
+  const box = await screen.findByRole("searchbox", { name: "Find a store or run" });
+  fireEvent.change(box, { target: { value: "zzz" } });
+  expect((await screen.findByRole("alert")).textContent).toBe("Runs unavailable");
+  expect(screen.queryByText("Nothing matches.")).toBeNull();
+  expect(screen.getByRole("region", { name: "Runs" })).toBeTruthy();
 });
 
 it("opens the first match with Enter and moves into the matches with the down arrow", async () => {

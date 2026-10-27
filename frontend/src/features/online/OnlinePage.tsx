@@ -111,6 +111,9 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
   }
   const roots = list.filter((s) => rootOf(s) === s.id && (found(s.name, s.note) || family.has(s.id)));
   const shownRuns = (runs.data ?? []).filter((r) => found(r.name, ...r.site_names));
+  // While searching, a section without matches is left out instead of showing an empty heading.
+  const noStoreFound = !!needle && roots.length === 0 && !sites.isPending && !sites.isError;
+  const noRunFound = !!needle && shownRuns.length === 0 && runs.isSuccess;
   // The open store or run's entry is scrolled into the list's view when it opens (a link, a reload, a new store).
   const aside = useRef<HTMLElement>(null);
   const newStore = useRef<HTMLButtonElement>(null);
@@ -167,7 +170,8 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
               className="h-8 w-full rounded-xl border bg-card/60 pr-2 pl-8 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
           </label>
         )}
-        <section aria-labelledby="online-sites" className="space-y-2">
+        {noStoreFound && noRunFound && <p role="status" className="text-xs text-muted-foreground">{t("onFindNone")}</p>}
+        {!noStoreFound && <section aria-labelledby="online-sites" className="space-y-2">
           <h2 id="online-sites" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onStores")}</h2>
           {sites.isPending && <p role="status" className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
           {sites.isError && <p role="alert" className="text-xs text-destructive">{sites.error.message}</p>}
@@ -199,12 +203,13 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
               );
             })}
           </ul>
-        </section>
+        </section>}
 
-        <section aria-labelledby="online-runs" className="space-y-2">
+        {!noRunFound && <section aria-labelledby="online-runs" className="space-y-2">
           <h2 id="online-runs" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("onRuns")}</h2>
-          {runs.data?.length === 0 && <p className="text-xs text-muted-foreground">{t("onNoRuns")}</p>}
-          {needle && roots.length === 0 && shownRuns.length === 0 && <p className="text-xs text-muted-foreground">{t("onFindNone")}</p>}
+          {runs.isPending && <p role="status" className="text-xs text-muted-foreground">{t("studioLoading")}</p>}
+          {runs.isError && <p role="alert" className="text-xs text-destructive">{runs.error.message}</p>}
+          {runs.isSuccess && runs.data.length === 0 && <p className="text-xs text-muted-foreground">{t("onNoRuns")}</p>}
           <ul className="space-y-1.5">
             {shownRuns.map((r) => (
               <li key={r.run_id}>
@@ -224,7 +229,7 @@ export function OnlinePage({ projectId, initialSite, initialCompare, initialRun,
               </li>
             ))}
           </ul>
-        </section>
+        </section>}
         </div>
       </aside>
 

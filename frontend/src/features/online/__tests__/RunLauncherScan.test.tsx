@@ -72,6 +72,8 @@ it("filters a long store list by name and keeps the chosen stores listed", async
   expect(listed()).toHaveLength(10);
   fireEvent.change(find, { target: { value: "glow" } });
   expect(listed()).toEqual([expect.stringContaining("Shop"), expect.stringContaining("Glow Room")]);  // the control stays
+  expect(screen.queryByText("Nothing matches.")).toBeNull();
   fireEvent.change(find, { target: { value: "zzz" } });
   expect(listed()).toEqual([expect.stringContaining("Shop")]);
+  expect(screen.getByRole("status").textContent).toBe("Nothing matches.");  // the control is listed, but did not match
 });

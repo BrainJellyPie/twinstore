@@ -185,6 +185,17 @@ it("sets up the generator from a description and generates only on request", asy
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ archetype: "university", n_competitors: 2 })));
 });
 
+it("tells how to use the map tools to open or close a venue", async () => {
+  vi.mocked(api.getTown).mockResolvedValue(town);
+  await mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Open venue" }));
+  expect(screen.getByRole("status").textContent).toBe("Click the map where the venue opens.");
+  fireEvent.click(screen.getByRole("button", { name: "Close venue" }));
+  expect(screen.getByRole("status").textContent).toBe("Click a venue on the map to close it. Our store stays.");
+  fireEvent.click(screen.getByRole("button", { name: "Explore" }));
+  expect(screen.queryByText(/Click (the map|a venue)/)).toBeNull();
+});
+
 it("offers model setup when no model can set up the generator from a description", async () => {
   vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
   vi.mocked(api.describeTown).mockRejectedValue(new Error("No model API key is set."));

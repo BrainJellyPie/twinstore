@@ -48,6 +48,26 @@ it("reads an empty promotion as none, and as mixed only when the placements diff
   expect(screen.getByLabelText("Promotion for B").getAttribute("placeholder")).toBe("Mixed — unchanged");
 });
 
+it("asks before closing with unsaved edits, and closes at once without them", async () => {
+  await open();
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit products together" }));
+  await screen.findByLabelText("Select A");
+  fireEvent.change(screen.getByLabelText("Price for B"), { target: { value: "3.50" } });
+  fireEvent.keyDown(screen.getByLabelText("Price for B"), { key: "Escape" });
+  const confirm = await screen.findByRole("alertdialog");
+  expect(confirm.textContent).toContain("Your product edits have not been saved.");
+  fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect((screen.getByLabelText("Price for B") as HTMLInputElement).value).toBe("3.50");
+
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Discard changes" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
 it("retains local edits when the catalog is invalidated during editing", async () => {
   await open();
   fireEvent.change(screen.getByLabelText("Name for A"), { target: { value: "Keep my edit" } });
@@ -123,7 +143,9 @@ it("does not switch layouts when a save completes after the dialog closes", asyn
   fireEvent.change(screen.getByLabelText("Price for A"), { target: { value: "1.50" } });
   fireEvent.click(screen.getByRole("button", { name: "Preview product changes" }));
   fireEvent.click(await screen.findByRole("button", { name: "Save as new product draft" }));
+  await screen.findByRole("button", { name: "Saving product draft…" });
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();  // a save in flight goes on after closing
   resolve({ setup_id: "late", changed_placements: 2 });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(useSimulationStore.getState().selectedSetupId).not.toBe("late");

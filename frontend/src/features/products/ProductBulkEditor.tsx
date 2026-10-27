@@ -2,10 +2,13 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { UserMessageError } from "@/shared/i18n/userMessage";
 import { RequestError } from "@/shared/components/RequestError";
 import { formatMoney } from "@/shared/utils/money";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import { productCatalog } from "@/services/queries/productEdits";
 import { productPreview, productSave } from "@/services/mutations/productEdits";
 import type { ProductCatalog, ProductEditsSave, ProductRow } from "@/shared/api/productEdits";
@@ -17,18 +20,33 @@ import { focusOnMount } from "@/shared/utils/focusOnMount";
 export function ProductBulkEditor({ pid, sid }: { pid: string; sid: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  // Escape, the X button and an outside click ask before dropping edits that were not saved.
+  const [unsaved, setUnsaved] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   return <>
     <Button variant="outline" onClick={() => setOpen(true)}>{t("bulkTitle")}</Button>
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => { if (next || !unsaved) setOpen(next); else setConfirmDiscard(true); }}>
       <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto sm:max-w-5xl">
         <DialogTitle>{t("bulkTitle")}</DialogTitle>
         <DialogDescription>{t("bulkDescription")}</DialogDescription>
-        {open && <ProductSession key={`${pid}:${sid}`} pid={pid} sid={sid} onClose={() => setOpen(false)} />}
+        {open && <ProductSession key={`${pid}:${sid}`} pid={pid} sid={sid} onClose={() => setOpen(false)} onUnsaved={setUnsaved} />}
+        <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("discardFloorChangesTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("bulkDiscardDescription")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("keepEditing")}</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={() => setOpen(false)}>{t("discardChanges")}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   </>;
 }
-function ProductSession({ pid, sid, onClose }: { pid: string; sid: string; onClose: () => void }) {
+function ProductSession({ pid, sid, onClose, onUnsaved }: { pid: string; sid: string; onClose: () => void; onUnsaved: (unsaved: boolean) => void }) {
   const { t } = useI18n();
   const catalog = useQuery(productCatalog(pid, sid));
   const [reload, setReload] = useState(0);
@@ -40,11 +58,13 @@ function ProductSession({ pid, sid, onClose }: { pid: string; sid: string; onClo
   return <>
     {catalog.isError && <RequestError error={catalog.error}><Button disabled={reloading} onClick={reloadProducts}>{t(catalog.data ? "bulkDiscardRetry" : "bulkRetry")}</Button></RequestError>}
     {!catalog.data && !catalog.isError && <div role="status">{t("bulkLoading")}</div>}
-    {catalog.data && <ProductForm key={reload} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} onClose={onClose} onReload={reloadProducts} />}
+    {catalog.data && <ProductForm key={reload} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} onClose={onClose} onReload={reloadProducts}
+      onUnsaved={onUnsaved} />}
   </>;
 }
-function ProductForm({ pid, sid, initial, refreshing, onReload, onClose }: {
+function ProductForm({ pid, sid, initial, refreshing, onReload, onClose, onUnsaved }: {
   pid: string; sid: string; initial: ProductCatalog; refreshing: boolean; onReload: () => void; onClose: () => void;
+  onUnsaved: (unsaved: boolean) => void;
 }) {
   const { t, locale } = useI18n();
   const [snapshot] = useState(initial);
@@ -61,6 +81,10 @@ function ProductForm({ pid, sid, initial, refreshing, onReload, onClose }: {
   const save = useMutation(productSave(pid, sid));
   const qc = useQueryClient();
   const busy = preview.isPending || save.isPending;
+  // A save in flight is not asked about: it goes on after closing.
+  const unsaved = drafts.size > 0 && !save.data && !save.isPending;
+  useEffect(() => { onUnsaved(unsaved); }, [unsaved, onUnsaved]);
+  useEffect(() => () => onUnsaved(false), [onUnsaved]);
   const locked = busy || !!save.data || refreshing;
   const filtered = snapshot.products.filter((row) => [row.sku, ...row.names, ...row.racks].some((v) => v.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
   const shown = filtered.slice(0, 100);

@@ -2,9 +2,19 @@
 
 ## Unreleased
 
+- Keep automatic starter selection and its preview behind the discard
+  confirmation even when no requirements were typed. Failed online run-list
+  requests remain visible as errors instead of looking like empty searches.
+
 - Read the printed row behind an inferred receipt total. If that row is a
   subtotal, leave the final total unknown and retain the original row for
   review, while keeping the purchased products and their paid amounts.
+
+- Searching the online stores list for something that matches nothing now
+  shows "Nothing matches." on its own, read out to screen readers, instead of
+  empty **Stores** and **Runs** headings above it. The run's **Find a store**
+  filter now says "Nothing matches." too; before, the stores already chosen
+  stayed listed and hid that the search found nothing.
 
 - Overlapping checks for a changed frontend reload the page at most once,
   including when their server-health responses arrive out of order.
@@ -22,6 +32,19 @@
   `B100` or `P100` as estimated prices instead of exact store-currency amounts.
   Ask the price transcriber to retain symbol strokes without replacing them
   with letters; uncertain readings still require review.
+
+- The **Area** map's **Open venue** and **Close venue** tools now say what to
+  do ("Click the map where the venue opens", "Click a venue on the map to close
+  it"). Before, only the mouse cursor changed.
+
+- **Auto-place starter products** asks before Escape, the close button or a
+  click outside drops typed requirements or chosen shelves, like **Edit products
+  together** now does. Closing while a save is under way still closes at once;
+  the save carries on.
+
+- **Edit products together** asks before Escape, the close button or a click
+  outside drops edits that were not saved. Before, the edits were lost without
+  a word.
 
 - **Edit products together** no longer labels a product without a promotion
   "Mixed — unchanged". The empty field now reads "(no promotion)"; "Mixed"

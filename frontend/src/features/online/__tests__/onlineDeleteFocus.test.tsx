@@ -83,6 +83,7 @@ it("keeps an active search editable when deletion leaves fewer than seven stores
   await waitFor(() => expect(document.activeElement).toBe(search));
   expect(search.value).toBe("Shop B");
   fireEvent.change(search, { target: { value: "" } });
-  expect(stores.getByRole("button", { name: /Shop A/ })).toBeTruthy();
-  expect(stores.queryByRole("button", { name: /Shop B/ })).toBeNull();
+  const remaining = within(screen.getByRole("region", { name: "Stores" }));
+  expect(remaining.getByRole("button", { name: /Shop A/ })).toBeTruthy();
+  expect(remaining.queryByRole("button", { name: /Shop B/ })).toBeNull();
 });
