@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Use library photos** spaces its "Allow replacing existing images" checkbox
+  from its label like the app's other checkboxes.
+
 - Give impulse models the exact target and face of each exposed product
   placement, including rotated shelves and multiple blocks. Mark blocked
   or off-grid access as unavailable instead of offering another shelf side.
