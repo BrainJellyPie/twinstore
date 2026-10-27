@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Request complete product rows from receipt-reading models and explain which
+  printed columns supply names, quantities and amounts. Clarify that missing
+  times remain empty and printed zero totals are values, including cancelled
+  transactions, instead of filling gaps or treating zero as unknown.
+
 - Starting or downloading the local model from an inline setup notice no
   longer submits its surrounding form and accidentally starts another task.
 
