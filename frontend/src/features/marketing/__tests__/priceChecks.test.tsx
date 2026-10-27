@@ -138,3 +138,13 @@ it("reports a stale export or template failure without a download", async () => 
   fill(); fireEvent.click(screen.getByRole("button", { name: "Review price checks" })); fireEvent.click(await screen.findByRole("button", { name: "Export price-check audit CSV" }));
   expect((await screen.findByRole("alert")).textContent).toContain("Sources or scope changed"); expect(click).not.toHaveBeenCalled();
 });
+
+it("says what the review still needs while it cannot run, including spaces around the store reference", () => {
+  render(<PriceChecks projectId="p" />, { wrapper });
+  const needs = /To review, fill in the store reference/;
+  expect(screen.getByText(needs)).toBeTruthy();
+  fill();
+  expect(screen.queryByText(needs)).toBeNull();
+  fireEvent.change(screen.getByLabelText("Store reference"), { target: { value: " ours" } });
+  expect(screen.getByText(needs)).toBeTruthy();
+});

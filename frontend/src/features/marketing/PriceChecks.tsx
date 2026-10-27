@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { priceCheckExport, priceCheckPreview, priceCheckTemplateDownload } from "@/services/mutations/priceChecks";
@@ -29,6 +29,7 @@ export function PriceChecks({ projectId }: { projectId: string }) {
   const template = useMutation(priceCheckTemplateDownload(projectId));
   const busy = preview.isPending || audit.isPending || template.isPending;
   const clear = () => { preview.reset(); audit.reset(); template.reset(); };
+  const needsId = useId();
   const valid = !!labels && !!checkouts && store.length > 0 && store.length <= 120 && store === store.trim() && /^\d{4}-\d{2}-\d{2}$/.test(date);
   const report = preview.data;
   const error = [fileErrors.labels, fileErrors.checkouts].filter(Boolean).join("; ") || preview.error?.message || audit.error?.message || template.error?.message;
@@ -52,7 +53,8 @@ export function PriceChecks({ projectId }: { projectId: string }) {
       setFileErrors((previous) => ({ ...previous, [key]: message }));
       setter(message ? undefined : chosen);
     }} /></label>)}
-    <Button disabled={!valid || busy} onClick={() => { clear(); if (labels && checkouts) preview.mutate({ labels, checkouts, store_ref: store, audit_date: date }); }}>{t("mkPcReview")}</Button>
+    <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { clear(); if (labels && checkouts) preview.mutate({ labels, checkouts, store_ref: store, audit_date: date }); }}>{t("mkPcReview")}</Button>
+    {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkPcReviewNeeds")}</p>}
     {preview.isPending && <p>{t("mkPcReconciling")}</p>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {report && <div className="space-y-3">
