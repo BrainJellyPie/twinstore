@@ -1,7 +1,7 @@
 // Model providers: paste an API key (stored on the backend machine only), point local servers at
 // their endpoint, pick a default model and test the connection with a tiny text or image request.
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Cloud, Eye, Loader2, Server, XCircle } from "lucide-react";
 
@@ -96,6 +96,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           ? { text: t("providerNeedsEndpoint"), cls: "tone-warn" }
           : { text: t("providerNeedsKey"), cls: "tone-warn" };
   const listId = `models-${preset.kind}`;
+  const badgeId = useId();
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm">
@@ -118,7 +119,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.cls)}>{badge.text}</span>
+          <span id={badgeId} className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.cls)}>{badge.text}</span>
           {preset.local && (
             <Button
               size="sm"
@@ -227,11 +228,11 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
 
       <div className="flex items-center gap-2">
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(false)}
-          aria-label={t("providerTestOf", { provider: name })}>
+          aria-label={t("providerTestOf", { provider: name })} aria-describedby={status.ready ? undefined : badgeId}>
           {test.isPending ? <Loader2 className="size-3 animate-spin" /> : null} {t("providerTest")}
         </Button>
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(true)}
-          aria-label={t("providerTestVisionOf", { provider: name })}>
+          aria-label={t("providerTestVisionOf", { provider: name })} aria-describedby={status.ready ? undefined : badgeId}>
           <Eye className="size-3" /> {t("providerTestVision")}
         </Button>
       </div>

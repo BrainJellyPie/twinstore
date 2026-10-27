@@ -2,9 +2,11 @@
 
 ## Unreleased
 
-- **Run shelf test** and **Field the study** (conjoint) now tell screen readers
-  why they are off, using the hint already shown beside them ("Choose the
-  product under test.", the first thing the study still needs).
+- **Run shelf test**, **Field the study** (conjoint), a rival's **Compare with
+  our store** and a model provider's **Test** buttons now tell screen readers
+  why they are off, using the hint or badge already shown beside them ("Choose
+  the product under test.", the first thing the study still needs, "Name the
+  products first", "Needs API key").
 
 - Ask receipt models to preserve signed quantities and amounts, including
   returned product rows, so the existing review can block refunds instead of

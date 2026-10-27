@@ -1,7 +1,7 @@
 // A rival's shelf against ours: price index and assortment overlap of a captured competitor shelf,
 // optionally fed into the rival's pull in the neighborhood model.
 
-import { useLayoutEffect, useState } from "react";
+import { useId, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Swords } from "lucide-react";
 
@@ -35,6 +35,7 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
   const report = run.data;
   const c = report?.comparison;
   const labeled = result.items.some((i) => i.labeled);
+  const labelHintId = useId();
   const field = "h-9 rounded-xl border bg-card/60 px-2.5 text-xs";
   const pct = c?.price_index != null ? Math.round((c.price_index - 1) * 100) : null;
   const priceIndex = c?.price_index == null ? "–" : c.price_index > 0 && c.price_index < 0.01 ? `<${formatDecimal(0.01, 2)}` : formatDecimal(c.price_index, 2);
@@ -55,9 +56,10 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
           {rivals.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
       </div>
-      {!labeled && <p className="mt-2 rounded-lg tone-warn border p-2 text-xs">{t("capNameProductsFirst")}</p>}
+      {!labeled && <p id={labelHintId} className="mt-2 rounded-lg tone-warn border p-2 text-xs">{t("capNameProductsFirst")}</p>}
       {run.error && <p role="alert" className="mt-2 text-xs text-destructive">{run.error instanceof Error ? run.error.message : String(run.error)}</p>}
-      <Button variant="outline" className="mt-2 w-full gap-2" disabled={!base || !labeled || run.isPending} onClick={() => compare(false)}>
+      <Button variant="outline" className="mt-2 w-full gap-2" disabled={!base || !labeled || run.isPending} onClick={() => compare(false)}
+        aria-describedby={labeled ? undefined : labelHintId}>
         {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Swords className="size-4" />} {t("capCompareWithOurs")}
       </Button>
       {c && (
