@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Adding shelf photos says up front that reading product names needs a model,
+  with the buttons to download the local model or open Model settings, when
+  none is set up. Before, each photo failed only after it was sent. Choosing
+  **Don't read** hides the note.
+
 - Progress lines that appear after you start something ("Reconciling
   supplied checks…", "Calculating…", "Loading…") are announced to screen
   readers in the price, unit-price, inventory and pilot reviews, the

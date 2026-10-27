@@ -10,13 +10,19 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/client";
+import { setupWithKey } from "@/features/settings/__tests__/modelSetupWithKey";
 import { CaptureUploadQueue } from "../CaptureUploadQueue";
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...(await original<typeof import("@tanstack/react-router")>()),
+  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+}));
 vi.mock("@/shared/api/client", async (original) => ({
   ...(await original<typeof import("@/shared/api/client")>()),
   getProject: vi.fn(),
   getModels: vi.fn(),
   createCapture: vi.fn(),
   getCapture: vi.fn(),
+  getModelSetup: vi.fn(),
 }));
 const status: api.CaptureStatus = {
   capture_id: "cap_a",
@@ -316,4 +322,12 @@ it("enforces the total byte budget independently from the per-file maximum", asy
   await choose([...big, file("extra.png")]);
   expect(screen.getByText(/0 of 4 ready/)).toBeTruthy();
   expect(screen.getByRole("alert").textContent).toContain("100 MB");
+});
+
+it("says a model is needed before reading products, unless the queue only finds them", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ ...setupWithKey, cloud_providers: [] });
+  mount();
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
+  fireEvent.change(screen.getByRole("combobox", { name: "Read products with" }), { target: { value: "none" } });
+  expect(screen.queryByTestId("needs-model")).toBeNull();
 });
