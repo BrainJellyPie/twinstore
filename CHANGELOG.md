@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Edit products together** no longer labels a product without a promotion
+  "Mixed — unchanged". The empty field now reads "(no promotion)"; "Mixed"
+  appears only when the product's placements carry different promotions.
+
 - Opening another page while the TwinStore backend is stopped or restarting no
   longer reloads the tab into the browser's "This site can't be reached" page,
   which lost unsaved work. The page now says the backend is not reachable, and
