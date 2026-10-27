@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 
 import { PAGE_STYLES, sitePreviewUrl, type PageStyle } from "@/shared/api/online";
 import { cn } from "@/shared/utils/cn";
+import { onRadioKeys } from "@/shared/utils/tabKeys";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { STYLE_HINTS, STYLE_LABELS } from "./labels";
@@ -15,11 +16,12 @@ export function StylePicker({ projectId, siteId, storeName, version, saved, valu
 }) {
   const { t } = useI18n();
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" role="radiogroup" aria-label={t("onStyleTitle")}>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" role="radiogroup" aria-label={t("onStyleTitle")}
+      onKeyDown={(e) => onRadioKeys(e, PAGE_STYLES, value, onChange)}>
       {PAGE_STYLES.map((style) => {
         const picked = style === value;
         return (
-          <button key={style} type="button" role="radio" aria-checked={picked} onClick={() => onChange(style)}
+          <button key={style} type="button" role="radio" aria-checked={picked} tabIndex={picked ? 0 : -1} onClick={() => onChange(style)}
             className={cn("group overflow-hidden rounded-2xl border bg-card text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-lg",
               picked ? "border-primary ring-2 ring-primary/50" : "hover:border-foreground/30")}>
             <div className="relative aspect-[4/3] overflow-hidden bg-muted">

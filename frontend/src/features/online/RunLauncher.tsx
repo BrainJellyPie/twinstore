@@ -17,6 +17,7 @@ import { Input } from "@/shared/components/ui/input";
 import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
+import { onRadioKeys } from "@/shared/utils/tabKeys";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { experimentsFor } from "./experiments";
@@ -24,6 +25,7 @@ import { ScanChip } from "./ScanChip";
 import { ACCESSIBILITY_LABELS, ARRIVAL_HINTS, ARRIVAL_LABELS, MISSION_HINTS, MISSION_LABELS, POLICY_HINTS, POLICY_LABELS } from "./labels";
 
 const MAX_VARIANTS = 4;
+const POLICIES: ShopperPolicyKind[] = ["rule", "vlm", "text"];
 const DEFAULT_ARRIVALS: Record<Arrival, number> = { direct: 16, search_engine: 58, social: 25, email: 1 };
 const DEFAULT_MIX: Record<ShopperMission, number> = { purchase: 1, browse: 98, compare: 1, deal_hunt: 0, gift: 0, replenish: 0 };
 // Pages a session typically takes, for the estimate of model calls (rule runs make none).
@@ -318,9 +320,10 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
 
       <section className="panel flex flex-col gap-3 rounded-[1.4rem] p-4 text-sm xl:col-span-2">
         <h3 className="font-semibold">{t("onRunHow")}</h3>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("onRunHow")}>
-          {(["rule", "vlm", "text"] as ShopperPolicyKind[]).map((p) => (
-            <button key={p} type="button" role="radio" aria-checked={policy === p} onClick={() => setPolicy(p)}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("onRunHow")}
+          onKeyDown={(e) => onRadioKeys(e, POLICIES, policy, setPolicy)}>
+          {POLICIES.map((p) => (
+            <button key={p} type="button" role="radio" aria-checked={policy === p} tabIndex={policy === p ? 0 : -1} onClick={() => setPolicy(p)}
               className={cn("rounded-xl border p-3 text-left", policy === p ? "border-primary bg-primary/8 ring-2 ring-primary/25" : "hover:bg-muted")}>
               <span className="block font-medium">{t(POLICY_LABELS[p])}</span>
               <span className="block text-xs text-muted-foreground">{t(POLICY_HINTS[p])}</span>

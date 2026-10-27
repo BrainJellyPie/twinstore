@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { NotFound, RouteError } from "../RouteError";
+import { getHealth } from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
 import { LOCALES } from "@/shared/i18n/messages";
 import { translate, useLocale } from "@/shared/i18n/i18n";
+
+vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), getHealth: vi.fn() }));
 
 beforeEach(() => {
   useLocale.getState().setLocale("en");
@@ -14,7 +17,7 @@ beforeEach(() => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 });
-afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.restoreAllMocks(); sessionStorage.clear(); });
 
 async function mount(path: string) {
   const root = createRootRoute({ component: () => <Outlet /> });
@@ -24,6 +27,7 @@ async function mount(path: string) {
     loader: ({ params }) => {
       if (params.pid === "gone") throw new ApiError("project not found", 404);
       if (params.pid === "broken") throw new Error("disk unreadable");
+      if (params.pid === "stale") throw new TypeError("Failed to fetch dynamically imported module: http://127.0.0.1:8765/assets/marketing-1a2b.js");
     },
   });
   const router = createRouter({
@@ -56,4 +60,17 @@ it("keeps other failures' details one click away and can try again", async () =>
   expect((await screen.findByRole("alert")).textContent).toContain("Something went wrong");
   expect(screen.getByText("disk unreadable").closest("details")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+});
+
+it("does not reload into the browser's error page while the server is down, and reloads once it answers", async () => {
+  vi.mocked(getHealth).mockRejectedValue(new TypeError("Failed to fetch"));
+  await mount("/projects/stale");
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("The backend is not reachable");
+  expect(alert.textContent).toContain("Check that it is still running, then try again.");
+  expect(sessionStorage.getItem("twinstore.reloadedForUpdate")).toBeNull();
+  vi.mocked(getHealth).mockResolvedValue({} as Awaited<ReturnType<typeof getHealth>>);
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  // The server answers now: the page reloads to load its script.
+  await waitFor(() => expect(sessionStorage.getItem("twinstore.reloadedForUpdate")).not.toBeNull());
 });

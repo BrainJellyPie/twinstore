@@ -41,6 +41,13 @@ it("edits selected placed SKUs, previews, saves a new layout and opens it explic
   await waitFor(() => expect(useSimulationStore.getState().selectedSetupId).toBe("setup_new"));
 });
 
+it("reads an empty promotion as none, and as mixed only when the placements differ", async () => {
+  vi.mocked(api.getProductCatalog).mockResolvedValue({ ...catalog, products: [row, { ...row, sku: "B", promos: ["", "1+1"] }] });
+  await open();
+  expect(screen.getByLabelText("Promotion for A").getAttribute("placeholder")).toBe("(no promotion)");
+  expect(screen.getByLabelText("Promotion for B").getAttribute("placeholder")).toBe("Mixed — unchanged");
+});
+
 it("retains local edits when the catalog is invalidated during editing", async () => {
   await open();
   fireEvent.change(screen.getByLabelText("Name for A"), { target: { value: "Keep my edit" } });
