@@ -214,7 +214,7 @@ function Journey({ projectId, runId, view, currency, rival, play, onRival }: {
                   {" · "}{t(step.source === "model" ? "onSourceModel" : step.source === "fallback" ? "onSourceFallback" : "onSourceRule")}
                   {step.ads.length > 0 && <>{" · "}{t("onStepAds", { count: step.ads.length })}</>}
                 </p>
-                {step.error && <p className="mt-1 break-words text-destructive">{step.error}</p>}
+                {step.error && <p role="alert" className="mt-1 break-words text-destructive">{step.error}</p>}
               </div>
             )}
             <div className={cn("mx-auto overflow-hidden rounded-xl border bg-white", narrow ? "max-w-[430px]" : "max-w-[1024px]")}>

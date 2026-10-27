@@ -136,7 +136,7 @@ function PhotoPanel() {
         <Button variant="ghost" size="sm" className="size-6 p-0" onClick={photo.stop} aria-label={t("hudLeavePhoto")}><X className="size-3.5" /></Button>
       </div>
       {photo.status === "error" ? (
-        <p className="text-[0.75rem] text-destructive">{photo.error}</p>
+        <p role="alert" className="text-[0.75rem] text-destructive">{photo.error}</p>
       ) : (
         <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
           <span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(3, pct * 100)}%` }} />

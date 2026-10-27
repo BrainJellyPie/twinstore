@@ -333,7 +333,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkStudyNameOptional")} aria-label={t("mkStudyNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
-        {(problems[0] || run.error) && <p className="text-sm text-destructive">{run.error?.message ?? problems[0]}</p>}
+        {(problems[0] || run.error) && <p role={run.error ? "alert" : undefined} className="text-sm text-destructive">{run.error?.message ?? problems[0]}</p>}
         <Button size="lg" disabled={problems.length > 0 || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Grid3x3 className="size-4" />}
           {t("mkFieldStudy")}

@@ -56,7 +56,7 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
         </select>
       </div>
       {!labeled && <p className="mt-2 rounded-lg tone-warn border p-2 text-xs">{t("capNameProductsFirst")}</p>}
-      {run.error && <p className="mt-2 text-xs text-destructive">{run.error instanceof Error ? run.error.message : String(run.error)}</p>}
+      {run.error && <p role="alert" className="mt-2 text-xs text-destructive">{run.error instanceof Error ? run.error.message : String(run.error)}</p>}
       <Button variant="outline" className="mt-2 w-full gap-2" disabled={!base || !labeled || run.isPending} onClick={() => compare(false)}>
         {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Swords className="size-4" />} {t("capCompareWithOurs")}
       </Button>

@@ -95,7 +95,7 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
               hint={t("opsRefillWait", { minutes: duration((report.refill_wait_min ?? 0) * 60) })} />
           </div>
           {(report.refills_unfinished ?? 0) > 0 && (
-            <p className="text-xs text-destructive">{t("opsRefillsUnfinished", { count: count(report.refills_unfinished ?? 0) })}</p>
+            <p role="alert" className="text-xs text-destructive">{t("opsRefillsUnfinished", { count: count(report.refills_unfinished ?? 0) })}</p>
           )}
           <CrewTimeline report={report} />
         </div>

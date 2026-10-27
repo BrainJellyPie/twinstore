@@ -78,3 +78,12 @@ it("names metrics in plain words in the selected language and keeps the statisti
     useLocale.getState().setLocale("en");
   }
 });
+
+it("announces a failed sales upload to screen readers", async () => {
+  vi.mocked(uploadFidelity).mockRejectedValue(new Error("The file has no receipt id column"));
+  const { container } = render(<FidelitySection projectId="p" runId="r" />, { wrapper });
+  fireEvent.change(container.querySelector('input[type="file"]:not([multiple])')!, {
+    target: { files: [new File(["csv"], "sales.csv")] },
+  });
+  expect((await screen.findByRole("alert")).textContent).toBe("The file has no receipt id column");
+});

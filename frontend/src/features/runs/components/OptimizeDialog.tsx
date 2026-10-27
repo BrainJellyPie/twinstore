@@ -278,7 +278,7 @@ function OptimizeBody({ active, projectId, setupId, goalPrefill, onClose }: {
             </div>
           )}
           <p className="text-xs text-muted-foreground">{t(judge.judge === "vlm" ? "optSearchTimeVision" : "optSearchTime", { seconds: Math.max(20, seconds) })}</p>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
             <Button onClick={() => { if (modelError === null && !reader.isPending) start.mutate(); }} disabled={start.isPending || reader.isPending || modelError !== null}>

@@ -76,7 +76,7 @@ export function LegacyDetectModal({
           </DialogDescription>
         </DialogHeader>
         {state === "clean" && error && (
-          <p
+          <p role="alert"
             className="text-sm text-destructive"
             data-testid="legacy-detect-error"
           >

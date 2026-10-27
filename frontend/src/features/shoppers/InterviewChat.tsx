@@ -107,7 +107,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
             <div className="text-[0.75rem] text-muted-foreground"><ModelWaiting label={t("interviewThinking", { name: first })} /></div>
           </>
         )}
-        {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
+        {ask.error && <p role="alert" className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
         {reset.error && <p role="alert" className="text-[0.75rem] text-destructive">{reset.error.message}</p>}
         <div ref={end} />
       </div>

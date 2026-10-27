@@ -123,7 +123,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
           </Button>
         </div>
         <p className="text-[0.68rem] text-muted-foreground">{t("groupCalls", { count: askedSize + 1 })}{segment === "found" ? ` ${t("groupFoundNote")}` : ""}</p>
-        {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
+        {ask.error && <p role="alert" className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
       </section>
 
       {shown && <GroupResult key={shown.group_id} group={shown} currency={currency} onOpen={onOpen} projectId={projectId} runId={runId} />}

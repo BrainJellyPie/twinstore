@@ -73,7 +73,7 @@ function Body({ projectId, venue, dayType, scenarioId }: { projectId: string; ve
           </label>
           {/* Up to two thirds of the panel are affected visitors, each walked a second time without the venue. */}
           <p className="text-xs text-muted-foreground">{t("optVlmVisits", { count: customers + Math.ceil((customers * 2) / 3) })}</p>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end">
             <Button onClick={() => start.mutate()} disabled={start.isPending}>
               {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("areaVlmRun")}
@@ -90,7 +90,7 @@ function Body({ projectId, venue, dayType, scenarioId }: { projectId: string; ve
       {jobId && job.data && !job.data.result && (
         <div className="space-y-3 py-6 text-center">
           {job.data.status.status === "failed" ? (
-            <p className="text-destructive">{job.data.status.error}</p>
+            <p role="alert" className="text-destructive">{job.data.status.error}</p>
           ) : (
             <>
               <div className="font-medium">

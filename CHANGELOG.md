@@ -4,7 +4,10 @@
 
 - The layout spreadsheet's upload result ("File uploaded (224 items)"), its
   photo warning and any upload or download error are now announced to
-  screen readers, not only shown.
+  screen readers, not only shown. So are 36 other error messages that only
+  turned red: failed loads and saves in shelf photos and Shelf Lab, the
+  marketing studies and their reports, online runs, the run tabs, Settings,
+  shopper interviews, photo mode and the neighborhood page.
 
 - The floor editor says at once which fixtures a smaller width or depth
   leaves off the grid, instead of hiding them silently until **Save** refuses

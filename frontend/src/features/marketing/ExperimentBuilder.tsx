@@ -356,7 +356,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {(blocked || run.error) && <p className="mr-auto text-sm text-destructive">{blocked || run.error?.message}</p>}
+        {(blocked || run.error) && <p role={run.error && !blocked ? "alert" : undefined} className="mr-auto text-sm text-destructive">{blocked || run.error?.message}</p>}
         {!complete && !blocked && <p className="mr-auto text-sm text-muted-foreground">{t("mkIncomplete")}</p>}
         <Button size="lg" disabled={!complete || !!blocked || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}

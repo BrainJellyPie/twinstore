@@ -232,7 +232,7 @@ export function DesignChat({ projectId, site, options, onOptions, onWorking, tur
             <Radar className="size-3.5 text-primary" aria-hidden /> {t("onQuickRead")}
             {quick.isFetching ? <Loader2 className="size-3 animate-spin" aria-label={t("studioLoading")} />
               : quick.data ? <ScanChip row={quick.data.rows[0]} currency={site.currency} />
-              : quick.error ? <span className="text-destructive">{quick.error.message}</span> : null}
+              : quick.error ? <span role="alert" className="text-destructive">{quick.error.message}</span> : null}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">
