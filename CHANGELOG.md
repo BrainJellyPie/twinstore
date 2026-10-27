@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recognize Vietnamese dong marks on captured price tags, including `d`
+  or `đ` beside an amount. Foreign dong amounts remain estimates for review;
+  matching VND amounts retain their literal value.
+
 - Keep local JSON Schema corrections concise as well as plain JSON
   corrections. Preserve the validation error and original response history
   without repeating SDK response dumps inside each retry message.
