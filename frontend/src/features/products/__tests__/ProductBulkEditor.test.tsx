@@ -143,7 +143,9 @@ it("does not switch layouts when a save completes after the dialog closes", asyn
   fireEvent.change(screen.getByLabelText("Price for A"), { target: { value: "1.50" } });
   fireEvent.click(screen.getByRole("button", { name: "Preview product changes" }));
   fireEvent.click(await screen.findByRole("button", { name: "Save as new product draft" }));
+  await screen.findByRole("button", { name: "Saving product draft…" });
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();  // a save in flight goes on after closing
   resolve({ setup_id: "late", changed_placements: 2 });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(useSimulationStore.getState().selectedSetupId).not.toBe("late");

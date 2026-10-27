@@ -58,6 +58,23 @@ it("defaults to automatic selection, previews exact selected SKUs and saves only
   expect(vi.mocked(api.saveStarterFill).mock.lastCall?.[2]).toMatchObject(automatic);
 });
 
+it("asks before closing with typed requirements, and closes at once without choices", async () => {
+  await openAuto();
+  fireEvent.keyDown(screen.getByLabelText("Assortment requirements"), { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  fireEvent.click(screen.getByRole("button", { name: "Auto-place starter products" }));
+  fireEvent.change(await screen.findByLabelText("Assortment requirements"), { target: { value: "Mostly drinks" } });
+  fireEvent.keyDown(screen.getByLabelText("Assortment requirements"), { key: "Escape" });
+  expect((await screen.findByRole("alertdialog")).textContent).toContain("have not been saved");
+  fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect((screen.getByLabelText("Assortment requirements") as HTMLTextAreaElement).value).toBe("Mostly drinks");
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Discard changes" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
 it("waits for the new layout to be listed before offering to open it", async () => {
   let refreshed!: () => void;
   const refresh = new Promise<void>((resolve) => { refreshed = resolve; });
@@ -208,7 +225,9 @@ it("does not navigate when a save completes after closing", async () => {
   vi.mocked(api.saveStarterFill).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
   await open(); await preview();
   fireEvent.click(screen.getByRole("button", { name: "Save stocked layout" }));
+  await screen.findByRole("button", { name: "Saving starter draft…" });
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();  // a save in flight goes on after closing
   resolve({ setup_id: "late", placements_added: 8 });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(useSimulationStore.getState().selectedSetupId).not.toBe("late");

@@ -10,6 +10,9 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import { starterCatalog } from "@/services/queries/starterFill";
 import { starterPreview, starterSave } from "@/services/mutations/starterFill";
 import type { StarterCatalog, StarterSave } from "@/shared/api/starterFill";
@@ -22,18 +25,33 @@ import { focusOnMount } from "@/shared/utils/focusOnMount";
 export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  // Escape, the close button and an outside click ask before dropping choices that were not saved.
+  const [unsaved, setUnsaved] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   return <>
     <Button variant="outline" onClick={() => setOpen(true)}>{t("starterEntry")}</Button>
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => { if (next || !unsaved) setOpen(next); else setConfirmDiscard(true); }}>
       <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto p-4 sm:max-w-4xl sm:p-7">
         <DialogTitle>{t("starterTitle")}</DialogTitle>
         <DialogDescription>{t("starterDescription")}</DialogDescription>
-        {open && <StarterSession key={`${pid}:${sid}`} pid={pid} sid={sid} close={() => setOpen(false)} />}
+        {open && <StarterSession key={`${pid}:${sid}`} pid={pid} sid={sid} close={() => setOpen(false)} onUnsaved={setUnsaved} />}
+        <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("discardFloorChangesTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("starterDiscardDescription")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("keepEditing")}</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={() => setOpen(false)}>{t("discardChanges")}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   </>;
 }
-function StarterSession({ pid, sid, close }: { pid: string; sid: string; close: () => void }) {
+function StarterSession({ pid, sid, close, onUnsaved }: { pid: string; sid: string; close: () => void; onUnsaved: (unsaved: boolean) => void }) {
   const { t } = useI18n();
   const catalog = useQuery(starterCatalog(pid, sid));
   const [mode, setMode] = useState<"auto" | "manual">("auto");
@@ -46,12 +64,13 @@ function StarterSession({ pid, sid, close }: { pid: string; sid: string; close: 
   return <>
     {catalog.isError && <RequestError error={catalog.error}><Button className="h-auto min-h-9 max-w-full whitespace-normal py-2" disabled={reloading} onClick={reload}>{t(catalog.data ? "starterDiscardRetry" : "starterRetry")}</Button></RequestError>}
     {!catalog.data && !catalog.isError && <p role="status">{t("starterLoading")}</p>}
-    {catalog.data && <StarterForm key={revision} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} reload={reload} close={close} mode={mode} setMode={setMode} />}
+    {catalog.data && <StarterForm key={revision} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} reload={reload} close={close} mode={mode} setMode={setMode}
+      onUnsaved={onUnsaved} />}
   </>;
 }
-function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMode }: {
+function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMode, onUnsaved }: {
   pid: string; sid: string; initial: StarterCatalog; refreshing: boolean; reload: () => void; close: () => void;
-  mode: "auto" | "manual"; setMode: (mode: "auto" | "manual") => void;
+  mode: "auto" | "manual"; setMode: (mode: "auto" | "manual") => void; onUnsaved: (unsaved: boolean) => void;
 }) {
   const { t, locale } = useI18n();
   const [snapshot] = useState(initial);
@@ -76,6 +95,10 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
     source_sha256: snapshot.source_sha256, currency: snapshot.currency, requirements: requirements.trim(), products_per_slot: perSlot,
   }) });
   const busy = preview.isPending || save.isPending || auto.isPending || refreshing;
+  // A save in flight is not asked about: it goes on after closing.
+  const unsaved = !save.data && !save.isPending && (requirements.trim() !== "" || selected.size > 0);
+  useEffect(() => { onUnsaved(unsaved); }, [unsaved, onUnsaved]);
+  useEffect(() => () => onUnsaved(false), [onUnsaved]);
   const locked = busy || !!save.data;
   const eligibleCount = snapshot.racks.filter((r) => !r.reason && r.available_slots > 0).length;
   const terms = searchText(search).split(" ").filter(Boolean);

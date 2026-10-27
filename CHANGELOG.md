@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Auto-place starter products** asks before Escape, the close button or a
+  click outside drops typed requirements or chosen shelves, like **Edit products
+  together** now does. Closing while a save is under way still closes at once;
+  the save carries on.
+
 - **Edit products together** asks before Escape, the close button or a click
   outside drops edits that were not saved. Before, the edits were lost without
   a word.

@@ -81,7 +81,8 @@ function ProductForm({ pid, sid, initial, refreshing, onReload, onClose, onUnsav
   const save = useMutation(productSave(pid, sid));
   const qc = useQueryClient();
   const busy = preview.isPending || save.isPending;
-  const unsaved = drafts.size > 0 && !save.data;
+  // A save in flight is not asked about: it goes on after closing.
+  const unsaved = drafts.size > 0 && !save.data && !save.isPending;
   useEffect(() => { onUnsaved(unsaved); }, [unsaved, onUnsaved]);
   useEffect(() => () => onUnsaved(false), [onUnsaved]);
   const locked = busy || !!save.data || refreshing;
