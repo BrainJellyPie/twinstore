@@ -52,7 +52,8 @@ def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeyp
             if mode == "json_schema":
                 schema = body["response_format"]["json_schema"]["schema"]
                 action = schema["$defs"][schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]]
-                assert action["properties"]["product_sku"]["enum"] == ["", code]
+                purchase = next(row for row in action["anyOf"] if row["properties"]["action"]["const"] == "buy")
+                assert purchase["properties"]["product_sku"]["enum"] == [code]
             answer = {"actions": [{"action": "buy", "nav": "path", "product_sku": said, "quantity": 2,
                 "target": [2, 2], "face": "S"}]}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,

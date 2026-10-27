@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Describe generated shopping actions with the fields each operation uses.
+  Native local models must name the action and supply a valid product code
+  and quantity for purchases, avoiding anonymous movement loops. Existing
+  canonical actions and cached responses remain readable.
+
+- Recover an omitted navigation mode in generated shopping actions when
+  the action already determines it. Preserve purchases and quantities;
+  ambiguous area movement and explicit invalid modes still need correction.
+
 - The layout spreadsheet's upload result ("File uploaded (224 items)"), its
   photo warning and any upload or download error are now announced to
   screen readers, not only shown. So are 36 other error messages that only

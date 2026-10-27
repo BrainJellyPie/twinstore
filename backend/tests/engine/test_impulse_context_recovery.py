@@ -63,7 +63,8 @@ def test_context_recovery_considers_all_exposure_and_preserves_basket_cache_and_
             if mode == "json_schema":
                 schema = body["response_format"]["json_schema"]["schema"]
                 action = schema["$defs"][schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[1]]
-                assert action["properties"]["product_sku"]["enum"] == ["", selected_code]
+                purchase = next(row for row in action["anyOf"] if row["properties"]["action"]["const"] == "buy")
+                assert purchase["properties"]["product_sku"]["enum"] == [selected_code]
             payload = {"actions": [{"nav": "path", "action": "buy", "product_sku": selected_code,
                 "quantity": 2, "target": [10, 2], "face": "S"}]}
         else:

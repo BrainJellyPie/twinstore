@@ -40,8 +40,9 @@ def test_http_catalog_references_restore_real_skus_before_execution_after_cache(
             assert code != sku  # A real SKU that resembles a reference cannot be reinterpreted.
             if mode == "json_schema":
                 data = body["response_format"]["json_schema"]["schema"]
-                action = data["$defs"][data["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]]["properties"]
-                assert code in action["product_sku"]["enum"] and "" in action["product_sku"]["enum"]
+                variants = data["$defs"][data["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]]["anyOf"]
+                action = next(row["properties"] for row in variants if row["properties"]["action"]["const"] == "buy")
+                assert code in action["product_sku"]["enum"] and "" not in action["product_sku"]["enum"]
                 assert "product_level" not in action
             answer = _intent().model_dump(mode="json")
             answer["actions"][2]["product_sku"] = code
