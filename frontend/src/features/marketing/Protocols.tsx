@@ -50,7 +50,7 @@ export function Protocols({ projectId }: { projectId: string }) {
     {list.isFetching && <p role="status">{t("mkLoadingProtocols")}</p>}
     {list.error && <p role="alert">{list.error.message}</p>}
     {list.data?.unavailable_ids.length ? <p role="alert">{t("mkUnreadableHistories", { ids: list.data.unavailable_ids.join(", ") })}</p> : null}
-    <div className="flex max-h-48 flex-wrap gap-2 overflow-auto">{list.data?.protocols.map((p) => <Button key={p.protocol_id} variant={selected === p.protocol_id ? "default" : "outline"} className="h-auto max-w-full whitespace-normal break-words text-left" onClick={() => setSelected(p.protocol_id)}>{t("mkProtocolItem", { title: p.title, revision: String(p.revision), stage: stageLabel(p.data_stage, t) })}</Button>)}</div>
+    <div className="flex max-h-48 flex-wrap gap-2 overflow-auto">{list.data?.protocols.map((p) => <Button key={p.protocol_id} aria-pressed={selected === p.protocol_id} variant={selected === p.protocol_id ? "default" : "outline"} className="h-auto max-w-full whitespace-normal break-words text-left" onClick={() => setSelected(p.protocol_id)}>{t("mkProtocolItem", { title: p.title, revision: String(p.revision), stage: stageLabel(p.data_stage, t) })}</Button>)}</div>
     {selected.startsWith("new:") ? <ProtocolEditor key={`${projectId}:${selected}`} projectId={projectId} requestId={selected.slice(4)} onCreated={setSelected} />
       : selected ? <ProtocolDetail key={`${projectId}:${selected}`} projectId={projectId} id={selected} /> : <p className="text-sm text-muted-foreground">{t("mkChooseProtocol")}</p>}
   </section>;

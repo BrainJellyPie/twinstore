@@ -178,24 +178,24 @@ function ExcelControls({
       )}
       {mode === "full" && uploadInfo && currentItemCount > 0 && (
         <>
-          <p className="text-xs text-muted-foreground">
+          <p role="status" className="text-xs text-muted-foreground">
             {uploadInfo.clearedCount > 0
               ? t("excelUploadedCleared", { count: uploadInfo.count, cleared: uploadInfo.clearedCount })
               : t("excelUploaded", { count: uploadInfo.count })}
           </p>
           {uploadInfo.imageWarning && (
-            <p className="text-xs text-warn">{uploadInfo.imageWarning}</p>
+            <p role="status" className="text-xs text-warn">{uploadInfo.imageWarning}</p>
           )}
         </>
       )}
       {mode === "full" && uploadError && (
-        <p className="flex items-start gap-1 text-xs text-destructive">
+        <p role="alert" className="flex items-start gap-1 text-xs text-destructive">
           <AlertCircle className="mt-0.5 size-3 shrink-0" />
           <span>{uploadError}</span>
         </p>
       )}
       {downloadError && (
-        <p className="flex items-start gap-1 text-xs text-destructive">
+        <p role="alert" className="flex items-start gap-1 text-xs text-destructive">
           <AlertCircle className="mt-0.5 size-3 shrink-0" />
           <span>{downloadError}</span>
         </p>

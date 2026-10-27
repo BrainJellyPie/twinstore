@@ -396,7 +396,7 @@ function Money({ label, value, currency, text, onTextChange, onChange }: {
           if (minor !== null) onChange(minor);
         }} />
       <span className="text-[0.7rem] text-muted-foreground">{currency}</span>
-      {invalid && <span className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
+      {invalid && <span role="alert" className="text-[0.7rem] text-destructive">{t("onInvalidAmount")}</span>}
     </div>
   );
 }

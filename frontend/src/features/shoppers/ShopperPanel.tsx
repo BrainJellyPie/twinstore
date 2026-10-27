@@ -238,7 +238,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
     return (
       <div className="py-3">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
-        <div className="grid h-40 place-items-center">{journey.error ? <p className="text-sm text-destructive">{journey.error.message}</p> : <Loader2 className="size-5 animate-spin" />}</div>
+        <div className="grid h-40 place-items-center">{journey.error ? <p role="alert" className="text-sm text-destructive">{journey.error.message}</p> : <Loader2 className="size-5 animate-spin" />}</div>
       </div>
     );
   }

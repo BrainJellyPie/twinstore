@@ -66,12 +66,16 @@ it("prevents shrinking through a dining footprint and saves every fixture once t
   const width = screen.getByRole("spinbutton", { name: "Width" });
   fireEvent.change(width, { target: { value: "39" } });
   fireEvent.blur(width);
+  // Said as soon as the fixture leaves the grid, not only once Save refuses it.
+  expect(screen.getByText(/1 fixture\(s\) fall outside this grid: Corner dining/).getAttribute("role")).toBe("status");
   fireEvent.click(screen.getByTestId("grid-save-button"));
   expect(screen.getByRole("alert").textContent).toContain("Corner dining");
+  expect(screen.queryByText(/fall outside this grid/, { selector: "[role=status]" })).toBeNull();
   expect(save).not.toHaveBeenCalled();
   fireEvent.change(width, { target: { value: "40" } });
   fireEvent.blur(width);
   expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByText(/fall outside this grid/)).toBeNull();
   fireEvent.click(screen.getByTestId("grid-save-button"));
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
   expect(save).toHaveBeenCalledWith("p", "s", { store: { ...setup.store, grid_size: [40, 40], racks: [table] } });

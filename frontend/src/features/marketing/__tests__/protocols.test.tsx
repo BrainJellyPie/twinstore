@@ -222,3 +222,11 @@ it("requires an explicit data-stage declaration instead of assuming unseen outco
   expect(button.disabled).toBe(true);
   fireEvent.change(screen.getByLabelText("Declared data stage"), { target: { value: "results_seen" } }); expect(button.disabled).toBe(false);
 });
+
+it("tells assistive technology which saved protocol is open", async () => {
+  current = view(); render(<Protocols projectId="project_test" />, { wrapper });
+  const saved = await screen.findByRole("button", { name: /Shelf study · r1/ });
+  expect(saved.getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(saved);
+  expect(saved.getAttribute("aria-pressed")).toBe("true");
+});

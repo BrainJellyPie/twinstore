@@ -11,6 +11,17 @@
   the action already determines it. Preserve purchases and quantities;
   ambiguous area movement and explicit invalid modes still need correction.
 
+- The layout spreadsheet's upload result ("File uploaded (224 items)"), its
+  photo warning and any upload or download error are now announced to
+  screen readers, not only shown. So are 36 other error messages that only
+  turned red: failed loads and saves in shelf photos and Shelf Lab, the
+  marketing studies and their reports, online runs, the run tabs, Settings,
+  shopper interviews, photo mode and the neighborhood page.
+
+- The floor editor says at once which fixtures a smaller width or depth
+  leaves off the grid, instead of hiding them silently until **Save** refuses
+  the floor.
+
 - Keep captured `ID` reference numbers from becoming exact selling prices.
   Preserve the original label, existing product prices and prices with an
   explicit currency unit.
@@ -41,7 +52,9 @@
   age and gender chips, discount and placement levels, the Optimize scope and
   judge, model chips in Settings, the shopper sort and group-interview
   segments, a shopper's Journey / Interview switch, the shelf-photo
-  Planogram / Shelf Lab switch and the promotion-sign choices.
+  Planogram / Shelf Lab switch, the promotion-sign choices, the 3D view's
+  Photo button, and the saved field pilots, protocols and observation
+  revisions.
 
 - **Price checks**, **Unit prices** and **Inventory** say what the review
   still needs (for example the store reference without spaces at either end,

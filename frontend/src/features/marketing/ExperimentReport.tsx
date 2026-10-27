@@ -289,7 +289,7 @@ function ReportBar({ projectId, experimentId }: { projectId: string; experimentI
       <Button variant="outline" size="sm" disabled={write.isPending} onClick={() => write.mutate()} title={t("mkCommentaryTitle")}>
         {write.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkAddCommentary")}
       </Button>
-      {write.error && <p className="basis-full text-xs text-destructive">{write.error.message}</p>}
+      {write.error && <p role="alert" className="basis-full text-xs text-destructive">{write.error.message}</p>}
       {write.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
     </div>
   );

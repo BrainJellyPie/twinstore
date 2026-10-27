@@ -354,7 +354,7 @@ function ExperimentJob({ projectId, id, setups, onDuplicate }: {
     queryFn: ({ signal }) => getExperiment(projectId, id, signal),
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1200),
   });
-  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  if (!view.data) return view.error ? <p role="alert" className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   const report = view.data.report;
   const request = view.data.request;
   return (
@@ -372,7 +372,7 @@ function SurveyJob({ projectId, id, onDuplicate }: { projectId: string; id: stri
     queryFn: ({ signal }) => getSurvey(projectId, id, signal),
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
-  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  if (!view.data) return view.error ? <p role="alert" className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   const request = view.data.request;
   return (
     <>
@@ -388,7 +388,7 @@ function ShelfJob({ projectId, id, onDuplicate }: { projectId: string; id: strin
     queryFn: ({ signal }) => getShelfTest(projectId, id, signal),
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
-  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  if (!view.data) return view.error ? <p role="alert" className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   const request = view.data.request;
   return (
     <>
@@ -404,7 +404,7 @@ function ConjointJob({ projectId, id, onDuplicate }: { projectId: string; id: st
     queryFn: ({ signal }) => getConjoint(projectId, id, signal),
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
-  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  if (!view.data) return view.error ? <p role="alert" className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   const request = view.data.request;
   return (
     <>
@@ -420,6 +420,6 @@ function PitchJob({ projectId, id }: { projectId: string; id: string }) {
     queryFn: ({ signal }) => getPitch(projectId, id, signal),
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
-  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  if (!view.data) return view.error ? <p role="alert" className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   return view.data.report ? <div className="space-y-4"><StaffPitchReportView projectId={projectId} report={view.data.report} /><FieldPilots projectId={projectId} source={view.data.report} /></div> : <JobState job={view.data} />;
 }

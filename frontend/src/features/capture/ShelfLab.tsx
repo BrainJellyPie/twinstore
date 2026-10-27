@@ -322,7 +322,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
           ))}
         </ol>
       )}
-      {render.error && <p className="text-xs text-destructive">{render.error instanceof Error ? render.error.message : String(render.error)}</p>}
+      {render.error && <p role="alert" className="text-xs text-destructive">{render.error instanceof Error ? render.error.message : String(render.error)}</p>}
       {invalidPrice && <p id={priceErrorId} role="alert" className="text-xs text-destructive">{t("capLabInvalidPrice")}</p>}
       <div className="flex gap-2">
         <Button variant="outline" className="gap-1.5" disabled={!current} onClick={() => { if (current) { setQueue([...queue, current]); setDraft({ ...EMPTY_DRAFT, kind: draft.kind }); } }}>
@@ -491,7 +491,7 @@ function Sim2RealView({ report }: { report: Sim2RealReport }) {
               <div key={sku} className="flex justify-between gap-2"><span className="truncate">{report.products[sku] ?? sku}</span><span className="num text-muted-foreground">{n}</span></div>
             ))}
             {Object.keys(s.picks).length === 0 && <span className="text-muted-foreground">{s.answers > 0 ? t("capLabNoPicks") : t("capLabNoResponses")}</span>}
-            {s.errors > 0 && <p className="mt-1 text-destructive">{t(s.errors === 1 ? "capLabCallFailed" : "capLabCallsFailed", { count: s.errors })}</p>}
+            {s.errors > 0 && <p role="alert" className="mt-1 text-destructive">{t(s.errors === 1 ? "capLabCallFailed" : "capLabCallsFailed", { count: s.errors })}</p>}
           </div>
         ))}
       </div>
@@ -561,7 +561,7 @@ function Sim2RealCard({ projectId, captureId, editId, labeled, onAttention }: {
       <p className="text-[0.7rem] text-muted-foreground">{t("mkVisionCalls", { count: personas * (raw ? 3 : 2) })}</p>
       <Input value={situation} onChange={(e) => setSituation(e.target.value)} placeholder={t("capLabSituation")} className="h-9 text-sm" />
       {!labeled && <p className="rounded-lg tone-warn border p-2 text-xs">{t("capLabReadFirst")}</p>}
-      {start.error && <p className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}
+      {start.error && <p role="alert" className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}
       <Button className="w-full gap-2" disabled={!labeled || start.isPending || status?.status === "running" || status?.status === "pending"} onClick={() => start.mutate()}>
         {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} {t("capLabRunSim")}
       </Button>
@@ -731,7 +731,7 @@ function AuditCard({ projectId, captureId, editId, result, onFocus }: {
         <input type="range" min={100} max={1000} step={100} value={panel} onChange={(e) => setPanel(Number(e.target.value))} className="flex-1" />
         <span className="num w-10 text-right">{panel}</span>
       </label>
-      {start.error && <p className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}
+      {start.error && <p role="alert" className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}
       <Button variant="outline" className="w-full gap-2" disabled={!base || !rack || start.isPending || status?.status === "running" || status?.status === "pending"} onClick={() => start.mutate()}>
         {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCheck className="size-4" />} {t("capLabAuditRun")}
       </Button>

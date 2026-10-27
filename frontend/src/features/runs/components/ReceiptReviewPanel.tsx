@@ -71,7 +71,7 @@ export function ReceiptReviewPanel({ projectId, runId, result, scoring, onScore 
                 <input aria-label={t("receiptTotalFor", { receipt: receipt.receipt_id })} type="number" min="0" step="1" className={inputClass} value={receipt.total ?? ""}
                   onChange={(e) => editReceipt(ri, { total: e.target.value === "" ? null : Number(e.target.value) })} />
               </label>
-              {receipt.lines.length === 0 && <p className="text-xs text-destructive">{t("receiptNoLines")}</p>}
+              {receipt.lines.length === 0 && <p role="alert" className="text-xs text-destructive">{t("receiptNoLines")}</p>}
               {receipt.lines.map((line, li) => {
                 const label = t("receiptLineLabel", { receipt: receipt.receipt_id, line: li + 1 });
                 return (

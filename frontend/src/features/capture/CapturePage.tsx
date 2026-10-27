@@ -466,7 +466,7 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
           {racks.map((r) => <option key={r.id} value={r.id}>{r.rack_name || r.id}</option>)}
         </select>
       )}
-      {apply.error && <p className="mt-2 text-xs text-destructive">{apply.error instanceof Error ? apply.error.message : String(apply.error)}</p>}
+      {apply.error && <p role="alert" className="mt-2 text-xs text-destructive">{apply.error instanceof Error ? apply.error.message : String(apply.error)}</p>}
       <Button className="mt-3 h-auto min-h-10 w-full gap-2 py-2.5 whitespace-normal" size="lg" disabled={!base || apply.isPending || (mode === "replace" && !targetRackId)} onClick={() => apply.mutate()}>
         {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} {t("capCreateLayout")}
       </Button>

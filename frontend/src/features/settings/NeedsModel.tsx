@@ -48,7 +48,7 @@ export function NeedsModel({ settings = true, purpose = "customers" }: { setting
           </Button>}
         </div>
       )}
-      {start.isError && <div className="text-xs text-destructive"><RequestError error={start.error} /></div>}
+      {start.isError && <div role="alert" className="text-xs text-destructive"><RequestError error={start.error} /></div>}
     </div>
   );
 }

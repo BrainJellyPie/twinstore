@@ -157,3 +157,10 @@ it.each(["new image", "no image", "failed image"])("preserves saved photo refere
   const expected = mode === "new image" ? replacement : original;
   expect(vi.mocked(api.replaceSlots).mock.calls[0]?.[2].map((row) => row.image_url)).toEqual([expected, expected, original]);
 });
+
+it("announces a refused upload to screen readers", async () => {
+  vi.mocked(parseLayoutWorkbook).mockImplementationOnce(() => { throw new UserMessageError("excelSheetTooWide", {}); });
+  const rendered = render(view());
+  choose(rendered.container, file(1));
+  expect((await screen.findByRole("alert")).textContent).toBe(translate("en", "excelSheetTooWide"));
+});

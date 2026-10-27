@@ -118,10 +118,10 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
           result={receipts.data} scoring={upload.isPending} onScore={(file) => upload.mutate(file)} />
       )}
       {receipts.isError && (
-        <p className="text-xs text-destructive">{receipts.error instanceof Error ? receipts.error.message : t("fidelityReadFailed")}</p>
+        <p role="alert" className="text-xs text-destructive">{receipts.error instanceof Error ? receipts.error.message : t("fidelityReadFailed")}</p>
       )}
       {upload.isError && (
-        <p className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-destructive">
           {upload.error instanceof Error ? upload.error.message : t("fidelityUploadFailed")}
         </p>
       )}

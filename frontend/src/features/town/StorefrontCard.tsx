@@ -89,7 +89,7 @@ function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
         </span>
       </button>
       <input ref={input} type="file" disabled={rate.isPending || !venueId} accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-      {rate.error && <p className="text-xs text-destructive">{rate.error instanceof Error ? rate.error.message : String(rate.error)}</p>}
+      {rate.error && <p role="alert" className="text-xs text-destructive">{rate.error instanceof Error ? rate.error.message : String(rate.error)}</p>}
       {appeal && (
         <div className="space-y-2 rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
           <div className="flex items-end justify-between">

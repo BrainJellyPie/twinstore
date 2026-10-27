@@ -361,8 +361,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
           </Button>
           <span className="text-xs text-muted-foreground">{t("onRunSessions", { count: sessions })}</span>
         </div>
-        {mixTotal === 0 && <p className="text-xs text-destructive">{t("onRunMixEmpty")}</p>}
-        {arrivalTotal === 0 && <p className="text-xs text-destructive">{t("onRunArrivalsEmpty")}</p>}
+        {mixTotal === 0 && <p role="alert" className="text-xs text-destructive">{t("onRunMixEmpty")}</p>}
+        {arrivalTotal === 0 && <p role="alert" className="text-xs text-destructive">{t("onRunArrivalsEmpty")}</p>}
         {start.error && <p role="alert" className="text-xs text-destructive">{start.error.message}</p>}
       </section>
     </div>
