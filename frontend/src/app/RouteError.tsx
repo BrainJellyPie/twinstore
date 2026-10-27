@@ -2,7 +2,7 @@
 // script of the previous version, the page reloads once), an address that matches no page, and a store that no longer
 // exists. Each says what happened in the selected language and offers a way back.
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
 import { CircleAlert, SearchX, Store } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -11,7 +11,7 @@ import { ApiError } from "@/shared/api/errors";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 
-import { isStaleBuildError, reloadForNewVersion } from "./staleBuild";
+import { isStaleBuildError, reloadForNewVersion, type StaleCheck } from "./staleBuild";
 
 function Problem({ icon: Icon, title, hint, detail, children }: { icon: LucideIcon; title: string; hint?: string; detail?: string; children?: ReactNode }) {
   const { t } = useI18n();
@@ -42,11 +42,26 @@ function Problem({ icon: Icon, title, hint, detail, children }: { icon: LucideIc
 export function RouteError({ error, reset }: ErrorComponentProps) {
   const { t } = useI18n();
   const router = useRouter();
-  if (isStaleBuildError(error) && reloadForNewVersion()) return null;
+  const message = error instanceof Error ? error.message : String(error);
+  const stale = isStaleBuildError(error);
+  const [check, setCheck] = useState<{ message: string; result: StaleCheck } | null>(null);
+  useEffect(() => {
+    if (!stale) return;
+    let live = true;
+    void reloadForNewVersion().then((result) => { if (live) setCheck({ message, result }); });
+    return () => { live = false; };
+  }, [stale, message]);
+  if (stale && (check?.message !== message || check.result === "reloading")) return null;
   if (error instanceof ApiError && error.status === 404) return <StoreMissing detail={error.message} />;
+  // The page's script could not be fetched because the backend is stopped or restarting: once it answers, a reload loads it.
+  const offline = stale && check?.result === "offline";
   return (
-    <Problem icon={CircleAlert} title={t("routeErrorTitle")} detail={error instanceof Error ? error.message : String(error)}>
-      <Button size="sm" variant="outline" onClick={() => { reset(); void router.invalidate(); }}>{t("tryAgain")}</Button>
+    <Problem icon={CircleAlert} title={t(offline ? "backendOffline" : "routeErrorTitle")} hint={offline ? t("routeServerDownHint") : undefined}
+      detail={message}>
+      <Button size="sm" variant="outline" onClick={() => {
+        if (offline) void reloadForNewVersion().then((result) => setCheck({ message, result }));
+        else { reset(); void router.invalidate(); }
+      }}>{t("tryAgain")}</Button>
     </Problem>
   );
 }

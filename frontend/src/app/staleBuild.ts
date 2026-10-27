@@ -1,5 +1,9 @@
 // After an update, a tab still running the previous version asks for script chunks the new build no longer has
 // (their names carry a content hash). The page is reloaded once to load the new version instead of showing an error.
+// The same error comes while the backend is stopped or restarting; then a reload would only show the browser's
+// "can't be reached" page and lose the page's state, so the error is shown instead.
+
+import { getHealth } from "@/shared/api/client";
 
 const KEY = "twinstore.reloadedForUpdate";
 const STALE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|Unable to preload CSS/i;
@@ -9,16 +13,27 @@ export function isStaleBuildError(error: unknown): boolean {
   return STALE.test(message);
 }
 
-/** Reloads the page unless it already did so in the last minute (then the failure is real and is shown). Returns
- *  whether it reloads. Without session storage it does not, rather than risk reloading for ever. */
-export function reloadForNewVersion(reload: () => void = () => window.location.reload(), now = Date.now()): boolean {
+/** "reloading", "offline" when the server does not answer, or "show" when the page reloaded in the last minute (the
+ *  failure is real) or there is no session storage (rather than risk reloading for ever). */
+export type StaleCheck = "reloading" | "offline" | "show";
+
+export async function reloadForNewVersion(reload: () => void = () => window.location.reload(), now = Date.now(),
+  serverAnswers: () => Promise<unknown> = () => getHealth()): Promise<StaleCheck> {
   try {
-    const last = Number(sessionStorage.getItem(KEY) ?? 0);
-    if (now - last < 60_000) return false;
+    if (now - Number(sessionStorage.getItem(KEY) ?? 0) < 60_000) return "show";
+  } catch {
+    return "show";
+  }
+  try {
+    await serverAnswers();
+  } catch {
+    return "offline";
+  }
+  try {
     sessionStorage.setItem(KEY, String(now));
   } catch {
-    return false;
+    return "show";
   }
   reload();
-  return true;
+  return "reloading";
 }

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Opening another page while the TwinStore backend is stopped or restarting no
+  longer reloads the tab into the browser's "This site can't be reached" page,
+  which lost unsaved work. The page now says the backend is not reachable, and
+  **Try again** loads it once the backend answers. A page left open across an
+  update still reloads once to load the new version.
+
 - The online **Page style** picker and the run's **Who decides the clicks**
   choice now work like other radio groups from the keyboard: the arrow keys,
   Home and End move the choice, and Tab stops only on the chosen option. Before,
