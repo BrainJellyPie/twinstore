@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The online **Page style** picker and the run's **Who decides the clicks**
+  choice now work like other radio groups from the keyboard: the arrow keys,
+  Home and End move the choice, and Tab stops only on the chosen option. Before,
+  the arrows did nothing and Tab stopped on every one of the 11 styles.
+
 - Describing the day in the situation editor, describing an area on the
   **Area** page, applying a layout brief, finding shoppers from a description
   and running vision shoppers for a neighbor now offer model setup (add a key or

@@ -98,6 +98,18 @@ it("blocks a model removed by a catalog refresh", async () => {
   await waitFor(() => expect(start().disabled).toBe(true));
 });
 
+it("moves the shoppers' choice with the arrow keys, keeping only the checked one in the Tab order", () => {
+  mount();
+  const rules = screen.getByRole("radio", { name: /^Rules/ });
+  expect(screen.getAllByRole("radio", { name: /^(Rules|Vision model|Text model)/ }).map((r) => r.tabIndex)).toEqual([0, -1, -1]);
+  rules.focus();
+  fireEvent.keyDown(rules, { key: "ArrowDown" });
+  const vision = screen.getByRole("radio", { name: /^Vision model/ });
+  expect(vision.getAttribute("aria-checked")).toBe("true");
+  expect(document.activeElement).toBe(vision);
+  expect(vision.tabIndex).toBe(0);
+});
+
 it("does not offer shelf-voting mode to online vision shoppers", async () => {
   await chooseText();
   fireEvent.click(screen.getByRole("radio", { name: /^Vision model/ }));
