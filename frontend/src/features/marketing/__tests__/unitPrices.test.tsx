@@ -141,3 +141,11 @@ it("surfaces a stale-source export failure and clears it on new input", async ()
   fireEvent.change(screen.getByLabelText("Observed offers CSV"), { target: { files: [new File(["changed"], "changed.csv")] } });
   expect(screen.queryByRole("alert")).toBeNull(); expect(screen.queryByText(/offers qualify/)).toBeNull();
 });
+
+it("says what the comparison still needs while it cannot run", () => {
+  render(<UnitPrices projectId="p" />, { wrapper });
+  const needs = /To compare, fill in the focal retailer ID/;
+  expect(screen.getByText(needs)).toBeTruthy();
+  fill();
+  expect(screen.queryByText(needs)).toBeNull();
+});

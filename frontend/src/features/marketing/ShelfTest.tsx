@@ -192,10 +192,10 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">{t("mkNewPack")}</h3>
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => setAssetId("")}
+            <button type="button" onClick={() => setAssetId("")} aria-pressed={!assetId}
               className={cn("h-16 rounded-lg border px-2 text-[0.7rem]", !assetId ? "border-primary text-foreground" : "text-muted-foreground")}>{t("mkCurrent1")}<br />{t("mkCurrent2")}</button>
             {packages.map((p) => (
-              <button key={p.asset_id} type="button" title={p.name} onClick={() => setAssetId(p.asset_id)}
+              <button key={p.asset_id} type="button" title={p.name} aria-pressed={assetId === p.asset_id} onClick={() => setAssetId(p.asset_id)}
                 className={cn("flex size-16 items-center justify-center overflow-hidden rounded-lg border bg-white p-1", assetId === p.asset_id ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
                 <img src={api.packageUrl(projectId, p.asset_id)} alt={p.name} className="max-h-full max-w-full object-contain" />
               </button>
@@ -231,7 +231,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="w-10 text-xs text-muted-foreground">{t("studioAge")}</span>
           {AGES.map((a) => (
-            <button key={a} type="button" onClick={() => setAges((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a]))}
+            <button aria-pressed={ages.includes(a)} key={a} type="button" onClick={() => setAges((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a]))}
               className={cn("rounded-full border px-2 py-0.5 text-xs", ages.includes(a) ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>{personaLabel(a, t)}</button>
           ))}
           {ages.length === 0 && <span className="text-[0.7rem] text-muted-foreground">{t("studioAll")}</span>}

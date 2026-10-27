@@ -103,7 +103,7 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
         <Camera className="size-4" /> {t("capAddPhotos")}
       </button>
       {captures.map((c) => (
-        <button key={c.capture_id} type="button" onClick={() => onSelect(c.capture_id)}
+        <button aria-pressed={selected === c.capture_id} key={c.capture_id} type="button" onClick={() => onSelect(c.capture_id)}
           className={cn("relative h-16 w-24 shrink-0 overflow-hidden rounded-2xl border-2 transition-[border-color,box-shadow]",
             selected === c.capture_id ? "border-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_20%,transparent)]" : "border-transparent hover:border-border")}
           title={c.image_name}>
@@ -454,7 +454,7 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
           { id: "new", title: t("capAddNewRack"), hint: t("capAddNewRackHint") },
           { id: "replace", title: t("capReplaceRack"), hint: t("capReplaceRackHint") },
         ] as const).map((o) => (
-          <button key={o.id} type="button" onClick={() => setMode(o.id)}
+          <button aria-pressed={mode === o.id} key={o.id} type="button" onClick={() => setMode(o.id)}
             className={cn("rounded-lg border p-2 text-left", mode === o.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
             <div className="font-medium">{o.title}</div>
             <div className="text-muted-foreground">{o.hint}</div>

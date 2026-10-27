@@ -85,3 +85,13 @@ it("searches a description routed from the command palette once", async () => {
   expect(findShoppers).toHaveBeenCalledTimes(1);
   expect((screen.getByLabelText("Describe shoppers to find") as HTMLInputElement).value).toBe("students who left empty-handed");
 });
+
+it("tells assistive technology which sort is chosen", () => {
+  vi.mocked(listGroups).mockResolvedValue([]);
+  mount();
+  const top = screen.getByRole("button", { name: "Top spenders" });
+  const empty = screen.getByRole("button", { name: "Left empty-handed" });
+  expect([top.getAttribute("aria-pressed"), empty.getAttribute("aria-pressed")]).toEqual(["true", "false"]);
+  fireEvent.click(empty);
+  expect([top.getAttribute("aria-pressed"), empty.getAttribute("aria-pressed")]).toEqual(["false", "true"]);
+});

@@ -171,7 +171,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       )}
       <div className={cn("flex flex-wrap gap-1", found && "hidden")}>
         {SORTS.map((s) => (
-          <button key={s.id} type="button" onClick={() => setSort(s.id)}
+          <button aria-pressed={sort === s.id} key={s.id} type="button" onClick={() => setSort(s.id)}
             className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", sort === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
             {t(s.label)}
           </button>
@@ -266,7 +266,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
       <PersonaOnlineVisits projectId={projectId} personaId={sid} />
       <div className="flex rounded-xl bg-foreground/[0.055] p-1">
         {([["journey", "shopperJourney", Route], ["interview", "shopperInterview", MessagesSquare]] as const).map(([id, label, Icon]) => (
-          <button key={id} type="button" onClick={() => setTab(id)}
+          <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}
             className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[0.8rem] font-medium", tab === id ? "bg-card shadow-sm" : "text-muted-foreground")}>
             <Icon className="size-3.5" /> {t(label)}
           </button>

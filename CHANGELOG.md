@@ -6,13 +6,21 @@
   nonempty product list with no resolvable target now requests correction
   instead of silently disappearing from the applied shopper filter.
 
+- Choice buttons that showed which one is picked only by colour now also
+  tell screen readers: package pictures in concept tests, shelf tests and the
+  A/B builder, shelf photos and Shelf Lab's changes, renders and conditions,
+  age and gender chips, discount and placement levels, the Optimize scope and
+  judge, model chips in Settings, the shopper sort and group-interview
+  segments, and a shopper's Journey / Interview switch.
+
+- **Price checks**, **Unit prices** and **Inventory** say what the review
+  still needs (for example the store reference without spaces at either end,
+  the dates and the CSV files) while its button is unavailable, instead of
+  leaving the button greyed out unexplained.
+
 - Recognize rupee (`₹`) and Brazilian real (`R$`) marks on captured price
   tags. Foreign amounts remain estimates for review, while a matching INR
   amount such as `₹100` retains its literal 100-rupee value.
-
-- **Price checks** says what the review still needs (the store reference
-  without spaces at either end, the audit date and both CSV files) while its
-  button is unavailable, instead of leaving the button greyed out unexplained.
 
 - The neighborhood card says its size is the side of the area ("1,200 m
   across"), so a map imported with a 600 m radius no longer looks like it

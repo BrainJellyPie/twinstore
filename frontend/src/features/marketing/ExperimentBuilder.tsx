@@ -313,7 +313,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
           <span className="text-xs text-muted-foreground">{t("mkShoppers")}</span>
           <div className="grid grid-cols-2 gap-1.5">
             {([["rule", "mkRuleShoppers", "mkRuleShoppersHint"], ["vlm", "mkVisionShoppers", "mkVisionShoppersHint"]] as const).map(([k, title, hint]) => (
-              <button key={k} type="button" onClick={() => switchEngine(k)}
+              <button aria-pressed={engine === k} key={k} type="button" onClick={() => switchEngine(k)}
                 className={cn("rounded-xl border px-3 py-2 text-left transition-colors", engine === k ? "border-primary bg-primary/[0.07]" : "hover:border-foreground/20")}>
                 <b className="block text-sm">{t(title)}</b>
                 <span className="text-[0.7rem] text-muted-foreground">{t(hint)}</span>
@@ -480,7 +480,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
         {(c.kind === "discount" || c.kind === "category_price") && (
           <div className="flex flex-wrap items-center gap-1">
             {(c.kind === "discount" ? [-10, -20, -30, -50] : [-10, 0, 5, 10]).map((p) => (
-              <button key={p} type="button" onClick={() => onPatch({ percent: p })}
+              <button aria-pressed={c.percent === p} key={p} type="button" onClick={() => onPatch({ percent: p })}
                 className={cn("num rounded-md border px-1.5 py-0.5 text-xs", c.percent === p ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
                 {p > 0 ? "+" : ""}{p}%
               </button>
@@ -526,7 +526,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
             </select>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4].map((l) => (
-                <button key={l} type="button" onClick={() => onPatch({ level: l })} title={levelText(l, t)}
+                <button aria-pressed={c.level === l} key={l} type="button" onClick={() => onPatch({ level: l })} title={levelText(l, t)}
                   className={cn("rounded-md border px-1.5 py-0.5 text-xs", c.level === l ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
                   {l === 3 ? <span className="inline-flex items-center gap-1"><Eye className="size-3" />3</span> : l}
                 </button>
@@ -538,7 +538,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
           <div className="flex flex-wrap gap-1.5">
             {packages.length === 0 && <span className="text-xs text-muted-foreground">{t("mkAddImagesFirst")}</span>}
             {packages.map((p) => (
-              <button key={p.asset_id} type="button" title={p.name} onClick={() => onPatch({ asset_id: p.asset_id })}
+              <button key={p.asset_id} type="button" title={p.name} aria-pressed={c.asset_id === p.asset_id} onClick={() => onPatch({ asset_id: p.asset_id })}
                 className={cn("flex size-11 items-center justify-center overflow-hidden rounded-lg border bg-white p-0.5", c.asset_id === p.asset_id ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
                 <img src={api.packageUrl(projectId, p.asset_id)} alt={p.name} className="max-h-full max-w-full object-contain" />
               </button>

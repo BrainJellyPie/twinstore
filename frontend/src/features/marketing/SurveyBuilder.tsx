@@ -147,7 +147,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
           {packages.map((p) => {
             const i = stimuli.indexOf(p.asset_id);
             return (
-              <button key={p.asset_id} type="button" onClick={() => pickStimulus(p.asset_id)} title={p.name}
+              <button key={p.asset_id} type="button" onClick={() => pickStimulus(p.asset_id)} title={p.name} aria-pressed={i >= 0}
                 className={cn("relative flex h-28 w-24 items-center justify-center rounded-xl border bg-white p-1.5 transition-[box-shadow,border-color]",
                   i >= 0 ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
                 <img src={api.packageUrl(projectId, p.asset_id)} alt={p.name} className="max-h-full max-w-full object-contain" />
@@ -177,7 +177,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
               const on = questions.includes(q.kind);
               const off = q.multi && stimuli.length < 2;
               return (
-                <button key={q.kind} type="button" disabled={off} onClick={() => setQuestions((qs) => toggle(qs, q.kind))}
+                <button aria-pressed={on && !off} key={q.kind} type="button" disabled={off} onClick={() => setQuestions((qs) => toggle(qs, q.kind))}
                   className={cn("flex items-start gap-2 rounded-xl border px-3 py-2 text-left transition-colors disabled:opacity-45",
                     on && !off ? "border-primary/70 bg-primary/[0.06]" : "hover:border-foreground/20")}>
                   <span className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded border", on && !off ? "border-primary bg-primary text-primary-foreground" : "")}>
@@ -240,7 +240,7 @@ function Chips({ label, options, value, onToggle }: { label: string; options: st
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="w-14 text-xs text-muted-foreground">{label}</span>
       {options.map((o) => (
-        <button key={o} type="button" onClick={() => onToggle(o)}
+        <button aria-pressed={value.includes(o)} key={o} type="button" onClick={() => onToggle(o)}
           className={cn("rounded-full border px-2.5 py-0.5 text-xs", value.includes(o) ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
           {personaLabel(o, t)}
         </button>
