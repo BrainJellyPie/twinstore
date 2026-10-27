@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessagesSquare, Sparkles } from "lucide-react";
 
@@ -44,6 +44,8 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   const sameNames = !!aName.trim() && aName.trim().toLowerCase() === bName.trim().toLowerCase();
   const validNumbers = panel.trim() !== "" && seed.trim() !== "" && Number.isInteger(count) && count >= 20 && count <= 500
     && Number.isInteger(seedNumber) && seedNumber >= 0 && seedNumber <= 2_147_483_647;
+  const needsId = useId();
+  const missingFields = !(a.trim() && b.trim() && aName.trim() && bName.trim() && context.trim());
   const ready = products.some((p) => p.sku === sku) && personaCount >= 20 && validNumbers && a.trim() && b.trim()
     && context.trim() && aName.trim() && bName.trim() && !sameScripts && !sameNames;
   const run = useMutation({
@@ -156,7 +158,9 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
     {personaCount < 20 && <p role="alert" className="text-sm text-destructive">{t("mkNeedPersonas")}</p>}
     {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
     {run.error && <NeedsModel />}
-    <div className="flex justify-end"><Button type="submit" disabled={!ready || run.isPending}>
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      {missingFields && <p id={needsId} className="text-sm text-muted-foreground">{t("mkPitchNeeds")}</p>}
+      <Button type="submit" disabled={!ready || run.isPending} aria-describedby={missingFields ? needsId : undefined}>
       {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <MessagesSquare className="size-4" />} {t("mkTestScripts")}
     </Button></div>
   </form>;

@@ -41,3 +41,13 @@ it("tells assistive technology which library pack is picked", () => {
   fireEvent.click(tea);
   expect(tea.getAttribute("aria-pressed")).toBe("true");
 });
+
+it("says what the survey still needs until a pack is picked", () => {
+  render(<QueryClientProvider client={new QueryClient()}>
+    <SurveyBuilder projectId="project" personaCount={60} defaultCurrency="USD" onStarted={vi.fn()} />
+  </QueryClientProvider>);
+  const needs = "To field the survey, pick at least one pack and one question.";
+  expect(screen.getByText(needs)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Tea" }));
+  expect(screen.queryByText(needs)).toBeNull();
+});

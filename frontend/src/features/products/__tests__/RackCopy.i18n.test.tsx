@@ -36,10 +36,10 @@ async function open(locale: Locale = "en") {
   fireEvent.click(screen.getByRole("button", { name: t("copyTitle") }));
   await screen.findByRole("option", { name: /Café 🍵/ });
   fireEvent.change(screen.getByRole("combobox", { name: t("copyFrom") }), { target: { value: source.id } });
-  await screen.findByRole("checkbox", { name: t("copyToRack", { id: target.id }) });
+  await screen.findByRole("checkbox", { name: t("copyToRack", { id: `${target.name} (${target.id})` }) });
 }
 async function preview() {
-  fireEvent.click(screen.getByRole("checkbox", { name: t("copyToRack", { id: target.id }) }));
+  fireEvent.click(screen.getByRole("checkbox", { name: t("copyToRack", { id: `${target.name} (${target.id})` }) }));
   fireEvent.click(screen.getByRole("button", { name: t("copyPreview") }));
   await screen.findByRole("button", { name: t("copySave") });
 }
@@ -47,7 +47,7 @@ it.each(LOCALES)("completes the full copy flow in $label without translating sto
   await open(code);
   expect(screen.getByText(t("copyHelp"))).toBeTruthy();
   expect(screen.getByText(t("copyReasonSource"))).toBeTruthy();
-  expect(screen.getByRole("checkbox", { name: t("copyToRack", { id: source.id }) }).matches(":disabled")).toBe(true);
+  expect(screen.getByRole("checkbox", { name: t("copyToRack", { id: `${source.name} (${source.id})` }) }).matches(":disabled")).toBe(true);
   await preview();
   const section = screen.getByRole("region", { name: t("copyPreviewTitle") });
   expect(section.textContent).toContain(t("copySection", { block: 1, face: t("fixtureWest"), level: 4 }));
@@ -63,10 +63,10 @@ it.each(LOCALES)("completes the full copy flow in $label without translating sto
 it("retains a localized accent-insensitive search and hidden selections through a language switch", async () => {
   await open("fr");
   fireEvent.change(screen.getByLabelText(t("copySearch")), { target: { value: "  refrigerateur  " } });
-  fireEvent.click(screen.getByRole("checkbox", { name: t("copyToRack", { id: target.id }) }));
+  fireEvent.click(screen.getByRole("checkbox", { name: t("copyToRack", { id: `${target.name} (${target.id})` }) }));
   act(() => useLocale.getState().setLocale("ja"));
   expect((screen.getByLabelText(t("copySearch")) as HTMLInputElement).value).toBe("  refrigerateur  ");
-  expect((screen.getByRole("checkbox", { name: t("copyToRack", { id: target.id }) }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("checkbox", { name: t("copyToRack", { id: `${target.name} (${target.id})` }) }) as HTMLInputElement).checked).toBe(true);
   fireEvent.change(screen.getByLabelText(t("copySearch")), { target: { value: "no result" } });
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: t("copyPreview") }));
@@ -79,7 +79,7 @@ it("changes language during preview and uncertain save without changing the snap
   vi.mocked(api.previewRackCopy).mockReturnValueOnce(new Promise(resolve => { finishPreview = resolve; }));
   vi.mocked(api.saveRackCopy).mockReturnValueOnce(new Promise((_resolve, reject) => { rejectSave = reject; }));
   await open();
-  fireEvent.click(screen.getByRole("checkbox", { name: t("copyToRack", { id: target.id }) }));
+  fireEvent.click(screen.getByRole("checkbox", { name: t("copyToRack", { id: `${target.name} (${target.id})` }) }));
   fireEvent.click(screen.getByRole("button", { name: t("copyPreview") }));
   await waitFor(() => expect(api.previewRackCopy).toHaveBeenCalledTimes(1));
   act(() => useLocale.getState().setLocale("ko"));

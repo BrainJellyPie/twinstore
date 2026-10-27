@@ -81,7 +81,8 @@ function outsideGrid(racks: Rack[], [width, depth]: [number, number]): Rack[] {
 
 function outsideMessage(outside: Rack[], locale: Locale): string {
   const names = outside.slice(0, 3).map((rack) => rack.rack_name || rackTypeLabel(rack.type, (key) => translate(locale, key))).join(", ");
-  return translate(locale, "gridOutside", { count: outside.length, names: `${names}${outside.length > 3 ? ", …" : ""}` });
+  // "+2" rather than ", …": the message goes on with a full stop, which an ellipsis would double.
+  return translate(locale, "gridOutside", { count: outside.length, names: `${names}${outside.length > 3 ? ` +${outside.length - 3}` : ""}` });
 }
 
 function withoutItems(store: Store): Store {

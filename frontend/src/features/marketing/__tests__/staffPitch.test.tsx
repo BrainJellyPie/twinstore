@@ -116,3 +116,11 @@ it("writes script B for the product a routed request names", async () => {
   expect((screen.getByLabelText("Product held constant") as HTMLSelectElement).value).toBe("cb");
   expect(draftPitchScript).toHaveBeenCalledTimes(1);
 });
+
+it("says what the test still needs while a script is empty", () => {
+  render(<StaffPitchBuilder projectId="p" setupId="s" products={products} currency="USD" personaCount={40} onStarted={vi.fn()} />, { wrapper });
+  const needs = "To test, write both scripts and give each a name and the encounter context.";
+  expect(screen.getByText(needs)).toBeTruthy();
+  fill();
+  expect(screen.queryByText(needs)).toBeNull();
+});

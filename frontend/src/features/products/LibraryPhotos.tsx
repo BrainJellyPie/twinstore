@@ -78,7 +78,7 @@ function PhotoSession({ pid, sid, close }: { pid: string; sid: string; close: ()
   return <div className="min-w-0 space-y-3 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2">
     <p>{t("photosHelp")}</p>
     <fieldset disabled={locked || options.isError} className="min-w-0 space-y-3">
-      <label className="block"><input type="checkbox" checked={replace} onChange={e => { setReplace(e.target.checked); choose(new Map()); }} />{t("photosReplace")}</label>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={replace} onChange={e => { setReplace(e.target.checked); choose(new Map()); }} />{t("photosReplace")}</label>
       <label className="block">{t("photosSearchProducts")}<input className="mt-1 block w-full rounded border p-2" value={search} onChange={e => setSearch(e.target.value)} /></label>
       <label className="block">{t("photosSearchLibrary")}<input className="mt-1 block w-full rounded border p-2" value={photoSearch} onChange={e => setPhotoSearch(e.target.value)} /></label>
       <p>{t("photosMenuCount", { count: visibleAssets.length })}</p>

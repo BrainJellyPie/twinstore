@@ -27,7 +27,7 @@ async function open() {
   fireEvent.click(screen.getByRole("button", { name: "Reuse shelf products" }));
   await screen.findByRole("option", { name: /Stocked shelf/ });
   fireEvent.change(screen.getByLabelText("Copy products from"), { target: { value: "stocked" } });
-  await screen.findByLabelText("Copy to rack empty");
+  await screen.findByLabelText(/^Copy to rack .* \(empty\)$/);
   return rendered;
 }
 async function preview() {
@@ -37,7 +37,7 @@ async function preview() {
 }
 it("chooses a stocked source, previews exact products, saves and explicitly opens a new layout", async () => {
   await open();
-  expect((screen.getByLabelText("Copy to rack stocked") as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Copy to rack Stocked shelf (stocked)") as HTMLInputElement).disabled).toBe(true);
   await preview();
   expect(api.previewRackCopy).toHaveBeenCalledWith("p", "s", { source_sha256: options.source_sha256, currency: "USD", source_rack_id: "stocked", target_rack_ids: ["empty"] });
   expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).toContain("Tea · 茶 · $2.31");
@@ -69,7 +69,7 @@ it("keeps the identical request identity after an uncertain save and locks editi
   await open();
   let finish!: (value: api.RackCopyPreview) => void;
   vi.mocked(api.previewRackCopy).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
-  fireEvent.click(screen.getByLabelText("Copy to rack empty"));
+  fireEvent.click(screen.getByLabelText("Copy to rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
   await waitFor(() => expect(screen.getByLabelText("Copy products from").matches(":disabled")).toBe(true));
   finish(report);
@@ -83,10 +83,10 @@ it("keeps the identical request identity after an uncertain save and locks editi
 it("shows preview failure while retaining the selections for correction", async () => {
   await open();
   vi.mocked(api.previewRackCopy).mockRejectedValueOnce(new Error("Layout changed. Reload shelves"));
-  fireEvent.click(screen.getByLabelText("Copy to rack empty"));
+  fireEvent.click(screen.getByLabelText("Copy to rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
   expect((await screen.findByRole("alert")).textContent).toContain("Layout changed");
-  expect((screen.getByLabelText("Copy to rack empty") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Copy to rack Empty shelf (empty)") as HTMLInputElement).checked).toBe(true);
   expect(screen.queryByRole("button", { name: "Save layout with shelf copies" })).toBeNull();
 });
 it("handles loading failure and explicit retry without an API save", async () => {
@@ -102,7 +102,7 @@ it("does not show previous source targets while the next source loads", async ()
   let finish!: (value: api.RackCopyOptions) => void;
   vi.mocked(api.getRackCopyOptions).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   fireEvent.change(screen.getByLabelText("Copy products from"), { target: { value: "" } });
-  expect(screen.queryByLabelText("Copy to rack empty")).toBeNull();
+  expect(screen.queryByLabelText("Copy to rack Empty shelf (empty)")).toBeNull();
   finish(options);
   await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
 });
@@ -126,7 +126,7 @@ it("enforces the 100 destination limit across searches before calling the API", 
   await open();
   fireEvent.click(screen.getByRole("button", { name: "Select shown compatible shelves" }));
   fireEvent.change(screen.getByLabelText("Search destination shelves"), { target: { value: "rack_100" } });
-  fireEvent.click(screen.getByLabelText("Copy to rack rack_100"));
+  fireEvent.click(screen.getByLabelText("Copy to rack Shelf 100 (rack_100)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
   expect((await screen.findByRole("alert")).textContent).toContain("at most 100");
   expect(api.previewRackCopy).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ it.each(["close", "layout", "project"].flatMap(scope => ["success", "failure"].m
     let reject!: (error: Error) => void;
     vi.mocked(api.previewRackCopy).mockReturnValueOnce(new Promise((yes, no) => { resolve = yes; reject = no; }));
     const rendered = await open();
-    fireEvent.click(screen.getByLabelText("Copy to rack empty"));
+    fireEvent.click(screen.getByLabelText("Copy to rack Empty shelf (empty)"));
     fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
     await waitFor(() => expect(api.previewRackCopy).toHaveBeenCalledTimes(1));
     if (scope === "close") {
@@ -176,7 +176,7 @@ it.each(["snapshot", "currency", "failure"])("never saves a pending preview inva
   let finish!: (value: api.RackCopyPreview) => void;
   vi.mocked(api.previewRackCopy).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   await open();
-  fireEvent.click(screen.getByLabelText("Copy to rack empty"));
+  fireEvent.click(screen.getByLabelText("Copy to rack Empty shelf (empty)"));
   fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
   await waitFor(() => expect(api.previewRackCopy).toHaveBeenCalledTimes(1));
   if (change === "failure") vi.mocked(api.getRackCopyOptions).mockRejectedValue(new Error("Source unavailable"));

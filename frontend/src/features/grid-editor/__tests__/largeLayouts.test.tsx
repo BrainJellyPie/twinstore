@@ -121,3 +121,18 @@ it("keeps keyboard entry when shrinking removes the last visited cell", () => {
   fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
   expect(document.activeElement).toBe(screen.getByTestId("grid-cell-1-0"));
 });
+
+it("counts the fixtures left off the grid beyond the first three instead of ending the list with an ellipsis", () => {
+  const rack = (id: string, x: number): EditorRack => ({ id, type: "shelf", shape: [[1]], position: [x, 0], rotation: 0,
+    levels: 4, dwell_min: 2, dwell_max: 30, rack_name: `Shelf ${id}`, rack_desc: "", rack_decoration_desc: "", locked_faces: [], slots: [],
+    design_variant: "a" });
+  const setup: SetupDetailWithBlocked = { id: "s", name: "Store", runId: null, blocked_faces: [], status: "draft", parentId: null, memo: "",
+    readiness: null, created_at: "2026-10-21", updated_at: "2026-10-21",
+    store: { id: "store", name: "Store", type: "cvs", weekly_schedule: [], grid_size: [12, 8], racks: ["a", "b", "c", "d", "e"].map((id, i) => rack(id, 7 + i)) } };
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={setup} onClose={vi.fn()} onSaved={vi.fn()} />);
+  const width = screen.getByRole("spinbutton", { name: "Width" });
+  fireEvent.change(width, { target: { value: "6" } });
+  fireEvent.blur(width);
+  expect(screen.getByText(/fall outside this grid/).textContent).toBe(
+    "5 fixture(s) fall outside this grid: Shelf a, Shelf b, Shelf c +2. Increase the dimensions or move/remove those fixtures before saving.");
+});

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Model providers** announces a connection test's result to screen readers:
+  a reply as a status update and a failure as an alert. Before, the result
+  appeared under the card without being read out.
+
+- The rack checkboxes in **Copy shelf products** and **Auto-place starter
+  products** now give screen readers the rack's name as well as its id
+  ("Copy to rack Snacks 1 (r_fe3c6bc9)"). Before, they read only the generated
+  id, while sighted users saw the name.
+
+- **Use library photos** spaces its "Allow replacing existing images" checkbox
+  from its label like the app's other checkboxes.
+
 - Give impulse models the exact target and face of each exposed product
   placement, including rotated shelves and multiple blocks. Mark blocked
   or off-grid access as unavailable instead of offering another shelf side.
@@ -48,7 +60,8 @@
 
 - The floor editor says at once which fixtures a smaller width or depth
   leaves off the grid, instead of hiding them silently until **Save** refuses
-  the floor.
+  the floor. Past the first three names it counts the rest ("+2") instead of
+  ending the list with an ellipsis and a second full stop.
 
 - Keep captured `ID` reference numbers from becoming exact selling prices.
   Preserve the original label, existing product prices and prices with an
@@ -84,8 +97,9 @@
   Photo button, and the saved field pilots, protocols and observation
   revisions.
 
-- **Price checks**, **Unit prices** and **Inventory** say what the review
-  still needs (for example the store reference without spaces at either end,
+- **Concept tests**, **Staff scripts**, **Price checks**, **Unit prices** and
+  **Inventory** say
+  what the test or review still needs (for example the store reference without spaces at either end,
   the dates and the CSV files) while its button is unavailable, instead of
   leaving the button greyed out unexplained.
 
