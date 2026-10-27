@@ -51,6 +51,7 @@ class GeneratedAction(CustomerAction):
 
 class IntentResponse(BaseModel):
     actions_optional: ClassVar[bool] = False
+    action_kinds: ClassVar[frozenset[Action]] = frozenset(Action)
     reasoning: str = Field(default="", max_length=600)
     actions: list[GeneratedAction] = []
 
@@ -170,7 +171,7 @@ def catalog_records(store: Store) -> dict[str, SlotItem]:
 
 
 def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, SlotItem], *,
-                                              max_quantity: int | None = None) -> type[T]:
+                                              max_quantity: int | None = None, allow_buy: bool = True) -> type[T]:
     """Keep offer references in cached answers until the engine binds their exact placement."""
     mapping = {code: item.sku for code, item in records.items()}
     digest = hashlib.sha256(json.dumps(mapping, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -202,10 +203,12 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
             ("pay", ("target", "dwell", "description"), ()),
             ("exit", ("description",), ()),
         ):
+            if Action(kind) not in base.action_kinds:
+                continue
             fields: dict[str, JsonValue] = {"action": {"type": "string", "const": kind},
                                             **{name: field(name) for name in names}}
             if kind == "buy":
-                if not records:
+                if not records or not allow_buy:
                     continue
                 product = field("product_sku")
                 product["enum"] = [code for code in records]
@@ -213,6 +216,8 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
             variants.append({"type": "object", "properties": fields, "required": ["action", *required],
                              "additionalProperties": False})
         for nav, name in (("area", "area"), ("path", "target")):
+            if Action.WANDER not in base.action_kinds:
+                continue
             variants.append({"type": "object", "properties": {
                 "action": {"type": "string", "const": "wander"}, "nav": {"type": "string", "const": nav},
                 name: field(name), "dwell": field("dwell"), "description": field("description"),

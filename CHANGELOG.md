@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Limit native impulse responses to browsing when planned purchases already
+  fill the pattern's product allowance. Keep normal impulse purchases when
+  capacity remains, including after catalog context recovery.
+
 - Describe generated shopping actions with the fields each operation uses.
   Native local models must name the action and supply a valid product code
   and quantity for purchases, avoiding anonymous movement loops. Existing

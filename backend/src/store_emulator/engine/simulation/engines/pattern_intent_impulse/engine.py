@@ -257,7 +257,8 @@ class PatternIntentImpulseEngine:
 
             try:
                 impulse = await self._llm.generate_structured_async(
-                    stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
+                    stage2_intent.catalog_response_model(ImpulseResponse, impulse_records,
+                        max_quantity=cfg.max_quantity_per_line, allow_buy=existing_buys < pattern.max_products),
                     stage3_system, impulse_user_prompt(exposed, impulse_records),
                     seed=stage_seed("stage3"), route=context.persona.id,
                 )
@@ -287,7 +288,8 @@ class PatternIntentImpulseEngine:
                         "\n\nContext recovery candidates: these offers were selected from the full exposure list. "
                         "Respond only to these candidate offers; the planned basket and actual store are unchanged.")
                     impulse = await self._llm.generate_structured_async(
-                        stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
+                        stage2_intent.catalog_response_model(ImpulseResponse, impulse_records,
+                            max_quantity=cfg.max_quantity_per_line, allow_buy=existing_buys < pattern.max_products),
                         stage3_system, focused_user, seed=stage_seed("stage3"), route=context.persona.id,
                     )
                 else:

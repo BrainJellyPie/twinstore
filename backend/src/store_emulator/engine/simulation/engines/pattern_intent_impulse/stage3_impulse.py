@@ -28,6 +28,7 @@ class ImpulseResponse(IntentResponse):
     """Additional model shopping actions, with the same engine-field boundary as intent."""
 
     actions_optional: ClassVar[bool] = True
+    action_kinds: ClassVar[frozenset[Action]] = frozenset({Action.BROWSE, Action.BUY})
 
     @field_validator("actions", mode="before")
     @classmethod
@@ -84,6 +85,9 @@ def build_system_prompt(
     elif max_products > 0:
         remaining = max(0, max_products - existing_buys)
         constraints.append(f"- 기존 구매 {existing_buys}개 포함, 최대 {max_products}개까지 가능 (추가 가능: {remaining}개)")
+    if existing_buys >= max_products:
+        constraints.append('No additional purchases are allowed. Return browse reactions only, or {"actions": []}. '
+                           'Do not repeat already planned purchases.')
     if allow_no_purchase:
         constraints.append("- 이 고객은 아무것도 안 사도 되는 유형입니다")
     if browse_required_before_buy:
