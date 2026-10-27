@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Remove purchase-writing instructions from impulse prompts once the planned
+  basket fills the product allowance. Keep browse-only reactions and empty
+  responses available to plain JSON models as well as native-schema models.
+
 - Limit native impulse responses to browsing when planned purchases already
   fill the pattern's product allowance. Keep normal impulse purchases when
   capacity remains, including after catalog context recovery.

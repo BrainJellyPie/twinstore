@@ -69,11 +69,16 @@ async def run():
             pays=sum(event.action==Action.PAY for event in receipt.timeline)
             modeled=[(item['product_sku'],item['quantity']) for name in ('stage2','stage3')
                 for item in decision.trace[name]['actions'] if item.get('action')=='buy']
-            execution_ok=purchases==expected
-            execution_ok=execution_ok and receipt.total_spent==(price if expected else 0) and receipt.dropped_invalid_buys==0
-            execution_ok=execution_ok and pays==int(bool(expected)) and receipt.timeline[-1].action==Action.EXIT
+            receipt_ok=purchases==expected and receipt.total_spent==(price if expected else 0)
+            receipt_ok=receipt_ok and pays==int(bool(expected)) and receipt.timeline[-1].action==Action.EXIT
+            execution_ok=receipt_ok and receipt.dropped_invalid_buys==0
+            grid=store.walkable_grid()
+            targets=[item['target'] for name in ('stage2','stage3') for item in decision.trace[name]['actions']
+                if item.get('target') is not None]
+            walkable=all(0<=x<store.grid_size[0] and 0<=y<store.grid_size[1] and grid[y][x] for x,y in targets)
             row.update(source_stage='pattern_intent_impulse_and_receipt',success=execution_ok and modeled==expected,
-                execution_ok=execution_ok,model_semantic_ok=modeled==expected,model_purchases=modeled,
+                receipt_ok=receipt_ok,execution_ok=execution_ok,model_purchase_plan_ok=modeled==expected,model_purchases=modeled,
+                model_targets_walkable=walkable,model_check_scope='Purchase identities and quantities; narration is not scored.',
                 purchases=purchases,expected=expected,total_spent=receipt.total_spent,payments=pays,
                 decision=decision.model_dump(mode='json'),receipt=receipt.model_dump(mode='json'))
         else:
@@ -85,5 +90,5 @@ async def run():
     except Exception as e:row.update(success=False,error=repr(e))
     row['seconds']=round(time.monotonic()-started,2);row['usage']=client.get_usage().model_dump()
     (root/'result.json').write_text(json.dumps(row,indent=2,ensure_ascii=False))
-    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','success','seconds','usage','execution_ok','model_semantic_ok','error') if key in row}},ensure_ascii=False),flush=True)
+    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','success','seconds','usage','receipt_ok','execution_ok','model_purchase_plan_ok','model_targets_walkable','error') if key in row}},ensure_ascii=False),flush=True)
 with patch.object(httpx.AsyncClient,'send',traced):asyncio.run(run())

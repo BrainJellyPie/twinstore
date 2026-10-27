@@ -36,21 +36,23 @@ class ImpulseResponse(IntentResponse):
         return [] if value is None else value
 
 
+BUY_RULES = """- **buy 시 product_sku 는 아래 "경로상 노출되는 상품" 목록의 sku 중 하나만 사용**
+- buy 시 quantity 는 구매 수량 (기본 1)"""
+
 SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한 발견) 시뮬레이터입니다.
 고객이 이미 결정한 동선 위에서, 지나가다가 발견할 수 있는 상품이나 프로모션에 반응하는 추가 행동을 생성하세요.
 
 {price_unit_rule}
 
 규칙:
-- 새로 추가할 행동(browse / buy) 만 반환. 방문 순서 배치는 엔진이 자동 처리합니다
+- 새로 추가할 행동({action_types}) 만 반환. 방문 순서 배치는 엔진이 자동 처리합니다
 - 고객의 성향(충동구매 확률, 탐색 성향)을 반영
 - 현실적으로 0~3개 정도의 세렌디피티 이벤트가 적당. 0개도 가능
 - 추가 행동이 없으면 actions는 null 대신 빈 배열 []로 반환하세요.
-- action 은 browse 또는 buy 만 사용
+- action 은 {action_types} 만 사용
 - target 은 노출 상품의 접근 타일 좌표를 사용
-- **buy 시 product_sku 는 아래 "경로상 노출되는 상품" 목록의 sku 중 하나만 사용**
-- buy 시 quantity 는 구매 수량 (기본 1)
-- **browse / buy 의 description 은 노출 상품 목록의 상품만 묘사**
+{buy_rules}
+- **description 은 노출 상품 목록의 상품만 묘사**
 - description 은 해당 행동 시점의 상황만 묘사 (이후 행동 참조 금지)
 - reasoning은 600자 이하, 각 행동의 description은 400자 이하로 간결하게 작성하고 같은 문장을 반복하지 마세요
 - 설명이 없으면 null 대신 빈 문자열("")을 사용하세요
@@ -63,7 +65,8 @@ SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한
 - 구조적 필드(`action`, `target`, `face`, `dwell`, `product_sku`, `quantity`, `nav`, `area`)는 한국어 prompt 에서 정의된 그대로 유지합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요."""
 
-SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule("USD"))
+SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule("USD"),
+                                             action_types="browse / buy", buy_rules=BUY_RULES)
 
 
 def build_system_prompt(
@@ -77,27 +80,29 @@ def build_system_prompt(
     max_quantity: int | None = None,
 ) -> str:
     """System prompt with pattern-specific constraints applied."""
+    can_buy = existing_buys < max_products
     constraints: list[str] = []
-    if max_quantity is not None:
+    if max_quantity is not None and can_buy:
         constraints.append(f"- buy의 quantity는 1~{max_quantity} 사이의 정수로 작성하세요 (기본 1)")
     if max_products == 0:
         constraints.append("- 이 고객은 구매 의사가 없습니다. buy 이벤트를 추가하지 마세요")
     elif max_products > 0:
         remaining = max(0, max_products - existing_buys)
         constraints.append(f"- 기존 구매 {existing_buys}개 포함, 최대 {max_products}개까지 가능 (추가 가능: {remaining}개)")
-    if existing_buys >= max_products:
-        constraints.append('No additional purchases are allowed. Return browse reactions only, or {"actions": []}. '
-                           'Do not repeat already planned purchases.')
     if allow_no_purchase:
         constraints.append("- 이 고객은 아무것도 안 사도 되는 유형입니다")
-    if browse_required_before_buy:
+    if browse_required_before_buy and can_buy:
         constraints.append("- buy 전에 반드시 같은 rack의 같은 접근 타일에서 browse를 먼저 추가하세요 (browse→buy 세트로 반환)")
+    if not can_buy:
+        constraints.append('No additional purchases are allowed. Return browse reactions only, or {"actions": []}. '
+                           'Do not repeat already planned purchases.')
 
     extra = "\n".join(constraints)
     if extra:
         extra = f"\n\n추가 제약:\n{extra}"
 
-    system = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule(currency))
+    system = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule(currency),
+        action_types="browse / buy" if can_buy else "browse", buy_rules=BUY_RULES if can_buy else "")
     if product_codes:
         system = system.replace('목록의 sku 중 하나만 사용',
                                 '목록의 상품 코드 중 하나만 사용 (대소문자와 @ 개수를 그대로 복사; 상품명이나 임의 코드 금지)')
