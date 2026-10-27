@@ -190,9 +190,11 @@ _PRICE_CURRENCY_SYMBOLS = {
     "USD": "$", "KRW": "₩원", "JPY": "¥円", "EUR": "€", "GBP": "£", "CNY": "¥",
     "CAD": "$", "AUD": "$", "NZD": "$", "SGD": "$", "HKD": "$", "TWD": "$", "CLP": "$", "BRL": "$",
     "VND": "₫", "IDR": "", "ISK": "", "HUF": "", "CHF": "", "INR": "₹",
+    "THB": "฿", "RUB": "₽", "TRY": "₺", "PHP": "₱", "ILS": "₪", "UAH": "₴", "NGN": "₦",
 }
 _PRICE_MAJOR_SYMBOLS = frozenset("".join(_PRICE_CURRENCY_SYMBOLS.values()))
-_PRICE_CASH_SYMBOL_RE = re.compile(rf"[{re.escape(''.join(sorted(_PRICE_MAJOR_SYMBOLS)) + '¢')}]")
+_PRICE_CASH_SYMBOLS = _PRICE_MAJOR_SYMBOLS | {"¢"}
+_PRICE_CASH_SYMBOL_RE = re.compile(rf"[{re.escape(''.join(sorted(_PRICE_CASH_SYMBOLS)))}]")
 _PRICE_CURRENCY_CODE_RE = re.compile(
     rf"(?<![A-Za-z])({'|'.join(_PRICE_CURRENCY_SYMBOLS)})(?![A-Za-z])", re.IGNORECASE,
 )
@@ -335,6 +337,11 @@ def _parse_number(text: str, *, multipack: bool = False) -> tuple[float, bool] |
     cash_unit = (_PRICE_CASH_SYMBOL_RE.search(normalized) is not None
                  or _PRICE_CURRENCY_CODE_RE.search(normalized) is not None
                  or re.search(r"\bcents?\b", normalized, re.IGNORECASE) is not None)
+    if not cash_unit and (re.fullmatch(r"[A-Za-z]", before) or re.fullmatch(r"[A-Za-z]", after)):
+        # Small VLMs can transcribe currency glyphs as letters (฿ → B, ₽ → P).
+        # Such a tag can also be a reference code: neither establishes a price
+        # in this store's currency. Known units were normalized before parsing.
+        return None
     if not cash_unit and _REFERENCE_NUMBER_PREFIX_RE.search(before):
         # Identifiers and expiry/manufacture dates do not establish a selling price.
         return None
@@ -390,6 +397,15 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     reading is kept unless it is more than 6× off.
     """
     code = currency.upper()
+    if any(
+        unicodedata.category(char) == "Sc"
+        and unicodedata.normalize("NFKC", char) not in _PRICE_CASH_SYMBOLS
+        for char in label.price_text
+    ):
+        # An unresolved currency sign is not an unmarked amount. Inspect the
+        # original text too: compatibility normalization can turn a sign into
+        # letters (e.g. the rial sign), erasing that uncertainty.
+        return None
     printed = _QUALIFIED_DOLLAR_RE.sub(
         lambda match: _QUALIFIED_DOLLARS[match.group(1).upper()] + "$",
         unicodedata.normalize("NFKC", label.price_text),
@@ -397,8 +413,8 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     printed = _DONG_ABBREVIATION_RE.sub("VND", printed)
     if any(match.upper() != code for match in _PRICE_CURRENCY_CODE_RE.findall(printed)):
         return None
-    if code in _PRICE_CURRENCY_SYMBOLS and any(
-        symbol in printed and symbol not in _PRICE_CURRENCY_SYMBOLS[code] for symbol in _PRICE_MAJOR_SYMBOLS
+    if any(
+        symbol in printed and symbol not in _PRICE_CURRENCY_SYMBOLS.get(code, "") for symbol in _PRICE_MAJOR_SYMBOLS
     ):
         return None
     zero_decimal = code in ZERO_DECIMAL

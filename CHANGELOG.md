@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Preserve additional printed currencies when reading shelf prices. Treat
+  unresolved currency symbols and ambiguous single-letter tags such as
+  `B100` or `P100` as estimated prices instead of exact store-currency amounts.
+  Ask the price transcriber to retain symbol strokes without replacing them
+  with letters; uncertain readings still require review.
+
 - **Model providers** announces a connection test's result to screen readers:
   a reply as a status update and a failure as an alert. Before, the result
   appeared under the card without being read out.
