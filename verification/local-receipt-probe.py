@@ -27,7 +27,7 @@ from store_emulator.engine.receipt_review import review_receipts
 from store_emulator.engine.vision_inputs import match_lines, vlm_receipt
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--case', choices=['simple', 'krw', 'fractional', 'free', 'date-only', 'foreign', 'no-purchase', 'subtotal-only'], default='simple')
+parser.add_argument('--case', choices=['simple', 'krw', 'fractional', 'free', 'date-only', 'foreign', 'no-purchase', 'subtotal-only', 'all-free', 'unpriced'], default='simple')
 parser.add_argument('--mode', choices=['json', 'json_schema'], default='json_schema')
 parser.add_argument('--endpoint', default='http://127.0.0.1:8082/v1')
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
@@ -56,6 +56,14 @@ elif args.case == 'free':
     lines = ['GREEN TEA        1  0.00    0.00', 'WATER            1  1.00    1.00']
     expected = [('tea', 1, 0, 0), ('water', 1, 100, 100)]
     subtotal, tax, total, paid, change, expected_total = '1.00', '0.00', '1.00', '5.00', '4.00', 100
+if args.case == 'all-free':
+    lines = ['GREEN TEA        1  0.00    0.00', 'WATER            1  0.00    0.00']
+    expected = [('tea', 1, 0, 0), ('water', 1, 0, 0)]
+    subtotal, tax, total, paid, change, expected_total = '0.00', '0.00', '0.00', '0.00', '0.00', 0
+elif args.case == 'unpriced':
+    lines = ['GREEN TEA        2     ?       ?', 'WATER            1  1.00    1.00']
+    expected = [('tea', 2, None, None), ('water', 1, 100, 100)]
+    subtotal, tax, total, paid, change, expected_total = '?', '?', '?', '?', '?', None
 texts = ['CORNER STORE', '2026-10-27' + ('' if args.case == 'date-only' else '  14:05'), f'CURRENCY {currency}',
          '------------------------------', 'ITEM           QTY  UNIT AMOUNT', *lines,
          '------------------------------', f'SUBTOTAL                 {subtotal:>6}', f'TAX                      {tax:>6}',
@@ -132,10 +140,10 @@ async def run():
                     issues.append('Printed date/time changed.')
             except ValueError:
                 issues.append('Printed date/time could not be parsed.')
-        expected_ready = args.case not in {'date-only', 'foreign', 'no-purchase'}
+        expected_ready = args.case not in {'date-only', 'foreign', 'no-purchase', 'unpriced'}
         if review.ready != expected_ready:
             issues.append('Review readiness does not match the known currency/time conditions.')
-        if review.ready:
+        if review.ready and expected_ready:
             exported = list(csv.DictReader(io.StringIO(review.csv)))
             if len(exported) != len(expected) or sum(float(row['line_total']) for row in exported) != sum(row[3] for row in expected):
                 issues.append('CSV changed purchased amounts or included tax/payment lines.')

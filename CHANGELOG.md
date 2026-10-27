@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read the printed row behind an inferred receipt total. If that row is a
+  subtotal, leave the final total unknown and retain the original row for
+  review, while keeping the purchased products and their paid amounts.
+
 - Overlapping checks for a changed frontend reload the page at most once,
   including when their server-health responses arrive out of order.
 
