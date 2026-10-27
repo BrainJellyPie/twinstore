@@ -80,7 +80,10 @@ def test_http_pattern_repetition_normalizes_before_stage_two_and_cache(monkeypat
             answer = {"pattern_id": "exploratory", "reasoning": "repeated " * 1000,
                       "grammar_override": "enter browse buy pay exit " * 1000}
         elif len(calls) == 2:
-            assert sum(len(m["content"]) for m in body["messages"]) < 8000
+            # Bound the echoed rule text itself: JSON mode also embeds the response schema, whose size is unrelated.
+            stage_two = "\n".join(m["content"] for m in body["messages"])
+            assert "enter browse buy pay exit" not in stage_two
+            assert stage_two.count("repeated ") * len("repeated ") <= 600
             answer = _intent().model_dump(mode="json")
         else:
             assert len(calls) == 3

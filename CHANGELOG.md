@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1 — Sturdier receipt reading, and numbers and focus that follow you
+
 - Require explicit image selections, price and customer quotas in generated
   concept-test drafts. Ask for these fields before explanatory text and clarify
   that a manager's stated price, including a free offer, takes precedence over
@@ -10,6 +12,12 @@
 - Preserve the moved fixture's selection and refused-drop message when touch
   generates a click after dragging. Ordinary taps and keyboard selection keep
   working.
+
+- The inventory review's rules and its "still needed" hint now write the
+  longest period the same way in every language ("3 660" in French, "3,660" in
+  English), and the field-pilot timing rules group "3,600 seconds" like the row
+  limit beside it. Before, one sentence said "3660" and the next "3 660".
+
 - In a concept test, the example shelf price follows the selected language
   ("1,99" in French and Spanish), and each question's hint wraps as a compact
   block under its name instead of leaving "5)" alone on a widely spaced line.

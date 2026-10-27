@@ -9,6 +9,9 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { revealOnMount } from "@/shared/utils/focusOnMount";
 
+// The longest review period the server accepts.
+const MAX_DAYS = 3660;
+
 const FLAGS: Record<InventoryFlag, MessageKey> = {
   stock_mismatch: "mkInvFlagMismatch", negative_expected_stock: "mkInvFlagNegative",
   empty_stock_value: "mkInvFlagEmptyValue", net_returns: "mkInvFlagNetReturns",
@@ -31,7 +34,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
   const busy = preview.isPending || audit.isPending || template.isPending;
   const days = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
   const needsId = useId();
-  const valid = !!file && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && days >= 1 && days <= 3660 && /^[A-Z]{3}$/.test(currency);
+  const valid = !!file && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && days >= 1 && days <= MAX_DAYS && /^[A-Z]{3}$/.test(currency);
   const clear = () => { preview.reset(); audit.reset(); template.reset(); };
   const report = preview.data;
   const error = fileError || preview.error?.message || audit.error?.message || template.error?.message;
@@ -43,7 +46,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
       <label className="text-sm">{t("mkPeriodEnd")}<Input type="date" disabled={busy} value={end} onChange={(e) => { clear(); setEnd(e.target.value); }} /></label>
       <label className="text-sm">{t("mkCurrencyCode")}<Input placeholder="USD, KRW, ..." maxLength={3} disabled={busy} value={currency} onChange={(e) => { clear(); setCurrency(e.target.value.toUpperCase()); }} /></label>
     </div>
-    <p className="text-xs">{t("mkInvRules")}</p>
+    <p className="text-xs">{t("mkInvRules", { max: MAX_DAYS })}</p>
     <details><summary className="cursor-pointer text-sm">{t("mkInvColumns")}</summary><div className="space-y-2 text-xs text-muted-foreground">
       <p>sku; opening_units; received_units; sold_units (gross); returned_units (customer returns); other_in_units; other_out_units; closing_units; net_sales_minor; cogs_minor (net of returns); opening_cost_minor; closing_cost_minor.</p>
       <p>{t("mkInvColumnsOther")}</p>
@@ -55,7 +58,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
       if (chosen && chosen.size > 2 * 1024 * 1024) { setFile(undefined); setFileError(t("mkInvTooLarge")); } else setFile(chosen);
     }} /></label>
     <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { if (file) preview.mutate({ file, start_date: start, end_date: end, currency }); }}>{t("mkInvReview")}</Button>
-    {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkInvReviewNeeds")}</p>}
+    {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkInvReviewNeeds", { max: MAX_DAYS })}</p>}
     {preview.isPending && <p role="status" className="text-sm">{t("mkInvReconciling")}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {report && <div className="space-y-3 text-sm">
