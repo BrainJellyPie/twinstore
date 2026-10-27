@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Model providers** announces a connection test's result to screen readers:
+  a reply as a status update and a failure as an alert. Before, the result
+  appeared under the card without being read out.
+
 - The rack checkboxes in **Copy shelf products** and **Auto-place starter
   products** now give screen readers the rack's name as well as its id
   ("Copy to rack Snacks 1 (r_fe3c6bc9)"). Before, they read only the generated

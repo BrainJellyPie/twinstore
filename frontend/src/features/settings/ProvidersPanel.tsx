@@ -238,6 +238,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
       {result && (
         <p
           data-testid="provider-test-result"
+          role={result.ok ? "status" : "alert"}
           className={cn("flex min-w-0 items-start gap-1 text-xs", result.ok ? "text-positive" : "text-destructive")}
           title={result.error}
         >

@@ -55,6 +55,19 @@ it("shows a failed connection test without the error class name", async () => {
   client.clear();
 });
 
+it("announces a connection test's result to screen readers", async () => {
+  vi.mocked(api.getProviders).mockResolvedValue([{ ...openai, has_key: true, key_source: "settings", ready: true }]);
+  vi.mocked(api.testModel).mockResolvedValueOnce({ ok: true, model: "gpt-mini", latency_ms: 120, reply: "OK", error: "", vision: false })
+    .mockRejectedValueOnce(new ApiError("Model gpt-mini is not available", 404));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Test OpenAI" }));
+  expect((await screen.findByRole("status")).textContent).toContain("OK");
+  fireEvent.click(screen.getByRole("button", { name: "Test OpenAI" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("Model gpt-mini is not available");
+  client.clear();
+});
+
 it("refreshes the provider badge after a failed test and shows the whole message", async () => {
   const ready = { ...openai, has_key: true, key_source: "settings" as const, key_hint: "…abcd", ready: true };
   vi.mocked(api.getProviders).mockResolvedValue([ready]);
