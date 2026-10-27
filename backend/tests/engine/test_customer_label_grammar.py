@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 
 import httpx
 import pytest
@@ -22,7 +23,7 @@ from store_emulator.engine.generators import persona as gen
     ([], []),
 ])
 def test_generated_population_uses_actual_labels_and_keeps_cache_separate(monkeypatch, tmp_path, mode, labels):
-    original, requests = llm_client.litellm.acompletion, []
+    original, requests, selected_identities = llm_client.litellm.acompletion, [], []
     identities, purposes = labels
 
     def respond(request):
@@ -51,7 +52,12 @@ def test_generated_population_uses_actual_labels_and_keeps_cache_separate(monkey
                 assert "$ref" not in bounds and bounds["type"] == "string" and bounds["maxLength"] == 120
             ids = props["identity"].get("enum", ["Invented customer type"])
             goals = props["purpose"].get("enum", ["Invented purpose"])
-            payload = {"personas": [dict(identity=ids[i % len(ids)], purpose=goals[i % len(goals)],
+            prompt = next(m["content"] for m in body["messages"] if m["role"] == "user" and "페르소나" in m["content"])
+            rows = re.findall(r"^\[\d+\] \d+시, (.*), 키워드:", prompt, re.MULTILINE)
+            assert len(rows) == fields["personas"]["minItems"]
+            selected = [next(label for label in ids if label in row) for row in rows]
+            selected_identities.append(selected)
+            payload = {"personas": [dict(identity=selected[i], purpose=goals[i % len(goals)],
                 age_group="30s", gender="Female", description=f"Customer {i}", intent="Shop nearby")
                 for i in range(fields["personas"]["minItems"])]}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
@@ -80,7 +86,8 @@ def test_generated_population_uses_actual_labels_and_keeps_cache_separate(monkey
                 people = await generate()
                 assert len(people) == len({p.id for p in people}) == 4 and not any(p.twin_of for p in people)
                 expected_ids, expected_goals = list(dict.fromkeys(identities or ["shopper"])), list(dict.fromkeys(purposes or ["shopping"]))
-                assert [p.identity for p in people] == [expected_ids[i % len(expected_ids)] for i in range(4)]
+                assert [p.identity for p in people] == selected_identities[-1]
+                assert all(p.identity in expected_ids for p in people)
                 assert [p.purpose for p in people] == [expected_goals[i % len(expected_goals)] for i in range(4)]
                 assert await generate() == people and len(requests) == 3 * (revision + 1)
 

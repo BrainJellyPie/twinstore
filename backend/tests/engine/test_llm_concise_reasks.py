@@ -1,4 +1,4 @@
-"""Local JSON corrections need validation errors, not repeated SDK response dumps."""
+"""Local structured corrections need validation errors, not repeated SDK response dumps."""
 import asyncio
 import json
 
@@ -37,7 +37,7 @@ def test_corrections_preserve_errors_history_images_usage_and_cache(monkeypatch,
             assert body['messages'][1] == calls[0]['messages'][1]
             correction = body['messages'][-1]['content']
             assert 'score' in correction
-            if local and mode == 'json':
+            if local:
                 assert '<failed_attempts>' not in correction
                 assert 'ModelResponse(' not in correction
                 assert 'prompt_tokens' not in correction

@@ -124,11 +124,11 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-reversed", "pack-multipack-reversed-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-foreign-inr-price", "capture-inr-price", "capture-foreign-brl-price", "capture-brl-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-item-code", "capture-reference-code", "capture-hash-code", "capture-item-price", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-foreign-inr-price", "capture-inr-price", "capture-foreign-brl-price", "capture-brl-price", "capture-foreign-vnd-price", "capture-vnd-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-item-code", "capture-id-code", "capture-reference-code", "capture-hash-code", "capture-item-price", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
-    "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero",
+    "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero", "traffic-quoted-counts", "traffic-identity-comma",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-us", "persona-fractional", "persona-fractional-batch", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-five", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -532,7 +532,19 @@ try:
         source = "Neighborhood residents buy snacks and drinks at this small convenience store."
         evidence = "Observed visitors: exactly one visitor in each open hour. Preserve these supplied hourly counts."
         observed = {hour: 1 for hour in range(opening, closing)}
-        if args.case == "traffic-24h-varied":
+        if args.case in {"traffic-quoted-counts", "traffic-identity-comma"}:
+            opening, closing = 9, 11
+            observed = {9: 2, 10: 0}
+            if args.case == "traffic-identity-comma":
+                identities = ["local residents, including retirees"]
+            else:
+                identities = ["local resident"]
+            area = TradeAreaProfile(keywords=["neighborhood"], identities=identities, purposes=["buy snacks"])
+            evidence = "Observed Monday visitors from a CSV export; preserve these counts and the supplied identity label.\n" + json.dumps([
+                {"hour": "09:00", "visitor_count": "2", "person_types": identities[0]},
+                {"hour": "10:00", "visitor_count": "0", "person_types": ""},
+            ], ensure_ascii=False)
+        elif args.case == "traffic-24h-varied":
             observed = {hour: [0, 2, 5, 1][hour // 6] for hour in range(24)}
         elif args.case == "traffic-last-hour-zero":
             observed = {23: 0}
@@ -570,12 +582,16 @@ try:
         elif args.case == "persona-us":
             address, currency, categories, budget = "Austin, Texas, USA", "USD", ["snacks", "drinks"], (300, 1000)
             profile = "Una tienda de barrio para vecinos que compran aperitivos y bebidas. El presupuesto por visita es de 3 a 10 dólares estadounidenses."
-        elif args.case == "persona-fractional":
+        elif args.case in {"persona-fractional", "persona-fractional-batch"}:
             address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
             profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
+        if args.case == "persona-mixed-types":
+            customer_count, budget = 3, (0, 0)
+            categories = ["snacks", "drinks"]
+            profile = "Students, retirees and nurses visit the neighborhood shop for snacks and drinks. No spending budget is specified. Preserve each requested customer's own type."
         if args.case.startswith("persona-nightmarket"):
-            expected_hour, customer_count = 23, 12
+            expected_hour, customer_count = 23, 5 if args.case == "persona-nightmarket-five" else 12
             categories = ["drinks", "snacks"]
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
         opening, closing, evidence = expected_hour, expected_hour + 1, ""
@@ -591,8 +607,10 @@ try:
         schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=opening, close_hour=closing) for day in Weekday]
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
+        fixed_cohort = args.case in {"persona-nightmarket-batch", "persona-nightmarket-five", "persona-nightmarket-local-batches",
+            "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-fractional-batch"}
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities"}:
+            if fixed_cohort:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
@@ -600,6 +618,12 @@ try:
                 if args.case == "persona-category-labels":
                     area = TradeAreaProfile(keywords=["neighborhood", "reading"],
                         identities=["local resident", "student"], purposes=["buy books", "buy stationery"])
+                if args.case == "persona-mixed-types":
+                    area = TradeAreaProfile(keywords=["neighborhood"],
+                        identities=["student", "retiree", "nurse"], purposes=["buy snacks", "buy drinks"])
+                if args.case == "persona-fractional-batch":
+                    area = TradeAreaProfile(keywords=["neighborhood", "coffee"],
+                        identities=["local resident"], purposes=["buy coffee", "buy pastries"])
                 hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
                 if args.case == "persona-hour-identities":
                     area = TradeAreaProfile(keywords=["neighborhood", "convenience"],
@@ -618,8 +642,23 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities"} and len(written) != customer_count:
+        if fixed_cohort and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
+        if fixed_cohort:
+            requests = [json.loads(line)["request"] for line in (output / "requests.jsonl").read_text().splitlines()]
+            types_by_position = {}
+            for request in requests:
+                for message in request["messages"]:
+                    text = str(message.get("content", ""))
+                    position = re.search(r"daily customer positions=(\d+)-(\d+)", text)
+                    if message["role"] == "user" and position:
+                        for index, labels in re.findall(r"^\[(\d+)\] \d+시, ([^,]+), 키워드:", text, re.MULTILINE):
+                            types_by_position[int(position[1]) + int(index)] = labels.split("+")
+            requested_types = [types_by_position[position] for position in sorted(types_by_position)]
+            result["requested_types"] = requested_types
+            if len(requested_types) != customer_count or any(person.identity not in allowed
+                    for person, allowed in zip(written, requested_types)):
+                issues.append("The writer changed an individual request's customer type within the same hour")
         if args.case == "persona-hour-identities":
             if Counter(person.arrival_hour for person in people) != {hour: 1 for hour in identities_by_hour}:
                 issues.append("The writer changed the fixed cohort's per-hour counts")
@@ -646,13 +685,13 @@ try:
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("capture-"):
-        tags = {"capture-qualified-price": "US$1.00", "capture-foreign-cad-price": "CA$1.00", "capture-foreign-hkd-price": "HK$1.00", "capture-foreign-inr-price": "₹100", "capture-inr-price": "₹100", "capture-foreign-brl-price": "R$1.00", "capture-brl-price": "R$1.00", "capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
+        tags = {"capture-qualified-price": "US$1.00", "capture-foreign-cad-price": "CA$1.00", "capture-foreign-hkd-price": "HK$1.00", "capture-foreign-inr-price": "₹100", "capture-inr-price": "₹100", "capture-foreign-brl-price": "R$1.00", "capture-brl-price": "R$1.00", "capture-foreign-vnd-price": "₫1000", "capture-vnd-price": "₫1000", "capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00", "capture-coupon-value": "$1.00 COUPON",
                 "capture-earn-reward": "EARN $1.00", "capture-reward-value": "$1.00 REWARD", "capture-rewards-price": "REWARDS PRICE $1.00", "capture-reward-krw": "1,000원 적립",
                 "capture-points": "100 POINTS", "capture-points-krw": "100포인트", "capture-points-price": "$1.00 WITH POINTS",
                 "capture-calorie-quantity": "100 kcal", "capture-calorie-prefix": "CALORIES 100", "capture-energy-quantity": "ENERGY 100 kJ",
-                "capture-item-code": "ITEM #1234", "capture-reference-code": "REF 1234", "capture-hash-code": "#1234", "capture-item-price": "ITEM $1.00", "capture-sku-code": "SKU 1234", "capture-lot-code": "LOT 1234", "capture-expiry-year": "EXP 2026",
+                "capture-item-code": "ITEM #1234", "capture-id-code": "ID 1234", "capture-reference-code": "REF 1234", "capture-hash-code": "#1234", "capture-item-price": "ITEM $1.00", "capture-sku-code": "SKU 1234", "capture-lot-code": "LOT 1234", "capture-expiry-year": "EXP 2026",
                 "capture-volume-only": "500 ml", "capture-count-only": "6 PACK", "capture-count-cash-price": "$6 PACK",
                 "capture-customer-limit": "LIMIT 2 PER CUSTOMER", "capture-minimum-count": "MIN 2 PER ORDER", "capture-maximum-count": "MAX 2 PER PERSON", "capture-limited-price": "LIMITED OFFER $1.00",
                 "capture-starting-price": "FROM $1.00", "capture-upper-price": "UNDER $1.00", "capture-starting-price-krw": "1,000원부터",
@@ -660,7 +699,7 @@ try:
                 "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
                 "capture-container-count-price": "$1.00 / BOTTLE", "capture-deposit-price": "DEPOSIT $0.10",
                 "capture-deposit-suffix": "$0.10 DEPOSIT", "capture-deposit-included-price": "DEPOSIT INCLUDED $1.00"}
-        currency = "INR" if args.case == "capture-inr-price" else "BRL" if args.case == "capture-brl-price" else "KRW" if args.case.endswith("-krw") else "USD"
+        currency = "VND" if args.case == "capture-vnd-price" else "INR" if args.case == "capture-inr-price" else "BRL" if args.case == "capture-brl-price" else "KRW" if args.case.endswith("-krw") else "USD"
         fixture = Image.new("RGB", (448, 512), "#f5f1e9")
         drawing = ImageDraw.Draw(fixture)
         drawing.rounded_rectangle((138, 24, 310, 376), radius=28, fill="#553023", outline="black", width=3)
@@ -673,7 +712,7 @@ try:
             drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
         drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
         tag_font = 28 if args.case in {"capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price", "capture-customer-limit", "capture-limited-price"} else 36
-        price_font = ImageFont.truetype("DejaVuSans-Bold.ttf", tag_font) if "₹" in tags[args.case] else load_font(tag_font, bold=True)
+        price_font = ImageFont.truetype("DejaVuSans-Bold.ttf", tag_font) if any(mark in tags[args.case] for mark in "₹₫") else load_font(tag_font, bold=True)
         result["fixture_font"] = str(getattr(price_font, "path", "Pillow default"))
         drawing.text((224, 439), tags[args.case], fill="black", font=price_font, anchor="mt")
         fixture.save(output / "image.png")
@@ -690,10 +729,10 @@ try:
         issues = []
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-inr-price", "capture-brl-price", "capture-item-price", "capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
-            expected_price = {"capture-inr-price": 10000, "capture-brl-price": 100, "capture-item-price": 100, "capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
+        if args.case in {"capture-vnd-price", "capture-inr-price", "capture-brl-price", "capture-item-price", "capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
+            expected_price = {"capture-vnd-price": 1000, "capture-inr-price": 10000, "capture-brl-price": 100, "capture-item-price": 100, "capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
             if item.price != expected_price or item.price_estimated:
-                issues.append(f"The printed selling price was not retained as {expected_price} cents.")
+                issues.append(f"The printed selling price was not retained as {expected_price} stored money units.")
         elif not item.price_estimated:
             issues.append("A non-selling or unreadable tag became an exact package selling price.")
         result.update(success=not issues, issues=issues, fixture_tag=tags[args.case], currency=currency,

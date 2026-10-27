@@ -633,7 +633,7 @@ class LiteLLMClient:
             kwargs = self._call_kwargs(seed, budget, structured=True)
             calls = 0
             schema_text = self._compact_schema_text(response_model)
-            concise_reasks = self._structured_output == "json" and self._is_loopback()
+            concise_reasks = self._is_loopback()
             initial_message_count = 0
             parse_error: str | None = None
 
@@ -701,7 +701,7 @@ class LiteLLMClient:
                 kwargs = self._call_kwargs(seed, budget, structured=True)
                 calls = 0
                 schema_text = self._compact_schema_text(response_model)
-                concise_reasks = self._structured_output == "json" and self._is_loopback()
+                concise_reasks = self._is_loopback()
                 initial_message_count = 0
                 parse_error: str | None = None
 

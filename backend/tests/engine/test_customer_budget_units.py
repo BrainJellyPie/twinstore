@@ -64,7 +64,7 @@ def test_sdk_converts_once_and_caches_minor_integers(monkeypatch, tmp_path, mode
 @pytest.mark.parametrize("currency,amount", [
     ("EUR", "90071992547409.92"), ("JPY", "9007199254740992"), ("EUR", "1.001"), ("JPY", "1.50"),
     ("EUR", "-1"), ("EUR", "1e3"), ("EUR", "5,50"), ("EUR", "€5"), ("EUR", "NaN"), ("EUR", "Infinity"),
-    ("EUR", ""), ("EUR", True), ("EUR", 5.5), ("EUR", None), ("EUR", []), ("EUR", {}),
+    ("EUR", True), ("EUR", 5.5), ("EUR", None), ("EUR", []), ("EUR", {}),
 ])
 def test_invalid_values_are_not_rounded_guessed_or_dropped(currency, amount):
     with pytest.raises(ValidationError):
@@ -75,6 +75,8 @@ def test_invalid_values_are_not_rounded_guessed_or_dropped(currency, amount):
     {"budget_min_major": "5", "budget_max_major": "20", "budget_min": 500},
     {"budget_min_major": "5", "budget_max_major": "20", "budget_max": 2000},
     {"budget_min_major": "20", "budget_max_major": "5"},
+    {"budget_min_major": "", "budget_max_major": "20"},
+    {"budget_min_major": "5", "budget_max_major": ""},
 ])
 def test_incomplete_mixed_or_reversed_pairs_fail(extra):
     with pytest.raises(ValidationError):

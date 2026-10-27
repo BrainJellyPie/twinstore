@@ -6,6 +6,26 @@
   leaves off the grid, instead of hiding them silently until **Save** refuses
   the floor.
 
+- Keep captured `ID` reference numbers from becoming exact selling prices.
+  Preserve the original label, existing product prices and prices with an
+  explicit currency unit.
+
+- Recognize Vietnamese dong marks on captured price tags, including `d`
+  or `đ` beside an amount. Foreign dong amounts remain estimates for review;
+  matching VND amounts retain their literal value.
+
+- Keep local JSON Schema corrections concise as well as plain JSON
+  corrections. Preserve the validation error and original response history
+  without repeating SDK response dumps inside each retry message.
+
+- Keep each generated customer's identity within that individual's requested
+  types, including requests at the same hour. Revalidate cached and split
+  batches and give correction requests the complete expected row order.
+
+- Preserve unspecified customer budgets when a local JSON model returns
+  only blank or zero amounts. Avoid a correction request that can invent
+  spending limits; a blank paired with a nonzero amount still needs correction.
+
 - Validate generated shelf and product search conditions before caching. A
   nonempty target list with no resolvable shelf or product requests correction
   instead of silently disappearing from the applied shopper filter.

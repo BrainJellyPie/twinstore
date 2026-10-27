@@ -189,7 +189,7 @@ _NUMBER_RE = re.compile(r"(?:\d|[.,](?=\d))[\d,.\s']*")
 _PRICE_CURRENCY_SYMBOLS = {
     "USD": "$", "KRW": "₩원", "JPY": "¥円", "EUR": "€", "GBP": "£", "CNY": "¥",
     "CAD": "$", "AUD": "$", "NZD": "$", "SGD": "$", "HKD": "$", "TWD": "$", "CLP": "$", "BRL": "$",
-    "VND": "", "IDR": "", "ISK": "", "HUF": "", "CHF": "", "INR": "₹",
+    "VND": "₫", "IDR": "", "ISK": "", "HUF": "", "CHF": "", "INR": "₹",
 }
 _PRICE_MAJOR_SYMBOLS = frozenset("".join(_PRICE_CURRENCY_SYMBOLS.values()))
 _PRICE_CASH_SYMBOL_RE = re.compile(rf"[{re.escape(''.join(sorted(_PRICE_MAJOR_SYMBOLS)) + '¢')}]")
@@ -201,6 +201,9 @@ _QUALIFIED_DOLLARS = {
     "US": "USD", "CA": "CAD", "AU": "AUD", "NZ": "NZD", "HK": "HKD", "SG": "SGD", "NT": "TWD", "R": "BRL",
 }
 _QUALIFIED_DOLLAR_RE = re.compile(rf"(?<![A-Za-z])({'|'.join(_QUALIFIED_DOLLARS)})\s*\$", re.IGNORECASE)
+# Dong tags also use đ, or ASCII d when OCR loses its strokes. Require an
+# isolated unit next to the amount, not a letter inside USD or another word.
+_DONG_ABBREVIATION_RE = re.compile(r"(?<!\w)[dđ](?=\s*\d)|(?<=\d)\s*[dđ](?!\w)", re.IGNORECASE)
 _NON_SELLING_PREFIX_RE = re.compile(
     r"(?:\b(?:save|saved|saving|savings|discount|rebate|cash[\s-]*back|coupon(?:\s+value)?"
     r"|earn(?:ed)?|rewards?|store\s+credit|points?|pts?\.?|was|msrp|rrp)"
@@ -229,7 +232,7 @@ _PRICE_LIMIT_SUFFIX_RE = re.compile(
 )
 _REFERENCE_NUMBER_PREFIX_RE = re.compile(
     r"(?:\b(?:sku|upc|ean|gtin"
-    r"|(?:lot|batch|serial|model|item|article|product|ref(?:erence)?\.?)(?:\s+(?:no\.?|number|code))?"
+    r"|(?:lot|batch|serial|model|item|article|product|id|ref(?:erence)?\.?)(?:\s+(?:no\.?|number|code))?"
     r"|exp(?:iry|ires?|iration)?(?:\s+date)?|best\s+(?:before|by)|use\s+by|sell\s+by"
     r"|mfg(?:\s+date)?|manufactur(?:ed|ing)(?:\s+(?:date|on))?)"
     r"|상품(?:번호|코드)|제품(?:번호|코드)|제조(?:일자|일|번호)|유통기한|소비기한"
@@ -391,6 +394,7 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
         lambda match: _QUALIFIED_DOLLARS[match.group(1).upper()] + "$",
         unicodedata.normalize("NFKC", label.price_text),
     )
+    printed = _DONG_ABBREVIATION_RE.sub("VND", printed)
     if any(match.upper() != code for match in _PRICE_CURRENCY_CODE_RE.findall(printed)):
         return None
     if code in _PRICE_CURRENCY_SYMBOLS and any(

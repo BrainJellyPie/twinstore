@@ -13,6 +13,9 @@ from tests.engine.test_scenario_target_matching import target_store
 
 
 @pytest.mark.parametrize("tag,currency", [
+    ("ID 1234", "USD"), ("ID: 1234", "EUR"), ("ID no. 1234", "JPY"), ("ID1234", "USD"),
+    ("ID number 1234", "KRW"), ("Product ID 1234", "USD"), ("ｉｄ １２３４", "USD"),
+    ("ID 0", "USD"), ("ID 1.00", "USD"), ("ID #1234", "VND"),
     ("SKU 1234", "USD"), ("SKU: 1234", "USD"), ("UPC 1234", "USD"),
     ("EAN 1234", "EUR"), ("GTIN #1234", "USD"), ("LOT 1234", "USD"),
     ("Lot number: 1234", "USD"), ("Batch no. 1234", "USD"), ("Serial number 1234", "USD"),
@@ -37,6 +40,10 @@ def test_reference_numbers_cannot_be_overridden_by_a_model_price_guess(tag, curr
 
 
 @pytest.mark.parametrize("tag,currency,expected", [
+    ("ID $1.00", "USD", 100), ("ID USD 1.00", "USD", 100), ("ID 1,000원", "KRW", 1000),
+    ("ID 1000₫", "VND", 1000), ("ID price 1.00", "USD", 100),
+    ("VALID 1.00", "USD", 100), ("SOLID 1.00", "USD", 100), ("IDEAL 1.00", "USD", 100),
+    ("IDR1000", "IDR", 1000), ("AID 1.00", "USD", 100),
     ("$1.00", "USD", 100), ("$0.00", "USD", 0), ("1234", "USD", 1234),
     ("PRICE 1234", "USD", 1234), ("Item price $1.00", "USD", 100),
     ("Lot $1.00", "USD", 100), ("LOT USD 1.00", "USD", 100),
@@ -53,7 +60,7 @@ def test_cash_prices_and_ordinary_numeric_tags_remain_usable(tag, currency, expe
 
 
 @pytest.mark.parametrize("known", [False, True])
-@pytest.mark.parametrize("tag", ["SKU 1234", "LOT 1234", "EXP 2026", "ITEM #1234", "REF 1234", "#1234"])
+@pytest.mark.parametrize("tag", ["ID 1234", "SKU 1234", "LOT 1234", "EXP 2026", "ITEM #1234", "REF 1234", "#1234"])
 def test_a_reference_label_preserves_identity_and_the_existing_selling_price(known, tag):
     store = target_store()
     store.racks[0].slots[0].items[0].price = 799
