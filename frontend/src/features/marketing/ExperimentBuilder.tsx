@@ -510,7 +510,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
         {c.kind === "promo" && (
           <div className="flex flex-wrap items-center gap-1">
             {PROMOS.map((p) => (
-              <button key={p} type="button" onClick={() => onPatch({ promo: p })}
+              <button aria-pressed={c.promo === p} key={p} type="button" onClick={() => onPatch({ promo: p })}
                 className={cn("rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", c.promo === p ? "border-transparent bg-[#e8182e] text-white" : "hover:border-foreground/25")}>
                 {p}
               </button>
