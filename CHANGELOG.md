@@ -4,6 +4,11 @@
 
 ## 0.9.1 — Sturdier receipt reading, and numbers and focus that follow you
 
+- Require explicit image selections, price and customer quotas in generated
+  concept-test drafts. Ask for these fields before explanatory text and clarify
+  that a manager's stated price, including a free offer, takes precedence over
+  missing or ambiguous catalog prices. Older partial drafts remain readable.
+
 - Preserve the moved fixture's selection and refused-drop message when touch
   generates a click after dragging. Ordinary taps and keyboard selection keep
   working.

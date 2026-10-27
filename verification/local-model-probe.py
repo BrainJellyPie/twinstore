@@ -13,6 +13,7 @@ customer probes retain their original deterministic stress configuration.
 import argparse
 import asyncio
 import base64
+import hashlib
 import json
 import re
 import shutil
@@ -120,6 +121,8 @@ layout_requests = {
     "layout-set-discount": "Set Green Tea to 20 percent off its regular price. Keep all other products and settings unchanged.",
     "layout-extra-discount": "Green Tea is already discounted from $5.00 to $4.00. Take an extra 10 percent off its CURRENT $4.00 price. Keep its original $5.00 reference price unchanged. Change nothing else.",
     "layout-extra-discount-ko": "Green Tea는 정가 5,000원에서 4,000원으로 이미 할인 중입니다. 현재 판매가 4,000원에서 추가로 10% 할인해 주세요. 정가 표시는 5,000원으로 유지하고 다른 상품은 변경하지 마세요.",
+    "layout-extra-discount-fractional": "Green Tea is already discounted from $5.00 to $4.00. Reduce only its current selling price by another 12.5 percent. Keep the original $5.00 reference price and every other product unchanged.",
+    "layout-extra-discount-promo": "Take an additional 10 percent off Green Tea's current $4.00 selling price, keeping its original $5.00 reference price. Also put a SALE sign on Mineral Water. Change nothing else.",
     "layout-sequence": "First set Green Tea to a new regular shelf price of $4.00, then discount it by 10 percent. Put a SALE sign on Mineral Water. Change nothing else.",
 }
 parser = argparse.ArgumentParser(description=__doc__)
@@ -295,6 +298,8 @@ try:
             reply=reply.model_dump(mode="json"), changed=changed, issues=issues, messages=len(messages),
             characters=sum(len(message.text) for message in messages))
     elif args.case in layout_requests:
+        source_path = Path(draft_layout_edit.__code__.co_filename)
+        result.update(source_path=str(source_path.resolve()), source_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest())
         currency = "KRW" if args.case in {"layout-price-krw", "layout-extra-discount-ko"} else "USD"
         scale = 10 if currency == "KRW" else 1
         store = Store(id="cpu-layout", name="Corner shop", type="convenience", currency=currency, grid_size=(8, 8), racks=[
@@ -314,7 +319,7 @@ try:
             items = [SlotItem(sku=f"drink-{i:02}", name=f"Beverage {i:02}", price=500 + i * 10) for i in range(30)]
             store.racks[0].shape = [[1, 1]]
             store.racks[0].slots = [Slot(block=i // 4, face="N", level=i % 4 + 1, items=items[i * 4:(i + 1) * 4]) for i in range(8)]
-        if args.case in {"layout-set-discount", "layout-extra-discount", "layout-extra-discount-ko"}:
+        if args.case == "layout-set-discount" or args.case.startswith("layout-extra-discount"):
             tea = store.racks[0].slots[0].items[0]
             tea.price, tea.regular_price = 400 * scale, 500 * scale
         expected = products(store)
@@ -333,13 +338,18 @@ try:
             expected["tea"].update(price=0, regular_price=500)
         elif args.case == "layout-set-discount":
             expected["tea"].update(price=400, regular_price=500)
-        elif args.case in {"layout-extra-discount", "layout-extra-discount-ko"}:
+        elif args.case.startswith("layout-extra-discount"):
             expected["tea"].update(price=360 * scale, regular_price=500 * scale)
+            if args.case == "layout-extra-discount-fractional":
+                expected["tea"]["price"] = 350
+            elif args.case == "layout-extra-discount-promo":
+                expected["water"]["promo"] = "SALE"
         elif args.case == "layout-sequence":
             expected["tea"].update(price=360, regular_price=400)
             expected["water"]["promo"] = "SALE"
         elif args.case == "layout-move":
             expected["tea"]["level"] = 3
+        original_store = store.model_dump_json()
         with patch.object(httpx.AsyncClient, "send", traced_send):
             reply = asyncio.run(draft_layout_edit(client, layout_requests[args.case], store, currency))
         edited, applied, warnings = apply_layout_edit(store, reply.changes, currency)
@@ -364,6 +374,8 @@ try:
         issues = [f"Unexpected fields or placement for {sku}" for sku in expected if after.get(sku) != expected[sku]]
         if set(after) != set(expected):
             issues.append("Product identities changed")
+        if store.model_dump_json() != original_store:
+            issues.append("Source layout mutated")
         if args.case in {"layout-missing-product", "layout-missing-product-ko", "layout-unsupported-edit", "layout-no-changes"}:
             if reply.changes or applied or not reply.summary.strip():
                 issues.append("Expected an explicit no-change explanation with no operations.")
