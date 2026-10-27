@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reject receipt replies that copy JSON Schema metadata instead of receipt
+  values. Retry them as invalid answers instead of caching a blank receipt;
+  real receipt values can still carry harmless extra metadata.
+
+- Ask receipt models to count product rows before transcribing them and check
+  the returned count, reducing empty-row repetition in small local models
+  without dropping unreadable products or shortening long receipts.
+
 - Percentages and distances now follow the selected language: French and Spanish
   show "38 %", and large values are grouped ("1 273 m" in French). This covers
   the live conversion and playback progress, the visitor mix in **Settings**, the
@@ -38,6 +46,7 @@
 - Read the printed row behind an inferred receipt total. If that row is a
   subtotal, leave the final total unknown and retain the original row for
   review, while keeping the purchased products and their paid amounts.
+
 
 - Asking TwinStore from the command palette with no model set up now offers
   model setup (download the local model or open **Model settings**) right in
