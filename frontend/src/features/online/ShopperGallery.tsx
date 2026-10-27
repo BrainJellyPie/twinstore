@@ -71,7 +71,7 @@ export function ShopperGallery({ result, money, onWatch, onCompare, onSteps }: {
         </label>
       </div>
 
-      {shown.length === 0 ? <p className="text-xs text-muted-foreground">{t("onCardsNone")}</p> : (
+      {shown.length === 0 ? <p role="status" className="text-xs text-muted-foreground">{t("onCardsNone")}</p> : (
         // On a phone the cards are one swipeable row, so the rest of the report is not thousands of pixels away.
         <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-3">
           {shown.slice(0, limit).map((sh) => {

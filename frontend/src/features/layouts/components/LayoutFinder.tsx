@@ -108,7 +108,7 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
           {layout.generation?.requirements && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{layout.generation.requirements}</p>}
           {!!layout.generation?.reserved_areas?.length && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{t("layoutReservedAreas", { areas: layout.generation.reserved_areas.map((area) => area.label).join(", ") })}</p>}
         </button>)}
-        {filtered.length === 0 && <div className="space-y-3 py-6 text-center text-sm text-muted-foreground">
+        {filtered.length === 0 && <div role="status" className="space-y-3 py-6 text-center text-sm text-muted-foreground">
           <p>{t(layouts.length === 0 ? "noLayoutsSaved" : "noMatchingLayouts")}</p>
           {layouts.length > 0 && (search || group !== "all") && <button type="button" className="rounded-lg border px-3 py-2 text-foreground hover:bg-muted"
             onClick={() => { setGroup("all"); clearSearch(); }}>{t("resetLayoutFilters")}</button>}

@@ -112,3 +112,10 @@ it("offers model setup when no model can find shoppers from a description", asyn
   expect((await screen.findByRole("alert")).textContent).toBe("No model API key is set.");
   expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });
+
+it("says when no shopper matches the search, to screen readers too", () => {
+  vi.mocked(listGroups).mockResolvedValue([]);
+  mount();
+  fireEvent.change(screen.getByLabelText("Search 3 shoppers"), { target: { value: "zzz" } });
+  expect(screen.getByText("No shopper matches.").getAttribute("role")).toBe("status");
+});
