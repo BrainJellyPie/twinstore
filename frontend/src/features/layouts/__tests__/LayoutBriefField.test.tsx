@@ -8,7 +8,10 @@ import * as api from "@/shared/api/client";
 import { LayoutBriefField } from "../components/LayoutBriefField";
 import { DEFAULT_TEMPLATE_CHOICE, type TemplateChoice } from "../templateOptions";
 
-vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), readLayoutBrief: vi.fn() }));
+vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), readLayoutBrief: vi.fn(), getModelSetup: vi.fn() }));
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
+}));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 function Harness() {
@@ -41,4 +44,14 @@ it("applies the options a brief asks for and lists what the options cannot expre
   // Editing the brief retires the reading shown for the old words.
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "A dense grid" } });
   expect(screen.queryByText("Tills: 2")).toBeNull();
+});
+
+it("offers model setup when no model can read the brief", async () => {
+  vi.mocked(api.getModelSetup).mockResolvedValue({ cloud_providers: [], local: { state: "stopped", downloaded: true, progress: null } } as unknown as api.ModelSetup);
+  vi.mocked(api.readLayoutBrief).mockRejectedValue(new Error("No model API key is set."));
+  render(<QueryClientProvider client={new QueryClient()}><Harness /></QueryClientProvider>);
+  fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "A calm loop with two tills" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply to the options" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("No model API key is set.");
+  expect(await screen.findByTestId("needs-model")).toBeTruthy();
 });

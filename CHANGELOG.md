@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Describing the day in the situation editor, describing an area on the
+  **Area** page, applying a layout brief, finding shoppers from a description
+  and running vision shoppers for a neighbor now offer model setup (add a key or
+  download the local model) when no model is set up. Before, they showed only
+  the server's error.
+
 - **Explain the difference** in Compare runs and reading **receipt photos** for
   validation now offer model setup (add a key or download the local model)
   when no model can do the job, like the app's other model helpers. Before,
