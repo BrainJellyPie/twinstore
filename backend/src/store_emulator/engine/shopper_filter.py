@@ -240,9 +240,13 @@ async def find_shoppers(
     store: Store, currency: str,
 ) -> ShopperMatch:
     shelves: dict[str, set[str]] = {}
+    products: dict[str, set[str]] = {}
     for rack in store.product_racks:
         if rack.rack_name.strip():
             shelves.setdefault(rack.rack_name.strip().casefold(), set()).add(rack.id)
+        for slot in rack.slots:
+            for item in slot.items:
+                products.setdefault(item.name.strip().casefold(), set()).add(item.sku)
 
     class TimedFilter(_Filter):
         @field_validator("bought", "bought_there", "sort", mode="before")
@@ -258,6 +262,15 @@ async def find_shoppers(
                 return [canonical_identifier(item, choices) if isinstance(item, str) else item
                         for item in cast(list[object], value)]
             return value
+
+        @field_validator("bought_products", "skipped_products")
+        @classmethod
+        def product_targets(cls, values: list[str], info: ValidationInfo) -> list[str]:
+            if values and not any(resolve_listed(name, products) is not None for name in values):
+                raise ValueError(f"{info.field_name} requires at least one listed product name. "
+                                 "Correct the requested product using the supplied Products list; "
+                                 "do not substitute a different product or remove a requested condition.")
+            return values
 
         @model_validator(mode="after")
         def shelf_purchase_target(self) -> Self:

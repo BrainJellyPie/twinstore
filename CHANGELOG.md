@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate generated product-purchase search conditions before caching. A
+  nonempty product list with no resolvable target now requests correction
+  instead of silently disappearing from the applied shopper filter.
+
 - Recognize rupee (`₹`) and Brazilian real (`R$`) marks on captured price
   tags. Foreign amounts remain estimates for review, while a matching INR
   amount such as `₹100` retains its literal 100-rupee value.
