@@ -16,6 +16,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { WholeNumberInput } from "@/shared/components/WholeNumberInput";
 import { cn } from "@/shared/utils/cn";
+import { formatPercent } from "@/shared/utils/money";
 import { searchText } from "@/shared/utils/searchText";
 import { onRadioKeys } from "@/shared/utils/tabKeys";
 import { useI18n } from "@/shared/i18n/i18n";
@@ -272,7 +273,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
           <p className="text-[0.7rem] text-muted-foreground">{t("onRunMissionsHint")}</p>
           {/* A slider holds a weight; what it means, and what screen readers hear, is its share of all the weights. */}
           {MISSIONS.map((m) => {
-            const share = `${mixTotal ? Math.round((mix[m] / mixTotal) * 100) : 0}%`;
+            const share = formatPercent(mixTotal ? mix[m] / mixTotal : 0, 0);
             return (
               <label key={m} className="grid grid-cols-[110px_minmax(0,1fr)_40px] items-center gap-2 text-xs" title={t(MISSION_HINTS[m])}>
                 <span>{t(MISSION_LABELS[m])}</span>
@@ -287,7 +288,7 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
           <legend className="text-xs font-medium">{t("onRunArrivals")}</legend>
           <p className="text-[0.7rem] text-muted-foreground">{t("onRunArrivalsHint")}</p>
           {ARRIVALS.map((a) => {
-            const share = `${arrivalTotal ? Math.round((arrivals[a] / arrivalTotal) * 100) : 0}%`;
+            const share = formatPercent(arrivalTotal ? arrivals[a] / arrivalTotal : 0, 0);
             return (
               <label key={a} className="grid grid-cols-[110px_minmax(0,1fr)_40px] items-center gap-2 text-xs" title={t(ARRIVAL_HINTS[a])}>
                 <span>{t(ARRIVAL_LABELS[a])}</span>
@@ -301,8 +302,8 @@ export function RunLauncher({ projectId, sites, firstSiteId, compareWith, initia
         <label className="grid grid-cols-[110px_minmax(0,1fr)_40px] items-center gap-2 text-xs">
           <span>{t("onRunMobile")}</span>
           <input type="range" min={0} max={100} value={mobile} onChange={(e) => setMobile(Number(e.target.value))} aria-label={t("onRunMobile")}
-            aria-valuetext={`${mobile}%`} />
-          <span className="text-right tabular-nums">{mobile}%</span>
+            aria-valuetext={formatPercent(mobile / 100, 0)} />
+          <span className="text-right tabular-nums">{formatPercent(mobile / 100, 0)}</span>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium">{t("onRunEyesight")}</span>

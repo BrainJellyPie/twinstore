@@ -7,7 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { RackDetailView } from "./RackDetailView";
-import { currencyCode } from "@/shared/utils/money";
+import { currencyCode, formatPercent } from "@/shared/utils/money";
 import { LayoutEditInWords } from "./LayoutEditInWords";
 import { DeleteLayout } from "@/features/layouts/components/DeleteLayout";
 import { RenameLayout } from "@/features/layouts/components/RenameLayout";
@@ -160,7 +160,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
                         <span className="truncate" title={name}>{name}</span>
                         <span className="shrink-0 tabular-nums">
                           {count.toLocaleString(locale)}
-                          <span className="ml-1.5 inline-block w-8 text-right text-muted-foreground">{count / total < 0.005 ? "<1" : Math.round((count / total) * 100)}%</span>
+                          <span className="ml-1.5 inline-block min-w-8 text-right text-muted-foreground">{count / total < 0.005 ? `<${formatPercent(0.01, 0)}` : formatPercent(count / total, 0)}</span>
                         </span>
                       </div>
                       <div className="mt-1 h-1.5 rounded-full bg-foreground/[0.06]" aria-hidden>

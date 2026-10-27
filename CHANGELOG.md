@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Percentages and distances now follow the selected language: French and Spanish
+  show "38 %", and large values are grouped ("1 273 m", "1.273 m"). This covers
+  the live conversion and playback progress, the visitor mix in **Settings**, the
+  conjoint report, shelf-test charts, rival prices in shelf capture, the online
+  page flow, channel mix and shopper-mix sliders, and the area page's radius,
+  catchment, walk distances and neighbor effects. Before, these were written as
+  a bare number followed by "%" or "m" in every language.
+
 - An ID longer than 128 characters in an address or request (a run, layout,
   photo, test, online store or project) is now refused as invalid. Before, about
   thirty pages of the API answered such an ID with a server error, because the

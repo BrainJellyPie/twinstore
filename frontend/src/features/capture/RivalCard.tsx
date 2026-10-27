@@ -83,7 +83,7 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
                   <span>{p.name}</span>
                   <span className="num text-muted-foreground">
                     {t("capVs", { rival: formatMoney(p.rival_price, result.currency), ours: formatMoney(p.our_price, result.currency) })}
-                    <span className={cn("ml-1.5 font-semibold", p.ratio < 1 ? "text-negative" : "text-positive")}>{p.ratio < 1 ? "−" : "+"}{Math.abs(Math.round((p.ratio - 1) * 100))}%</span>
+                    <span className={cn("ml-1.5 font-semibold", p.ratio < 1 ? "text-negative" : "text-positive")}>{p.ratio < 1 ? "−" : "+"}{formatPercent(Math.abs(p.ratio - 1), 0)}</span>
                   </span>
                 </li>
               ))}

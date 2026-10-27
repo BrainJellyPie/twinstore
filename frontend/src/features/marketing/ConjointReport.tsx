@@ -146,7 +146,7 @@ function Simulator({ report: r }: { report: Report }) {
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm font-medium">
                   <span className="grid size-6 place-items-center rounded-md text-xs font-bold text-white" style={{ background: `var(--viz-${(i % 4) + 1})` }}>{LETTERS[i]}</span>
-                  <span className="num">{Math.round((result[i] ?? 0) * 100)}%</span>
+                  <span className="num">{formatPercent(result[i] ?? 0, 0)}</span>
                 </span>
                 {products.length > 1 && (
                   <button type="button" onClick={() => setProducts((ps) => ps.filter((_, j) => j !== i))} aria-label={t("mkRemoveProductLetter", { letter: LETTERS[i]! })}
@@ -181,7 +181,7 @@ function Simulator({ report: r }: { report: Report }) {
                 <div className="h-5 rounded-[4px] bg-foreground/[0.04]">
                   <div className="h-full rounded-r-[4px] transition-[width]" style={{ width: `${(result[i] ?? 0) * 100}%`, background: i < products.length ? `var(--viz-${(i % 4) + 1})` : "var(--viz-mid)" }} />
                 </div>
-                <span className="num text-right text-sm font-semibold">{Math.round((result[i] ?? 0) * 100)}%</span>
+                <span className="num text-right text-sm font-semibold">{formatPercent(result[i] ?? 0, 0)}</span>
               </div>
             ))}
           </div>
@@ -203,7 +203,7 @@ function Simulator({ report: r }: { report: Report }) {
                     }} formatter={(value) => (
                       <div className="flex w-full items-center justify-between gap-3">
                         <span className="text-muted-foreground">{t("mkShareOfA")}</span>
-                        <span className="num font-semibold">{Math.round(Number(value) * 100)}%</span>
+                        <span className="num font-semibold">{formatPercent(Number(value), 0)}</span>
                       </div>
                     )} />} />
                   <Line dataKey="share" type="monotone" stroke="var(--color-share)" strokeWidth={2} dot={false} />
@@ -238,7 +238,7 @@ function Segments({ report: r }: { report: Report }) {
                   return (
                     <td key={n} className="text-right">
                       <span className={cn("rounded px-1", Math.abs(d) >= 0.03 && (d > 0 ? "bg-[color-mix(in_oklab,var(--viz-pos-2)_18%,transparent)]" : "bg-[color-mix(in_oklab,var(--viz-neg-2)_18%,transparent)]"))}>
-                        {Math.round((s.importances[n] ?? 0) * 100)}%
+                        {formatPercent(s.importances[n] ?? 0, 0)}
                       </span>
                     </td>
                   );

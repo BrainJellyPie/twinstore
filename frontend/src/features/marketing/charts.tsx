@@ -190,7 +190,7 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
         )}
         <XAxis dataKey="price" type="number" domain={["dataMin", "dataMax"]} tickFormatter={money} tickLine={false} axisLine={false}
           tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} minTickGap={28} />
-        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false} width={40}
+        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => formatPercent(v / 100, 0)} tickLine={false} axisLine={false} width={40}
           tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
         <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.3 }}
           content={<ChartTooltipContent indicator="line" labelFormatter={(_v, payload) => {
@@ -199,7 +199,7 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
           }} formatter={(value, name) => (
             <div className="flex w-full items-center justify-between gap-3">
               <span className="text-muted-foreground">{vwConfig[name as keyof typeof vwConfig]?.label ?? String(name)}</span>
-              <span className="num font-semibold">{Math.round(Number(value))}%</span>
+              <span className="num font-semibold">{formatPercent(Number(value) / 100, 0)}</span>
             </div>
           )} />} />
         <ChartLegend itemSorter={null} content={<ChartLegendContent />} />

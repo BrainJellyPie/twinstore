@@ -7,6 +7,7 @@ import { Route } from "lucide-react";
 
 import type { FlowLink, PageKind, SessionOutcome, VariantSummary } from "@/shared/api/online";
 import { cn } from "@/shared/utils/cn";
+import { formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -91,7 +92,7 @@ export function PageFlow({ variants }: { variants: VariantSummary[] }) {
   const { nodes, ribbons, columns, x } = layout(flow, summary.sessions);
   const name = (n: Node) => (n.page ? t(PAGE_LABELS[n.page]) : t(OUTCOME_LABELS[n.outcome!]));
   const lit = (r: Ribbon) => !focus || focus.ribbon === r.key || focus.node === r.from.id || focus.node === r.to.id;
-  const share = (n: number) => `${summary.sessions ? Math.round((n / summary.sessions) * 100) : 0}%`;
+  const share = (n: number) => formatPercent(summary.sessions ? n / summary.sessions : 0, 0);
   const route = summary.flow_route ?? [];
   const hovered = focus?.ribbon ? ribbons.find((r) => r.key === focus.ribbon) : null;
   const hoveredNode = focus?.node ? nodes.find((n) => n.id === focus.node) : null;

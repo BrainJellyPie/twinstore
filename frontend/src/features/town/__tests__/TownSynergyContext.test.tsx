@@ -101,3 +101,16 @@ it("announces a failed analysis next to the button", async () => {
   expect(alert.textContent).toBe("Current analysis failed");
   expect(analyze().closest("section")?.contains(alert)).toBe(true);
 });
+
+it("writes large effects, distances and walks in the selected language's number format", async () => {
+  vi.mocked(api.getTownSynergy).mockResolvedValue([{ ...row, distance_m: 1307.4, effect_on_focal_visitors: -2544.2, effect_on_focal_pct: -16, role: "competitor" }]);
+  vi.mocked(api.getTownDemand).mockResolvedValue({ focal_venue_id: "store", day_type: "weekday", total_daily_visitors: 15923, direct_visitors: 15000,
+    linked_visitors: 923, hourly_totals: Array(24).fill(0), segment_totals: {}, origin_shares: [], linked_trips: [], store_shares: [],
+    market_share: 0.1, catchment_radius_50_m: 1273.2, catchment_radius_80_m: 2000, avg_walk_distance_m: 1312 });
+  await mount();
+  expect(await screen.findByText("1,273 m")).toBeTruthy();
+  expect(screen.getByText("1,312 m")).toBeTruthy();
+  await completed();
+  expect(screen.getByText("1,307 m")).toBeTruthy();
+  expect(screen.getByText(/^-2,544 \(/)).toBeTruthy();
+});

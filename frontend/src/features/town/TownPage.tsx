@@ -23,7 +23,7 @@ import { ModelWaiting } from "@/shared/components/ModelWaiting";
 
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, labelOf, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
-import { formatPercent } from "@/shared/utils/money";
+import { formatDecimal, formatPercent } from "@/shared/utils/money";
 import { revealOnMount } from "@/shared/utils/focusOnMount";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
@@ -332,7 +332,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaSize")}</span>
           <input type="range" min={200} max={3000} step={50} value={spec.size_m} onChange={(e) => setSpec({ ...spec, size_m: Number(e.target.value) })} className="flex-1 accent-primary" />
-          <span className="w-14 text-right tabular-nums">{spec.size_m} m</span>
+          <span className="w-14 text-right tabular-nums">{formatDecimal(spec.size_m, 0)} m</span>
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaDensity")}</span>
@@ -400,7 +400,7 @@ function ImportPanel({ projectId, onDone, onError, hasTown }: { projectId: strin
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRadius")}</span>
           <input type="range" min={200} max={1500} step={50} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="flex-1 accent-primary" />
-          <span className="w-14 text-right tabular-nums">{radius} m</span>
+          <span className="w-14 text-right tabular-nums">{formatDecimal(radius, 0)} m</span>
         </label>
         <Button size="sm" variant={replace.armed ? "destructive" : "outline"} className="w-full" onBlur={replace.disarm}
           onClick={() => replace.confirm(() => imp.mutate())} disabled={!address.trim() || imp.isPending}>
@@ -431,8 +431,8 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
       <div className="grid grid-cols-2 gap-2">
         <Stat label={t("areaVisitorsPerDay")} value={Math.round(demand.total_daily_visitors).toLocaleString(locale)} hint={t("areaViaNearby", { count: Math.round(demand.linked_visitors) })} />
         <Stat label={t("areaMarketShare")} value={formatPercent(demand.market_share, 1)} hint={t("areaShareHint")} />
-        <Stat label={t("areaHalfWithin")} value={`${Math.round(demand.catchment_radius_50_m)} m`} hint={t("areaEightyWithin", { distance: Math.round(demand.catchment_radius_80_m) })} />
-        <Stat label={t("areaAvgWalk")} value={`${Math.round(demand.avg_walk_distance_m)} m`} hint={t("areaWalkMinutes", { minutes: Math.max(1, Math.round(demand.avg_walk_distance_m / 80)) })} icon={Footprints} />
+        <Stat label={t("areaHalfWithin")} value={`${formatDecimal(Math.round(demand.catchment_radius_50_m), 0)} m`} hint={t("areaEightyWithin", { distance: Math.round(demand.catchment_radius_80_m) })} />
+        <Stat label={t("areaAvgWalk")} value={`${formatDecimal(Math.round(demand.avg_walk_distance_m), 0)} m`} hint={t("areaWalkMinutes", { minutes: Math.max(1, Math.round(demand.avg_walk_distance_m / 80)) })} icon={Footprints} />
       </div>
       <div>
         <div className="mb-1 text-muted-foreground">{t("areaByHour")}</div>
@@ -449,7 +449,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
           <div key={seg} className="mb-1 grid grid-cols-[110px_1fr_44px] items-center gap-2">
             <span>{labelOf(SEGMENT_LABELS, seg, t)}</span>
             <span className="h-1.5 rounded-full bg-muted"><span className="block h-1.5 rounded-full bg-primary" style={{ width: `${(v / segTotal) * 100}%` }} /></span>
-            <span className="text-right tabular-nums">{Math.round((v / segTotal) * 100)}%</span>
+            <span className="text-right tabular-nums">{formatPercent(v / segTotal, 0)}</span>
           </div>
         ))}
       </div>
@@ -493,9 +493,9 @@ function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppe
             <td className="max-w-[170px] truncate py-1" title={r.name}>
               <span className="mr-1 inline-block size-2 rounded-full" style={{ background: VENUE_COLORS[r.category] }} />{r.name}
             </td>
-            <td className="text-right tabular-nums text-muted-foreground">{Math.round(r.distance_m)} m</td>
+            <td className="text-right tabular-nums text-muted-foreground">{formatDecimal(Math.round(r.distance_m), 0)} m</td>
             <td className={cn("text-right tabular-nums", r.role === "complement" ? "text-positive" : r.role === "competitor" ? "text-negative" : "text-muted-foreground")}>
-              {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{formatPercent(r.effect_on_focal_pct / 100, 1)})
+              {r.effect_on_focal_visitors > 0 ? "+" : ""}{formatDecimal(Math.round(r.effect_on_focal_visitors), 0)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{formatPercent(r.effect_on_focal_pct / 100, 1)})
             </td>
             <td className="pl-1 text-right">
               <button type="button" onClick={() => onAskShoppers(r)} title={t("areaAskShoppers")}
