@@ -23,6 +23,7 @@ import { explainComparison, type ComparisonReport, type MetricComparison, type R
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
 import { currencyCode, formatMoney, formatPercent, formatDecimal } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { messages, type Locale, type MessageKey } from "@/shared/i18n/messages";
 import { translate } from "@/shared/i18n/translate";
 
@@ -126,6 +127,7 @@ function Explain({ projectId, a, b }: { projectId: string; a: string; b: string 
         </button>
         <span className="text-xs text-muted-foreground">{t("cmpExplainHint")}</span>
         {explain.error && <p role="alert" className="basis-full text-xs text-destructive">{explain.error.message}</p>}
+        {explain.error && <div className="basis-full"><NeedsModel purpose="assist" /></div>}
       </div>
     );
   }

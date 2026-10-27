@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Explain the difference** in Compare runs and reading **receipt photos** for
+  validation now offer model setup (add a key or download the local model)
+  when no model can do the job, like the app's other model helpers. Before,
+  they showed only the server's error.
+
 - **Read the pack** on a product card now offers model setup (add a key or
   download the local model) when no model can read it, as a batch upload
   already did. The notice's buttons wrap inside a narrow card or phone screen
