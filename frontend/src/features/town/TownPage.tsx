@@ -193,7 +193,8 @@ function MapToolbar({
     </button>
   );
   return (
-    <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-1 glass rounded-xl border p-1 text-sm shadow-float lg:left-6 lg:right-auto lg:top-6 lg:max-w-[calc(100%-3rem)]">
+    <div className="absolute left-3 right-3 top-3 glass rounded-xl border p-1 text-sm shadow-float lg:left-6 lg:right-auto lg:top-6 lg:max-w-[calc(100%-3rem)]">
+      <div className="flex flex-wrap items-center gap-1">
       {btn("inspect", MousePointer2, t("areaModeExplore"))}
       {btn("place", MapPinPlus, t("areaModeOpen"))}
       {mode === "place" && (
@@ -203,6 +204,8 @@ function MapToolbar({
       )}
       {btn("remove", Trash2, t("areaModeClose"))}
       {busy && <Loader2 className="mx-1 size-3.5 animate-spin" />}
+      </div>
+      {mode !== "inspect" && <p role="status" className="px-1 pt-0.5 text-xs text-muted-foreground">{t(mode === "place" ? "areaOpenHint" : "areaCloseHint")}</p>}
     </div>
   );
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The **Area** map's **Open venue** and **Close venue** tools now say what to
+  do ("Click the map where the venue opens", "Click a venue on the map to close
+  it"). Before, only the mouse cursor changed.
+
 - **Auto-place starter products** asks before Escape, the close button or a
   click outside drops typed requirements or chosen shelves, like **Edit products
   together** now does. Closing while a save is under way still closes at once;

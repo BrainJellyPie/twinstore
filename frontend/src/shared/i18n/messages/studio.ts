@@ -67,6 +67,8 @@ export const studioMessages = {
   areaSynergyHint: ["Removes each venue in turn and re-estimates our visitors: complements bring us customers (linked trips), competitors take them.", "시설을 하나씩 빼고 우리 매장 방문객을 다시 추정합니다. 보완 시설은 고객을 데려오고(연계 방문), 경쟁 시설은 고객을 빼앗아 갑니다.", "依次移除每个商户并重新估算本店访客：互补商户带来顾客（顺路到访），竞争商户则会抢走顾客。", "施設を1つずつ取り除いて自店の来店客を再推定します。補完施設は顧客を連れてきて（ついで来店）、競合施設は顧客を奪います。", "Quita cada local por turnos y vuelve a estimar nuestros visitantes: los complementarios nos traen clientes (visitas encadenadas) y los competidores nos los quitan.", "Retire chaque lieu tour à tour et réestime nos visiteurs : les commerces complémentaires nous amènent des clients (trajets combinés), les concurrents nous en prennent."],
   areaModeExplore: ["Explore", "둘러보기", "浏览", "探索", "Explorar", "Explorer"],
   areaModeOpen: ["Open venue", "시설 추가", "开设商户", "施設を追加", "Abrir local", "Ouvrir un lieu"],
+  areaOpenHint: ["Click the map where the venue opens.", "시설을 열 위치를 지도에서 클릭하세요.", "在地图上点击商户开设的位置。", "施設を開く場所を地図上でクリックしてください。", "Haz clic en el mapa donde abre el local.", "Cliquez sur la carte à l’endroit où le lieu ouvre."],
+  areaCloseHint: ["Click a venue on the map to close it. Our store stays.", "닫을 시설을 지도에서 클릭하세요. 우리 매장은 그대로 남습니다.", "在地图上点击要关闭的商户。我们的门店会保留。", "閉じる施設を地図上でクリックしてください。自店はそのまま残ります。", "Haz clic en un local del mapa para cerrarlo. Nuestra tienda se queda.", "Cliquez sur un lieu de la carte pour le fermer. Notre magasin reste."],
   areaModeClose: ["Close venue", "시설 제거", "关闭商户", "施設を削除", "Cerrar local", "Fermer un lieu"],
   areaVenueType: ["Venue type", "시설 유형", "商户类型", "施設の種類", "Tipo de local", "Type de lieu"],
   areaOurStore: ["Our store", "우리 매장", "本店", "自店", "Nuestra tienda", "Notre magasin"],
