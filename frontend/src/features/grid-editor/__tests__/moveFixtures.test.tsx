@@ -138,6 +138,39 @@ it("keeps a refused move's message when the floor width is left unchanged", () =
   expect(screen.getByRole("alert").textContent).toContain("overlaps");
 });
 
+it.each([false, true])("keeps a touch drag's selection or error when the browser then clicks the pressed cell (blocked: %s)", (blocked) => {
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={setup([table, shelf])} onClose={vi.fn()} onSaved={vi.fn()} />);
+  const from = screen.getByTestId("grid-cell-4-3");
+  const to = screen.getByTestId(blocked ? "grid-cell-3-2" : "grid-cell-6-6");
+  fireEvent.click(from);
+  Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => to });
+  try {
+    fireEvent.pointerDown(from, { button: 0, pointerType: "touch", pointerId: 1 });
+    // Implicit touch capture keeps pointerup and its synthetic click on the pressed cell.
+    fireEvent.pointerUp(from, { button: 0, pointerType: "touch", pointerId: 1 });
+    fireEvent.click(from, { detail: 1 });
+    if (blocked) {
+      expect(screen.getByRole("alert").textContent).toContain("overlaps");
+      expect(from.getAttribute("aria-pressed")).toBe("true");
+    } else {
+      expect(to.getAttribute("aria-pressed")).toBe("true");
+      expect(to.getAttribute("data-rack-id")).toBe(shelf.id);
+    }
+    // A following keyboard activation and an ordinary tap still select cells.
+    const tableCell = screen.getByTestId("grid-cell-2-2");
+    fireEvent.click(tableCell, { detail: 0 });
+    expect(tableCell.getAttribute("aria-pressed")).toBe("true");
+    const shelfCell = blocked ? from : to;
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => shelfCell });
+    fireEvent.pointerDown(shelfCell, { button: 0, pointerType: "touch", pointerId: 2 });
+    fireEvent.pointerUp(shelfCell, { button: 0, pointerType: "touch", pointerId: 2 });
+    fireEvent.click(shelfCell, { detail: 1 });
+    expect(shelfCell.getAttribute("aria-pressed")).toBe("true");
+  } finally {
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+  }
+});
+
 it("cancels placement with Escape without closing the editor or moving the fixture", async () => {
   const initialSetup = setup([table, shelf]);
   const onClose = vi.fn();

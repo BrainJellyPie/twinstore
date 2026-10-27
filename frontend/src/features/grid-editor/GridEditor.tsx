@@ -50,6 +50,7 @@ export function GridEditor({
 }: GridEditorProps) {
   const { t } = useI18n();
   const dragFrom = useRef<Position | null>(null);
+  const suppressDragClick = useRef(false);
   const [width, height] = gridSize;
   const [cellSize, setCellSize] = useState(() => fittingCellSize(height));
   // One Tab stop for the whole grid (the cell last moved to, else the selected one); the arrow keys move from there.
@@ -148,20 +149,28 @@ export function GridEditor({
           event.currentTarget.querySelector<HTMLElement>(`[data-testid='grid-cell-${next[0]}-${next[1]}']`)?.focus();
         }}
           onPointerDown={(event) => {
+            suppressDragClick.current = false;
             const target = event.target as HTMLElement;
             dragFrom.current = onDragMove && event.button === 0 && !placing && !target.closest("[data-empty='true']") ? cellOf(target) : null;
           }}
-          onPointerCancel={() => { dragFrom.current = null; }}
+          onPointerCancel={() => { dragFrom.current = null; suppressDragClick.current = false; }}
           onPointerUp={(event) => {
             const from = dragFrom.current;
             dragFrom.current = null;
             // Touch keeps the press's target, so the cell under the pointer is looked up where it was released.
             const to = cellOf(document.elementFromPoint(event.clientX, event.clientY));
             if (!from || !to || (from[0] === to[0] && from[1] === to[1])) return;
+            suppressDragClick.current = true;
             onDragMove?.(from, to);
             // Focus follows the fixture instead of staying on the cell it left.
             setCurrent(`${to[0]},${to[1]}`);
             event.currentTarget.querySelector<HTMLElement>(`[data-testid='grid-cell-${to[0]}-${to[1]}']`)?.focus();
+          }}
+          onClickCapture={(event) => {
+            const dragged = suppressDragClick.current;
+            suppressDragClick.current = false;
+            // Touch can click the press cell after the drop; keyboard activation has detail=0.
+            if (dragged && event.detail > 0) { event.preventDefault(); event.stopPropagation(); }
           }}
           style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)`, gridAutoRows: `${cellSize}px` }}>
           {cells}

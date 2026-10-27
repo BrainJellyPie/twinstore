@@ -4,6 +4,10 @@
 
 ## 0.9.1 — Sturdier receipt reading, and numbers and focus that follow you
 
+- Preserve the moved fixture's selection and refused-drop message when touch
+  generates a click after dragging. Ordinary taps and keyboard selection keep
+  working.
+
 - The inventory review's rules and its "still needed" hint now write the
   longest period the same way in every language ("3 660" in French, "3,660" in
   English), and the field-pilot timing rules group "3,600 seconds" like the row

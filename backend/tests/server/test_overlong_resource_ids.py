@@ -39,3 +39,8 @@ def test_a_run_cannot_be_started_under_an_overlong_id(client):
 
 def test_an_id_of_128_characters_is_still_a_valid_name(client):
     assert client.get(f"/api/projects/{PID}/runs/{'b' * 128}/status").status_code == 404
+
+
+@pytest.mark.parametrize("length", [129, 255, 256])
+def test_id_limit_applies_before_filesystem_component_limits(client, length):
+    assert client.get(f"/api/projects/{PID}/runs/{'b' * length}/status").status_code == 400
