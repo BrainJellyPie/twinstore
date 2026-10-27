@@ -128,7 +128,7 @@ parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setu
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero", "traffic-quoted-counts", "traffic-identity-comma",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-us", "persona-fractional", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-us", "persona-fractional", "persona-fractional-batch", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -582,7 +582,7 @@ try:
         elif args.case == "persona-us":
             address, currency, categories, budget = "Austin, Texas, USA", "USD", ["snacks", "drinks"], (300, 1000)
             profile = "Una tienda de barrio para vecinos que compran aperitivos y bebidas. El presupuesto por visita es de 3 a 10 dólares estadounidenses."
-        elif args.case == "persona-fractional":
+        elif args.case in {"persona-fractional", "persona-fractional-batch"}:
             address, currency, categories, budget = "Lyon, France", "EUR", ["coffee", "bakery"], (250, 775)
             profile = "Un petit café de quartier pour les habitants qui achètent du café et des pâtisseries. Le budget par visite est de 2,50 à 7,75 euros."
         expected_hour, customer_count = 9, 2
@@ -608,7 +608,7 @@ try:
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types"}:
+            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-fractional-batch"}:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
@@ -619,6 +619,9 @@ try:
                 if args.case == "persona-mixed-types":
                     area = TradeAreaProfile(keywords=["neighborhood"],
                         identities=["student", "retiree", "nurse"], purposes=["buy snacks", "buy drinks"])
+                if args.case == "persona-fractional-batch":
+                    area = TradeAreaProfile(keywords=["neighborhood", "coffee"],
+                        identities=["local resident"], purposes=["buy coffee", "buy pastries"])
                 hourly = [HourlyProfile(hour=expected_hour, visitor_count=customer_count, person_types=area.identities)]
                 if args.case == "persona-hour-identities":
                     area = TradeAreaProfile(keywords=["neighborhood", "convenience"],
@@ -637,7 +640,7 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types"} and len(written) != customer_count:
+        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-fractional-batch"} and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
         if args.case == "persona-mixed-types":
             requests = [json.loads(line)["request"] for line in (output / "requests.jsonl").read_text().splitlines()]
