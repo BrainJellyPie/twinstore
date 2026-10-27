@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject receipt replies that copy JSON Schema metadata instead of receipt
+  values. Retry them as invalid answers instead of caching a blank receipt;
+  real receipt values can still carry harmless extra metadata.
+
 - Ask receipt models to count product rows before transcribing them and check
   the returned count, reducing empty-row repetition in small local models
   without dropping unreadable products or shortening long receipts.

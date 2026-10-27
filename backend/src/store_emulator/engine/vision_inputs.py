@@ -13,7 +13,7 @@ matched to the store's products so receipts can score a run like a POS export.
 import csv
 import io
 import re
-from typing import Protocol, Self
+from typing import Protocol, Self, cast
 
 import numpy as np
 from PIL import Image, ImageOps
@@ -141,6 +141,16 @@ class _ReceiptVLM(BaseModel):
     total_row: str = Field(default="", max_length=160, description="The complete printed row supplying the final total, preserving its label; empty if absent")
     total: float | None = Field(default=None, allow_inf_nan=False)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _receipt_values_not_schema(cls, value: object) -> object:
+        if (isinstance(value, dict)
+                and any(key in value for key in ("$schema", "$defs", "properties", "required"))
+                and not any(key in value for key in cls.model_fields)):
+            raise ValueError("Return receipt values read from the photo, not the JSON Schema. "
+                             "Fill store, date, time, currency, product_row_count, lines, total_row and total with observations.")
+        return cast(object, value)
+
     @field_validator("product_row_count", mode="before")
     @classmethod
     def _numeric_product_count(cls, value: object) -> object:
@@ -219,7 +229,7 @@ async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, defa
                 _minor(line.line_total, currency)
             return self
 
-    user = f"Transcribe this receipt. If no currency is readable, leave it empty; the store uses {default_currency.strip().upper()}."
+    user = f"Transcribe this receipt into a populated receipt object. Return the values read from the photo, not the JSON Schema. Do not copy schema keys such as $defs, properties, required or type. If no currency is readable, leave it empty; the store uses {default_currency.strip().upper()}."
     # Every line has quantities and prices; the shared storefront-rating cap
     # truncates ordinary long receipts before the complete list can be read.
     r = await llm.generate_structured_with_image_async(
