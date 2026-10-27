@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- **Price checks** says what the review still needs (the store reference
-  without spaces at either end, the audit date and both CSV files) while its
-  button is unavailable, instead of leaving the button greyed out unexplained.
+- **Price checks**, **Unit prices** and **Inventory** say what the review
+  still needs (for example the store reference without spaces at either end,
+  the dates and the CSV files) while its button is unavailable, instead of
+  leaving the button greyed out unexplained.
 
 - The neighborhood card says its size is the side of the area ("1,200 m
   across"), so a map imported with a 600 m radius no longer looks like it

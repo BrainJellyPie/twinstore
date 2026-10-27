@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { inventoryExport, inventoryPreview, inventoryTemplateDownload } from "@/services/mutations/inventoryReview";
@@ -30,6 +30,7 @@ export function InventoryReview({ projectId }: { projectId: string }) {
   const template = useMutation({ ...inventoryTemplateDownload(projectId), onSuccess: (blob) => save(blob, "inventory-template.csv") });
   const busy = preview.isPending || audit.isPending || template.isPending;
   const days = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
+  const needsId = useId();
   const valid = !!file && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && days >= 1 && days <= 3660 && /^[A-Z]{3}$/.test(currency);
   const clear = () => { preview.reset(); audit.reset(); template.reset(); };
   const report = preview.data;
@@ -53,7 +54,8 @@ export function InventoryReview({ projectId }: { projectId: string }) {
       clear(); setFileError(""); const chosen = e.target.files?.[0];
       if (chosen && chosen.size > 2 * 1024 * 1024) { setFile(undefined); setFileError(t("mkInvTooLarge")); } else setFile(chosen);
     }} /></label>
-    <Button disabled={!valid || busy} onClick={() => { if (file) preview.mutate({ file, start_date: start, end_date: end, currency }); }}>{t("mkInvReview")}</Button>
+    <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { if (file) preview.mutate({ file, start_date: start, end_date: end, currency }); }}>{t("mkInvReview")}</Button>
+    {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkInvReviewNeeds")}</p>}
     {preview.isPending && <p className="text-sm">{t("mkInvReconciling")}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {report && <div className="space-y-3 text-sm">

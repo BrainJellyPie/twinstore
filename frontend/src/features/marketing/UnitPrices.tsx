@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { unitPriceExport, unitPricePreview, unitPriceTemplateDownload } from "@/services/mutations/unitPrices";
@@ -25,6 +25,7 @@ export function UnitPrices({ projectId }: { projectId: string }) {
   const audit = useMutation(unitPriceExport(projectId)); const template = useMutation(unitPriceTemplateDownload(projectId));
   const busy = preview.isPending || audit.isPending || template.isPending;
   const clear = () => { preview.reset(); audit.reset(); template.reset(); };
+  const needsId = useId();
   const valid = !!file && retailer.length > 0 && retailer === retailer.trim() && /^\d{4}-\d{2}-\d{2}$/.test(asOf)
     && /^\d+$/.test(age) && Number(age) <= 365;
   const report = preview.data;
@@ -48,7 +49,8 @@ export function UnitPrices({ projectId }: { projectId: string }) {
       clear(); setFileError(""); const chosen = e.target.files?.[0];
       if (chosen && chosen.size > 2 * 1024 * 1024) { setFile(undefined); setFileError(t("mkUpTooLarge")); } else setFile(chosen);
     }} /></label>
-    <Button disabled={!valid || busy} onClick={() => { clear(); if (file) preview.mutate({ file, focal_retailer: retailer, as_of: asOf, max_age_days: Number(age) }); }}>{t("mkUpCompare")}</Button>
+    <Button disabled={!valid || busy} aria-describedby={valid ? undefined : needsId} onClick={() => { clear(); if (file) preview.mutate({ file, focal_retailer: retailer, as_of: asOf, max_age_days: Number(age) }); }}>{t("mkUpCompare")}</Button>
+    {!valid && <p id={needsId} className="text-xs text-muted-foreground">{t("mkUpCompareNeeds")}</p>}
     {preview.isPending && <p>{t("mkUpReviewing")}</p>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {report && <div className="space-y-3">

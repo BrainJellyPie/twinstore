@@ -141,3 +141,11 @@ it("surfaces source deletion on export and clears it on a new file", async () =>
   fireEvent.change(screen.getByLabelText("Inventory CSV"), { target: { files: [new File(["new"], "new.csv")] } });
   expect(screen.queryByRole("alert")).toBeNull(); expect(screen.queryByText(/SKUs reconcile/)).toBeNull();
 });
+
+it("says what the review still needs while it cannot run", () => {
+  render(<InventoryReview projectId="project_test" />, { wrapper });
+  const needs = /To review, choose a period of 1–3,660 days/;
+  expect(screen.getByText(needs)).toBeTruthy();
+  fill();
+  expect(screen.queryByText(needs)).toBeNull();
+});
