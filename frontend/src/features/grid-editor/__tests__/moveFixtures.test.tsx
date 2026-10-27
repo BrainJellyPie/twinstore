@@ -97,6 +97,36 @@ it("places a multi-cell fixture at the clicked top-left cell even when selected 
   } });
 });
 
+it("moves a fixture dragged onto free cells and refuses a drop onto another fixture", async () => {
+  const initialSetup = setup([table, shelf]);
+  const onSaved = vi.fn();
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={initialSetup} onClose={vi.fn()} onSaved={onSaved} />);
+  const drag = (from: string, to: string) => {
+    // The cell under the pointer where it is released (touch keeps the press's target).
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => screen.getByTestId(to) });
+    screen.getByTestId(from).focus();  // a mouse press focuses the button it lands on
+    fireEvent.pointerDown(screen.getByTestId(from), { button: 0 });
+    fireEvent.pointerUp(screen.getByTestId(to), { button: 0 });
+  };
+  try {
+    drag("grid-cell-4-3", "grid-cell-3-2");
+    expect(screen.getByRole("alert").textContent).toContain("overlaps");
+    drag("grid-cell-4-3", "grid-cell-6-6");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByTestId("grid-cell-6-6").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("grid-cell-6-6").getAttribute("data-rack-id")).toBe(shelf.id);
+    expect(document.activeElement).toBe(screen.getByTestId("grid-cell-6-6"));
+    // A press and release on one cell is a click, not a move.
+    drag("grid-cell-6-6", "grid-cell-6-6");
+    expect(screen.getByTestId("grid-cell-6-6").getAttribute("data-rack-id")).toBe(shelf.id);
+  } finally {
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+  }
+  fireEvent.click(screen.getByTestId("grid-save-button"));
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+  expect(save).toHaveBeenCalledWith("p", "s", { store: { ...initialSetup.store, racks: [table, { ...shelf, position: [6, 6] }] } });
+});
+
 it("cancels placement with Escape without closing the editor or moving the fixture", async () => {
   const initialSetup = setup([table, shelf]);
   const onClose = vi.fn();

@@ -976,7 +976,7 @@ export const storeMessages = {
   gridZoomIn: ["Zoom in grid", "격자 확대", "放大网格", "グリッドを拡大", "Acercar la cuadrícula", "Zoomer la grille"],
   gridRegion: ["Floor grid", "매장 격자", "布局网格", "フロアのグリッド", "Cuadrícula del plano", "Grille du plan"],
   gridSelectedCell: ["Selected cell: column {column}, row {row}", "선택한 칸: {column}열, {row}행", "已选格子：第 {column} 列，第 {row} 行", "選択中のマス：{column}列目、{row}行目", "Celda seleccionada: columna {column}, fila {row}", "Case sélectionnée : colonne {column}, ligne {row}"],
-  gridSelectCell: ["Select a cell to edit its fixture.", "칸을 선택하면 진열대를 편집할 수 있습니다.", "选择一个格子以编辑其货架。", "マスを選ぶと什器を編集できます。", "Selecciona una celda para editar su mueble.", "Sélectionnez une case pour modifier son meuble."],
+  gridSelectCell: ["Select a cell to edit its fixture, or drag a fixture to another cell to move it.", "칸을 선택하면 진열대를 편집할 수 있고, 진열대를 다른 칸으로 끌면 옮길 수 있습니다.", "选择一个格子以编辑其货架，或将货架拖到另一个格子来移动它。", "マスを選ぶと什器を編集できます。什器を別のマスへドラッグすると移動できます。", "Selecciona una celda para editar su mueble, o arrastra un mueble a otra celda para moverlo.", "Sélectionnez une case pour modifier son meuble, ou faites glisser un meuble vers une autre case pour le déplacer."],
   gridCellsPerSide: ["{min}–{max} cells per side", "한 변에 {min}~{max}칸", "每边 {min}–{max} 格", "1辺 {min}〜{max}マス", "{min}–{max} celdas por lado", "{min} à {max} cases par côté"],
   gridCellIn: ["In", "입구", "入口", "入口", "Entrada", "Entrée"],
   gridCellOut: ["Out", "출구", "出口", "出口", "Salida", "Sortie"],

@@ -182,6 +182,17 @@ export function GridEditorDialog({
     [editor, placing, selectedRack, selectedCellRacks],
   );
 
+  const onDragMove = (from: Position, to: Position) => {
+    const moving = editor.racks.filter((rack) => rackCells(rack).some(([x, y]) => x === from[0] && y === from[1]));
+    if (moving.length === 0) return;
+    const error = editor.moveRacks(moving.map((rack) => rack.id), [to[0] - from[0], to[1] - from[1]]);
+    setSaveError(error);
+    if (!error) {
+      setSelectedCell(to);
+      setSelectedRackId((moving.find((rack) => rack.type === "entrance") ?? moving[0]!).id);
+    }
+  };
+
   const onMove = (offset: Position) => {
     if (!selectedCell || selectedCellRacks.length === 0) return;
     const error = editor.moveRacks(selectedCellRacks.map((rack) => rack.id), offset);
@@ -448,6 +459,7 @@ export function GridEditorDialog({
                   onCellClick={onCellClick}
                   selectedCell={selectedCell}
                   placing={placing}
+                  onDragMove={onDragMove}
                 />
               </div>
               <div className="min-w-0">

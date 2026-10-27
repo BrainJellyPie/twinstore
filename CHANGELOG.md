@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- In the floor editor a fixture can now be dragged to another cell with the
+  mouse or a finger to move it. A drop onto another fixture or off the floor is
+  refused with the same message as the move buttons, and focus follows the
+  fixture. Clicking a cell still selects it.
+
 - Fields marked as wrong now point screen readers to the message that says
   what is wrong: the run dialog's seed, replicate and shared-store settings,
   the operations lab's hours, shifts, roster, costs and memory settings, and

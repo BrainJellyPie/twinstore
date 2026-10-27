@@ -3,7 +3,7 @@
 // Row iteration is outer (y), column
 // iteration inner (x) — y=0 row sits at the top of the visual grid.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import type { Position, Rack, BlockedFaceDetail } from "@/shared/types/domain";
 import { Card } from "@/shared/components/ui/card";
@@ -21,6 +21,13 @@ interface GridEditorProps {
   onCellClick: (position: Position) => void;
   selectedCell?: Position | null;
   placing?: boolean;
+  /** A fixture dragged from one cell and dropped on another (a press and release on one cell stays a click). */
+  onDragMove?: (from: Position, to: Position) => void;
+}
+
+function cellOf(element: Element | null): Position | null {
+  const at = element?.closest<HTMLElement>("[data-testid^='grid-cell-']")?.dataset.testid?.split("-").slice(2).map(Number);
+  return at && at.length === 2 ? [at[0]!, at[1]!] : null;
 }
 
 // Cells are 64 px at 100 %; zoom steps by 8 px between 40 and 96.
@@ -39,8 +46,10 @@ export function GridEditor({
   onCellClick,
   selectedCell,
   placing = false,
+  onDragMove,
 }: GridEditorProps) {
   const { t } = useI18n();
+  const dragFrom = useRef<Position | null>(null);
   const [width, height] = gridSize;
   const [cellSize, setCellSize] = useState(() => fittingCellSize(height));
   // One Tab stop for the whole grid (the cell last moved to, else the selected one); the arrow keys move from there.
@@ -138,6 +147,22 @@ export function GridEditor({
           setCurrent(`${next[0]},${next[1]}`);
           event.currentTarget.querySelector<HTMLElement>(`[data-testid='grid-cell-${next[0]}-${next[1]}']`)?.focus();
         }}
+          onPointerDown={(event) => {
+            const target = event.target as HTMLElement;
+            dragFrom.current = onDragMove && event.button === 0 && !placing && !target.closest("[data-empty='true']") ? cellOf(target) : null;
+          }}
+          onPointerCancel={() => { dragFrom.current = null; }}
+          onPointerUp={(event) => {
+            const from = dragFrom.current;
+            dragFrom.current = null;
+            // Touch keeps the press's target, so the cell under the pointer is looked up where it was released.
+            const to = cellOf(document.elementFromPoint(event.clientX, event.clientY));
+            if (!from || !to || (from[0] === to[0] && from[1] === to[1])) return;
+            onDragMove?.(from, to);
+            // Focus follows the fixture instead of staying on the cell it left.
+            setCurrent(`${to[0]},${to[1]}`);
+            event.currentTarget.querySelector<HTMLElement>(`[data-testid='grid-cell-${to[0]}-${to[1]}']`)?.focus();
+          }}
           style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)`, gridAutoRows: `${cellSize}px` }}>
           {cells}
         </div>
