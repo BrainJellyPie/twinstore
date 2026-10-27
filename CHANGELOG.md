@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep each generated customer's identity within that individual's requested
+  types, including requests at the same hour. Revalidate cached and split
+  batches and give correction requests the complete expected row order.
+
 - Preserve unspecified customer budgets when a local JSON model returns
   only blank or zero amounts. Avoid a correction request that can invent
   spending limits; a blank paired with a nonzero amount still needs correction.

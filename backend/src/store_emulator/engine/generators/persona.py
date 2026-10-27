@@ -550,7 +550,7 @@ async def generate_personas_for_day(
 
     # One spec line per customer, hour by hour; requests take `batch_size` of them in order, across hours, so a quiet
     # hour's one or two customers do not cost a request of their own (a 20-a-day sample over 14 hours took 14).
-    specs: list[tuple[int, str]] = []
+    specs: list[tuple[int, str, list[str]]] = []
     for hour, hp in sorted(profiles_map.items()):
         if not hp.person_types or hp.visitor_count <= 0:
             continue
@@ -559,7 +559,7 @@ async def generate_personas_for_day(
             types = rng.sample(hp.person_types, n_types)
             n_kw = min(rng.randint(1, 3), len(profile.keywords))
             kws = rng.sample(profile.keywords, n_kw)
-            specs.append((hour, f"{hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}"))
+            specs.append((hour, f"{hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}", types))
     if specs:
         logger.info(f"[persona] {day_label}: {len(specs)} customers in {-(-len(specs) // batch_size)} requests")
 
@@ -568,7 +568,7 @@ async def generate_personas_for_day(
         cat_list = "\n".join(f"  - {c}" for c in categories)
         category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
 
-    async def _generate_batch(chunk: list[tuple[int, str]], start: int, *, recover_context: bool = True) -> list[tuple[GeneratedPersona, int]]:
+    async def _generate_batch(chunk: list[tuple[int, str, list[str]]], start: int, *, recover_context: bool = True) -> list[tuple[GeneratedPersona, int]]:
         persona_input = (
             f"매장 위치: {address}\n요일: {day_label}\n\n"
             # Identical hourly specs still represent different people. Include
@@ -579,7 +579,7 @@ async def generate_personas_for_day(
             f"## purpose 목록 (반드시 이 중 하나 선택)\n{purpose_list}\n\n"
             f"{category_section}"
             f"아래 {len(chunk)}명의 고객 페르소나를 생성하세요 (순서대로):\n\n"
-            + "\n".join(f"[{i}] {line}" for i, (_, line) in enumerate(chunk))
+            + "\n".join(f"[{i}] {line}" for i, (_, line, _) in enumerate(chunk))
         )
         # Category labels and arrival counts cannot carry the source evidence's
         # budgets, needs or preferences. Include it in every batch and cache key,
@@ -594,19 +594,25 @@ async def generate_personas_for_day(
         # handling for providers that do not enforce the transmitted JSON schema.
         constraints: dict[str, JsonValue] = {"minItems": len(chunk), "maxItems": len(chunk)}
 
-        def observed_hour_types(values: list[LabelledPersona]) -> list[LabelledPersona]:
-            # The global enum alone permits a valid label from the wrong hour.
+        def requested_types(values: list[LabelledPersona]) -> list[LabelledPersona]:
+            # Even the right hour can contain types not requested for this person.
             # Validate before cache/persistence, while Instructor can still ask
             # the model to repair its answer. Surplus rows are discarded below.
-            for index, (person, (hour, _)) in enumerate(zip(values, chunk)):
-                allowed = [canonical_identifier(label, identities) for label in profiles_map[hour].person_types]
+            expected: list[str] = []
+            mismatches: list[int] = []
+            for index, (person, (hour, _, types)) in enumerate(zip(values, chunk)):
+                allowed = [canonical_identifier(label, identities) for label in types]
+                expected.append(f"row {index} ({hour}:00): {allowed}")
                 if person.identity not in allowed:
-                    raise ValueError(f"Customer at request row {index} ({hour}:00) must use one of this hour's "
-                                     f"customer identities: {allowed}. Preserve the requested row order.")
+                    mismatches.append(index)
+            if mismatches:
+                raise ValueError(f"Customer identities do not match request rows {mismatches}. "
+                                 "Choose each identity from that exact row's choices: " + "; ".join(expected)
+                                 + ". Preserve this order and keep each customer's narrative consistent with its identity.")
             return values
 
         batch_schema = create_model("PersonaBatch", __base__=PersonaBatch,
-            __validators__={"observed_hour_types": field_validator("personas")(observed_hour_types)},
+            __validators__={"requested_types": field_validator("personas")(requested_types)},
             personas=(list[LabelledPersona], Field(min_length=1, max_length=MAX_PERSONAS_PER_BATCH, json_schema_extra=constraints)))
         try:
             async with limit:
@@ -627,11 +633,11 @@ async def generate_personas_for_day(
             second = await _generate_batch(chunk[middle:], start + middle, recover_context=False)
             return first + second
         # Preserve each child's original hours even when a small model returns fewer customers.
-        return [(generated, hour) for generated, (hour, _) in zip(batch.personas, chunk)]
+        return [(generated, hour) for generated, (hour, _, _) in zip(batch.personas, chunk)]
 
     for batch_start in range(0, len(specs), batch_size):
         chunk = specs[batch_start:batch_start + batch_size]
-        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(chunk, sample_offset + batch_start))))
+        tasks.append(([hour for hour, _, _ in chunk], asyncio.create_task(_generate_batch(chunk, sample_offset + batch_start))))
 
     all_personas: list[Persona] = []
     for hours, task in tasks:

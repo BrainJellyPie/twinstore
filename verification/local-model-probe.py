@@ -128,7 +128,7 @@ parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setu
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero", "traffic-quoted-counts", "traffic-identity-comma",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
-    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-us", "persona-fractional", "persona-fractional-batch", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
+    "persona-neighborhood", "persona-unspecified", "persona-24h", "persona-cafe", "persona-local-categories", "persona-bookstore", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-us", "persona-fractional", "persona-fractional-batch", "persona-nightmarket", "persona-nightmarket-batch", "persona-nightmarket-five", "persona-nightmarket-local-batches", "analyst-comparison", "analyst-forecast", "analyst-history", *design_requests, *layout_requests], default="compact")
 parser.add_argument("--endpoint", default="http://127.0.0.1:8081/v1")
 parser.add_argument("--model", default="openai/local-model")
 parser.add_argument("--temperature", type=float, help="Override the case's sampling temperature (0 to 2); the default customer writer uses 1")
@@ -591,7 +591,7 @@ try:
             categories = ["snacks", "drinks"]
             profile = "Students, retirees and nurses visit the neighborhood shop for snacks and drinks. No spending budget is specified. Preserve each requested customer's own type."
         if args.case.startswith("persona-nightmarket"):
-            expected_hour, customer_count = 23, 12
+            expected_hour, customer_count = 23, 5 if args.case == "persona-nightmarket-five" else 12
             categories = ["drinks", "snacks"]
             profile = "동네 주민과 야간 근무자가 심야에 간단한 간식과 음료를 삽니다. 1회 예산은 3,000~10,000원입니다."
         opening, closing, evidence = expected_hour, expected_hour + 1, ""
@@ -607,8 +607,10 @@ try:
         schedules = [DaySchedule(day=day, is_open=day == Weekday.MON, open_hour=opening, close_hour=closing) for day in Weekday]
         estimates = {}
         persona_batch_size = args.persona_batch_size or (5 if args.case == "persona-nightmarket-local-batches" else customer_count)
+        fixed_cohort = args.case in {"persona-nightmarket-batch", "persona-nightmarket-five", "persona-nightmarket-local-batches",
+            "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-fractional-batch"}
         with patch.object(httpx.AsyncClient, "send", traced_send):
-            if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-fractional-batch"}:
+            if fixed_cohort:
                 # A fixed observed cohort exercises the writer's batch boundary;
                 # an upstream traffic estimate may otherwise request just one.
                 area = TradeAreaProfile(keywords=["neighborhood", "night"],
@@ -640,9 +642,9 @@ try:
         issues = []
         if not written or len({person.id for person in people}) != len(people):
             issues.append("No written customers or duplicate customer IDs")
-        if args.case in {"persona-nightmarket-batch", "persona-nightmarket-local-batches", "persona-category-labels", "persona-hour-identities", "persona-mixed-types", "persona-fractional-batch"} and len(written) != customer_count:
+        if fixed_cohort and len(written) != customer_count:
             issues.append(f"Expected {customer_count} independently written customers, received {len(written)}")
-        if args.case == "persona-mixed-types":
+        if fixed_cohort:
             requests = [json.loads(line)["request"] for line in (output / "requests.jsonl").read_text().splitlines()]
             types_by_position = {}
             for request in requests:
@@ -650,7 +652,7 @@ try:
                     text = str(message.get("content", ""))
                     position = re.search(r"daily customer positions=(\d+)-(\d+)", text)
                     if message["role"] == "user" and position:
-                        for index, labels in re.findall(r"^\[(\d+)\] 9시, ([^,]+), 키워드:", text, re.MULTILINE):
+                        for index, labels in re.findall(r"^\[(\d+)\] \d+시, ([^,]+), 키워드:", text, re.MULTILINE):
                             types_by_position[int(position[1]) + int(index)] = labels.split("+")
             requested_types = [types_by_position[position] for position in sorted(types_by_position)]
             result["requested_types"] = requested_types
