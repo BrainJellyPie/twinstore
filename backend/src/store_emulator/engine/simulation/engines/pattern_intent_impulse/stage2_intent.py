@@ -81,6 +81,17 @@ class IntentResponse(BaseModel):
                     supplied = action.get(key)
                     if isinstance(supplied, str):
                         action[key] = canonical_identifier(supplied, choices)
+                # JSON models can give a complete action but omit its routing
+                # field. These operations already determine the navigation;
+                # wandering/area movement and explicit invalid modes need repair.
+                if "nav" not in action:
+                    kind = action.get("action")
+                    if kind == Action.EXIT:
+                        action["nav"] = "leave"
+                    elif kind in (Action.BUY, Action.PAY) or (
+                        kind in (Action.ENTER, Action.MOVE, Action.BROWSE) and action.get("area") is None
+                    ):
+                        action["nav"] = "path"
                 # Recognize BUY before allowing defaults for fields unused by other actions.
                 if action.get("action") != Action.BUY:
                     for key, default in (("product_sku", ""), ("quantity", 1)):

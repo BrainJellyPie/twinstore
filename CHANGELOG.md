@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recover an omitted navigation mode in generated shopping actions when
+  the action already determines it. Preserve purchases and quantities;
+  ambiguous area movement and explicit invalid modes still need correction.
+
 - Keep captured `ID` reference numbers from becoming exact selling prices.
   Preserve the original label, existing product prices and prices with an
   explicit currency unit.
