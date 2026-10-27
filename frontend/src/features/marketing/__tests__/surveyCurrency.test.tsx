@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { startSurvey } from "@/shared/api/marketing";
+import { useLocale } from "@/shared/i18n/i18n";
 import { SurveyBuilder } from "../SurveyBuilder";
 
 vi.mock("@/shared/api/client", async (original) => ({
@@ -50,4 +51,16 @@ it("says what the survey still needs until a pack is picked", () => {
   expect(screen.getByText(needs)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Tea" }));
   expect(screen.queryByText(needs)).toBeNull();
+});
+
+it("shows the example shelf price with the selected language's decimal separator", () => {
+  useLocale.getState().setLocale("fr");
+  try {
+    render(<QueryClientProvider client={new QueryClient()}>
+      <SurveyBuilder projectId="project" personaCount={60} defaultCurrency="EUR" onStarted={vi.fn()} />
+    </QueryClientProvider>);
+    expect(screen.getByLabelText("Prix en rayon affiché avec A (facultatif)").getAttribute("placeholder")).toBe("1,99");
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
 });

@@ -2,6 +2,7 @@ import { useId } from "react";
 
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { useI18n } from "@/shared/i18n/i18n";
+import { formatPercent } from "@/shared/utils/money";
 
 interface Props {
   minTime: number;
@@ -23,7 +24,7 @@ export function PlaybackStatus({ minTime, maxTime }: Props) {
     <div className="px-3 pt-1 pb-3">
       <div className="mb-1.5 flex items-center justify-between text-sm">
         <span id={labelId} className={finished ? "font-medium text-foreground" : "text-muted-foreground"}>{label}</span>
-        <span className="num text-xs text-muted-foreground">{Math.round(pct)}%</span>
+        <span className="num text-xs text-muted-foreground">{formatPercent(pct / 100, 0)}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10" role="progressbar" aria-labelledby={labelId} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
         <div className="heat-gradient h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%` }} />

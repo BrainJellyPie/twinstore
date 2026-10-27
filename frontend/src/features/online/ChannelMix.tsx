@@ -6,7 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 
 import { getChannelMix, onlineKeys, type ChannelGroup } from "@/shared/api/online";
-import { currencyCode, formatMoney } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { personaLabel } from "@/shared/i18n/personaLabels";
@@ -28,7 +28,7 @@ export function ChannelMix({ projectId, runId }: { projectId: string; runId: str
   if (mix.isError) return <p role="alert" className="text-xs text-destructive">{mix.error.message}</p>;
   const m = mix.data;
   if (!m) return <p className="text-xs text-muted-foreground">{t("onChNoStoreRun")}</p>;
-  const pct = (n: number, of: number) => `${Math.round((n / Math.max(1, of)) * 100)}%`;
+  const pct = (n: number, of: number) => formatPercent(n / Math.max(1, of), 0);
   const sameCurrency = m.store_currency === m.online_currency;
   const spend = [
     { label: t("onChSpendStore"), amount: m.store_spend, currency: m.store_currency, color: "var(--viz-1)" },

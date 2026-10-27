@@ -5,6 +5,9 @@
 - Preserve the moved fixture's selection and refused-drop message when touch
   generates a click after dragging. Ordinary taps and keyboard selection keep
   working.
+- In a concept test, the example shelf price follows the selected language
+  ("1,99" in French and Spanish), and each question's hint wraps as a compact
+  block under its name instead of leaving "5)" alone on a widely spaced line.
 
 - Reject receipt replies that copy JSON Schema metadata instead of receipt
   values. Retry them as invalid answers instead of caching a blank receipt;
@@ -13,6 +16,15 @@
 - Ask receipt models to count product rows before transcribing them and check
   the returned count, reducing empty-row repetition in small local models
   without dropping unreadable products or shortening long receipts.
+
+- Percentages and distances now follow the selected language: French and Spanish
+  show "38 %", and large values are grouped ("1 273 m" in French). This covers
+  the live conversion and playback progress, the visitor mix in **Settings**, the
+  conjoint report, shelf-test charts, rival prices in shelf capture, the online
+  page flow, channel mix and shopper-mix sliders, and the area page's radius,
+  catchment, walk distances and neighbor effects. Before, these were written as
+  a bare number followed by "%" or "m" in every language.
+
 - An ID longer than 128 characters in an address or request (a run, layout,
   photo, test, online store or project) is now refused as invalid. Before, about
   thirty pages of the API answered such an ID with a server error, because the
@@ -41,6 +53,7 @@
 - Read the printed row behind an inferred receipt total. If that row is a
   subtotal, leave the final total unknown and retain the original row for
   review, while keeping the purchased products and their paid amounts.
+
 
 - Asking TwinStore from the command palette with no model set up now offers
   model setup (download the local model or open **Model settings**) right in
