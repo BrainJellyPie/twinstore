@@ -11,6 +11,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +28,8 @@ from store_emulator.engine.receipt_review import review_receipts
 from store_emulator.engine.vision_inputs import match_lines, vlm_receipt
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--case', choices=['simple', 'krw', 'fractional', 'free', 'date-only', 'foreign', 'no-purchase', 'subtotal-only', 'all-free', 'unpriced'], default='simple')
+parser.add_argument('--case', choices=['simple', 'krw', 'krw-subtotal-only', 'fractional', 'free', 'date-only', 'foreign', 'no-purchase', 'subtotal-only', 'all-free', 'unpriced'], default='simple')
+parser.add_argument('--language', choices=['en', 'ko'], default='en', help='Korean fixtures require Noto Sans CJK Regular (TTC).')
 parser.add_argument('--mode', choices=['json', 'json_schema'], default='json_schema')
 parser.add_argument('--endpoint', default='http://127.0.0.1:8082/v1')
 parser.add_argument('--output', type=Path, default=Path('.data/local-model-probes'))
@@ -35,16 +37,16 @@ args = parser.parse_args()
 endpoint = urlsplit(args.endpoint)
 if endpoint.hostname not in {'localhost', '127.0.0.1', '::1'} or endpoint.scheme != 'http':
     parser.error('Use an HTTP loopback endpoint for this probe.')
-root = args.output.resolve() / f'receipt-{args.case}-{args.mode}-{time.time_ns()}'
+root = args.output.resolve() / f'receipt-{args.case}-{args.language}-{args.mode}-{time.time_ns()}'
 root.mkdir(parents=True)
-currency = 'KRW' if args.case == 'krw' else 'EUR' if args.case == 'foreign' else 'USD'
+currency = 'KRW' if args.case.startswith('krw') else 'EUR' if args.case == 'foreign' else 'USD'
 store_currency = 'USD' if args.case == 'foreign' else currency
 names = {'tea': 'GREEN TEA', 'water': 'WATER', 'apple': 'APPLES'}
 expected = [('tea', 2, 250, 500), ('water', 1, 100, 100)]
 lines = ['GREEN TEA        2  2.50    5.00', 'WATER            1  1.00    1.00']
 subtotal, tax, total, paid, change = '6.00', '0.60', '6.60', '10.00', '3.40'
 expected_total = 660
-if args.case == 'krw':
+if args.case.startswith('krw'):
     lines = ['GREEN TEA        2  2500    5000', 'WATER            1  1000    1000']
     expected = [('tea', 2, 2500, 5000), ('water', 1, 1000, 1000)]
     subtotal, tax, total, paid, change, expected_total = '6000', '0', '6000', '10000', '4000', 6000
@@ -71,12 +73,23 @@ texts = ['CORNER STORE', '2026-10-27' + ('' if args.case == 'date-only' else '  
 if args.case == 'no-purchase':
     texts = texts[:3] + ['TRANSACTION CANCELLED', 'NO ITEMS PURCHASED', 'TOTAL                      0.00']
     expected, expected_total = [], 0
-elif args.case == 'subtotal-only':
+elif args.case in {'subtotal-only', 'krw-subtotal-only'}:
     texts = [line for line in texts if not line.startswith(('TOTAL ', 'CASH ', 'CHANGE '))]
     expected_total = None
+if args.language == 'ko':
+    names = {'tea': '녹차', 'water': '생수', 'apple': '사과'}
+    labels = {'CORNER STORE': '동네 가게', 'CURRENCY': '통화', 'ITEM': '상품',
+              'QTY': '수량', 'UNIT': '단가', 'AMOUNT': '금액', 'GREEN TEA': '녹차',
+              'WATER': '생수', 'APPLES': '사과', 'SUBTOTAL': '소계', 'TAX': '세금',
+              'TOTAL': '합계', 'CASH': '받은 돈', 'CHANGE': '거스름돈',
+              'TRANSACTION CANCELLED': '거래 취소', 'NO ITEMS PURCHASED': '구매 상품 없음'}
+    # Replace complete tokens in one pass; TOTAL must not match inside SUBTOTAL.
+    pattern = re.compile('|'.join(re.escape(key) for key in sorted(labels, key=len, reverse=True)))
+    texts = [pattern.sub(lambda m: labels[m[0]] + ' ' * max(0, len(m[0]) - sum(1 if c == ' ' else 2 for c in labels[m[0]])), line) for line in texts]
 image = Image.new('RGB', (512, 520), 'white')
 draw = ImageDraw.Draw(image)
-font = ImageFont.truetype('DejaVuSansMono.ttf', 24)
+font = (ImageFont.truetype('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 24, index=6)
+        if args.language == 'ko' else ImageFont.truetype('DejaVuSansMono.ttf', 24))
 for i, line in enumerate(texts):
     draw.text((24, 20 + i * 36), line, font=font, fill='black')
 image.save(root / 'image.png')
@@ -119,7 +132,7 @@ async def trace(self, request, *positional, **keywords):
 async def run():
     started = time.monotonic()
     source = Path(vlm_receipt.__code__.co_filename).resolve()
-    result = dict(case=args.case, mode=args.mode, currency=currency, store_currency=store_currency,
+    result = dict(case=args.case, language=args.language, mode=args.mode, currency=currency, store_currency=store_currency,
                   source_path=str(source), source_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
     try:
         reading = await vlm_receipt(client, image, receipt_id='fixture', default_currency=store_currency)

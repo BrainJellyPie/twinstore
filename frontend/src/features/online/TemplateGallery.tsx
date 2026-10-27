@@ -102,7 +102,7 @@ export function TemplateGallery({
           </li>
         ))}
       </ul>
-      {!loading && shown.length === 0 && <p className="text-sm text-muted-foreground">{t("onGalleryNone")}</p>}
+      {!loading && shown.length === 0 && <p role="status" className="text-sm text-muted-foreground">{t("onGalleryNone")}</p>}
 
       {chosen && (
         <div className="sticky bottom-0 flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-3 shadow-lg">

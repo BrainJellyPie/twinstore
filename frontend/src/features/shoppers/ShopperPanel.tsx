@@ -206,7 +206,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
         ))}
       </ul>
       {list.length > limit && <Button variant="ghost" size="sm" className="w-full" onClick={() => setLimit((l) => l + 60)}>{t("shopperShowMore", { count: list.length - limit })}</Button>}
-      {list.length === 0 && <p className="px-1 text-sm text-muted-foreground">{t("shopperNoMatch")}</p>}
+      {list.length === 0 && <p role="status" className="px-1 text-sm text-muted-foreground">{t("shopperNoMatch")}</p>}
     </div>
   );
 }

@@ -34,7 +34,7 @@ it("filters floors, searches formats, and resets the finder when reopened", () =
   fireEvent.change(screen.getByLabelText("Search layouts"), { target: { value: "pharmacy" } });
   expect(screen.getByTestId("layout-search-result-pharmacy").textContent).toContain("Simulation saved");
   fireEvent.change(screen.getByLabelText("Search layouts"), { target: { value: "missing" } });
-  expect(screen.getByText(/No matching layouts/)).toBeTruthy();
+  expect(screen.getByText(/No matching layouts/).closest("[role=status]")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   fireEvent.click(screen.getByRole("button", { name: "Find layout" }));
   expect(screen.getByRole("status").textContent).toBe("2 of 2 layouts");

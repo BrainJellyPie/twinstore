@@ -10,6 +10,10 @@
   subtotal, leave the final total unknown and retain the original row for
   review, while keeping the purchased products and their paid amounts.
 
+- When a search finds nothing in the layout finder, the run's shopper list, the
+  online template gallery or the online shopper cards, screen readers now hear
+  that nothing matches.
+
 - Searching the online stores list for something that matches nothing now
   shows "Nothing matches." on its own, read out to screen readers, instead of
   empty **Stores** and **Runs** headings above it. The run's **Find a store**
