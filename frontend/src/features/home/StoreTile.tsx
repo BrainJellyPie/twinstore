@@ -149,7 +149,7 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
       <div className="flex flex-1 flex-col gap-1.5 border-t border-glass-border px-5 pt-4 pb-5">
         <span className="eyebrow">{typeLabel}</span>
         <h3 className="font-display text-[1.35rem] leading-tight">{project.name || t("untitledStore")}</h3>
-        {project.description && <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{project.description}</p>}
+        {project.description && <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground" title={project.description}>{project.description}</p>}
         <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-3 text-[0.8rem] text-muted-foreground">
           {project.grid_size && (
             <span className="num flex items-center gap-1.5">

@@ -78,7 +78,7 @@ function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
                         {t("rackNoImage")}
                       </div>
                     )}
-                    <div className="line-clamp-2 text-center text-xs">{item.name}</div>
+                    <div className="line-clamp-2 text-center text-xs" title={item.name}>{item.name}</div>
                   </div>
                 ))
               )}

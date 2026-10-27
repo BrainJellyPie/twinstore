@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Names and descriptions cut short to fit now show in full on hover: products
+  on a shelf's detail panel (two "Grandma's Chocolate…" products could not be
+  told apart), experiment arms in lift charts, shelf-test picks, stockouts and
+  their shelves in **Store operations**, store descriptions in the gallery and
+  shopper descriptions in a run.
+
 - When a search finds nothing in the layout finder, the run's shopper list, the
   online template gallery or the online shopper cards, screen readers now hear
   that nothing matches.

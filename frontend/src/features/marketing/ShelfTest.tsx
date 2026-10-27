@@ -321,7 +321,7 @@ export function ShelfTestReportView({ projectId, report: r, changes = [] }: {
           <div className="space-y-1.5">
             {r.picks.map((p) => (
               <div key={p.sku || "none"} className="grid grid-cols-[minmax(6rem,10rem)_1fr_5.5rem] items-center gap-2 text-xs">
-                <span className={cn("truncate", p.sku === r.target_sku && "font-semibold")}>{p.name}</span>
+                <span className={cn("truncate", p.sku === r.target_sku && "font-semibold")} title={p.name}>{p.name}</span>
                 <div className="space-y-0.5">
                   <div className="h-2 rounded-r-[4px] bg-foreground/[0.18]" style={{ width: `${Math.max(1, (p.control / topShare) * 100)}%` }} title={t("mkControlPct", { pct: pctf(p.control) })} />
                   <div className="h-2 rounded-r-[4px]" style={{ width: `${Math.max(1, (p.test / topShare) * 100)}%`, background: "var(--viz-1)" }} title={t("mkTestPct", { pct: pctf(p.test) })} />

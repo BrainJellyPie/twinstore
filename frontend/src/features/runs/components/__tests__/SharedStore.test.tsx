@@ -195,6 +195,12 @@ const report: api.OperationsReport = {
 };
 
 describe("the results", () => {
+  it("keeps a stockout's full product and shelf names in tooltips where the row cuts them off", () => {
+    render(<OperationsReportView report={report} />);
+    expect(screen.getByText("Product 0").getAttribute("title")).toBe("Product 0 (sku0)");
+    expect(screen.getByText("Shelf 0").getAttribute("title")).toBe("Shelf 0");
+  });
+
   it.each([1, 5])("uses observed waiting time when the default capacity is %s", counters => {
     render(<OperationsReportView report={{ ...report, counters, counters_needed: 1, hours: [
       { hour: "10", arrivals: 4, avg_wait_sec: 180, max_wait_sec: 240, abandoned: 0, counters_needed: 1, counters_open: 1 },

@@ -44,3 +44,9 @@ it("draws the store's own fixtures when the layout is known, and a generic store
   expect(glow()).toBe(0);
   expect(container.querySelector('line[stroke="var(--hero-fridge-glow)"]')).toBeTruthy();
 });
+
+it("keeps a long description whole in a tooltip where two lines cut it off", () => {
+  const description = "A small convenience store near the tech hub with a long lunch rush and a coffee corner by the door.";
+  render(<StoreTile project={{ ...project, description }} onOpen={vi.fn()} />);
+  expect(screen.getByText(description).getAttribute("title")).toBe(description);
+});
