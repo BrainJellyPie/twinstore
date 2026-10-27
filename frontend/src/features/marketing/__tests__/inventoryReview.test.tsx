@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { InventoryReport } from "@/shared/api/inventoryReview";
+import { useLocale } from "@/shared/i18n/i18n";
 import { InventoryReview } from "../InventoryReview";
 
 let qc: QueryClient;
@@ -148,4 +149,15 @@ it("says what the review still needs while it cannot run", () => {
   expect(screen.getByText(needs)).toBeTruthy();
   fill();
   expect(screen.queryByText(needs)).toBeNull();
+});
+
+it("writes the longest review period the same way in the rules and in what is still needed", () => {
+  useLocale.getState().setLocale("fr");
+  try {
+    render(<InventoryReview projectId="project_test" />, { wrapper });
+    expect(screen.getByText(/^Choisissez de 1 à 3\s660 jours/)).toBeTruthy();
+    expect(screen.getByText(/^Pour examiner, choisissez une période de 1 à 3\s660 jours/)).toBeTruthy();
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
 });
