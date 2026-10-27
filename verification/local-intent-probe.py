@@ -30,11 +30,11 @@ from store_emulator.engine.simulation.engines.pattern_intent_impulse.engine impo
 from store_emulator.engine.simulation.customer_executor import execute_decision
 from store_emulator.engine.routing.route_builder import face_access_tile
 
-p=argparse.ArgumentParser();p.add_argument('--case',choices=['one','browse','missing','free'],default='one');p.add_argument('--mode',choices=['json','json_schema'],default='json');p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1');p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'));p.add_argument('--full',action='store_true');p.add_argument('--layout',choices=['single','rotated'],default='single');args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--case',choices=['one','browse','missing','free','free_browse'],default='one');p.add_argument('--mode',choices=['json','json_schema'],default='json');p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1');p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'));p.add_argument('--full',action='store_true');p.add_argument('--layout',choices=['single','rotated'],default='single');args=p.parse_args()
 endpoint=urlsplit(args.endpoint)
 if endpoint.scheme!='http' or endpoint.hostname not in {'localhost','127.0.0.1','::1'}:p.error('Use an HTTP loopback endpoint for the local model.')
 root=args.output.resolve()/f'{args.case}-{args.mode}-{time.time_ns()}';root.mkdir(parents=True)
-price=0 if args.case=='free' else 250
+price=0 if args.case in {'free','free_browse'} else 250
 store=Store(id='intent-probe',name='Tea shop',type='convenience',grid_size=(8,8),racks=[
     Rack(id='entrance',type='entrance',position=(0,0),shape=[[1]]),
     Rack(id='exit',type='exit',position=(7,0),shape=[[1]]),
@@ -46,6 +46,7 @@ if args.layout=='rotated':
     shelf.slots[0].block=1;shelf.slots[0].face=Face.E
 intent={'one':'Buy exactly one Green Tea for $2.50. Do not buy Cola or any other item.',
         'free':'Take exactly one free Green Tea. Do not buy paid items.',
+        'free_browse':'Only look around. Do not take even free items or check out today.',
         'browse':'Only look around. No purchases or checkout today.',
         'missing':'Buy a laptop only. If no laptop is sold here, leave without buying anything.'}[args.case]
 person=Persona(id='visitor',identity='resident',age_group='30s',gender='Female',description='A neighborhood resident.',purpose=intent,intent=intent,budget_min=0,budget_max=250,basket_size=1)
@@ -73,6 +74,7 @@ async def run():
             pays=sum(event.action==Action.PAY for event in receipt.timeline)
             modeled=[(item['product_sku'],item['quantity']) for name in ('stage2','stage3')
                 for item in decision.trace[name]['actions'] if item.get('action')=='buy']
+            planned=[(item['product_sku'],item['quantity']) for item in decision.trace['stage2']['actions'] if item.get('action')=='buy']
             receipt_ok=purchases==expected and receipt.total_spent==(price if expected else 0)
             receipt_ok=receipt_ok and pays==int(bool(expected)) and receipt.timeline[-1].action==Action.EXIT
             execution_ok=receipt_ok and receipt.dropped_invalid_buys==0
@@ -88,8 +90,9 @@ async def run():
                     and item.get('face') in (None,slot.face.value)
                     for rack in store.product_racks for slot in rack.slots) for item in browsing)
                 browse_locations[name]={'checked':len(browsing),'valid':valid}
-            row.update(source_stage='pattern_intent_impulse_and_receipt',success=execution_ok and modeled==expected,
+            row.update(source_stage='pattern_intent_impulse_and_receipt',success=execution_ok and modeled==expected and planned==expected,
                 receipt_ok=receipt_ok,execution_ok=execution_ok,model_purchase_plan_ok=modeled==expected,model_purchases=modeled,
+                planned_purchases_ok=planned==expected,planned_purchases=planned,
                 model_targets_walkable=walkable,model_check_scope='Purchase identities and quantities; narration is not scored.',
                 model_browse_locations=browse_locations,
                 purchases=purchases,expected=expected,total_spent=receipt.total_spent,payments=pays,
@@ -103,5 +106,5 @@ async def run():
     except Exception as e:row.update(success=False,error=repr(e))
     row['seconds']=round(time.monotonic()-started,2);row['usage']=client.get_usage().model_dump()
     (root/'result.json').write_text(json.dumps(row,indent=2,ensure_ascii=False))
-    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','layout','success','seconds','usage','receipt_ok','execution_ok','model_purchase_plan_ok','model_targets_walkable','error') if key in row}},ensure_ascii=False),flush=True)
+    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','layout','success','seconds','usage','receipt_ok','execution_ok','model_purchase_plan_ok','planned_purchases_ok','model_targets_walkable','error') if key in row}},ensure_ascii=False),flush=True)
 with patch.object(httpx.AsyncClient,'send',traced):asyncio.run(run())
