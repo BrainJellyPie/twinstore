@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Give impulse models the exact target and face of each exposed product
+  placement, including rotated shelves and multiple blocks. Mark blocked
+  or off-grid access as unavailable instead of offering another shelf side.
+
 - Remove purchase-writing instructions from impulse prompts once the planned
   basket fills the product allowance. Keep browse-only reactions and empty
   responses available to plain JSON models as well as native-schema models.

@@ -28,8 +28,9 @@ from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.engines.pattern_intent_impulse import stage2_intent as stage
 from store_emulator.engine.simulation.engines.pattern_intent_impulse.engine import PatternIntentImpulseEngine, drop_invalid_buys
 from store_emulator.engine.simulation.customer_executor import execute_decision
+from store_emulator.engine.routing.route_builder import face_access_tile
 
-p=argparse.ArgumentParser();p.add_argument('--case',choices=['one','browse','missing','free'],default='one');p.add_argument('--mode',choices=['json','json_schema'],default='json');p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1');p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'));p.add_argument('--full',action='store_true');args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--case',choices=['one','browse','missing','free'],default='one');p.add_argument('--mode',choices=['json','json_schema'],default='json');p.add_argument('--endpoint',default='http://127.0.0.1:8082/v1');p.add_argument('--output',type=Path,default=Path('.data/local-model-probes'));p.add_argument('--full',action='store_true');p.add_argument('--layout',choices=['single','rotated'],default='single');args=p.parse_args()
 endpoint=urlsplit(args.endpoint)
 if endpoint.scheme!='http' or endpoint.hostname not in {'localhost','127.0.0.1','::1'}:p.error('Use an HTTP loopback endpoint for the local model.')
 root=args.output.resolve()/f'{args.case}-{args.mode}-{time.time_ns()}';root.mkdir(parents=True)
@@ -40,6 +41,9 @@ store=Store(id='intent-probe',name='Tea shop',type='convenience',grid_size=(8,8)
     Rack(id='counter',type='counter',position=(6,2),shape=[[1]]),
     Rack(id='drinks',type='shelf',rack_name='Drinks',position=(2,2),shape=[[1]],slots=[
         Slot(block=0,face=Face.N,level=3,items=[SlotItem(sku='green-tea',name='Green Tea',price=price),SlotItem(sku='cola',name='Cola',price=700)])])])
+if args.layout=='rotated':
+    shelf=store.racks[-1];shelf.shape=[[1,1]];shelf.rotation=90
+    shelf.slots[0].block=1;shelf.slots[0].face=Face.E
 intent={'one':'Buy exactly one Green Tea for $2.50. Do not buy Cola or any other item.',
         'free':'Take exactly one free Green Tea. Do not buy paid items.',
         'browse':'Only look around. No purchases or checkout today.',
@@ -56,7 +60,7 @@ async def traced(self,request,*a,**kw):
     with (root/'http.jsonl').open('a') as f:f.write(json.dumps({'request':body,'response':r.json(),'seconds':time.monotonic()-started},ensure_ascii=False)+'\n')
     print('HTTP',r.status_code,round(time.monotonic()-started,2),flush=True);return r
 async def run():
-    started=time.monotonic();row={'case':args.case,'mode':args.mode,'temperature':0,'source_stage':'intent_only_then_offer_resolution'}
+    started=time.monotonic();row={'case':args.case,'mode':args.mode,'layout':args.layout,'temperature':0,'source_stage':'intent_only_then_offer_resolution'}
     try:
         expected=[('green-tea',1)] if args.case in {'one','free'} else []
         if args.full:
@@ -76,9 +80,18 @@ async def run():
             targets=[item['target'] for name in ('stage2','stage3') for item in decision.trace[name]['actions']
                 if item.get('target') is not None]
             walkable=all(0<=x<store.grid_size[0] and 0<=y<store.grid_size[1] and grid[y][x] for x,y in targets)
+            browse_locations={}
+            for name in ('stage2','stage3'):
+                browsing=[item for item in decision.trace[name]['actions'] if item.get('action')=='browse']
+                valid=all(item.get('target') is not None and any(
+                    tuple(item['target'])==face_access_tile(rack,slot.face,store.grid_size,grid,block=slot.block)
+                    and item.get('face') in (None,slot.face.value)
+                    for rack in store.product_racks for slot in rack.slots) for item in browsing)
+                browse_locations[name]={'checked':len(browsing),'valid':valid}
             row.update(source_stage='pattern_intent_impulse_and_receipt',success=execution_ok and modeled==expected,
                 receipt_ok=receipt_ok,execution_ok=execution_ok,model_purchase_plan_ok=modeled==expected,model_purchases=modeled,
                 model_targets_walkable=walkable,model_check_scope='Purchase identities and quantities; narration is not scored.',
+                model_browse_locations=browse_locations,
                 purchases=purchases,expected=expected,total_spent=receipt.total_spent,payments=pays,
                 decision=decision.model_dump(mode='json'),receipt=receipt.model_dump(mode='json'))
         else:
@@ -90,5 +103,5 @@ async def run():
     except Exception as e:row.update(success=False,error=repr(e))
     row['seconds']=round(time.monotonic()-started,2);row['usage']=client.get_usage().model_dump()
     (root/'result.json').write_text(json.dumps(row,indent=2,ensure_ascii=False))
-    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','success','seconds','usage','receipt_ok','execution_ok','model_purchase_plan_ok','model_targets_walkable','error') if key in row}},ensure_ascii=False),flush=True)
+    print(json.dumps({'path':str(root),**{key:row[key] for key in ('case','mode','layout','success','seconds','usage','receipt_ok','execution_ok','model_purchase_plan_ok','model_targets_walkable','error') if key in row}},ensure_ascii=False),flush=True)
 with patch.object(httpx.AsyncClient,'send',traced):asyncio.run(run())

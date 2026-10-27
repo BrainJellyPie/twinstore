@@ -13,6 +13,7 @@ from store_emulator.domain.types import Action, Weekday
 from store_emulator.engine import llm_client
 from store_emulator.engine.prompting import format_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
+from store_emulator.engine.routing.route_builder import face_access_tile
 from store_emulator.engine.simulation.customer_executor import execute_decision
 from store_emulator.engine.simulation.engines.pattern_intent_impulse.engine import PatternIntentImpulseEngine
 from store_emulator.engine.simulation.engines.pattern_intent_impulse import stage2_intent, stage3_impulse
@@ -169,6 +170,7 @@ def test_compact_table_preserves_offer_metadata_and_exposure_order(collision_sto
         assert f"level={slot.level}" in prompt
         if visibility is not None:
             assert f"시인성={visibility[sku]:.2f}" in prompt
-        assert str(sorted(rack.access_tiles(collision_store.grid_size))[:3]) in prompt
+        target = face_access_tile(rack, slot.face, collision_store.grid_size, collision_store.walkable_grid(), block=slot.block)
+        assert json.dumps({"target": target, "face": slot.face.value}, separators=(",", ":")) in prompt
     assert positions == sorted(positions) and "Two for one" in prompt
     assert collision_store.model_dump() == before
