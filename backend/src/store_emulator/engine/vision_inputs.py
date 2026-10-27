@@ -16,7 +16,7 @@ from typing import Protocol, Self
 
 import numpy as np
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from store_emulator.domain.vision_inputs import (
     MAX_RECEIPT_AMOUNT,
@@ -100,11 +100,25 @@ async def vlm_appeal(llm: VisionLLM, img: Image.Image, *, model: str = "vlm") ->
     )
 
 
+def _receipt_observations(schema: dict[str, JsonValue]) -> None:
+    fields = schema.get("properties")
+    assert isinstance(fields, dict)
+    required: list[JsonValue] = list(fields)
+    schema["required"] = required
+    for field in fields.values():
+        if isinstance(field, dict):
+            field.pop("default", None)
+
+
 class _ReceiptLineVLM(BaseModel):
-    name: str = Field(max_length=80)
-    quantity: float = Field(default=1.0, allow_inf_nan=False)
-    unit_price: float | None = Field(default=None, allow_inf_nan=False)
-    line_total: float | None = Field(default=None, allow_inf_nan=False)
+    # Require explicit observations on the wire while keeping old partial
+    # transcriptions readable. Null amounts still represent unreadable prices.
+    model_config = ConfigDict(json_schema_extra=_receipt_observations)
+
+    name: str = Field(max_length=80, description="The purchased product's printed name, e.g. the ITEM column; empty only if unreadable")
+    quantity: float = Field(default=1.0, allow_inf_nan=False, description="The purchased count or weight, e.g. QTY; not an amount of money")
+    unit_price: float | None = Field(default=None, allow_inf_nan=False, description="Printed price of one unit, e.g. UNIT; null if absent")
+    line_total: float | None = Field(default=None, allow_inf_nan=False, description="Printed amount for this product row, e.g. AMOUNT; null if absent")
 
     @field_validator("quantity", "unit_price", "line_total", mode="before")
     @classmethod
@@ -115,11 +129,13 @@ class _ReceiptLineVLM(BaseModel):
 
 
 class _ReceiptVLM(BaseModel):
+    model_config = ConfigDict(json_schema_extra=_receipt_observations)
+
     store: str = Field(default="", max_length=80)
     date: str = Field(default="", description="YYYY-MM-DD as printed, or empty")
     time: str = Field(default="", description="HH:MM as printed, or empty")
     currency: str = Field(default="", description="ISO 4217 code if you can tell, e.g. USD, KRW")
-    lines: list[_ReceiptLineVLM] = []
+    lines: list[_ReceiptLineVLM] = Field(default_factory=list[_ReceiptLineVLM], description="Every purchased product row, excluding subtotal, tax and payment rows")
     total: float | None = Field(default=None, allow_inf_nan=False)
 
     @field_validator("total", mode="before")
@@ -138,6 +154,14 @@ class _ReceiptVLM(BaseModel):
 RECEIPT_PROMPT = """You transcribe shop receipts. List every purchased product line with its name as printed, quantity,
 unit price and line total (numbers as printed, no currency symbols). Skip subtotals, tax, payment and change lines.
 Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed.
+Return JSON with store, date, time, currency, lines and total. Each object in lines must copy the product text
+into name, the purchased count/weight (QTY) into quantity, the single-unit price (UNIT) into unit_price,
+and that product row's amount (AMOUNT) into line_total. Read the printed date and time into date and time.
+Do not leave readable product names, dates or times empty. For total, copy the final TOTAL including tax,
+not SUBTOTAL, CASH or CHANGE. Do not recalculate it from the product lines; use null if no total is printed.
+Date and time are independent observations: a date without a printed clock time requires time="".
+Never infer an hour from a date. A SUBTOTAL row alone is not a TOTAL row: without a separate final TOTAL,
+set total=null. A printed TOTAL of 0 or 0.00 is total=0, including cancelled transactions with lines=[].
 Keep every purchased line even when its name is unreadable: use an empty name and retain its readable quantity and amounts
 so the product can be chosen during review. Never omit a purchased line just because its name is unreadable.
 For unreadable store, date, time or currency text use an empty string, not null. Do not invent missing text.

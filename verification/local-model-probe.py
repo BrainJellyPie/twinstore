@@ -124,7 +124,7 @@ layout_requests = {
 }
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--case", choices=["setup-unspecified", "setup-night", "setup-24h", "setup-pharmacy", "hypermarket", "compact", "cafe", "book", "book-repurpose", "book-excluded", "book-price-range", "book-price-range-krw", "book-price-range-jpy", "book-price-unavailable", "pack-jam", "pack-label", "pack-brand-suffix", "pack-mixed-quantities", "pack-serving-reference", "pack-serving-reference-unlisted", "pack-cross-unit-reference", "pack-cross-unit-reference-unlisted", "pack-metric-equivalent", "pack-large-catalog", "pack-wrong-variant", "pack-blank", "pack-multipack", "pack-multipack-unlisted", "pack-multipack-reversed", "pack-multipack-reversed-unlisted", "pack-multipack-count", "pack-multipack-count-unlisted", "pack-multipack-container-count", "pack-multipack-container-count-unlisted",
-    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-foreign-inr-price", "capture-inr-price", "capture-foreign-brl-price", "capture-brl-price", "capture-foreign-vnd-price", "capture-vnd-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-item-code", "capture-id-code", "capture-reference-code", "capture-hash-code", "capture-item-price", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
+    "capture-price", "capture-price-krw", "capture-qualified-price", "capture-foreign-cad-price", "capture-foreign-hkd-price", "capture-foreign-inr-price", "capture-inr-price", "capture-foreign-brl-price", "capture-brl-price", "capture-foreign-vnd-price", "capture-vnd-price", "capture-foreign-thb-price", "capture-thb-price", "capture-foreign-rub-price", "capture-rub-price", "capture-coupon-price", "capture-blank-price", "capture-saving", "capture-saving-up-to", "capture-cash-back", "capture-off", "capture-saving-krw", "capture-was-price", "capture-free-price", "capture-coupon-value", "capture-earn-reward", "capture-reward-value", "capture-rewards-price", "capture-reward-krw", "capture-points", "capture-points-krw", "capture-points-price", "capture-calorie-quantity", "capture-calorie-prefix", "capture-energy-quantity", "capture-sku-code", "capture-item-code", "capture-id-code", "capture-reference-code", "capture-hash-code", "capture-item-price", "capture-lot-code", "capture-expiry-year", "capture-volume-only", "capture-count-only", "capture-count-cash-price", "capture-customer-limit", "capture-minimum-count", "capture-maximum-count", "capture-limited-price", "capture-starting-price", "capture-upper-price", "capture-starting-price-krw", "capture-unit-price", "capture-unit-price-krw", "capture-pack-unit-price", "capture-pack-price", "capture-bottle-price", "capture-container-count-price", "capture-deposit-price", "capture-deposit-suffix", "capture-deposit-included-price",
     "setup-unspecified-ko", "setup-hours-only", "setup-days-only", "setup-location-only",
     "traffic-24h", "traffic-24h-varied", "traffic-last-hour", "traffic-last-hour-zero", "traffic-quoted-counts", "traffic-identity-comma",
     "profile-draft-night", "profile-draft-bookstore", "profile-draft-sparse",
@@ -685,7 +685,7 @@ try:
             estimates=estimates, count=len(people), written=[person.model_dump(mode="json") for person in written], issues=issues)
         (output / "personas.json").write_text(json.dumps([person.model_dump(mode="json") for person in people], ensure_ascii=False, indent=2))
     elif args.case.startswith("capture-"):
-        tags = {"capture-qualified-price": "US$1.00", "capture-foreign-cad-price": "CA$1.00", "capture-foreign-hkd-price": "HK$1.00", "capture-foreign-inr-price": "₹100", "capture-inr-price": "₹100", "capture-foreign-brl-price": "R$1.00", "capture-brl-price": "R$1.00", "capture-foreign-vnd-price": "₫1000", "capture-vnd-price": "₫1000", "capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
+        tags = {"capture-foreign-thb-price": "฿100", "capture-thb-price": "฿100", "capture-foreign-rub-price": "₽100", "capture-rub-price": "₽100", "capture-qualified-price": "US$1.00", "capture-foreign-cad-price": "CA$1.00", "capture-foreign-hkd-price": "HK$1.00", "capture-foreign-inr-price": "₹100", "capture-inr-price": "₹100", "capture-foreign-brl-price": "R$1.00", "capture-brl-price": "R$1.00", "capture-foreign-vnd-price": "₫1000", "capture-vnd-price": "₫1000", "capture-price": "$1.00", "capture-price-krw": "1,000원", "capture-coupon-price": "$1.00 WITH COUPON", "capture-blank-price": "", "capture-saving": "SAVE $1.00", "capture-saving-up-to": "SAVE UP TO $1.00",
                 "capture-cash-back": "$1.00 CASH BACK", "capture-off": "$1.00 OFF",
                 "capture-saving-krw": "1,000원 할인", "capture-was-price": "WAS $1.00", "capture-free-price": "FREE $0.00", "capture-coupon-value": "$1.00 COUPON",
                 "capture-earn-reward": "EARN $1.00", "capture-reward-value": "$1.00 REWARD", "capture-rewards-price": "REWARDS PRICE $1.00", "capture-reward-krw": "1,000원 적립",
@@ -699,7 +699,7 @@ try:
                 "capture-pack-unit-price": "$1.00 / BOTTLE", "capture-pack-price": "$6.00 / PACK", "capture-bottle-price": "$1.00 / BOTTLE",
                 "capture-container-count-price": "$1.00 / BOTTLE", "capture-deposit-price": "DEPOSIT $0.10",
                 "capture-deposit-suffix": "$0.10 DEPOSIT", "capture-deposit-included-price": "DEPOSIT INCLUDED $1.00"}
-        currency = "VND" if args.case == "capture-vnd-price" else "INR" if args.case == "capture-inr-price" else "BRL" if args.case == "capture-brl-price" else "KRW" if args.case.endswith("-krw") else "USD"
+        currency = "THB" if args.case == "capture-thb-price" else "RUB" if args.case == "capture-rub-price" else "VND" if args.case == "capture-vnd-price" else "INR" if args.case == "capture-inr-price" else "BRL" if args.case == "capture-brl-price" else "KRW" if args.case.endswith("-krw") else "USD"
         fixture = Image.new("RGB", (448, 512), "#f5f1e9")
         drawing = ImageDraw.Draw(fixture)
         drawing.rounded_rectangle((138, 24, 310, 376), radius=28, fill="#553023", outline="black", width=3)
@@ -712,7 +712,7 @@ try:
             drawing.text((224, y), text, fill="white", font=load_font(size, bold=True), anchor="mt")
         drawing.rectangle((0, 400, 448, 512), fill="#fff4a5", outline="black", width=3)
         tag_font = 28 if args.case in {"capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price", "capture-customer-limit", "capture-limited-price"} else 36
-        price_font = ImageFont.truetype("DejaVuSans-Bold.ttf", tag_font) if any(mark in tags[args.case] for mark in "₹₫") else load_font(tag_font, bold=True)
+        price_font = ImageFont.truetype("DejaVuSans-Bold.ttf", tag_font) if any(mark in tags[args.case] for mark in "₹₫฿₽") else load_font(tag_font, bold=True)
         result["fixture_font"] = str(getattr(price_font, "path", "Pillow default"))
         drawing.text((224, 439), tags[args.case], fill="black", font=price_font, anchor="mt")
         fixture.save(output / "image.png")
@@ -727,15 +727,24 @@ try:
         items, _ = build_items(frame, [group], [3], currency=currency, rack_type="shelf")
         item = items[0]
         issues = []
+        currency_transcription_ok = None
+        price_handling_ok = True
+        if args.case in {"capture-foreign-thb-price", "capture-thb-price", "capture-foreign-rub-price", "capture-rub-price"}:
+            currency_transcription_ok = re.sub(r"\s+", "", label.price_text) == tags[args.case]
+            if not currency_transcription_ok:
+                issues.append("The printed currency symbol and amount were not transcribed faithfully.")
         if not item.labeled or "cola" not in item.name.casefold():
             issues.append("The printed product identity was not retained.")
-        if args.case in {"capture-vnd-price", "capture-inr-price", "capture-brl-price", "capture-item-price", "capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
-            expected_price = {"capture-vnd-price": 1000, "capture-inr-price": 10000, "capture-brl-price": 100, "capture-item-price": 100, "capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
+        if args.case in {"capture-thb-price", "capture-rub-price", "capture-vnd-price", "capture-inr-price", "capture-brl-price", "capture-item-price", "capture-limited-price", "capture-qualified-price", "capture-price", "capture-price-krw", "capture-coupon-price", "capture-free-price", "capture-pack-price", "capture-bottle-price", "capture-deposit-included-price", "capture-rewards-price", "capture-points-price", "capture-count-cash-price"}:
+            expected_price = {"capture-thb-price": 10000, "capture-rub-price": 10000, "capture-vnd-price": 1000, "capture-inr-price": 10000, "capture-brl-price": 100, "capture-item-price": 100, "capture-limited-price": 100, "capture-qualified-price": 100, "capture-price": 100, "capture-price-krw": 1000, "capture-coupon-price": 100, "capture-free-price": 0, "capture-pack-price": 600, "capture-bottle-price": 100, "capture-deposit-included-price": 100, "capture-rewards-price": 100, "capture-points-price": 100, "capture-count-cash-price": 600}[args.case]
             if item.price != expected_price or item.price_estimated:
+                price_handling_ok = False
                 issues.append(f"The printed selling price was not retained as {expected_price} stored money units.")
         elif not item.price_estimated:
+            price_handling_ok = False
             issues.append("A non-selling or unreadable tag became an exact package selling price.")
         result.update(success=not issues, issues=issues, fixture_tag=tags[args.case], currency=currency,
+                      currency_transcription_ok=currency_transcription_ok, price_handling_ok=price_handling_ok,
                       separate_price_tag=args.separate_price_tag,
                       label=label.model_dump(mode="json"), item=item.model_dump(mode="json"))
     elif args.case.startswith("pack-"):

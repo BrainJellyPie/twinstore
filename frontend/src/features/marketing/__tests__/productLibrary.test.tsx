@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import * as api from "@/shared/api/client";
+import { setupWithKey } from "@/features/settings/__tests__/modelSetupWithKey";
 import type { PackageAsset } from "@/shared/api/client";
 import { ProductDrop, ProductLibrary } from "../ProductLibrary";
 
@@ -15,6 +16,7 @@ vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
 }));
 vi.mock("../hooks", () => ({ usePackages: () => ({ data: [ASSET] }) }));
+beforeEach(() => { vi.mocked(api.getModelSetup).mockResolvedValue(setupWithKey); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const ASSET: PackageAsset = { asset_id: "pkg_1", name: "IMG 2041", width: 300, height: 400, brand: "", sku: "", cut_out: true, created_at: "" };

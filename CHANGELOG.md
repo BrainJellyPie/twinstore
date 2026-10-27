@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Overlapping checks for a changed frontend reload the page at most once,
+  including when their server-health responses arrive out of order.
+
+- Request complete product rows from receipt-reading models and explain which
+  printed columns supply names, quantities and amounts. Clarify that missing
+  times remain empty and printed zero totals are values, including cancelled
+  transactions, instead of filling gaps or treating zero as unknown.
+
+- Starting or downloading the local model from an inline setup notice no
+  longer submits its surrounding form and accidentally starts another task.
+
+- Preserve additional printed currencies when reading shelf prices. Treat
+  unresolved currency symbols and ambiguous single-letter tags such as
+  `B100` or `P100` as estimated prices instead of exact store-currency amounts.
+  Ask the price transcriber to retain symbol strokes without replacing them
+  with letters; uncertain readings still require review.
+
 - The **Area** map's **Open venue** and **Close venue** tools now say what to
   do ("Click the map where the venue opens", "Click a venue on the map to close
   it"). Before, only the mouse cursor changed.

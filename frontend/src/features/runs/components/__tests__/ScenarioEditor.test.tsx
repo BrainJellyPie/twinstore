@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 import * as api from "@/shared/api/client";
+import { setupWithKey } from "@/features/settings/__tests__/modelSetupWithKey";
 import type { Scenario } from "@/shared/api/client";
 import { ScenarioEditor } from "../ScenarioEditor";
 
@@ -18,6 +19,7 @@ vi.mock("@/shared/api/client", async (original) => ({
 vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
 }));
+beforeEach(() => { vi.mocked(api.getModelSetup).mockResolvedValue(setupWithKey); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const TEXT = "Rainy Friday, 1+1 on Pepsi";

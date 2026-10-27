@@ -205,7 +205,8 @@ class _PriceTagResponse(BaseModel):
 
 
 PRICE_TAG_PROMPT = (
-    "Copy every visible word and number on this price tag exactly into literal_text. "
+    "Copy every visible word, number and currency symbol on this price tag exactly into literal_text. "
+    "Keep each currency symbol exactly as drawn, including its strokes. Do not replace symbols with Latin letters or a different currency. "
     "Do not translate, simplify or omit any words. If no text is readable, return an empty string.\n"
     "## 언어\nKeep literal_text in its printed language. Do not add narrative output."
 )

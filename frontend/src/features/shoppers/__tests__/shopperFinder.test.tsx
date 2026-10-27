@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import * as api from "@/shared/api/client";
+import { setupWithKey } from "@/features/settings/__tests__/modelSetupWithKey";
 import { askGroup, findShoppers, listGroups } from "@/shared/api/interview";
 import type { CustomerResult, Persona, Store } from "@/shared/types/domain";
 import { useAssistStore } from "@/stores/assistStore";
@@ -17,6 +18,7 @@ vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof i
 vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(), Link: ({ children }: { children: React.ReactNode }) => <a href="/settings">{children}</a>,
 }));
+beforeEach(() => { vi.mocked(api.getModelSetup).mockResolvedValue(setupWithKey); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); useAssistStore.setState({ pending: null }); });
 
 const shopper = (id: string, spent: number): CustomerResult => ({

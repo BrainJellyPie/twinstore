@@ -39,7 +39,7 @@ export function NeedsModel({ settings = true, purpose = "customers" }: { setting
         <div className="flex flex-wrap items-center gap-2">
           {data.local.state !== "disabled" && (
             // Wraps instead of overflowing a narrow card (a product card, a phone).
-            <Button size="sm" variant="outline" className="h-auto min-h-8 max-w-full py-1 text-left whitespace-normal" onClick={() => start.mutate()} disabled={start.isPending}>
+            <Button type="button" size="sm" variant="outline" className="h-auto min-h-8 max-w-full py-1 text-left whitespace-normal" onClick={() => start.mutate()} disabled={start.isPending}>
               <Cpu className="size-3.5" aria-hidden /> {data.local.downloaded === false
                 ? t("downloadLocal", { size: data.plan.model.download_gb }) : t("startLocal")}
             </Button>

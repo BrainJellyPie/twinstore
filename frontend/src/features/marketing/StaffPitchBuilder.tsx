@@ -45,6 +45,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   const validNumbers = panel.trim() !== "" && seed.trim() !== "" && Number.isInteger(count) && count >= 20 && count <= 500
     && Number.isInteger(seedNumber) && seedNumber >= 0 && seedNumber <= 2_147_483_647;
   const needsId = useId();
+  const missingFields = !(a.trim() && b.trim() && aName.trim() && bName.trim() && context.trim());
   const ready = products.some((p) => p.sku === sku) && personaCount >= 20 && validNumbers && a.trim() && b.trim()
     && context.trim() && aName.trim() && bName.trim() && !sameScripts && !sameNames;
   const run = useMutation({
@@ -158,8 +159,8 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
     {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
     {run.error && <NeedsModel />}
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {!(a.trim() && b.trim() && aName.trim() && bName.trim() && context.trim()) && <p id={needsId} className="text-sm text-muted-foreground">{t("mkPitchNeeds")}</p>}
-      <Button type="submit" disabled={!ready || run.isPending} aria-describedby={ready ? undefined : needsId}>
+      {missingFields && <p id={needsId} className="text-sm text-muted-foreground">{t("mkPitchNeeds")}</p>}
+      <Button type="submit" disabled={!ready || run.isPending} aria-describedby={missingFields ? needsId : undefined}>
       {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <MessagesSquare className="size-4" />} {t("mkTestScripts")}
     </Button></div>
   </form>;

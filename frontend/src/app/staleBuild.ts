@@ -30,6 +30,9 @@ export async function reloadForNewVersion(reload: () => void = () => window.loca
     return "offline";
   }
   try {
+    // Preload and route-error handlers can both await the same recovery.
+    // Another check may have reloaded while this health request was pending.
+    if (now - Number(sessionStorage.getItem(KEY) ?? 0) < 60_000) return "show";
     sessionStorage.setItem(KEY, String(now));
   } catch {
     return "show";
