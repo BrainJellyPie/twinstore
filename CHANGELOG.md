@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The layout spreadsheet's upload result ("File uploaded (224 items)"), its
+  photo warning and any upload or download error are now announced to
+  screen readers, not only shown.
+
 - The floor editor says at once which fixtures a smaller width or depth
   leaves off the grid, instead of hiding them silently until **Save** refuses
   the floor.
