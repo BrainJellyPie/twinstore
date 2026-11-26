@@ -274,7 +274,10 @@ async def _run_async_pipeline(
 
     # A text model without a usable API key would fail every batch: the client moves on to a provider that takes its
     # key, else to the local model on this computer, waiting for its first download if need be.
-    llm = await asyncio.to_thread(assistive_client, "", config.llm, wait=LOCAL_MODEL_WAIT_SEC, on_wait=note)
+    # One request writes several customers, each of the type its row asks for: Claude keeps the rows apart only when it
+    # may think first (its default), so this job does not ask it to answer directly.
+    llm = await asyncio.to_thread(assistive_client, "", config.llm.model_copy(update={"claude_thinking": True}),
+                                  wait=LOCAL_MODEL_WAIT_SEC, on_wait=note)
     if last_note[0]:   # the wait is over: the preparing screen stops showing it
         write_status(project_id, gen_id, "running", progress={})
 

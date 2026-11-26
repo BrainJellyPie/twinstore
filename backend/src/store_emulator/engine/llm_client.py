@@ -329,6 +329,7 @@ class LiteLLMClient:
         self._api_key = config.api_key.get_secret_value() if config.api_key else None
         self.max_parallel = config.max_parallel
         self._chat_template_thinking = config.chat_template_thinking
+        self._claude_thinking = config.claude_thinking
         self._structured_sdk_retries = config.structured_sdk_retries
         self._structured_output = config.structured_output
         self._slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
@@ -472,7 +473,9 @@ class LiteLLMClient:
             kwargs["temperature"] = self.temperature
         # Claude models may think before answering (adaptive thinking), which can use up a small
         # max_tokens budget before any JSON is written. Shopper decisions are short: answer directly.
-        if self.model.startswith("anthropic/") and _accepts(self.model, "thinking", self.api_base):
+        # A job that asked for thinking keeps the model's own setting: without it Claude Haiku 5.5
+        # lost track of which of ten requested customers it was writing.
+        if self.model.startswith("anthropic/") and not self._claude_thinking and _accepts(self.model, "thinking", self.api_base):
             kwargs["thinking"] = _THINKING_OFF.get((self.model, self.api_base or ""), {"type": "disabled"})
         # Hybrid Qwen models on Model Studio think by default (billed reasoning tokens, slower);
         # the OpenAI-compatible endpoint takes the switch as a top-level body field.
