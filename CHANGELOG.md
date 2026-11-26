@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.9.2 — Stores can be created with Claude Haiku 5.5 again
+
+- Creating a store with Claude Haiku 5.5 works again. Since 0.9.1 most new
+  stores stopped at "Customer generation failed … the model's reply was not in
+  the expected form": each customer must be of the type its request row asks
+  for, and Claude, asked to answer without thinking first, wrote the ten
+  customers of a request in another order. Customer generation now leaves
+  Claude's thinking on. Shopper decisions and the other short answers still
+  answer directly.
+
 ## 0.9.1 — Sturdier receipt reading, and numbers and focus that follow you
 
 - Require explicit image selections, price and customer quotas in generated

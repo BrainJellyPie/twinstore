@@ -66,6 +66,9 @@ class LLMConfig(BaseModel):
     chat_template_thinking: bool | None = Field(default=None, exclude=True)
     # Named self-hosted providers let Instructor own structured attempts. Runtime only.
     structured_sdk_retries: int | None = Field(default=None, ge=0, exclude=True)
+    # Claude answers directly unless this is set (thinking first can use up a short answer's budget). A request that
+    # keeps many rows in order, such as writing ten customers, needs the model to think. Runtime only.
+    claude_thinking: bool = Field(default=False, exclude=True)
 
 
 class DwellRange(BaseModel):
