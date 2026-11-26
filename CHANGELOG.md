@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.2 — Stores can be created with Claude Haiku 5.5 again
+
 - Creating a store with Claude Haiku 5.5 works again. Since 0.9.1 most new
   stores stopped at "Customer generation failed … the model's reply was not in
   the expected form": each customer must be of the type its request row asks
